@@ -48,5 +48,27 @@ class TestDownloader(unittest.TestCase):
         self.assertEqual(mock_youtube_dl.call_args[0][0]['subtitleslangs'], ['en'])
         self.assertEqual(mock_youtube_dl.call_args[0][0]['subtitlesformat'], 'vtt')
 
+        # Test with chapters
+        download_video('some_url', progress_hook, split_chapters=True)
+        self.assertTrue(mock_youtube_dl.call_args[0][0]['split_chapters'])
+        self.assertIn('section_number', mock_youtube_dl.call_args[0][0]['outtmpl'])
+
+        # Test with proxy and rate limit
+        download_video('some_url', progress_hook, proxy='http://proxy.com:8080', rate_limit='1M')
+        self.assertEqual(mock_youtube_dl.call_args[0][0]['proxy'], 'http://proxy.com:8080')
+        self.assertEqual(mock_youtube_dl.call_args[0][0]['ratelimit'], '1M')
+
+    @patch('downloader.yt_dlp.YoutubeDL')
+    def test_get_video_info_with_chapters(self, mock_youtube_dl):
+        mock_instance = MagicMock()
+        mock_instance.extract_info.return_value = {
+            'chapters': [{'title': 'Chapter 1'}, {'title': 'Chapter 2'}]
+        }
+        mock_youtube_dl.return_value.__enter__.return_value = mock_instance
+
+        info = get_video_info('some_url')
+        self.assertEqual(len(info['chapters']), 2)
+        self.assertEqual(info['chapters'][0]['title'], 'Chapter 1')
+
 if __name__ == '__main__':
     unittest.main()
