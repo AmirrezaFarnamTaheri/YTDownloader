@@ -11,7 +11,12 @@ class TestDownloader(unittest.TestCase):
             'title': 'Test Video',
             'thumbnail': 'http://test.com/thumb.jpg',
             'duration_string': '5:00',
-            'subtitles': {'en': [{'ext': 'srt'}]}
+            'subtitles': {'en': [{'ext': 'srt'}]},
+            'formats': [
+                {'format_id': '1', 'vcodec': 'avc1', 'acodec': 'mp4a', 'ext': 'mp4', 'resolution': '1920x1080', 'fps': 30},
+                {'format_id': '2', 'vcodec': 'vp9', 'acodec': 'none', 'ext': 'webm', 'resolution': '3840x2160', 'fps': 60},
+                {'format_id': '3', 'vcodec': 'none', 'acodec': 'opus', 'ext': 'webm', 'abr': 160},
+            ]
         }
         mock_youtube_dl.return_value.__enter__.return_value = mock_instance
 
@@ -20,6 +25,11 @@ class TestDownloader(unittest.TestCase):
         self.assertEqual(info['thumbnail'], 'http://test.com/thumb.jpg')
         self.assertEqual(info['duration'], '5:00')
         self.assertEqual(info['subtitles'], {'en': ['srt']})
+        self.assertEqual(len(info['video_streams']), 2)
+        self.assertEqual(info['video_streams'][0]['resolution'], '1920x1080')
+        self.assertEqual(info['video_streams'][1]['resolution'], '3840x2160')
+        self.assertEqual(len(info['audio_streams']), 1)
+        self.assertEqual(info['audio_streams'][0]['abr'], 160)
 
     @patch('downloader.yt_dlp.YoutubeDL')
     def test_download_video(self, mock_youtube_dl):
