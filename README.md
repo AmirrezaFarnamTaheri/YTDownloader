@@ -4,7 +4,10 @@ YTDownloader is a modern, user-friendly desktop application for downloading vide
 
 ## Features
 
-- **Modern & Intuitive UI**: A clean and stylish interface built with `ttkthemes` that is easy to navigate.
+- **Modern & Intuitive UI**: A clean and stylish interface with light and dark modes.
+- **Download Queue**: Queue multiple videos for download.
+- **Chapter Splitting**: Split videos into chapters.
+- **Configurable Settings**: Configure proxy and download speed limit.
 - **Tabbed Layout**: A well-organized, tabbed interface that separates video, audio, subtitle, and playlist options for a streamlined user experience.
 - **Fetch Video Information**: Instantly fetch and display video details, including the title, thumbnail, and duration, before you download.
 - **High-Quality Downloads**: Download videos in the highest available quality, or choose from a variety of video and audio formats.
@@ -28,10 +31,12 @@ Here’s a step-by-step guide to using YTDownloader:
     *   **Audio Tab**: Choose your desired audio format from the dropdown menu.
     *   **Subtitles Tab**: If subtitles are available, select your preferred language and format.
     *   **Playlist Tab**: If you entered a playlist URL, check the "Download Playlist" box to download the entire playlist.
+    *   **Chapters Tab**: Check the "Split Chapters" box to split the video into chapters.
+    *   **Settings Tab**: Configure proxy and download speed limit.
 
 4.  **Choose an Output Path**: Click the "Browse..." button to select the folder where you want to save your download. If you don't choose a path, the file will be saved in the same directory as the application.
 
-5.  **Start the Download**: Click the "Download" button to begin. The progress bar will show the download's progress, and a status message will keep you updated.
+5.  **Start the Download**: Click the "Add to Queue" button to add the video to the download queue. The download will start automatically.
 
 6.  **Clear the UI**: When you're finished, click the "Clear" button to reset the UI and prepare for a new download.
 
@@ -71,6 +76,14 @@ If you prefer to build the application from the source code, follow these steps:
     pyinstaller --onefile --windowed --noconsole main.py
     ```
     The executable will be located in the `dist` directory.
+
+## Screenshots
+
+*(Coming Soon)*
+
+## GIF of the Application in Action
+
+*(Coming Soon)*
 
 ## Contributing
 
