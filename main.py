@@ -6,12 +6,16 @@ import threading
 from PIL import Image, ImageTk
 import requests
 from io import BytesIO
+import queue
 
 class YTDownloaderGUI:
     def __init__(self, master):
         self.master = master
         master.title("YTDownloader")
         master.set_theme("arc")
+
+        self.ui_queue = queue.Queue()
+        self.master.after(100, self.process_ui_queue)
 
         # Main frame
         self.frame = ttk.Frame(master, padding="10")
@@ -75,6 +79,15 @@ class YTDownloaderGUI:
         self.status_label = ttk.Label(self.frame, text="")
         self.status_label.grid(row=7, column=0, columnspan=4, padx=5, pady=5)
 
+    def process_ui_queue(self):
+        try:
+            while True:
+                task, kwargs = self.ui_queue.get_nowait()
+                task(**kwargs)
+        except queue.Empty:
+            pass
+        self.master.after(100, self.process_ui_queue)
+
     def fetch_info(self):
         url = self.url_entry.get()
         if not url:
@@ -84,12 +97,12 @@ class YTDownloaderGUI:
         def _fetch():
             try:
                 info = get_video_info(url)
-                self.title_label.config(text=f"Title: {info['title']}")
-                self.duration_label.config(text=f"Duration: {info['duration']}")
+                self.ui_queue.put((self.title_label.config, {'text': f"Title: {info['title']}"}))
+                self.ui_queue.put((self.duration_label.config, {'text': f"Duration: {info['duration']}"}))
 
                 if info['subtitles']:
-                    self.subtitle_lang_menu['values'] = list(info['subtitles'].keys())
-                    self.subtitle_lang_menu.set('')
+                    self.ui_queue.put((self.subtitle_lang_menu.config, {'values': list(info['subtitles'].keys())}))
+                    self.ui_queue.put((self.subtitle_lang_menu.set, {'value': ''}))
 
                 if info['thumbnail']:
                     response = requests.get(info['thumbnail'])
@@ -97,10 +110,10 @@ class YTDownloaderGUI:
                     img = Image.open(BytesIO(img_data))
                     img.thumbnail((120, 90))
                     photo = ImageTk.PhotoImage(img)
-                    self.thumbnail_label.config(image=photo)
+                    self.ui_queue.put((self.thumbnail_label.config, {'image': photo}))
                     self.thumbnail_label.image = photo
             except Exception as e:
-                self.status_label.config(text=f"Error fetching info: {e}")
+                self.ui_queue.put((self.status_label.config, {'text': f"Error fetching info: {e}"}))
 
         threading.Thread(target=_fetch).start()
 
@@ -116,11 +129,10 @@ class YTDownloaderGUI:
             if total_bytes:
                 downloaded_bytes = d['downloaded_bytes']
                 percentage = (downloaded_bytes / total_bytes) * 100
-                self.progress_bar['value'] = percentage
-                self.master.update_idletasks()
+                self.ui_queue.put((self.progress_bar.config, {'value': percentage}))
         elif d['status'] == 'finished':
-            self.progress_bar['value'] = 100
-            self.status_label.config(text="Download complete.")
+            self.ui_queue.put((self.progress_bar.config, {'value': 100}))
+            self.ui_queue.put((self.status_label.config, {'text': "Download complete."}))
 
     def start_download_thread(self):
         self.download_button.config(state="disabled")
@@ -140,9 +152,9 @@ class YTDownloaderGUI:
         try:
             download_video(url, self.progress_hook, playlist, video_format, output_path, subtitle_lang, subtitle_format)
         except Exception as e:
-            self.status_label.config(text=f"An error occurred: {e}")
+            self.ui_queue.put((self.status_label.config, {'text': f"An error occurred: {e}"}))
         finally:
-            self.download_button.config(state="normal")
+            self.ui_queue.put((self.download_button.config, {'state': "normal"}))
 
 if __name__ == "__main__":
     root = ThemedTk(theme="arc")
