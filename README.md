@@ -6,6 +6,8 @@ YTDownloader is a modern, user-friendly desktop application for downloading vide
 
 - **Modern & Intuitive UI**: A clean and stylish interface with light and dark modes.
 - **Download Queue**: Queue multiple videos for download.
+- **Pause and Resume Downloads**: Pause and resume your downloads at any time.
+- **Enhanced Download Queue**: View detailed information about your downloads, including file size, download speed, and ETA.
 - **Chapter Splitting**: Split videos into chapters.
 - **Configurable Settings**: Configure proxy and download speed limit.
 - **Tabbed Layout**: A well-organized, tabbed interface that separates video, audio, subtitle, and playlist options for a streamlined user experience.
@@ -38,7 +40,12 @@ Here’s a step-by-step guide to using YTDownloader:
 
 5.  **Start the Download**: Click the "Add to Queue" button to add the video to the download queue. The download will start automatically.
 
-6.  **Clear the UI**: When you're finished, click the "Clear" button to reset the UI and prepare for a new download.
+6.  **Manage Your Downloads**:
+    *   **Pause/Resume**: Click the "Pause" button to pause a download, and "Resume" to continue.
+    *   **Downloads Tab**: Switch to the "Downloads" tab to see a detailed view of your download queue, including the file size, download speed, and ETA.
+    *   **Context Menu**: Right-click on a download in the "Downloads" tab to open a context menu with options to remove the download from the queue or open the file's location.
+
+7.  **Clear the UI**: When you're finished, click the "Clear" button to reset the UI and prepare for a new download.
 
 ## Installation
 
@@ -79,11 +86,11 @@ If you prefer to build the application from the source code, follow these steps:
 
 ## Screenshots
 
-*(Coming Soon)*
+![Screenshot of YTDownloader](screenshot.png)
 
 ## GIF of the Application in Action
 
-*(Coming Soon)*
+![GIF of YTDownloader in action](ytdownloader.gif)
 
 ## Contributing
 

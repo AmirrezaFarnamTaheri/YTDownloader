@@ -9,6 +9,9 @@ from io import BytesIO
 import queue
 import logging
 import yt_dlp
+import os
+import subprocess
+import sys
 
 class CancelToken:
     def __init__(self):
@@ -20,6 +23,11 @@ class CancelToken:
     def check(self, d):
         if self.cancelled:
             raise yt_dlp.utils.DownloadError("Download cancelled by user.")
+        while self.is_paused:
+            import time
+            time.sleep(1)
+            if self.cancelled:
+                raise yt_dlp.utils.DownloadError("Download cancelled by user.")
 
 # Configure logging
 logging.basicConfig(filename='ytdownloader.log', level=logging.ERROR,
@@ -42,6 +50,7 @@ class YTDownloaderGUI:
         self._audio_streams = []
         self.download_queue = []
         self.cancel_token = None
+        self.is_paused = False
 
         self.ui_queue = queue.Queue()
         self.master.after(100, self.process_ui_queue)
@@ -150,10 +159,24 @@ class YTDownloaderGUI:
         self.ratelimit_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
         # Downloads Tab
-        self.download_queue_tree = ttk.Treeview(self.downloads_tab, columns=("URL", "Status"), show="headings")
+        columns = ("URL", "Status", "Size", "Speed", "ETA")
+        self.download_queue_tree = ttk.Treeview(self.downloads_tab, columns=columns, show="headings")
         self.download_queue_tree.heading("URL", text="URL")
+        self.download_queue_tree.column("URL", width=300)
         self.download_queue_tree.heading("Status", text="Status")
+        self.download_queue_tree.column("Status", width=100)
+        self.download_queue_tree.heading("Size", text="Size")
+        self.download_queue_tree.column("Size", width=100)
+        self.download_queue_tree.heading("Speed", text="Speed")
+        self.download_queue_tree.column("Speed", width=100)
+        self.download_queue_tree.heading("ETA", text="ETA")
+        self.download_queue_tree.column("ETA", width=100)
         self.download_queue_tree.pack(fill="both", expand=True)
+
+        self.context_menu = tk.Menu(self.master, tearoff=0)
+        self.context_menu.add_command(label="Remove", command=self.remove_from_queue)
+        self.context_menu.add_command(label="Open File Location", command=self.open_file_location)
+        self.download_queue_tree.bind("<Button-3>", self.show_context_menu)
 
         # Output Path
         self.path_label = ttk.Label(self.frame, text="Output Path:")
@@ -165,11 +188,11 @@ class YTDownloaderGUI:
 
         # Download Button, Clear Button, and Progress Bar
         self.download_button = ttk.Button(self.frame, text="Add to Queue", command=self.add_to_queue)
-        self.download_button.grid(row=5, column=0, padx=5, pady=5)
-        self.cancel_button = ttk.Button(self.frame, text="Cancel", command=self.cancel_download, state="disabled")
-        self.cancel_button.grid(row=5, column=1, padx=5, pady=5)
+        self.download_button.grid(row=5, column=0, padx=5, pady=10)
+        self.pause_button = ttk.Button(self.frame, text="Pause", command=self.toggle_pause_resume, state="disabled")
+        self.pause_button.grid(row=5, column=1, padx=5, pady=10)
         self.clear_button = ttk.Button(self.frame, text="Clear", command=self.clear_ui)
-        self.clear_button.grid(row=5, column=2, padx=5, pady=5)
+        self.clear_button.grid(row=5, column=2, padx=5, pady=10)
         self.progress_bar = ttk.Progressbar(self.frame, orient="horizontal", length=300, mode="determinate")
         self.progress_bar.grid(row=6, column=0, columnspan=4, padx=5, pady=10, sticky="ew")
         self.status_label = ttk.Label(self.frame, text="")
@@ -258,13 +281,17 @@ class YTDownloaderGUI:
                     self.ui_queue.put((self.audio_format_menu.set, {'value': audio_formats[0]}))
 
                 if info.get('thumbnail'):
-                    response = requests.get(info['thumbnail'])
-                    img_data = response.content
-                    img = Image.open(BytesIO(img_data))
-                    img.thumbnail((120, 90))
-                    photo = ImageTk.PhotoImage(img)
-                    self.ui_queue.put((self.thumbnail_label.config, {'image': photo}))
-                    self.thumbnail_label.image = photo
+                    try:
+                        response = requests.get(info['thumbnail'])
+                        response.raise_for_status()
+                        img_data = response.content
+                        img = Image.open(BytesIO(img_data))
+                        img.thumbnail((120, 90))
+                        photo = ImageTk.PhotoImage(img)
+                        self.ui_queue.put((self.thumbnail_label.config, {'image': photo}))
+                        self.thumbnail_label.image = photo
+                    except requests.exceptions.RequestException as e:
+                        self.handle_error("Failed to fetch thumbnail.", e)
             except yt_dlp.utils.DownloadError as e:
                 self.handle_error("Invalid URL or network error.", e)
             except Exception as e:
@@ -282,15 +309,27 @@ class YTDownloaderGUI:
             self.path_entry.insert(0, path)
 
     def progress_hook(self, d):
+        item = next((item for item in self.download_queue if item['status'] == 'Downloading'), None)
+        if not item:
+            return
+
         if d['status'] == 'downloading':
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
             if total_bytes:
                 downloaded_bytes = d['downloaded_bytes']
                 percentage = (downloaded_bytes / total_bytes) * 100
                 self.ui_queue.put((self.progress_bar.config, {'value': percentage}))
+
+                item['size'] = f"{total_bytes / 1024 / 1024:.2f} MB"
+                item['speed'] = d.get('speed', 'N/A')
+                item['eta'] = d.get('eta', 'N/A')
+                self.ui_queue.put((self.update_download_queue_list, {}))
+
         elif d['status'] == 'finished':
             self.ui_queue.put((self.progress_bar.config, {'value': 100}))
             self.ui_queue.put((self.status_label.config, {'text': "Download complete."}))
+            item['status'] = 'Completed'
+            self.ui_queue.put((self.update_download_queue_list, {}))
 
     def add_to_queue(self):
         url = self.url_entry.get()
@@ -301,6 +340,7 @@ class YTDownloaderGUI:
         video_format = self.video_format_var.get()
         audio_format = self.audio_format_var.get()
         subtitle_lang = self.subtitle_lang_var.get()
+        subtitle_format = self.subtitle_format_var.get()
         output_path = self.path_entry.get() or '.'
         playlist = self.playlist_var.get()
         split_chapters = self.chapters_var.get()
@@ -312,6 +352,7 @@ class YTDownloaderGUI:
             "video_format": video_format,
             "audio_format": audio_format,
             "subtitle_lang": subtitle_lang,
+            "subtitle_format": subtitle_format,
             "output_path": output_path,
             "playlist": playlist,
             "split_chapters": split_chapters,
@@ -330,7 +371,18 @@ class YTDownloaderGUI:
         for i in self.download_queue_tree.get_children():
             self.download_queue_tree.delete(i)
         for i, item in enumerate(self.download_queue):
-            self.download_queue_tree.insert("", "end", iid=i, values=(item['url'], item['status']))
+            try:
+                values = (
+                    item.get('url', 'N/A'),
+                    item.get('status', 'N/A'),
+                    item.get('size', 'N/A'),
+                    item.get('speed', 'N/A'),
+                    item.get('eta', 'N/A')
+                )
+                self.download_queue_tree.insert("", "end", iid=i, values=values)
+            except KeyError:
+                # Handle old download items that don't have the new keys
+                self.download_queue_tree.insert("", "end", iid=i, values=(item['url'], item['status'], "N/A", "N/A", "N/A"))
 
     def is_downloading(self):
         for item in self.download_queue:
@@ -349,7 +401,7 @@ class YTDownloaderGUI:
         item['status'] = 'Downloading'
         self.update_download_queue_list()
         self.download_button.config(state="disabled")
-        self.cancel_button.config(state="normal")
+        self.pause_button.config(state="normal")
         self.status_label.config(text=f"Downloading {item['url']}...")
         self.progress_bar['value'] = 0
         thread = threading.Thread(target=self.download, args=(item,))
@@ -358,6 +410,12 @@ class YTDownloaderGUI:
     def download(self, item):
         self.cancel_token = CancelToken()
         try:
+            while self.is_paused:
+                import time
+                time.sleep(1)
+                if self.cancel_token.cancelled:
+                    raise yt_dlp.utils.DownloadError("Download cancelled by user.")
+
             video_format_id = item['video_format'].split(' - ')[-1]
             video_stream = next((s for s in self._video_streams if s['format_id'] == video_format_id), None)
 
@@ -374,7 +432,7 @@ class YTDownloaderGUI:
                 video_format,
                 item['output_path'],
                 item['subtitle_lang'],
-                'srt',  # Assuming srt for now
+                item['subtitle_format'],
                 item['split_chapters'],
                 item['proxy'],
                 item['rate_limit'],
@@ -393,7 +451,7 @@ class YTDownloaderGUI:
         finally:
             self.cancel_token = None
             self.ui_queue.put((self.download_button.config, {'state': "normal"}))
-            self.ui_queue.put((self.cancel_button.config, {'state': "disabled"}))
+            self.ui_queue.put((self.pause_button.config, {'state': "disabled"}))
             self.ui_queue.put((self.update_download_queue_list, {}))
             self.ui_queue.put((self.process_download_queue, {}))
             if item['status'] == 'Completed':
@@ -401,15 +459,49 @@ class YTDownloaderGUI:
 
     def handle_error(self, message, error):
         logging.error(f"{message}: {error}")
-        self.ui_queue.put((self.status_label.config, {'text': message}))
+        messagebox.showerror("Error", message)
+        self.ui_queue.put((self.status_label.config, {'text': "An error occurred. See ytdownloader.log for details."}))
 
     def cancel_download(self):
         if self.cancel_token:
             self.cancel_token.cancel()
 
+    def toggle_pause_resume(self):
+        self.is_paused = not self.is_paused
+        if self.is_paused:
+            self.pause_button.config(text="Resume")
+            self.status_label.config(text="Download paused.")
+        else:
+            self.pause_button.config(text="Pause")
+            self.status_label.config(text="Resuming download...")
+
     def show_about(self):
         about_text = "YTDownloader\n\nVersion: 1.0\n\nA simple YouTube downloader built with Python and Tkinter."
         messagebox.showinfo("About", about_text)
+
+    def show_context_menu(self, event):
+        selection = self.download_queue_tree.identify_row(event.y)
+        if selection:
+            self.download_queue_tree.selection_set(selection)
+            self.context_menu.post(event.x_root, event.y_root)
+
+    def remove_from_queue(self):
+        selected_item = self.download_queue_tree.selection()[0]
+        item_index = int(selected_item)
+        del self.download_queue[item_index]
+        self.update_download_queue_list()
+
+    def open_file_location(self):
+        selected_item = self.download_queue_tree.selection()[0]
+        item_index = int(selected_item)
+        item = self.download_queue[item_index]
+        output_path = item['output_path']
+        if sys.platform == "win32":
+            os.startfile(output_path)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", output_path])
+        else:
+            subprocess.Popen(["xdg-open", output_path])
 
 if __name__ == "__main__":
     root = ThemedTk(theme="arc")
