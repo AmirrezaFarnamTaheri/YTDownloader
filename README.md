@@ -5,12 +5,14 @@ YTDownloader is a modern, user-friendly desktop application for downloading vide
 ## Features
 
 - **Modern & Intuitive UI**: A clean and stylish interface built with `ttkthemes` that is easy to navigate.
+- **Tabbed Layout**: A well-organized, tabbed interface that separates video, audio, subtitle, and playlist options for a streamlined user experience.
 - **Fetch Video Information**: Instantly fetch and display video details, including the title, thumbnail, and duration, before you download.
-- **High-Quality Downloads**: Download videos in the highest available quality, or choose from a variety of formats, including MP4, WebM, and MP3.
+- **High-Quality Downloads**: Download videos in the highest available quality, or choose from a variety of video and audio formats.
 - **Playlist Support**: Download entire playlists with a single click.
 - **Subtitle & Transcript Downloads**: Download subtitles and transcripts in various formats (SRT, VTT, etc.) and languages (when available).
 - **Custom Output Path**: Choose exactly where you want to save your downloaded files.
 - **Real-Time Progress**: A visual progress bar keeps you informed of your download's status in real-time.
+- **Clear UI**: A "Clear" button that resets the UI to its initial state, allowing you to easily start a new download.
 - **Standalone Executable**: The application is packaged as a single executable file, so you don't need to install Python or any dependencies to use it.
 
 ## User Walkthrough
@@ -19,17 +21,19 @@ Here’s a step-by-step guide to using YTDownloader:
 
 1.  **Enter a Video URL**: Paste the URL of the YouTube video or playlist you want to download into the "Video URL" field.
 
-2.  **Fetch Video Info**: Click the "Fetch Info" button to see the video's title, thumbnail, and duration, as well as a list of available subtitle languages.
+2.  **Fetch Video Info**: Click the "Fetch Info" button to see the video's title, thumbnail, and duration, as well as a list of available video, audio, and subtitle options.
 
 3.  **Select Your Options**:
-    *   **Download Playlist**: If you entered a playlist URL, check this box to download the entire playlist.
-    *   **Format**: Choose your desired video or audio format from the dropdown menu.
-    *   **Subtitle Language**: If subtitles are available, select your preferred language.
-    *   **Subtitle Format**: Choose your desired subtitle format. Note that not all formats may be available for all videos.
+    *   **Video Tab**: Choose your desired video format from the dropdown menu.
+    *   **Audio Tab**: Choose your desired audio format from the dropdown menu.
+    *   **Subtitles Tab**: If subtitles are available, select your preferred language and format.
+    *   **Playlist Tab**: If you entered a playlist URL, check the "Download Playlist" box to download the entire playlist.
 
 4.  **Choose an Output Path**: Click the "Browse..." button to select the folder where you want to save your download. If you don't choose a path, the file will be saved in the same directory as the application.
 
 5.  **Start the Download**: Click the "Download" button to begin. The progress bar will show the download's progress, and a status message will keep you updated.
+
+6.  **Clear the UI**: When you're finished, click the "Clear" button to reset the UI and prepare for a new download.
 
 ## Installation
 
@@ -70,4 +74,4 @@ If you prefer to build the application from the source code, follow these steps:
 
 ## Contributing
 
-Contributions are welcome! If you have any ideas for new features or improvements, feel to open an issue or submit a pull request.
+Contributions are welcome! If you have any ideas for new features or improvements, feel free to open an issue or submit a pull request.
