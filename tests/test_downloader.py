@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock, call
-from main import download_video
+from downloader import download_video
 
 class TestYTDownloader(unittest.TestCase):
 
-    @patch('main.yt_dlp.YoutubeDL')
+    @patch('downloader.yt_dlp.YoutubeDL')
     def test_download_video(self, mock_youtube_dl):
         """
         Tests the download_video function with a mock object.
