@@ -435,12 +435,13 @@ class YTDownloaderGUI:
     def progress_hook(self, d, item):
         if d['status'] == 'downloading':
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
-            if total_bytes:
-                downloaded_bytes = d['downloaded_bytes']
-                percentage = (downloaded_bytes / total_bytes) * 100
-                self.ui_queue.put((self.progress_bar.config, {'value': percentage}))
+            if total_bytes is not None and total_bytes > 0:
+                downloaded_bytes = d.get('downloaded_bytes')
+                if downloaded_bytes is not None:
+                    percentage = (downloaded_bytes / total_bytes) * 100
+                    self.ui_queue.put((self.progress_bar.config, {'value': percentage}))
 
-                item['size'] = f"{total_bytes / 1024 / 1024:.2f} MB"
+                item['size'] = format_file_size(total_bytes)
                 item['speed'] = d.get('speed', 'N/A')
                 item['eta'] = d.get('eta', 'N/A')
                 self.ui_queue.put((self.update_download_queue_list, {}))
