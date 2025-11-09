@@ -1,6 +1,15 @@
-yt-dlp
-pytest
-pyinstaller
-ttkthemes
-Pillow
-requests
+# Core Dependencies
+yt-dlp>=2023.11.16        # YouTube video downloader library
+ttkbootstrap>=1.10.1      # Modern TTK theme (sv-ttk compatible)
+Pillow>=10.0.0            # Image processing for thumbnails
+requests>=2.31.0          # HTTP library for fetching resources
+
+# Development & Testing
+pytest>=7.4.0             # Testing framework
+pytest-cov>=4.1.0         # Code coverage support
+pyinstaller>=6.0.0        # Create standalone executables
+
+# Optional Quality Tools
+black>=23.0.0             # Code formatting (optional)
+mypy>=1.0.0               # Type checking (optional)
+pylint>=3.0.0             # Code linting (optional)
