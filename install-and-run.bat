@@ -116,20 +116,24 @@ echo.
 REM Step 5: Create shortcuts
 echo [Step 5] Creating shortcuts...
 set ICON_PATH=%APP_DIR%icon.ico
-set PWSH_CMD=$WshShell = New-Object -ComObject WScript.Shell;
-set PWSH_CMD=%PWSH_CMD% $DesktopPath = [Environment]::GetFolderPath('Desktop');
-set PWSH_CMD=%PWSH_CMD% $ShortcutPath = Join-Path $DesktopPath 'YTDownloader.lnk';
-set PWSH_CMD=%PWSH_CMD% $Shortcut = $WshShell.CreateShortcut($ShortcutPath);
-set PWSH_CMD=%PWSH_CMD% $Shortcut.TargetPath = '%PYTHON_EXE%';
-set PWSH_CMD=%PWSH_CMD% $Shortcut.Arguments = '""%APP_DIR%main.py""';
-set PWSH_CMD=%PWSH_CMD% $Shortcut.WorkingDirectory = '""%APP_DIR%""';
-set PWSH_CMD=%PWSH_CMD% $Shortcut.Description = 'YTDownloader - Advanced YouTube Video Downloader';
-if exist "%ICON_PATH%" (
-    set PWSH_CMD=%PWSH_CMD% $Shortcut.IconLocation = '""%ICON_PATH%""';
-)
-set PWSH_CMD=%PWSH_CMD% $Shortcut.Save();
+set PWSH_SCRIPT=%TEMP%\create_shortcut.ps1
 
-powershell -NoProfile -Command "%PWSH_CMD%"
+(
+    echo $WshShell = New-Object -ComObject WScript.Shell;
+    echo $DesktopPath = [Environment]::GetFolderPath('Desktop');
+    echo $ShortcutPath = Join-Path $DesktopPath 'YTDownloader.lnk';
+    echo $Shortcut = $WshShell.CreateShortcut($ShortcutPath);
+    echo $Shortcut.TargetPath = '""%PYTHON_EXE%""';
+    echo $Shortcut.Arguments = '""%APP_DIR%main.py""';
+    echo $Shortcut.WorkingDirectory = '""%APP_DIR%""';
+    echo $Shortcut.Description = 'YTDownloader - Advanced YouTube Video Downloader';
+    if exist "%ICON_PATH%" (
+        echo $Shortcut.IconLocation = '""%ICON_PATH%""';
+    )
+    echo $Shortcut.Save();
+) > "%PWSH_SCRIPT%"
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PWSH_SCRIPT%"
 if errorlevel 1 (
     color 0E
     echo WARNING: Could not create desktop shortcut.
@@ -137,6 +141,7 @@ if errorlevel 1 (
 ) else (
     echo [OK] Desktop shortcut created
 )
+del "%PWSH_SCRIPT%"
 echo.
 
 REM Step 6: Launch the application
