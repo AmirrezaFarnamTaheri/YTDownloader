@@ -669,21 +669,26 @@ class YTDownloaderGUI:
             self.context_menu.post(event.x_root, event.y_root)
 
     def remove_from_queue(self) -> None:
-        """Remove selected item from download queue."""
+        """Remove selected item(s) from download queue."""
         try:
             selection = self.download_queue_tree.selection()
             if not selection:
                 messagebox.showwarning("Selection Error", "Please select an item to remove.")
                 return
 
-            item_index = int(selection[0])
-            if 0 <= item_index < len(self.download_queue):
-                removed_item = self.download_queue.pop(item_index)
-                logger.info(f"Removed from queue: {removed_item.get('url', 'Unknown')}")
-                self.update_download_queue_list()
-                self.status_label.config(text=f"Removed from queue. Queue size: {len(self.download_queue)}")
-            else:
-                messagebox.showerror("Error", "Invalid queue item index.")
+            # Get indices and sort in reverse to avoid index shifting issues
+            indices_to_remove = sorted([int(item_id) for item_id in selection], reverse=True)
+
+            for item_index in indices_to_remove:
+                if 0 <= item_index < len(self.download_queue):
+                    removed_item = self.download_queue.pop(item_index)
+                    logger.info(f"Removed from queue: {removed_item.get('url', 'Unknown')}")
+                else:
+                    messagebox.showerror("Error", f"Invalid queue item index: {item_index}")
+        
+            self.update_download_queue_list()
+            self.status_label.config(text=f"Removed {len(indices_to_remove)} item(s). Queue size: {len(self.download_queue)}")
+
         except (IndexError, ValueError) as e:
             logger.error(f"Error removing from queue: {e}")
             messagebox.showerror("Error", "Failed to remove item from queue.")
