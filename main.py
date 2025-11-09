@@ -12,26 +12,101 @@ import yt_dlp
 import os
 import subprocess
 import sys
+import json
+import time
+from pathlib import Path
+from typing import Optional, Dict, List, Any
+from dataclasses import dataclass
 
 class CancelToken:
+    """Token for managing download cancellation and pause/resume."""
     def __init__(self):
         self.cancelled = False
+        self.is_paused = False
 
     def cancel(self):
+        """Mark the download as cancelled."""
         self.cancelled = True
 
     def check(self, d):
+        """Check if download should be cancelled or paused."""
         if self.cancelled:
             raise yt_dlp.utils.DownloadError("Download cancelled by user.")
         while self.is_paused:
-            import time
-            time.sleep(1)
+            time.sleep(0.5)
             if self.cancelled:
                 raise yt_dlp.utils.DownloadError("Download cancelled by user.")
 
 # Configure logging
-logging.basicConfig(filename='ytdownloader.log', level=logging.ERROR,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    filename='ytdownloader.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    encoding='utf-8'
+)
+logger = logging.getLogger(__name__)
+
+# Configuration file path
+CONFIG_FILE = Path.home() / '.ytdownloader' / 'config.json'
+CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+# Constants
+THUMBNAIL_SIZE = (120, 90)
+WINDOW_MIN_WIDTH = 900
+WINDOW_MIN_HEIGHT = 700
+QUEUE_POLL_INTERVAL = 100  # milliseconds
+PAUSE_SLEEP_INTERVAL = 0.5  # seconds
+
+def load_config() -> Dict[str, Any]:
+    """Load configuration from file."""
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            logger.warning(f"Failed to load config: {e}")
+    return {}
+
+def save_config(config: Dict[str, Any]) -> None:
+    """Save configuration to file."""
+    try:
+        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2)
+    except IOError as e:
+        logger.error(f"Failed to save config: {e}")
+
+def validate_url(url: str) -> bool:
+    """Validate if URL is a valid video URL."""
+    url = url.strip()
+    return url.startswith(('http://', 'https://')) and len(url) > 10
+
+def validate_proxy(proxy: str) -> bool:
+    """Validate proxy format."""
+    if not proxy.strip():
+        return True  # Empty is valid (no proxy)
+    # Basic proxy validation: should contain :// and have a host:port
+    return '://' in proxy and ':' in proxy.split('://', 1)[1]
+
+def validate_rate_limit(rate_limit: str) -> bool:
+    """Validate rate limit format (e.g., 50K, 4.2M)."""
+    if not rate_limit.strip():
+        return True  # Empty is valid (no limit)
+    import re
+    return bool(re.match(r'^\d+(\.\d+)?[KMGT]?$', rate_limit.strip()))
+
+def format_file_size(size_bytes: Optional[float]) -> str:
+    """Format file size for display."""
+    if size_bytes is None or size_bytes == 'N/A':
+        return 'N/A'
+    try:
+        size_bytes = float(size_bytes)
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size_bytes < 1024:
+                return f"{size_bytes:.2f} {unit}"
+            size_bytes /= 1024
+        return f"{size_bytes:.2f} TB"
+    except (ValueError, TypeError):
+        return 'N/A'
 
 class YTDownloaderGUI:
     """
@@ -43,19 +118,24 @@ class YTDownloaderGUI:
         :param master: The root Tkinter window.
         """
         self.master = master
-        master.title("YTDownloader")
+        master.title("YTDownloader - Advanced YouTube Video Downloader")
+        master.geometry(f"{WINDOW_MIN_WIDTH}x{WINDOW_MIN_HEIGHT}")
+        master.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
+
+        # Load configuration
+        self.config = load_config()
 
         # --- Application State ---
-        self.dark_mode = tk.BooleanVar(value=True)
-
-        self._video_streams = []
-        self._audio_streams = []
-        self.download_queue = []
-        self.cancel_token = None
+        self.dark_mode = tk.BooleanVar(value=self.config.get('dark_mode', True))
+        self._video_streams: List[Dict[str, Any]] = []
+        self._audio_streams: List[Dict[str, Any]] = []
+        self.download_queue: List[Dict[str, Any]] = []
+        self.cancel_token: Optional[CancelToken] = None
         self.is_paused = False
+        self.fetch_thread: Optional[threading.Thread] = None
 
-        self.ui_queue = queue.Queue()
-        self.master.after(100, self.process_ui_queue)
+        self.ui_queue: queue.Queue = queue.Queue()
+        self.master.after(QUEUE_POLL_INTERVAL, self.process_ui_queue)
 
         # --- UI Setup ---
         # Main frame
@@ -209,7 +289,9 @@ class YTDownloaderGUI:
         self.loading_animation_label.grid(row=1, column=1, sticky="w")
         self.loading_animation_label.grid_remove()
 
-        sv_ttk.set_theme("dark")
+        # Set initial theme based on config
+        theme = "dark" if self.dark_mode.get() else "light"
+        sv_ttk.set_theme(theme)
 
         # Style configuration
         style = ttk.Style()
@@ -218,11 +300,14 @@ class YTDownloaderGUI:
                   foreground=[('pressed', 'red'), ('active', 'blue')],
                   background=[('pressed', '!disabled', 'black'), ('active', 'white')])
 
-    def toggle_theme(self):
-        """
-        Toggles the theme between light and dark mode.
-        """
+    def toggle_theme(self) -> None:
+        """Toggle between light and dark theme and persist preference."""
         sv_ttk.toggle_theme()
+        self.dark_mode.set(not self.dark_mode.get())
+        # Save theme preference
+        self.config['dark_mode'] = self.dark_mode.get()
+        save_config(self.config)
+        logger.info(f"Theme changed to {'dark' if self.dark_mode.get() else 'light'}")
 
     def process_ui_queue(self):
         try:
@@ -252,13 +337,19 @@ class YTDownloaderGUI:
         self.playlist_var.set(False)
 
     def fetch_info(self):
-        url = self.url_entry.get()
+        """Fetch and display video information in a separate thread."""
+        url = self.url_entry.get().strip()
         if not url:
-            self.status_label.config(text="Please enter a URL.")
+            messagebox.showwarning("Input Error", "Please enter a valid YouTube URL.")
+            return
+
+        if not validate_url(url):
+            messagebox.showwarning("Invalid URL", "Please enter a valid URL starting with http:// or https://")
             return
 
         self.loading_animation_label.grid()
         self.fetch_button.config(state="disabled")
+        self.status_label.config(text="Fetching video information...")
 
         def _fetch():
             try:
@@ -271,6 +362,7 @@ class YTDownloaderGUI:
 
                 self.ui_queue.put((self.title_label.config, {'text': f"Title: {title}"}))
                 self.ui_queue.put((self.duration_label.config, {'text': f"Duration: {duration}"}))
+                self.ui_queue.put((self.status_label.config, {'text': "Video info loaded successfully."}))
 
                 self._video_streams = info.get('video_streams', [])
                 self._audio_streams = info.get('audio_streams', [])
@@ -279,46 +371,60 @@ class YTDownloaderGUI:
                     self.ui_queue.put((self.subtitle_lang_menu.config, {'values': list(info['subtitles'].keys())}))
                     self.ui_queue.put((self.subtitle_lang_menu.set, {'value': ''}))
 
-                video_formats = [
-                    f"{s.get('resolution', 'N/A')}@{s.get('fps', 'N/A')}fps ({s.get('ext', 'N/A')}) - "
-                    f"V:{s.get('vcodec', 'N/A')} A:{s.get('acodec', 'N/A')} "
-                    f"({s.get('filesize', 'N/A') / 1024 / 1024:.2f} MB) - {s.get('format_id', 'N/A')}"
-                    for s in self._video_streams
-                ]
+                # Build video format strings with proper file size handling
+                video_formats = []
+                for s in self._video_streams:
+                    filesize_str = format_file_size(s.get('filesize'))
+                    fmt_str = (
+                        f"{s.get('resolution', 'N/A')}@{s.get('fps', 'N/A')}fps "
+                        f"({s.get('ext', 'N/A').upper()}) - "
+                        f"V:{s.get('vcodec', 'N/A')} A:{s.get('acodec', 'N/A')} "
+                        f"({filesize_str}) - {s.get('format_id', 'N/A')}"
+                    )
+                    video_formats.append(fmt_str)
+
                 self.ui_queue.put((self.video_format_menu.config, {'values': video_formats}))
                 if video_formats:
                     self.ui_queue.put((self.video_format_menu.set, {'value': video_formats[0]}))
 
-                audio_formats = [
-                    f"{s.get('abr', 'N/A')}kbps ({s.get('ext', 'N/A')}) - A:{s.get('acodec', 'N/A')} "
-                    f"({s.get('filesize', 'N/A') / 1024 / 1024:.2f} MB) - {s.get('format_id', 'N/A')}"
-                    for s in self._audio_streams
-                ]
+                # Build audio format strings with proper file size handling
+                audio_formats = []
+                for s in self._audio_streams:
+                    filesize_str = format_file_size(s.get('filesize'))
+                    fmt_str = (
+                        f"{s.get('abr', 'N/A')}kbps ({s.get('ext', 'N/A').upper()}) - "
+                        f"A:{s.get('acodec', 'N/A')} ({filesize_str}) - {s.get('format_id', 'N/A')}"
+                    )
+                    audio_formats.append(fmt_str)
+
                 self.ui_queue.put((self.audio_format_menu.config, {'values': audio_formats}))
                 if audio_formats:
                     self.ui_queue.put((self.audio_format_menu.set, {'value': audio_formats[0]}))
 
+                # Load and display thumbnail
                 if info.get('thumbnail'):
                     try:
-                        response = requests.get(info['thumbnail'])
+                        response = requests.get(info['thumbnail'], timeout=5)
                         response.raise_for_status()
                         img_data = response.content
                         img = Image.open(BytesIO(img_data))
-                        img.thumbnail((120, 90))
+                        img.thumbnail(THUMBNAIL_SIZE)
                         photo = ImageTk.PhotoImage(img)
                         self.ui_queue.put((self.thumbnail_label.config, {'image': photo}))
                         self.thumbnail_label.image = photo
                     except requests.exceptions.RequestException as e:
-                        self.handle_error("Failed to fetch thumbnail.", e)
+                        logger.warning(f"Failed to fetch thumbnail: {e}")
             except yt_dlp.utils.DownloadError as e:
-                self.handle_error("Invalid URL or network error.", e)
+                self.handle_error("Invalid URL or network error", e)
             except Exception as e:
-                self.handle_error("An unexpected error occurred.", e)
+                logger.exception("Unexpected error during fetch_info")
+                self.handle_error("An unexpected error occurred", e)
             finally:
                 self.ui_queue.put((self.loading_animation_label.grid_remove, {}))
                 self.ui_queue.put((self.fetch_button.config, {'state': "normal"}))
 
-        threading.Thread(target=_fetch).start()
+        self.fetch_thread = threading.Thread(target=_fetch, daemon=True)
+        self.fetch_thread.start()
 
     def browse_path(self):
         path = filedialog.askdirectory()
@@ -346,20 +452,44 @@ class YTDownloaderGUI:
             self.ui_queue.put((self.update_download_queue_list, {}))
 
     def add_to_queue(self):
-        url = self.url_entry.get()
+        """Add a download to the queue with validation."""
+        url = self.url_entry.get().strip()
         if not url:
-            self.status_label.config(text="Please enter a URL.")
+            messagebox.showwarning("Input Error", "Please enter a URL.")
+            return
+
+        if not validate_url(url):
+            messagebox.showwarning("Invalid URL", "Please enter a valid URL starting with http:// or https://")
             return
 
         video_format = self.video_format_var.get()
+        if not video_format:
+            messagebox.showwarning("Format Error", "Please fetch video info and select a video format.")
+            return
+
+        # Validate proxy format
+        proxy = self.proxy_entry.get().strip()
+        if proxy and not validate_proxy(proxy):
+            messagebox.showerror("Invalid Proxy", "Invalid proxy format. Expected: protocol://host:port")
+            return
+
+        # Validate rate limit format
+        rate_limit = self.ratelimit_entry.get().strip()
+        if rate_limit and not validate_rate_limit(rate_limit):
+            messagebox.showerror("Invalid Rate Limit", "Invalid rate limit format. Use: 50K, 4.2M, etc.")
+            return
+
+        # Validate output path
+        output_path = self.path_entry.get().strip() or '.'
+        if not Path(output_path).exists():
+            messagebox.showerror("Invalid Path", f"Output directory does not exist: {output_path}")
+            return
+
         audio_format = self.audio_format_var.get()
         subtitle_lang = self.subtitle_lang_var.get()
         subtitle_format = self.subtitle_format_var.get()
-        output_path = self.path_entry.get() or '.'
         playlist = self.playlist_var.get()
         split_chapters = self.chapters_var.get()
-        proxy = self.proxy_entry.get()
-        rate_limit = self.ratelimit_entry.get()
 
         download_item = {
             "url": url,
@@ -370,13 +500,18 @@ class YTDownloaderGUI:
             "output_path": output_path,
             "playlist": playlist,
             "split_chapters": split_chapters,
-            "proxy": proxy,
-            "rate_limit": rate_limit,
-            "status": "Queued"
+            "proxy": proxy or None,
+            "rate_limit": rate_limit or None,
+            "status": "Queued",
+            "size": "N/A",
+            "speed": "N/A",
+            "eta": "N/A"
         }
 
         self.download_queue.append(download_item)
+        logger.info(f"Added download to queue: {url}")
         self.update_download_queue_list()
+        self.status_label.config(text=f"Added to queue. Queue size: {len(self.download_queue)}")
 
         if not self.is_downloading():
             self.process_download_queue()
@@ -422,23 +557,42 @@ class YTDownloaderGUI:
         thread = threading.Thread(target=self.download, args=(item,))
         thread.start()
 
-    def download(self, item):
+    def _extract_format_id(self, format_string: str) -> Optional[str]:
+        """Safely extract format ID from format string."""
+        if not format_string:
+            return None
+        # Format ID is at the end after ' - '
+        parts = format_string.rsplit(' - ', 1)
+        return parts[-1].strip() if parts else None
+
+    def download(self, item: Dict[str, Any]) -> None:
+        """Download video with proper error handling and cancellation."""
         self.cancel_token = CancelToken()
         try:
+            # Wait if paused
             while self.is_paused:
-                import time
-                time.sleep(1)
+                time.sleep(PAUSE_SLEEP_INTERVAL)
                 if self.cancel_token.cancelled:
                     raise yt_dlp.utils.DownloadError("Download cancelled by user.")
 
-            video_format_id = item['video_format'].split(' - ')[-1]
-            video_stream = next((s for s in self._video_streams if s['format_id'] == video_format_id), None)
+            # Extract format IDs safely
+            video_format_id = self._extract_format_id(item['video_format'])
+            if not video_format_id:
+                raise ValueError("Could not extract video format ID.")
+
+            audio_format_id = self._extract_format_id(item['audio_format'])
+
+            # Check if video stream has audio
+            video_stream = next((s for s in self._video_streams if s.get('format_id') == video_format_id), None)
 
             if video_stream and video_stream.get('acodec') != 'none':
                 video_format = video_format_id
             else:
-                audio_format_id = item['audio_format'].split(' - ')[-1]
+                if not audio_format_id:
+                    raise ValueError("Could not extract audio format ID.")
                 video_format = f"{video_format_id}+{audio_format_id}"
+
+            logger.info(f"Starting download: {item['url']} with format {video_format}")
 
             download_video(
                 item['url'],
@@ -455,15 +609,20 @@ class YTDownloaderGUI:
                 self.cancel_token
             )
             item['status'] = 'Completed'
+            logger.info(f"Download completed: {item['url']}")
+
         except yt_dlp.utils.DownloadError as e:
             if "Download cancelled by user" in str(e):
                 item['status'] = 'Cancelled'
+                logger.info(f"Download cancelled: {item['url']}")
             else:
                 item['status'] = 'Error'
-                self.handle_error(f"Download failed for {item['url']}.", e)
+                logger.error(f"Download error for {item['url']}: {e}")
+                self.handle_error(f"Download failed for {item['url']}", e)
         except Exception as e:
             item['status'] = 'Error'
-            self.handle_error(f"An unexpected error occurred during the download of {item['url']}.", e)
+            logger.exception(f"Unexpected error during download of {item['url']}")
+            self.handle_error(f"An unexpected error occurred", e)
         finally:
             self.cancel_token = None
             self.ui_queue.put((self.download_button.config, {'state': "normal"}))
@@ -474,10 +633,17 @@ class YTDownloaderGUI:
             if item['status'] == 'Completed':
                 self.ui_queue.put((self.clear_ui, {}))
 
-    def handle_error(self, message, error):
-        logging.error(f"{message}: {type(error).__name__} - {error}")
-        messagebox.showerror("Error", f"{message}\n\n{type(error).__name__}: {error}")
-        self.ui_queue.put((self.status_label.config, {'text': "An error occurred. See ytdownloader.log for details."}))
+    def handle_error(self, message: str, error: Exception) -> None:
+        """Handle and display errors."""
+        logger.error(f"{message}: {type(error).__name__} - {error}")
+        messagebox.showerror(
+            "Error",
+            f"{message}\n\n{type(error).__name__}: {error}\n\nCheck ytdownloader.log for details."
+        )
+        self.ui_queue.put((
+            self.status_label.config,
+            {'text': "An error occurred. See ytdownloader.log for details."}
+        ))
 
     def cancel_download(self):
         if self.cancel_token:
@@ -502,38 +668,103 @@ class YTDownloaderGUI:
             self.download_queue_tree.selection_set(selection)
             self.context_menu.post(event.x_root, event.y_root)
 
-    def remove_from_queue(self):
-        selected_item = self.download_queue_tree.selection()[0]
-        item_index = int(selected_item)
-        del self.download_queue[item_index]
-        self.update_download_queue_list()
+    def remove_from_queue(self) -> None:
+        """Remove selected item from download queue."""
+        try:
+            selection = self.download_queue_tree.selection()
+            if not selection:
+                messagebox.showwarning("Selection Error", "Please select an item to remove.")
+                return
 
-    def cancel_download_item(self):
-        selected_item = self.download_queue_tree.selection()[0]
-        item_index = int(selected_item)
-        item = self.download_queue[item_index]
-        if item['status'] == 'Downloading':
-            self.cancel_download()
-        else:
-            item['status'] = 'Cancelled'
-            self.update_download_queue_list()
+            item_index = int(selection[0])
+            if 0 <= item_index < len(self.download_queue):
+                removed_item = self.download_queue.pop(item_index)
+                logger.info(f"Removed from queue: {removed_item.get('url', 'Unknown')}")
+                self.update_download_queue_list()
+                self.status_label.config(text=f"Removed from queue. Queue size: {len(self.download_queue)}")
+            else:
+                messagebox.showerror("Error", "Invalid queue item index.")
+        except (IndexError, ValueError) as e:
+            logger.error(f"Error removing from queue: {e}")
+            messagebox.showerror("Error", "Failed to remove item from queue.")
 
-    def open_file_location(self):
-        selected_item = self.download_queue_tree.selection()[0]
-        item_index = int(selected_item)
-        item = self.download_queue[item_index]
-        output_path = item['output_path']
-        if sys.platform == "win32":
-            os.startfile(output_path)
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", output_path])
-        else:
-            subprocess.Popen(["xdg-open", output_path])
+    def cancel_download_item(self) -> None:
+        """Cancel or mark selected download item as cancelled."""
+        try:
+            selection = self.download_queue_tree.selection()
+            if not selection:
+                messagebox.showwarning("Selection Error", "Please select an item to cancel.")
+                return
+
+            item_index = int(selection[0])
+            if 0 <= item_index < len(self.download_queue):
+                item = self.download_queue[item_index]
+                if item['status'] == 'Downloading':
+                    if messagebox.askyesno("Confirm", "Cancel the current download?"):
+                        self.cancel_download()
+                else:
+                    item['status'] = 'Cancelled'
+                    logger.info(f"Cancelled queued download: {item.get('url', 'Unknown')}")
+                    self.update_download_queue_list()
+            else:
+                messagebox.showerror("Error", "Invalid queue item index.")
+        except (IndexError, ValueError) as e:
+            logger.error(f"Error cancelling download item: {e}")
+            messagebox.showerror("Error", "Failed to cancel download item.")
+
+    def open_file_location(self) -> None:
+        """Open the output folder for the selected download."""
+        try:
+            selection = self.download_queue_tree.selection()
+            if not selection:
+                messagebox.showwarning("Selection Error", "Please select an item to open.")
+                return
+
+            item_index = int(selection[0])
+            if 0 <= item_index < len(self.download_queue):
+                item = self.download_queue[item_index]
+                output_path = item.get('output_path', '.')
+
+                if not Path(output_path).exists():
+                    messagebox.showerror("Error", f"Output directory does not exist: {output_path}")
+                    return
+
+                try:
+                    if sys.platform == "win32":
+                        os.startfile(output_path)
+                    elif sys.platform == "darwin":
+                        subprocess.Popen(["open", output_path], stderr=subprocess.DEVNULL)
+                    else:
+                        subprocess.Popen(["xdg-open", output_path], stderr=subprocess.DEVNULL)
+                except Exception as e:
+                    logger.error(f"Failed to open file location: {e}")
+                    messagebox.showerror("Error", f"Failed to open folder: {e}")
+            else:
+                messagebox.showerror("Error", "Invalid queue item index.")
+        except (IndexError, ValueError) as e:
+            logger.error(f"Error opening file location: {e}")
+            messagebox.showerror("Error", "Failed to open file location.")
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("YTDownloader")
-    root.geometry("800x600")
-    # root.iconbitmap("path/to/icon.ico") # Placeholder for icon
-    app = YTDownloaderGUI(root)
-    root.mainloop()
+    try:
+        root = tk.Tk()
+        root.title("YTDownloader - Advanced YouTube Video Downloader")
+        root.geometry(f"{WINDOW_MIN_WIDTH}x{WINDOW_MIN_HEIGHT}")
+        root.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
+
+        # Try to set icon if available
+        try:
+            icon_path = Path(__file__).parent / "icon.ico"
+            if icon_path.exists():
+                root.iconbitmap(str(icon_path))
+        except Exception:
+            pass  # Icon not critical
+
+        logger.info("YTDownloader started")
+        app = YTDownloaderGUI(root)
+        root.mainloop()
+        logger.info("YTDownloader closed")
+    except Exception as e:
+        logger.exception("Fatal error in main")
+        import tkinter.messagebox as mb
+        mb.showerror("Fatal Error", f"An unexpected error occurred:\n{e}")
