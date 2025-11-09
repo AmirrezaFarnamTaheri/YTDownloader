@@ -38,6 +38,7 @@ class TestDownloader(unittest.TestCase):
         download_video(
             url='test_url',
             progress_hook=progress_hook,
+            download_item={},
             playlist=True,
             video_format='best',
             output_path='/tmp',

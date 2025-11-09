@@ -1,11 +1,11 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from ttkthemes import ThemedTk
+import tkinter as tk
 from main import YTDownloaderGUI
 
 class TestGUI(unittest.TestCase):
     def setUp(self):
-        self.root = ThemedTk()
+        self.root = tk.Tk()
         self.app = YTDownloaderGUI(self.root)
 
     def tearDown(self):

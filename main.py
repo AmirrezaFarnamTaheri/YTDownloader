@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-from ttkthemes import ThemedTk
+import sv_ttk
 from downloader import download_video, get_video_info
 import threading
 from PIL import Image, ImageTk
@@ -35,15 +35,17 @@ logging.basicConfig(filename='ytdownloader.log', level=logging.ERROR,
 
 class YTDownloaderGUI:
     """
-    The main class for the YTDownloader GUI.
+    The main class for the YTDownloader GUI, responsible for creating and managing the UI.
     """
     def __init__(self, master):
         """
-        Initializes the GUI.
+        Initializes the main GUI window and its components.
+        :param master: The root Tkinter window.
         """
         self.master = master
         master.title("YTDownloader")
 
+        # --- Application State ---
         self.dark_mode = tk.BooleanVar(value=True)
 
         self._video_streams = []
@@ -55,15 +57,16 @@ class YTDownloaderGUI:
         self.ui_queue = queue.Queue()
         self.master.after(100, self.process_ui_queue)
 
+        # --- UI Setup ---
         # Main frame
-        self.frame = ttk.Frame(master, padding="10")
+        self.frame = ttk.Frame(master, padding="20")
         self.frame.grid(row=0, column=0, sticky="nsew")
         master.grid_columnconfigure(0, weight=1)
         master.grid_rowconfigure(0, weight=1)
 
         # Top frame for URL entry and theme switcher
         self.top_frame = ttk.Frame(self.frame)
-        self.top_frame.grid(row=0, column=0, columnspan=4, sticky="ew", pady=(0, 10))
+        self.top_frame.grid(row=0, column=0, columnspan=4, sticky="ew", pady=(0, 20))
         self.top_frame.grid_columnconfigure(1, weight=1)
 
         self.url_label = ttk.Label(self.top_frame, text="Video URL:")
@@ -72,7 +75,7 @@ class YTDownloaderGUI:
         self.url_entry.grid(row=0, column=1, sticky="ew")
         self.fetch_button = ttk.Button(self.top_frame, text="Fetch Info", command=self.fetch_info)
         self.fetch_button.grid(row=0, column=2, padx=5)
-        self.theme_button = ttk.Checkbutton(self.top_frame, text="Dark Mode", variable=self.dark_mode, command=self.toggle_theme)
+        self.theme_button = ttk.Button(self.top_frame, text="Toggle Theme", command=self.toggle_theme)
         self.theme_button.grid(row=0, column=3, padx=5)
 
         # Menu
@@ -174,6 +177,7 @@ class YTDownloaderGUI:
         self.download_queue_tree.pack(fill="both", expand=True)
 
         self.context_menu = tk.Menu(self.master, tearoff=0)
+        self.context_menu.add_command(label="Cancel", command=self.cancel_download_item)
         self.context_menu.add_command(label="Remove", command=self.remove_from_queue)
         self.context_menu.add_command(label="Open File Location", command=self.open_file_location)
         self.download_queue_tree.bind("<Button-3>", self.show_context_menu)
@@ -191,8 +195,10 @@ class YTDownloaderGUI:
         self.download_button.grid(row=5, column=0, padx=5, pady=10)
         self.pause_button = ttk.Button(self.frame, text="Pause", command=self.toggle_pause_resume, state="disabled")
         self.pause_button.grid(row=5, column=1, padx=5, pady=10)
+        self.cancel_button = ttk.Button(self.frame, text="Cancel", command=self.cancel_download, state="disabled")
+        self.cancel_button.grid(row=5, column=2, padx=5, pady=10)
         self.clear_button = ttk.Button(self.frame, text="Clear", command=self.clear_ui)
-        self.clear_button.grid(row=5, column=2, padx=5, pady=10)
+        self.clear_button.grid(row=5, column=3, padx=5, pady=10)
         self.progress_bar = ttk.Progressbar(self.frame, orient="horizontal", length=300, mode="determinate")
         self.progress_bar.grid(row=6, column=0, columnspan=4, padx=5, pady=10, sticky="ew")
         self.status_label = ttk.Label(self.frame, text="")
@@ -203,23 +209,20 @@ class YTDownloaderGUI:
         self.loading_animation_label.grid(row=1, column=1, sticky="w")
         self.loading_animation_label.grid_remove()
 
-        self.set_theme()
+        sv_ttk.set_theme("dark")
 
-    def set_theme(self):
-        """
-        Sets the theme of the application.
-        """
-        try:
-            theme = "arc-dark" if self.dark_mode.get() else "arc"
-            self.master.set_theme(theme)
-        except tk.TclError:
-            self.master.set_theme("arc")
+        # Style configuration
+        style = ttk.Style()
+        style.configure("TButton", padding=6, relief="flat", background="#ccc")
+        style.map("TButton",
+                  foreground=[('pressed', 'red'), ('active', 'blue')],
+                  background=[('pressed', '!disabled', 'black'), ('active', 'white')])
 
     def toggle_theme(self):
         """
         Toggles the theme between light and dark mode.
         """
-        self.set_theme()
+        sv_ttk.toggle_theme()
 
     def process_ui_queue(self):
         try:
@@ -260,8 +263,14 @@ class YTDownloaderGUI:
         def _fetch():
             try:
                 info = get_video_info(url)
-                self.ui_queue.put((self.title_label.config, {'text': f"Title: {info['title']}"}))
-                self.ui_queue.put((self.duration_label.config, {'text': f"Duration: {info['duration']}"}))
+                if not info:
+                    raise yt_dlp.utils.DownloadError("Failed to fetch video information.")
+
+                title = info.get('title', 'N/A')
+                duration = info.get('duration', 'N/A')
+
+                self.ui_queue.put((self.title_label.config, {'text': f"Title: {title}"}))
+                self.ui_queue.put((self.duration_label.config, {'text': f"Duration: {duration}"}))
 
                 self._video_streams = info.get('video_streams', [])
                 self._audio_streams = info.get('audio_streams', [])
@@ -270,12 +279,21 @@ class YTDownloaderGUI:
                     self.ui_queue.put((self.subtitle_lang_menu.config, {'values': list(info['subtitles'].keys())}))
                     self.ui_queue.put((self.subtitle_lang_menu.set, {'value': ''}))
 
-                video_formats = [f"{s['resolution']}@{s['fps']}fps ({s['ext']}) - {s['format_id']}" for s in self._video_streams]
+                video_formats = [
+                    f"{s.get('resolution', 'N/A')}@{s.get('fps', 'N/A')}fps ({s.get('ext', 'N/A')}) - "
+                    f"V:{s.get('vcodec', 'N/A')} A:{s.get('acodec', 'N/A')} "
+                    f"({s.get('filesize', 'N/A') / 1024 / 1024:.2f} MB) - {s.get('format_id', 'N/A')}"
+                    for s in self._video_streams
+                ]
                 self.ui_queue.put((self.video_format_menu.config, {'values': video_formats}))
                 if video_formats:
                     self.ui_queue.put((self.video_format_menu.set, {'value': video_formats[0]}))
 
-                audio_formats = [f"{s['abr']}kbps ({s['ext']}) - {s['format_id']}" for s in self._audio_streams]
+                audio_formats = [
+                    f"{s.get('abr', 'N/A')}kbps ({s.get('ext', 'N/A')}) - A:{s.get('acodec', 'N/A')} "
+                    f"({s.get('filesize', 'N/A') / 1024 / 1024:.2f} MB) - {s.get('format_id', 'N/A')}"
+                    for s in self._audio_streams
+                ]
                 self.ui_queue.put((self.audio_format_menu.config, {'values': audio_formats}))
                 if audio_formats:
                     self.ui_queue.put((self.audio_format_menu.set, {'value': audio_formats[0]}))
@@ -308,11 +326,7 @@ class YTDownloaderGUI:
             self.path_entry.delete(0, tk.END)
             self.path_entry.insert(0, path)
 
-    def progress_hook(self, d):
-        item = next((item for item in self.download_queue if item['status'] == 'Downloading'), None)
-        if not item:
-            return
-
+    def progress_hook(self, d, item):
         if d['status'] == 'downloading':
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
             if total_bytes:
@@ -402,6 +416,7 @@ class YTDownloaderGUI:
         self.update_download_queue_list()
         self.download_button.config(state="disabled")
         self.pause_button.config(state="normal")
+        self.cancel_button.config(state="normal")
         self.status_label.config(text=f"Downloading {item['url']}...")
         self.progress_bar['value'] = 0
         thread = threading.Thread(target=self.download, args=(item,))
@@ -428,6 +443,7 @@ class YTDownloaderGUI:
             download_video(
                 item['url'],
                 self.progress_hook,
+                item,
                 item['playlist'],
                 video_format,
                 item['output_path'],
@@ -452,14 +468,15 @@ class YTDownloaderGUI:
             self.cancel_token = None
             self.ui_queue.put((self.download_button.config, {'state': "normal"}))
             self.ui_queue.put((self.pause_button.config, {'state': "disabled"}))
+            self.ui_queue.put((self.cancel_button.config, {'state': "disabled"}))
             self.ui_queue.put((self.update_download_queue_list, {}))
             self.ui_queue.put((self.process_download_queue, {}))
             if item['status'] == 'Completed':
                 self.ui_queue.put((self.clear_ui, {}))
 
     def handle_error(self, message, error):
-        logging.error(f"{message}: {error}")
-        messagebox.showerror("Error", message)
+        logging.error(f"{message}: {type(error).__name__} - {error}")
+        messagebox.showerror("Error", f"{message}\n\n{type(error).__name__}: {error}")
         self.ui_queue.put((self.status_label.config, {'text': "An error occurred. See ytdownloader.log for details."}))
 
     def cancel_download(self):
@@ -491,6 +508,16 @@ class YTDownloaderGUI:
         del self.download_queue[item_index]
         self.update_download_queue_list()
 
+    def cancel_download_item(self):
+        selected_item = self.download_queue_tree.selection()[0]
+        item_index = int(selected_item)
+        item = self.download_queue[item_index]
+        if item['status'] == 'Downloading':
+            self.cancel_download()
+        else:
+            item['status'] = 'Cancelled'
+            self.update_download_queue_list()
+
     def open_file_location(self):
         selected_item = self.download_queue_tree.selection()[0]
         item_index = int(selected_item)
@@ -504,6 +531,9 @@ class YTDownloaderGUI:
             subprocess.Popen(["xdg-open", output_path])
 
 if __name__ == "__main__":
-    root = ThemedTk(theme="arc")
+    root = tk.Tk()
+    root.title("YTDownloader")
+    root.geometry("800x600")
+    # root.iconbitmap("path/to/icon.ico") # Placeholder for icon
     app = YTDownloaderGUI(root)
     root.mainloop()

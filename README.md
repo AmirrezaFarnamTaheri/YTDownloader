@@ -4,12 +4,13 @@ YTDownloader is a modern, user-friendly desktop application for downloading vide
 
 ## Features
 
-- **Modern & Intuitive UI**: A clean and stylish interface with light and dark modes.
-- **Download Queue**: Queue multiple videos for download.
-- **Pause and Resume Downloads**: Pause and resume your downloads at any time.
+- **Modern & Intuitive UI**: A clean and stylish interface with a modern theme and layout.
+- **Download Queue**: Queue multiple videos for download and manage them with ease.
+- **Pause, Resume, and Cancel Downloads**: Pause, resume, or cancel your downloads at any time.
 - **Enhanced Download Queue**: View detailed information about your downloads, including file size, download speed, and ETA.
-- **Chapter Splitting**: Split videos into chapters.
-- **Configurable Settings**: Configure proxy and download speed limit.
+- **Detailed Format Selection**: Choose from a wide range of video and audio formats with detailed information, including codecs, bitrate, and file size.
+- **Chapter Splitting**: Split videos into chapters for easier navigation.
+- **Configurable Settings**: Configure a proxy and set a download speed limit to manage your network usage.
 - **Tabbed Layout**: A well-organized, tabbed interface that separates video, audio, subtitle, and playlist options for a streamlined user experience.
 - **Fetch Video Information**: Instantly fetch and display video details, including the title, thumbnail, and duration, before you download.
 - **High-Quality Downloads**: Download videos in the highest available quality, or choose from a variety of video and audio formats.
@@ -29,21 +30,21 @@ Here’s a step-by-step guide to using YTDownloader:
 2.  **Fetch Video Info**: Click the "Fetch Info" button to see the video's title, thumbnail, and duration, as well as a list of available video, audio, and subtitle options.
 
 3.  **Select Your Options**:
-    *   **Video Tab**: Choose your desired video format from the dropdown menu.
-    *   **Audio Tab**: Choose your desired audio format from the dropdown menu.
+    *   **Video Tab**: Choose your desired video format from the dropdown menu. You'll see detailed information about each format, including the resolution, FPS, codecs, and file size.
+    *   **Audio Tab**: Choose your desired audio format from the dropdown menu, with details like bitrate, codec, and file size.
     *   **Subtitles Tab**: If subtitles are available, select your preferred language and format.
     *   **Playlist Tab**: If you entered a playlist URL, check the "Download Playlist" box to download the entire playlist.
     *   **Chapters Tab**: Check the "Split Chapters" box to split the video into chapters.
-    *   **Settings Tab**: Configure proxy and download speed limit.
+    *   **Settings Tab**: Configure a proxy and download speed limit.
 
 4.  **Choose an Output Path**: Click the "Browse..." button to select the folder where you want to save your download. If you don't choose a path, the file will be saved in the same directory as the application.
 
 5.  **Start the Download**: Click the "Add to Queue" button to add the video to the download queue. The download will start automatically.
 
 6.  **Manage Your Downloads**:
-    *   **Pause/Resume**: Click the "Pause" button to pause a download, and "Resume" to continue.
+    *   **Pause/Resume/Cancel**: Use the "Pause," "Resume," and "Cancel" buttons to control your downloads.
     *   **Downloads Tab**: Switch to the "Downloads" tab to see a detailed view of your download queue, including the file size, download speed, and ETA.
-    *   **Context Menu**: Right-click on a download in the "Downloads" tab to open a context menu with options to remove the download from the queue or open the file's location.
+    *   **Context Menu**: Right-click on a download in the "Downloads" tab to open a context menu with options to cancel, remove the download from the queue, or open the file's location.
 
 7.  **Clear the UI**: When you're finished, click the "Clear" button to reset the UI and prepare for a new download.
 
@@ -86,9 +87,13 @@ If you prefer to build the application from the source code, follow these steps:
 
 ## Screenshots
 
+*A new screenshot will be added soon to reflect the latest UI improvements.*
+
 ![Screenshot of YTDownloader](screenshot.png)
 
 ## GIF of the Application in Action
+
+*A new GIF will be added soon to reflect the latest UI improvements.*
 
 ![GIF of YTDownloader in action](ytdownloader.gif)
 
