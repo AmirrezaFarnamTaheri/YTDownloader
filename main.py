@@ -1,6 +1,35 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-import sv_ttk
+
+# Try to initialise Tk to determine if a display is available. If not, fall back to
+# a lightweight headless implementation so that tests can exercise the GUI logic
+# without an X server.
+try:  # pragma: no cover - exercised implicitly in tests
+    _test_root = tk.Tk()
+    _test_root.destroy()
+    tk._ytdownloader_headless = False  # type: ignore[attr-defined]
+    from tkinter import ttk, filedialog, messagebox  # type: ignore
+except tk.TclError:  # pragma: no cover - covered by integration tests
+    from headless_tk import patch_tkinter
+
+    tk, ttk, filedialog, messagebox = patch_tkinter()
+
+_HEADLESS = bool(getattr(tk, "_ytdownloader_headless", False))
+
+class _DummySVTTK:
+    def set_theme(self, *_args, **_kwargs):
+        pass
+
+    def toggle_theme(self, *_args, **_kwargs):
+        pass
+
+
+try:
+    import sv_ttk
+except Exception:  # pragma: no cover - fallback when ttk themes are unavailable
+    sv_ttk = _DummySVTTK()
+else:
+    if _HEADLESS:
+        sv_ttk = _DummySVTTK()
 from downloader import download_video, get_video_info
 import threading
 from PIL import Image, ImageTk
@@ -409,9 +438,12 @@ class YTDownloaderGUI:
                         img_data = response.content
                         img = Image.open(BytesIO(img_data))
                         img.thumbnail(THUMBNAIL_SIZE)
-                        photo = ImageTk.PhotoImage(img)
-                        self.ui_queue.put((self.thumbnail_label.config, {'image': photo}))
-                        self.thumbnail_label.image = photo
+                        try:
+                            photo = ImageTk.PhotoImage(img)
+                            self.ui_queue.put((self.thumbnail_label.config, {'image': photo}))
+                            self.thumbnail_label.image = photo
+                        except Exception as img_error:  # pragma: no cover - depends on runtime environment
+                            logger.debug("Thumbnail rendering skipped: %s", img_error)
                     except requests.exceptions.RequestException as e:
                         logger.warning(f"Failed to fetch thumbnail: {e}")
             except yt_dlp.utils.DownloadError as e:
