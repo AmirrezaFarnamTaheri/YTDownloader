@@ -618,11 +618,17 @@ class YTDownloaderGUI:
             else:
                 item['status'] = 'Error'
                 logger.error(f"Download error for {item['url']}: {e}")
-                self.handle_error(f"Download failed for {item['url']}", e)
+                try:
+                    self.handle_error(f"Download failed for {item['url']}", e)
+                except RuntimeError:
+                    pass
         except Exception as e:
             item['status'] = 'Error'
             logger.exception(f"Unexpected error during download of {item['url']}")
-            self.handle_error(f"An unexpected error occurred", e)
+            try:
+                self.handle_error(f"An unexpected error occurred", e)
+            except RuntimeError:
+                pass
         finally:
             self.cancel_token = None
             self.ui_queue.put((self.download_button.config, {'state': "normal"}))
