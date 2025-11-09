@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2024-11-10 - Refactoring and Bug Squashing
+
+### Added
+- **UIConstants**: Added a new class to hold all of the UI-related constants.
+
+### Fixed
+- **IndentationError**: Fixed an indentation error in the `download` method.
+- **NameError**: Fixed a `NameError` related to the `_HEADLESS` constant.
+- **AssertionError**: Fixed an `AssertionError` in the `sv_ttk` library.
+
+### Changed
+- **format_file_size**: Refactored the `format_file_size` method to be more efficient and easier to read.
+- **download**: Refactored the `download` method to be more readable and maintainable.
+- **YTDownloaderGUI**: Refactored the `YTDownloaderGUI` class to be more organized and easier to read.
+- **__main__**: Refactored the `__main__` block to be more readable and concise.
+
+### Removed
+- **dataclasses**: Removed the unused `dataclasses` import.
+- **_ytdownloader_headless**: Removed the unused `_ytdownloader_headless` attribute from the `tk` module.
+- **Magic Numbers**: Replaced all magic numbers with constants from the `UIConstants` class.
+
 ## [2.0.0] - 2024-11-09 - Comprehensive Refactor & Quality Release
 
 ### Added

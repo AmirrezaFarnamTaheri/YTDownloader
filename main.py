@@ -45,7 +45,6 @@ import json
 import time
 from pathlib import Path
 from typing import Optional, Dict, List, Any
-from dataclasses import dataclass
 
 class CancelToken:
     """Token for managing download cancellation and pause/resume."""
@@ -88,11 +87,13 @@ CONFIG_FILE = Path.home() / '.ytdownloader' / 'config.json'
 CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # Constants
-THUMBNAIL_SIZE = (120, 90)
-WINDOW_MIN_WIDTH = 900
-WINDOW_MIN_HEIGHT = 700
-QUEUE_POLL_INTERVAL = 100  # milliseconds
-PAUSE_SLEEP_INTERVAL = 0.5  # seconds
+class UIConstants:
+    """Class to hold UI-related constants."""
+    THUMBNAIL_SIZE = (120, 90)
+    WINDOW_MIN_WIDTH = 900
+    WINDOW_MIN_HEIGHT = 700
+    QUEUE_POLL_INTERVAL = 100  # milliseconds
+    PAUSE_SLEEP_INTERVAL = 0.5  # seconds
 
 def load_config() -> Dict[str, Any]:
     """Load configuration from file."""
@@ -148,15 +149,15 @@ def format_file_size(size_bytes: Optional[float]) -> str:
         return 'N/A'
     try:
         size_bytes = float(size_bytes)
-        for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes == 0:
+            return "0.00 B"
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
             if size_bytes < 1024:
                 formatted = f"{size_bytes:.2f} {unit}"
                 logger.debug("format_file_size -> %s", formatted)
                 return formatted
             size_bytes /= 1024
-        formatted = f"{size_bytes:.2f} TB"
-        logger.debug("format_file_size -> %s", formatted)
-        return formatted
+        return f"{size_bytes:.2f} PB"  # Should be unreachable with normal file sizes
     except (ValueError, TypeError):
         return 'N/A'
 
@@ -169,11 +170,9 @@ class YTDownloaderGUI:
         Initializes the main GUI window and its components.
         :param master: The root Tkinter window.
         """
-        logger.info("Initialising YTDownloaderGUI (headless=%s)", _HEADLESS)
+        logger.info("Initialising YTDownloaderGUI")
         self.master = master
-        master.title("YTDownloader - Advanced YouTube Video Downloader")
-        master.geometry(f"{WINDOW_MIN_WIDTH}x{WINDOW_MIN_HEIGHT}")
-        master.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
+        self._setup_main_window()
 
         # Load configuration
         self.config = load_config()
@@ -188,8 +187,8 @@ class YTDownloaderGUI:
         self.fetch_thread: Optional[threading.Thread] = None
 
         self.ui_queue: queue.Queue = queue.Queue()
-        self.master.after(QUEUE_POLL_INTERVAL, self.process_ui_queue)
-        logger.debug("UI queue polling scheduled every %sms", QUEUE_POLL_INTERVAL)
+        self.master.after(UIConstants.QUEUE_POLL_INTERVAL, self.process_ui_queue)
+        logger.debug("UI queue polling scheduled every %sms", UIConstants.QUEUE_POLL_INTERVAL)
 
         # --- UI Setup ---
         # Main frame
@@ -346,7 +345,6 @@ class YTDownloaderGUI:
         # Set initial theme based on config
         theme = "dark" if self.dark_mode.get() else "light"
         logger.debug("Setting initial theme to %s", theme)
-        sv_ttk.set_theme(theme)
 
         # Style configuration
         style = ttk.Style()
@@ -354,6 +352,19 @@ class YTDownloaderGUI:
         style.map("TButton",
                   foreground=[('pressed', 'red'), ('active', 'blue')],
                   background=[('pressed', '!disabled', 'black'), ('active', 'white')])
+
+    def _setup_main_window(self) -> None:
+        """Configure the main window."""
+        self.master.title("YTDownloader - Advanced YouTube Video Downloader")
+        self.master.geometry(f"{UIConstants.WINDOW_MIN_WIDTH}x{UIConstants.WINDOW_MIN_HEIGHT}")
+        self.master.minsize(UIConstants.WINDOW_MIN_WIDTH, UIConstants.WINDOW_MIN_HEIGHT)
+
+        try:
+            icon_path = Path(__file__).parent / "icon.ico"
+            if icon_path.exists():
+                self.master.iconbitmap(str(icon_path))
+        except Exception:
+            pass  # Icon not critical
 
     def toggle_theme(self) -> None:
         """Toggle between light and dark theme and persist preference."""
@@ -477,7 +488,7 @@ class YTDownloaderGUI:
                         response.raise_for_status()
                         img_data = response.content
                         img = Image.open(BytesIO(img_data))
-                        img.thumbnail(THUMBNAIL_SIZE)
+                        img.thumbnail(UIConstants.THUMBNAIL_SIZE)
                         try:
                             photo = ImageTk.PhotoImage(img)
                             self.ui_queue.put((self.thumbnail_label.config, {'image': photo}))
@@ -661,49 +672,7 @@ class YTDownloaderGUI:
         self.cancel_token = CancelToken()
         logger.debug("Download routine entered for %s", item.get('url'))
         try:
-            # Wait if paused
-            while self.is_paused:
-                logger.debug("Download paused before start for %s", item.get('url'))
-                time.sleep(PAUSE_SLEEP_INTERVAL)
-                if self.cancel_token.cancelled:
-                    raise yt_dlp.utils.DownloadError("Download cancelled by user.")
-
-            # Extract format IDs safely
-            video_format_id = self._extract_format_id(item['video_format'])
-            if not video_format_id:
-                raise ValueError("Could not extract video format ID.")
-
-            audio_format_id = self._extract_format_id(item['audio_format'])
-
-            # Check if video stream has audio
-            video_stream = next((s for s in self._video_streams if s.get('format_id') == video_format_id), None)
-
-            if video_stream and video_stream.get('acodec') != 'none':
-                video_format = video_format_id
-            else:
-                if not audio_format_id:
-                    raise ValueError("Could not extract audio format ID.")
-                video_format = f"{video_format_id}+{audio_format_id}"
-
-            logger.info(f"Starting download: {item['url']} with format {video_format}")
-
-            download_video(
-                item['url'],
-                self.progress_hook,
-                item,
-                item['playlist'],
-                video_format,
-                item['output_path'],
-                item['subtitle_lang'],
-                item['subtitle_format'],
-                item['split_chapters'],
-                item['proxy'],
-                item['rate_limit'],
-                self.cancel_token
-            )
-            item['status'] = 'Completed'
-            logger.info(f"Download completed: {item['url']}")
-
+            self._handle_download_logic(item)
         except yt_dlp.utils.DownloadError as e:
             if "Download cancelled by user" in str(e):
                 item['status'] = 'Cancelled'
@@ -711,17 +680,11 @@ class YTDownloaderGUI:
             else:
                 item['status'] = 'Error'
                 logger.error(f"Download error for {item['url']}: {e}")
-                try:
-                    self.handle_error(f"Download failed for {item['url']}", e)
-                except RuntimeError:
-                    pass
+                self.handle_error(f"Download failed for {item['url']}", e)
         except Exception as e:
             item['status'] = 'Error'
             logger.exception(f"Unexpected error during download of {item['url']}")
-            try:
-                self.handle_error(f"An unexpected error occurred", e)
-            except RuntimeError:
-                pass
+            self.handle_error(f"An unexpected error occurred", e)
         finally:
             self.cancel_token = None
             self.ui_queue.put((self.download_button.config, {'state': "normal"}))
@@ -732,6 +695,50 @@ class YTDownloaderGUI:
             if item['status'] == 'Completed':
                 self.ui_queue.put((self.clear_ui, {}))
             logger.debug("Download routine exited for %s with status %s", item.get('url'), item.get('status'))
+    def _handle_download_logic(self, item: Dict[str, Any]) -> None:
+        """Helper method to handle the core download logic."""
+        # Wait if paused
+        while self.is_paused:
+            logger.debug("Download paused before start for %s", item.get('url'))
+            time.sleep(UIConstants.PAUSE_SLEEP_INTERVAL)
+            if self.cancel_token.cancelled:
+                raise yt_dlp.utils.DownloadError("Download cancelled by user.")
+
+        # Extract format IDs safely
+        video_format_id = self._extract_format_id(item['video_format'])
+        if not video_format_id:
+            raise ValueError("Could not extract video format ID.")
+
+        audio_format_id = self._extract_format_id(item['audio_format'])
+
+        # Check if video stream has audio
+        video_stream = next((s for s in self._video_streams if s.get('format_id') == video_format_id), None)
+
+        if video_stream and video_stream.get('acodec') != 'none':
+            video_format = video_format_id
+        else:
+            if not audio_format_id:
+                raise ValueError("Could not extract audio format ID.")
+            video_format = f"{video_format_id}+{audio_format_id}"
+
+        logger.info(f"Starting download: {item['url']} with format {video_format}")
+
+        download_video(
+            item['url'],
+            self.progress_hook,
+            item,
+            item['playlist'],
+            video_format,
+            item['output_path'],
+            item['subtitle_lang'],
+            item['subtitle_format'],
+            item['split_chapters'],
+            item['proxy'],
+            item['rate_limit'],
+            self.cancel_token
+        )
+        item['status'] = 'Completed'
+        logger.info(f"Download completed: {item['url']}")
 
     def handle_error(self, message: str, error: Exception) -> None:
         """Handle and display errors."""
@@ -865,23 +872,11 @@ class YTDownloaderGUI:
 if __name__ == "__main__":
     try:
         root = tk.Tk()
-        root.title("YTDownloader - Advanced YouTube Video Downloader")
-        root.geometry(f"{WINDOW_MIN_WIDTH}x{WINDOW_MIN_HEIGHT}")
-        root.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
-
-        # Try to set icon if available
-        try:
-            icon_path = Path(__file__).parent / "icon.ico"
-            if icon_path.exists():
-                root.iconbitmap(str(icon_path))
-        except Exception:
-            pass  # Icon not critical
-
-        logger.info("YTDownloader started")
         app = YTDownloaderGUI(root)
+        if not _HEADLESS:
+            sv_ttk.set_theme("dark" if app.dark_mode.get() else "light")
         root.mainloop()
         logger.info("YTDownloader closed")
     except Exception as e:
         logger.exception("Fatal error in main")
-        import tkinter.messagebox as mb
-        mb.showerror("Fatal Error", f"An unexpected error occurred:\n{e}")
+        messagebox.showerror("Fatal Error", f"An unexpected error occurred:\n{e}")
