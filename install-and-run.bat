@@ -2,6 +2,11 @@
 REM YTDownloader - Setup and Installation Batch Script for Windows
 REM This script handles everything: checking, installing, and launching
 
+set "LOG_FILE=ytdownloader_installer.log"
+call :main >"%LOG_FILE%" 2>&1
+exit /b
+
+:main
 setlocal enabledelayedexpansion
 
 color 0B

@@ -4,6 +4,10 @@
 
 set -e
 
+# Setup logging
+LOG_FILE="ytdownloader_installer.log"
+exec &> >(tee -a "$LOG_FILE")
+
 # Color definitions
 GREEN='\033[0;32m'
 RED='\033[0;31m'
