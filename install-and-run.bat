@@ -105,10 +105,11 @@ echo [Step 5] Creating shortcuts...
 powershell -NoProfile -Command ^
     "$WshShell = New-Object -ComObject WScript.Shell; ^
     $DesktopPath = [Environment]::GetFolderPath('Desktop'); ^
-    $Shortcut = $WshShell.CreateShortcut('!DesktopPath!\YTDownloader.lnk'); ^
+    $ShortcutPath = \"""!DesktopPath!\YTDownloader.lnk""\"; ^
+    $Shortcut = $WshShell.CreateShortcut($ShortcutPath); ^
     $Shortcut.TargetPath = '%PYTHON_EXE%'; ^
-    $Shortcut.Arguments = '%APP_DIR%main.py'; ^
-    $Shortcut.WorkingDirectory = '%APP_DIR%'; ^
+    $Shortcut.Arguments = '\""%APP_DIR%main.py"\"'; ^
+    $Shortcut.WorkingDirectory = '\""%APP_DIR%"\"'; ^
     $Shortcut.Description = 'YTDownloader - Advanced YouTube Video Downloader'; ^
     $Shortcut.Save()" 2>nul
 
