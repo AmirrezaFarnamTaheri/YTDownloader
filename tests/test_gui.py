@@ -346,11 +346,11 @@ class TestYTDownloaderGUI(unittest.TestCase):
 
     def test_pause_button_states(self):
         """Test pause button state changes."""
-        self.assertEqual(self.app.pause_button.cget('state'), 'disabled')
+        self.assertEqual(str(self.app.pause_button.cget('state')), 'disabled')
 
         # When download starts, pause should be enabled
         self.app.pause_button.config(state='normal')
-        self.assertEqual(self.app.pause_button.cget('state'), 'normal')
+        self.assertEqual(str(self.app.pause_button.cget('state')), 'normal')
 
 
 class TestGUIErrorHandling(unittest.TestCase):

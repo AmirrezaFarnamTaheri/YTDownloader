@@ -1,6 +1,6 @@
 # Core Dependencies
 yt-dlp>=2023.11.16        # YouTube video downloader library
-ttkbootstrap>=1.10.1      # Modern TTK theme (sv-ttk compatible)
+sv-ttk>=2.5.5             # Modern TTK theme
 Pillow>=10.0.0            # Image processing for thumbnails
 requests>=2.31.0          # HTTP library for fetching resources
 

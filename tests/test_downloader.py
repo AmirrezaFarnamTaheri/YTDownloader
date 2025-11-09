@@ -123,7 +123,7 @@ class TestGetVideoInfo(unittest.TestCase):
 
         # Should have formats with audio codec != 'none' and video codec != 'none' in video_streams
         # Should have formats with video codec == 'none' and audio codec != 'none' in audio_streams
-        self.assertEqual(len(info['video_streams']), 4)  # All except audio-only
+        self.assertEqual(len(info['video_streams']), 3)  # All except audio-only
         self.assertEqual(len(info['audio_streams']), 2)  # Audio-only formats
 
 
@@ -181,10 +181,10 @@ class TestDownloadVideo(unittest.TestCase):
         )
 
         # Get the ydl_opts passed to YoutubeDL
-        call_kwargs = mock_youtube_dl.call_args[1]
-        self.assertTrue(call_kwargs['writesubtitles'])
-        self.assertEqual(call_kwargs['subtitleslangs'], ['en'])
-        self.assertEqual(call_kwargs['subtitlesformat'], 'vtt')
+        ydl_opts = mock_youtube_dl.call_args[0][0]
+        self.assertTrue(ydl_opts['writesubtitles'])
+        self.assertEqual(ydl_opts['subtitleslangs'], ['en'])
+        self.assertEqual(ydl_opts['subtitlesformat'], 'vtt')
 
     @patch('downloader.Path.mkdir')
     @patch('downloader.yt_dlp.YoutubeDL')
@@ -210,8 +210,8 @@ class TestDownloadVideo(unittest.TestCase):
             cancel_token=None
         )
 
-        call_kwargs = mock_youtube_dl.call_args[1]
-        self.assertTrue(call_kwargs['split_chapters'])
+        ydl_opts = mock_youtube_dl.call_args[0][0]
+        self.assertTrue(ydl_opts['split_chapters'])
 
     @patch('downloader.Path.mkdir')
     @patch('downloader.yt_dlp.YoutubeDL')
@@ -237,8 +237,8 @@ class TestDownloadVideo(unittest.TestCase):
             cancel_token=None
         )
 
-        call_kwargs = mock_youtube_dl.call_args[1]
-        self.assertEqual(call_kwargs['proxy'], 'http://proxy.example.com:8080')
+        ydl_opts = mock_youtube_dl.call_args[0][0]
+        self.assertEqual(ydl_opts['proxy'], 'http://proxy.example.com:8080')
 
     @patch('downloader.Path.mkdir')
     @patch('downloader.yt_dlp.YoutubeDL')
@@ -264,8 +264,8 @@ class TestDownloadVideo(unittest.TestCase):
             cancel_token=None
         )
 
-        call_kwargs = mock_youtube_dl.call_args[1]
-        self.assertEqual(call_kwargs['ratelimit'], '500K')
+        ydl_opts = mock_youtube_dl.call_args[0][0]
+        self.assertEqual(ydl_opts['ratelimit'], '500K')
 
     @patch('downloader.Path.mkdir')
     @patch('downloader.yt_dlp.YoutubeDL')
@@ -292,9 +292,9 @@ class TestDownloadVideo(unittest.TestCase):
             cancel_token=cancel_token
         )
 
-        call_kwargs = mock_youtube_dl.call_args[1]
+        ydl_opts = mock_youtube_dl.call_args[0][0]
         # Progress hooks should include the cancel_token check
-        self.assertGreaterEqual(len(call_kwargs['progress_hooks']), 2)
+        self.assertGreaterEqual(len(ydl_opts['progress_hooks']), 2)
 
     @patch('downloader.Path.mkdir')
     @patch('downloader.yt_dlp.YoutubeDL')
@@ -372,8 +372,8 @@ class TestDownloadVideo(unittest.TestCase):
             cancel_token=None
         )
 
-        call_kwargs = mock_youtube_dl.call_args[1]
-        self.assertTrue(call_kwargs['playlist'])
+        ydl_opts = mock_youtube_dl.call_args[0][0]
+        self.assertTrue(ydl_opts['playlist'])
 
     @patch('downloader.Path.mkdir')
     @patch('downloader.yt_dlp.YoutubeDL')

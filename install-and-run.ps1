@@ -176,6 +176,7 @@ Write-Status "Step 6: Creating shortcuts and configuration..." -Color $CYAN
 # Create Desktop shortcut
 $desktopPath = [Environment]::GetFolderPath("Desktop")
 $shortcutPath = Join-Path $desktopPath "YTDownloader.lnk"
+$iconPath = Join-Path $appDir "icon.ico"
 
 try {
     $WshShell = New-Object -ComObject WScript.Shell
@@ -184,7 +185,9 @@ try {
     $shortcut.Arguments = "`"$(Join-Path $appDir 'main.py')`""
     $shortcut.WorkingDirectory = $appDir
     $shortcut.Description = "YTDownloader - Advanced YouTube Video Downloader"
-    $shortcut.IconLocation = Join-Path $appDir "icon.ico"
+    if (Test-Path $iconPath) {
+        $shortcut.IconLocation = $iconPath
+    }
     $shortcut.Save()
     Write-Success "Desktop shortcut created: $shortcutPath"
 } catch {
@@ -206,7 +209,9 @@ try {
     $shortcut.Arguments = "`"$(Join-Path $appDir 'main.py')`""
     $shortcut.WorkingDirectory = $appDir
     $shortcut.Description = "YTDownloader - Advanced YouTube Video Downloader"
-    $shortcut.IconLocation = Join-Path $appDir "icon.ico"
+    if (Test-Path $iconPath) {
+        $shortcut.IconLocation = $iconPath
+    }
     $shortcut.Save()
     Write-Success "Start Menu shortcut created"
 } catch {
