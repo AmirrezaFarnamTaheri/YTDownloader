@@ -1,6 +1,10 @@
 # YTDownloader - Complete Setup and Installation Script for Windows
 # This script handles everything: checking dependencies, installing, and launching the app
 
+# Setup logging
+$LogFile = "ytdownloader_installer.log"
+Start-Transcript -Path $LogFile -Append
+
 $ErrorActionPreference = "Stop"
 
 param(
