@@ -2,6 +2,8 @@
 # YTDownloader - Setup and Installation Script for Linux/macOS
 # This script handles everything: checking, installing, and launching
 
+set -e
+
 # Color definitions
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -47,11 +49,8 @@ if [ -d "$VENV_PATH" ]; then
     if [[ "$USE_EXISTING" == "n" || "$USE_EXISTING" == "N" ]]; then
         echo "Removing existing virtual environment..."
         rm -rf "$VENV_PATH"
+        echo "Creating new virtual environment..."
         python3 -m venv "$VENV_PATH"
-        if [ $? -ne 0 ]; then
-            echo -e "${RED}ERROR: Failed to create virtual environment${NC}"
-            exit 1
-        fi
         echo -e "${GREEN}[OK] Virtual environment created${NC}"
     else
         echo "Using existing virtual environment"
@@ -59,10 +58,6 @@ if [ -d "$VENV_PATH" ]; then
 else
     echo "Creating new virtual environment..."
     python3 -m venv "$VENV_PATH"
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}ERROR: Failed to create virtual environment${NC}"
-        exit 1
-    fi
     echo -e "${GREEN}[OK] Virtual environment created${NC}"
 fi
 PYTHON_EXE="$VENV_PATH/bin/python"
@@ -71,20 +66,11 @@ echo ""
 # Step 4: Install dependencies
 echo "[Step 4] Installing Python dependencies..."
 echo "This may take a few minutes..."
-"$PYTHON_EXE" -m pip install --upgrade pip --quiet 2>/dev/null
-
-if [ ! -f "$APP_DIR/requirements.txt" ]; then
-    echo -e "${RED}ERROR: requirements.txt not found${NC}"
-    exit 1
-fi
-
+echo "Upgrading pip..."
+"$PYTHON_EXE" -m pip install --upgrade pip
+echo "Installing dependencies from requirements.txt..."
 "$PYTHON_EXE" -m pip install -r "$APP_DIR/requirements.txt"
-if [ $? -ne 0 ]; then
-    echo -e "${YELLOW}WARNING: Some dependencies failed to install${NC}"
-    echo "Continuing anyway..."
-else
-    echo -e "${GREEN}[OK] All dependencies installed${NC}"
-fi
+echo -e "${GREEN}[OK] All dependencies installed${NC}"
 echo ""
 
 # Step 5: Launch the application

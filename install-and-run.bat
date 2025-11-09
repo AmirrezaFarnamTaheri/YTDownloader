@@ -53,6 +53,7 @@ if exist "%VENV_PATH%" (
     if /i "!USE_EXISTING!"=="n" (
         echo Removing existing virtual environment...
         rmdir /s /q "%VENV_PATH%"
+        echo Creating new virtual environment...
         call python -m venv "%VENV_PATH%"
         if errorlevel 1 (
             color 0C
@@ -81,8 +82,14 @@ echo.
 REM Step 4: Install dependencies
 echo [Step 4] Installing Python dependencies...
 echo This may take a few minutes...
-call %PYTHON_EXE% -m pip install --upgrade pip --quiet 2>nul
+echo Upgrading pip...
+call %PYTHON_EXE% -m pip install --upgrade pip
+if errorlevel 1 (
+    color 0E
+    echo WARNING: Failed to upgrade pip. Continuing anyway...
+)
 
+echo Installing dependencies from requirements.txt...
 if not exist "%APP_DIR%requirements.txt" (
     color 0C
     echo ERROR: requirements.txt not found
@@ -92,9 +99,10 @@ if not exist "%APP_DIR%requirements.txt" (
 
 call %PYTHON_EXE% -m pip install -r "%APP_DIR%requirements.txt"
 if errorlevel 1 (
-    color 0E
-    echo WARNING: Some dependencies failed to install
-    echo Continuing anyway...
+    color 0C
+    echo ERROR: Failed to install dependencies. Please check the output above for errors.
+    pause
+    exit /b 1
 ) else (
     echo [OK] All dependencies installed
 )
