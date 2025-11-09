@@ -1,6 +1,8 @@
 # YTDownloader - Complete Setup and Installation Script for Windows
 # This script handles everything: checking dependencies, installing, and launching the app
 
+$ErrorActionPreference = "Stop"
+
 param(
     [switch]$SkipVenv = $false,
     [switch]$Force = $false
@@ -119,26 +121,14 @@ if ($SkipVenv) {
             Remove-Item -Recurse -Force $venvPath -ErrorAction SilentlyContinue
             Write-Status "Creating new virtual environment..."
             & python -m venv $venvPath
-            if ($LASTEXITCODE -eq 0) {
-                Write-Success "Virtual environment created successfully"
-                $pythonExe = Join-Path $venvPath "Scripts\python.exe"
-            } else {
-                Write-Error-Custom "Failed to create virtual environment"
-                Pause
-                Exit 1
-            }
+            Write-Success "Virtual environment created successfully"
+            $pythonExe = Join-Path $venvPath "Scripts\python.exe"
         }
     } else {
         Write-Status "Creating virtual environment..."
         & python -m venv $venvPath
-        if ($LASTEXITCODE -eq 0) {
-            Write-Success "Virtual environment created successfully"
-            $pythonExe = Join-Path $venvPath "Scripts\python.exe"
-        } else {
-            Write-Error-Custom "Failed to create virtual environment"
-            Pause
-            Exit 1
-        }
+        Write-Success "Virtual environment created successfully"
+        $pythonExe = Join-Path $venvPath "Scripts\python.exe"
     }
 }
 
@@ -155,18 +145,11 @@ if (-not (Test-Path $requirementsFile)) {
 }
 
 Write-Status "This may take a few minutes..."
-& $pythonExe -m pip install --upgrade pip --quiet
-if ($LASTEXITCODE -ne 0) {
-    Write-Warning-Custom "pip upgrade had issues, continuing anyway..."
-}
-
+Write-Status "Upgrading pip..."
+& $pythonExe -m pip install --upgrade pip
+Write-Status "Installing dependencies from requirements.txt..."
 & $pythonExe -m pip install -r $requirementsFile
-if ($LASTEXITCODE -eq 0) {
-    Write-Success "All dependencies installed successfully"
-} else {
-    Write-Error-Custom "Failed to install dependencies"
-    Write-Warning-Custom "Some features may not work correctly"
-}
+Write-Success "All dependencies installed successfully"
 
 Write-Host ""
 

@@ -2,7 +2,7 @@
 
 YTDownloader is a modern, feature-rich desktop application for downloading videos and subtitles from YouTube. Built with Python, Tkinter, and the powerful `yt-dlp` library, it offers a seamless, intuitive, and production-quality experience for all your video downloading needs.
 
-**Latest Version**: 2.0 (Comprehensive Refactor & Quality Improvements)
+**Latest Version**: 2.1 (Refactoring and Bug Squashing)
 
 ## Key Features
 
@@ -196,6 +196,20 @@ YTDownloader/
 - Configuration persistence in `~/.ytdownloader/config.json`
 - Thread-safe UI queue for worker thread communication
 - Proper exception handling and user feedback
+
+## Recent Improvements (v2.1)
+
+### Code Quality
+- **Refactoring**: Refactored the `format_file_size` and `download` methods to be more readable and maintainable.
+- **Organization**: Refactored the `YTDownloaderGUI` class to be more organized and easier to read.
+- **Clarity**: Refactored the `__main__` block to be more readable and concise.
+- **Constants**: Replaced all magic numbers with constants from the `UIConstants` class.
+- **Cleanup**: Removed the unused `dataclasses` import and the `_ytdownloader_headless` attribute from the `tk` module.
+
+### Bugfixes
+- **IndentationError**: Fixed an indentation error in the `download` method.
+- **NameError**: Fixed a `NameError` related to the `_HEADLESS` constant.
+- **AssertionError**: Fixed an `AssertionError` in the `sv_ttk` library.
 
 ## Recent Improvements (v2.0)
 
