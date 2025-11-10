@@ -52,13 +52,41 @@ def get_video_info(
             logger.info(f"Fetching video info for: {url}")
             info_dict = ydl.extract_info(url, download=False)
 
-            # Extract subtitle information
+            # Extract subtitle information (check both subtitles and automatic_captions)
             subtitles: Dict[str, List[str]] = {}
+            
+            # Check manual subtitles
             if 'subtitles' in info_dict and info_dict['subtitles']:
                 for lang, subs in info_dict['subtitles'].items():
-                    formats = [sub['ext'] for sub in subs]
-                    subtitles[lang] = formats
-                logger.debug(f"Found subtitles for languages: {list(subtitles.keys())}")
+                    if isinstance(subs, list):
+                        formats = [sub.get('ext', 'vtt') if isinstance(sub, dict) else str(sub) for sub in subs]
+                    else:
+                        formats = ['vtt']  # Default format if structure is unexpected
+                    if formats:
+                        subtitles[lang] = formats
+                    else:
+                        subtitles[lang] = ['vtt']  # Default format
+                logger.debug(f"Found manual subtitles for languages: {list(subtitles.keys())}")
+            
+            # Check automatic captions (often more available)
+            if 'automatic_captions' in info_dict and info_dict['automatic_captions']:
+                for lang, subs in info_dict['automatic_captions'].items():
+                    if isinstance(subs, list):
+                        formats = [sub.get('ext', 'vtt') if isinstance(sub, dict) else str(sub) for sub in subs]
+                    else:
+                        formats = ['vtt']
+                    # Add ' (Auto)' suffix to distinguish from manual
+                    auto_lang = f"{lang} (Auto)" if lang not in subtitles else lang
+                    if formats:
+                        subtitles[auto_lang] = formats
+                    else:
+                        subtitles[auto_lang] = ['vtt']
+                logger.debug(f"Found automatic captions for languages: {list(info_dict['automatic_captions'].keys())}")
+            
+            if subtitles:
+                logger.info(f"Total subtitle languages available: {list(subtitles.keys())}")
+            else:
+                logger.warning("No subtitles or captions found for this video")
 
             # Extract video and audio stream information
             formats = info_dict.get('formats', [])
@@ -148,16 +176,27 @@ def download_video(
     # Ensure output path exists
     Path(output_path).mkdir(parents=True, exist_ok=True)
 
+    # Sanitize output path to prevent issues
+    try:
+        output_path = str(Path(output_path).resolve())
+    except (OSError, ValueError) as e:
+        logger.error(f"Invalid output path: {output_path}, error: {e}")
+        raise ValueError(f"Invalid output path: {output_path}") from e
+    
+    # Build output template with proper escaping
+    outtmpl = os.path.join(output_path, '%(title)s.%(ext)s')
+    
     ydl_opts: Dict[str, Any] = {
         'format': video_format,
         'playlist': playlist,
-        'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),
+        'outtmpl': outtmpl,
         'progress_hooks': [lambda d: progress_hook(d, download_item)],
         'continuedl': True,
         'retries': 10,
         'fragment_retries': 10,
         'quiet': False,
         'no_warnings': False,
+        'noplaylist': not playlist,  # Explicitly set playlist behavior
     }
 
     # Add subtitle options if requested
@@ -177,12 +216,20 @@ def download_video(
             '%(section_number)02d - %(section_title)s.%(ext)s'
         )
 
-    # Configure proxy if provided
+    # Configure proxy if provided (with validation)
     if proxy:
+        proxy = proxy.strip()
+        if not proxy.startswith(('http://', 'https://', 'socks4://', 'socks5://')):
+            logger.warning(f"Proxy may be invalid (missing protocol): {proxy}")
         ydl_opts['proxy'] = proxy
 
-    # Configure rate limiting if provided
+    # Configure rate limiting if provided (with validation)
     if rate_limit:
+        rate_limit = rate_limit.strip().upper()
+        # Validate rate limit format
+        import re
+        if not re.match(r'^\d+(\.\d+)?[KMGT]?$', rate_limit):
+            logger.warning(f"Rate limit format may be invalid: {rate_limit}")
         ydl_opts['ratelimit'] = rate_limit
 
     if cookies_from_browser:

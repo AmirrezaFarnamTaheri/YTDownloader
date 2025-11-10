@@ -6,3 +6,4 @@ dist/
 *.spec
 ytdownloader.log
 ytdownloader_installer.log
+venv/

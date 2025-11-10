@@ -1,17 +1,57 @@
-# YTDownloader - Complete Setup and Installation Script for Windows
-# This script handles everything: checking dependencies, installing, and launching the app
-
-# Setup logging
-$LogFile = "ytdownloader_installer.log"
-Start-Transcript -Path $LogFile -Append
-
-$ErrorActionPreference = "Stop"
-
 param(
     [switch]$SkipVenv = $false,
     [switch]$Force = $false,
     [string]$Proxy = ""
 )
+
+# YTDownloader - Complete Setup and Installation Script for Windows
+# This script handles everything: checking dependencies, installing, and launching the app
+
+$ErrorActionPreference = "Stop"
+
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $scriptDir) {
+    $scriptDir = (Get-Location).Path
+}
+
+$LogFile = Join-Path $scriptDir "ytdownloader_installer.log"
+$script:InstallerTranscriptActive = $false
+try {
+    # Ensure log file directory exists and is writable
+    $logDir = Split-Path -Parent $LogFile
+    if (-not (Test-Path $logDir)) {
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    }
+    if (Test-Path $LogFile) {
+        # Check if file is writable
+        try {
+            [System.IO.File]::OpenWrite($LogFile).Close()
+        } catch {
+            Write-Warning "Log file is not writable: $LogFile"
+        }
+    }
+    Start-Transcript -Path $LogFile -Append -ErrorAction Stop | Out-Null
+    $script:InstallerTranscriptActive = $true
+} catch {
+    Write-Warning "Could not start installer transcript: $_"
+}
+
+function Stop-InstallerTranscript {
+    if ($script:InstallerTranscriptActive) {
+        try {
+            Stop-Transcript | Out-Null
+        } catch {
+            # ignore transcript shutdown failures
+        }
+        $script:InstallerTranscriptActive = $false
+    }
+}
+
+function Stop-And-Exit {
+    param([int]$Code = 0)
+    Stop-InstallerTranscript
+    exit $Code
+}
 
 # Color definitions
 $GREEN = "Green"
@@ -20,32 +60,35 @@ $YELLOW = "Yellow"
 $CYAN = "Cyan"
 
 function Write-Status {
-    param([string]$Message, [string]$Color = "White")
+    param([string]$Message, [string]$Color = 'White')
     Write-Host "[$([DateTime]::Now.ToString('HH:mm:ss'))] $Message" -ForegroundColor $Color
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Status "✓ $Message" -Color $GREEN
+    Write-Status "[OK] $Message" -Color $GREEN
 }
 
 function Write-Error-Custom {
     param([string]$Message)
-    Write-Status "✗ $Message" -Color $RED
+    Write-Status "[ERROR] $Message" -Color $RED
 }
 
 function Write-Warning-Custom {
     param([string]$Message)
-    Write-Status "⚠ $Message" -Color $YELLOW
+    Write-Status "[WARN] $Message" -Color $YELLOW
 }
 
 function Write-Info {
     param([string]$Message)
-    Write-Status "ℹ $Message" -Color $CYAN
+    Write-Status "[INFO] $Message" -Color $CYAN
 }
-
 # Header
-Clear-Host
+try {
+    Clear-Host
+} catch {
+    # Ignore hosts that do not expose a console buffer
+}
 Write-Host @"
 ╔═══════════════════════════════════════════════════════════╗
 ║                    YTDownloader Setup                     ║
@@ -75,7 +118,7 @@ try {
     Write-Warning-Custom "During installation, make sure to check 'Add Python to PATH'"
     Write-Host ""
     Pause
-    Exit 1
+    Stop-And-Exit 1
 }
 
 # Step 2: Verify Python version
@@ -90,7 +133,7 @@ if ($versionMatch) {
     } else {
         Write-Error-Custom "Python 3.8 or higher is required. You have Python $major.$minor"
         Pause
-        Exit 1
+        Stop-And-Exit 1
     }
 } else {
     Write-Warning-Custom "Could not verify Python version, proceeding anyway..."
@@ -146,20 +189,48 @@ $requirementsFile = Join-Path $appDir "requirements.txt"
 if (-not (Test-Path $requirementsFile)) {
     Write-Error-Custom "requirements.txt not found at $appDir"
     Pause
-    Exit 1
+    Stop-And-Exit 1
 }
 
-$proxyArg = ""
-if (-not [string]::IsNullOrEmpty($Proxy)) {
-    $proxyArg = "--proxy $Proxy"
-    Write-Info "Using proxy: $Proxy"
+# Check for proxy.txt file (for consistency with batch script)
+$proxyFromFile = ""
+$proxyFile = Join-Path $appDir "proxy.txt"
+if (Test-Path $proxyFile) {
+    $proxyFromFile = (Get-Content $proxyFile -First 1).Trim()
+    Write-Info "Found proxy.txt, using proxy from file"
+}
+
+# Use command-line proxy parameter if provided, otherwise use file
+$finalProxy = if (-not [string]::IsNullOrEmpty($Proxy)) { $Proxy } elseif (-not [string]::IsNullOrEmpty($proxyFromFile)) { $proxyFromFile } else { "" }
+
+$pipArgs = @()
+if (-not [string]::IsNullOrEmpty($finalProxy)) {
+    $pipArgs = @("--proxy", $finalProxy)
+    Write-Info "Using proxy: $finalProxy"
 }
 
 Write-Status "This may take a few minutes..."
 Write-Status "Upgrading pip..."
-& $pythonExe -m pip install --upgrade pip $proxyArg
+if ($pipArgs.Count -gt 0) {
+    & $pythonExe -m pip install --upgrade pip @pipArgs
+} else {
+    & $pythonExe -m pip install --upgrade pip
+}
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning-Custom "Failed to upgrade pip. Continuing anyway..."
+}
+
 Write-Status "Installing dependencies from requirements.txt..."
-& $pythonExe -m pip install -r $requirementsFile $proxyArg
+if ($pipArgs.Count -gt 0) {
+    & $pythonExe -m pip install -r $requirementsFile @pipArgs
+} else {
+    & $pythonExe -m pip install -r $requirementsFile
+}
+if ($LASTEXITCODE -ne 0) {
+    Write-Error-Custom "Failed to install dependencies. Please check the output above for errors."
+    Pause
+    Stop-And-Exit 1
+}
 Write-Success "All dependencies installed successfully"
 
 Write-Host ""
@@ -180,12 +251,16 @@ try {
     $shortcut.WorkingDirectory = $appDir
     $shortcut.Description = "YTDownloader - Advanced YouTube Video Downloader"
     if (Test-Path $iconPath) {
-        $shortcut.IconLocation = $iconPath
+        try {
+            $shortcut.IconLocation = $iconPath
+        } catch {
+            Write-Warning-Custom "Could not set icon for shortcut: $_"
+        }
     }
     $shortcut.Save()
     Write-Success "Desktop shortcut created: $shortcutPath"
 } catch {
-    Write-Warning-Custom "Could not create desktop shortcut (may require admin rights)"
+    Write-Warning-Custom "Could not create desktop shortcut (may require admin rights): $_"
 }
 
 # Create Start Menu shortcut
@@ -204,12 +279,16 @@ try {
     $shortcut.WorkingDirectory = $appDir
     $shortcut.Description = "YTDownloader - Advanced YouTube Video Downloader"
     if (Test-Path $iconPath) {
-        $shortcut.IconLocation = $iconPath
+        try {
+            $shortcut.IconLocation = $iconPath
+        } catch {
+            Write-Warning-Custom "Could not set icon for Start Menu shortcut: $_"
+        }
     }
     $shortcut.Save()
     Write-Success "Start Menu shortcut created"
 } catch {
-    Write-Warning-Custom "Could not create Start Menu shortcut"
+    Write-Warning-Custom "Could not create Start Menu shortcut: $_"
 }
 
 Write-Host ""
@@ -223,15 +302,15 @@ $mainPyPath = Join-Path $appDir "main.py"
 if (-not (Test-Path $mainPyPath)) {
     Write-Error-Custom "main.py not found at $appDir"
     Pause
-    Exit 1
+    Stop-And-Exit 1
 }
 
 # Launch in background so the script can finish
 try {
     if ($SkipVenv) {
-        Start-Process python -ArgumentList $mainPyPath -WorkingDirectory $appDir -NoNewWindow
+        Start-Process python -ArgumentList $mainPyPath -WorkingDirectory $appDir
     } else {
-        Start-Process $pythonExe -ArgumentList $mainPyPath -WorkingDirectory $appDir -NoNewWindow
+        Start-Process $pythonExe -ArgumentList $mainPyPath -WorkingDirectory $appDir
     }
     Write-Success "YTDownloader is launching..."
     Start-Sleep -Seconds 2
@@ -259,7 +338,10 @@ Write-Host ""
 Write-Info "Configuration and logs are saved to:"
 Write-Host "  Settings: $([Environment]::GetFolderPath('UserProfile'))\.ytdownloader\config.json" -ForegroundColor Cyan
 Write-Host "  Logs: $appDir\ytdownloader.log" -ForegroundColor Cyan
+Write-Host "  Installer log: $LogFile" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Success "Setup completed successfully!"
 Write-Host ""
+Stop-And-Exit 0
+
