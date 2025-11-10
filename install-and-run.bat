@@ -2,8 +2,8 @@
 REM YTDownloader - Setup and Installation Batch Script for Windows
 REM This script handles everything: checking, installing, and launching
 
-set "LOG_FILE=ytdownloader_installer.log"
-call :main >"%LOG_FILE%" 2>&1
+set "LOG_FILE=ytdownloader.log"
+call :main >>"%LOG_FILE%" 2>&1
 exit /b
 
 :main
@@ -87,8 +87,17 @@ echo.
 REM Step 4: Install dependencies
 echo [Step 4] Installing Python dependencies...
 echo This may take a few minutes...
+
+set "PROXY_ARG="
+if exist "%APP_DIR%proxy.txt" (
+    echo Found proxy.txt, setting proxy...
+    set /p PROXY_URL=<%APP_DIR%proxy.txt
+    set "PROXY_ARG=--proxy !PROXY_URL!"
+    echo Using proxy: !PROXY_URL!
+)
+
 echo Upgrading pip...
-call %PYTHON_EXE% -m pip install --upgrade pip
+call %PYTHON_EXE% -m pip install --upgrade pip !PROXY_ARG!
 if errorlevel 1 (
     color 0E
     echo WARNING: Failed to upgrade pip. Continuing anyway...
@@ -102,7 +111,7 @@ if not exist "%APP_DIR%requirements.txt" (
     exit /b 1
 )
 
-call %PYTHON_EXE% -m pip install -r "%APP_DIR%requirements.txt"
+call %PYTHON_EXE% -m pip install -r "%APP_DIR%requirements.txt" !PROXY_ARG!
 if errorlevel 1 (
     color 0C
     echo ERROR: Failed to install dependencies. Please check the output above for errors.
