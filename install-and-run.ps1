@@ -9,7 +9,8 @@ $ErrorActionPreference = "Stop"
 
 param(
     [switch]$SkipVenv = $false,
-    [switch]$Force = $false
+    [switch]$Force = $false,
+    [string]$Proxy = ""
 )
 
 # Color definitions
@@ -148,11 +149,17 @@ if (-not (Test-Path $requirementsFile)) {
     Exit 1
 }
 
+$proxyArg = ""
+if (-not [string]::IsNullOrEmpty($Proxy)) {
+    $proxyArg = "--proxy $Proxy"
+    Write-Info "Using proxy: $Proxy"
+}
+
 Write-Status "This may take a few minutes..."
 Write-Status "Upgrading pip..."
-& $pythonExe -m pip install --upgrade pip
+& $pythonExe -m pip install --upgrade pip $proxyArg
 Write-Status "Installing dependencies from requirements.txt..."
-& $pythonExe -m pip install -r $requirementsFile
+& $pythonExe -m pip install -r $requirementsFile $proxyArg
 Write-Success "All dependencies installed successfully"
 
 Write-Host ""
