@@ -252,6 +252,7 @@ class YTDownloaderGUI:
         self.playlist_tab = ttk.Frame(self.notebook)
         self.chapters_tab = ttk.Frame(self.notebook)
         self.settings_tab = ttk.Frame(self.notebook)
+        self.cookies_tab = ttk.Frame(self.notebook)
         self.downloads_tab = ttk.Frame(self.notebook)
 
         self.notebook.add(self.video_tab, text="Video")
@@ -260,6 +261,7 @@ class YTDownloaderGUI:
         self.notebook.add(self.playlist_tab, text="Playlist")
         self.notebook.add(self.chapters_tab, text="Chapters")
         self.notebook.add(self.settings_tab, text="Settings")
+        self.notebook.add(self.cookies_tab, text="Cookies")
         self.notebook.add(self.downloads_tab, text="Downloads")
 
         # Video Tab
@@ -307,6 +309,30 @@ class YTDownloaderGUI:
         self.ratelimit_label.grid(row=1, column=0, padx=5, pady=5, sticky="w")
         self.ratelimit_entry = ttk.Entry(self.settings_tab, width=40)
         self.ratelimit_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        # Cookies Tab
+        self.cookies_browser_label = ttk.Label(self.cookies_tab, text="Browser:")
+        self.cookies_browser_label.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.cookies_browser_var = tk.StringVar()
+        self.cookies_browser_menu = ttk.Combobox(
+            self.cookies_tab,
+            textvariable=self.cookies_browser_var,
+            state="readonly",
+            values=["", "chrome", "firefox", "brave", "chromium", "edge", "opera", "safari", "vivaldi"]
+        )
+        self.cookies_browser_menu.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+
+        self.cookies_profile_label = ttk.Label(self.cookies_tab, text="Profile:")
+        self.cookies_profile_label.grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.cookies_profile_entry = ttk.Entry(self.cookies_tab, width=40)
+        self.cookies_profile_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        self.cookies_info_label = ttk.Label(
+            self.cookies_tab,
+            text="Use cookies from a browser to bypass login or age restrictions.\nSelect a browser and, optionally, a specific profile name.",
+            wraplength=400
+        )
+        self.cookies_info_label.grid(row=2, column=0, columnspan=2, padx=5, pady=10, sticky="w")
 
         # Downloads Tab
         columns = ("URL", "Status", "Size", "Speed", "ETA")
@@ -442,7 +468,14 @@ class YTDownloaderGUI:
 
         def _fetch():
             try:
-                info = get_video_info(url)
+                cookies_browser = self.cookies_browser_var.get()
+                cookies_profile = self.cookies_profile_entry.get().strip()
+
+                info = get_video_info(
+                    url,
+                    cookies_from_browser=cookies_browser if cookies_browser else None,
+                    cookies_from_browser_profile=cookies_profile if cookies_profile else None
+                )
                 if not info:
                     raise yt_dlp.utils.DownloadError("Failed to fetch video information.")
 
@@ -601,6 +634,9 @@ class YTDownloaderGUI:
         playlist = self.playlist_var.get()
         split_chapters = self.chapters_var.get()
 
+        cookies_browser = self.cookies_browser_var.get()
+        cookies_profile = self.cookies_profile_entry.get().strip()
+
         download_item = {
             "url": url,
             "video_format": video_format,
@@ -612,6 +648,8 @@ class YTDownloaderGUI:
             "split_chapters": split_chapters,
             "proxy": proxy or None,
             "rate_limit": rate_limit or None,
+            "cookies_browser": cookies_browser if cookies_browser else None,
+            "cookies_profile": cookies_profile if cookies_profile else None,
             "status": "Queued",
             "size": "N/A",
             "speed": "N/A",
@@ -749,7 +787,9 @@ class YTDownloaderGUI:
             item['split_chapters'],
             item['proxy'],
             item['rate_limit'],
-            self.cancel_token
+            self.cancel_token,
+            item.get('cookies_browser'),
+            item.get('cookies_profile')
         )
         item['status'] = 'Completed'
         logger.info(f"Download completed: {item['url']}")
