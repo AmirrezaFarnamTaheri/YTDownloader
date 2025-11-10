@@ -256,12 +256,12 @@ class YTDownloaderGUI:
         self.downloads_tab = ttk.Frame(self.notebook)
 
         self.notebook.add(self.video_tab, text="Video")
+        self.notebook.add(self.cookies_tab, text="Cookies")
         self.notebook.add(self.audio_tab, text="Audio")
         self.notebook.add(self.subtitle_tab, text="Subtitles")
         self.notebook.add(self.playlist_tab, text="Playlist")
         self.notebook.add(self.chapters_tab, text="Chapters")
         self.notebook.add(self.settings_tab, text="Settings")
-        self.notebook.add(self.cookies_tab, text="Cookies")
         self.notebook.add(self.downloads_tab, text="Downloads")
 
         # Video Tab
@@ -467,17 +467,32 @@ class YTDownloaderGUI:
         logger.debug("Starting background fetch thread for %s", url)
 
         def _fetch():
+            info = None
             try:
+                # First attempt without cookies
+                info = get_video_info(url)
+            except yt_dlp.utils.DownloadError as e:
+                logger.warning("Initial fetch failed, checking for cookie options: %s", e)
                 cookies_browser = self.cookies_browser_var.get()
                 cookies_profile = self.cookies_profile_entry.get().strip()
-
-                info = get_video_info(
-                    url,
-                    cookies_from_browser=cookies_browser if cookies_browser else None,
-                    cookies_from_browser_profile=cookies_profile if cookies_profile else None
-                )
+                if cookies_browser:
+                    logger.info("Retrying fetch with browser cookies: %s (Profile: %s)", cookies_browser, cookies_profile or 'Default')
+                    try:
+                        info = get_video_info(
+                            url,
+                            cookies_from_browser=cookies_browser,
+                            cookies_from_browser_profile=cookies_profile if cookies_profile else None
+                        )
+                    except yt_dlp.utils.DownloadError as cookie_e:
+                        logger.error("Fetch with cookies also failed: %s", cookie_e)
+                        self.handle_error("Failed to fetch video information with and without cookies.", cookie_e)
+                        return  # Stop execution
+                else:
+                    self.handle_error("Invalid URL or network error", e)
+                    return # Stop execution if there are no cookies to attempt
+            try:
                 if not info:
-                    raise yt_dlp.utils.DownloadError("Failed to fetch video information.")
+                    raise yt_dlp.utils.DownloadError("Failed to fetch video information, even with cookies.")
 
                 title = info.get('title', 'N/A')
                 duration = info.get('duration', 'N/A')
