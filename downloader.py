@@ -6,12 +6,18 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-def get_video_info(url: str) -> Optional[Dict[str, Any]]:
+def get_video_info(
+    url: str,
+    cookies_from_browser: Optional[str] = None,
+    cookies_from_browser_profile: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
     """
     Fetches video metadata without downloading the video.
 
     Args:
         url: The URL of the video (YouTube, etc.)
+        cookies_from_browser: The name of the browser to load cookies from.
+        cookies_from_browser_profile: The name of the browser profile to load cookies from.
 
     Returns:
         A dictionary containing:
@@ -33,8 +39,15 @@ def get_video_info(url: str) -> Optional[Dict[str, Any]]:
             'quiet': True,
             'listsubtitles': True,
             'noplaylist': True,
-            'socket_timeout': 30
+            'socket_timeout': 30,
         }
+
+        if cookies_from_browser:
+            ydl_opts['cookies_from_browser'] = (
+                cookies_from_browser,
+                cookies_from_browser_profile if cookies_from_browser_profile else None
+            )
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             logger.info(f"Fetching video info for: {url}")
             info_dict = ydl.extract_info(url, download=False)
@@ -107,7 +120,9 @@ def download_video(
     split_chapters: bool = False,
     proxy: Optional[str] = None,
     rate_limit: Optional[str] = None,
-    cancel_token: Optional[Any] = None
+    cancel_token: Optional[Any] = None,
+    cookies_from_browser: Optional[str] = None,
+    cookies_from_browser_profile: Optional[str] = None
 ) -> None:
     """
     Downloads a video or playlist from the given URL using yt-dlp.
@@ -169,6 +184,12 @@ def download_video(
     # Configure rate limiting if provided
     if rate_limit:
         ydl_opts['ratelimit'] = rate_limit
+
+    if cookies_from_browser:
+        ydl_opts['cookies_from_browser'] = (
+            cookies_from_browser,
+            cookies_from_browser_profile if cookies_from_browser_profile else None
+        )
 
     # Add cancellation support
     if cancel_token:
