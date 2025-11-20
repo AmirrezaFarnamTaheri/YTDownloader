@@ -43,7 +43,8 @@ from pathlib import Path
 from typing import Optional, Dict, List, Any
 
 from config_manager import ConfigManager
-from ui_utils import UIConstants, format_file_size, validate_url, validate_proxy, validate_rate_limit
+from ui_utils import UIConstants, format_file_size, validate_url, validate_proxy, validate_rate_limit, is_ffmpeg_available
+from history_manager import HistoryManager
 
 # Configure logging
 logger = logging.getLogger()
@@ -131,6 +132,10 @@ class YTDownloaderGUI:
         self.download_queue: List[Dict[str, Any]] = []
         self.cancel_token: Optional[CancelToken] = None
         self.is_paused = False
+        self.ffmpeg_available = is_ffmpeg_available()
+
+        # Initialise History DB
+        HistoryManager.init_db()
         self.fetch_thread: Optional[threading.Thread] = None
         self.current_download_item: Optional[Dict[str, Any]] = None
         self.is_fullscreen = False
@@ -236,20 +241,31 @@ class YTDownloaderGUI:
 
         self._create_tabs()
 
-        # Right Panel: Queue
+        # Right Panel: Queue & History (Notebook)
         right_panel = ttk.Frame(content_pane)
         content_pane.add(right_panel, weight=1)
 
-        queue_header = ttk.Frame(right_panel)
-        queue_header.pack(fill="x", pady=(0, 5), padx=(10, 0))
-        ttk.Label(queue_header, text="Download Queue", font=("Segoe UI", 11, "bold")).pack(side="left")
+        self.right_notebook = ttk.Notebook(right_panel)
+        self.right_notebook.pack(fill="both", expand=True, padx=(10, 0))
 
-        clear_btn = ttk.Button(queue_header, text="Clear All", command=self.clear_ui, style="TButton")
-        clear_btn.pack(side="right")
+        # --- Queue Tab ---
+        self.queue_tab = ttk.Frame(self.right_notebook)
+        self.right_notebook.add(self.queue_tab, text="Queue")
+
+        queue_header = ttk.Frame(self.queue_tab)
+        queue_header.pack(fill="x", pady=(5, 5))
+
+        # Queue Controls
+        q_ctrl_box = ttk.Frame(queue_header)
+        q_ctrl_box.pack(side="right")
+
+        ttk.Button(q_ctrl_box, text="▲", width=3, command=self.move_queue_up).pack(side="left", padx=2)
+        ttk.Button(q_ctrl_box, text="▼", width=3, command=self.move_queue_down).pack(side="left", padx=2)
+        ttk.Button(q_ctrl_box, text="Clear All", command=self.clear_ui, style="TButton").pack(side="left", padx=(5, 0))
 
         # Treeview
-        tree_frame = ttk.Frame(right_panel)
-        tree_frame.pack(fill="both", expand=True, padx=(10, 0))
+        tree_frame = ttk.Frame(self.queue_tab)
+        tree_frame.pack(fill="both", expand=True)
         
         columns = ("URL", "Status", "Progress")
         self.download_queue_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="browse")
@@ -273,6 +289,36 @@ class YTDownloaderGUI:
         self.context_menu.add_command(label="Remove", command=self.remove_from_queue)
         self.context_menu.add_command(label="Open Folder", command=self.open_file_location)
         self.download_queue_tree.bind("<Button-3>", self.show_context_menu)
+
+        # --- History Tab ---
+        self.history_tab = ttk.Frame(self.right_notebook)
+        self.right_notebook.add(self.history_tab, text="History")
+
+        hist_header = ttk.Frame(self.history_tab)
+        hist_header.pack(fill="x", pady=(5, 5))
+        ttk.Button(hist_header, text="Refresh", command=self.load_history).pack(side="left")
+        ttk.Button(hist_header, text="Retry Selected", command=self.retry_history_item).pack(side="left", padx=5)
+        ttk.Button(hist_header, text="Clear History", command=self.clear_history).pack(side="right")
+
+        hist_tree_frame = ttk.Frame(self.history_tab)
+        hist_tree_frame.pack(fill="both", expand=True)
+
+        h_cols = ("Title", "Status", "Date")
+        self.history_tree = ttk.Treeview(hist_tree_frame, columns=h_cols, show="headings", selectmode="browse")
+        self.history_tree.heading("Title", text="Title")
+        self.history_tree.heading("Status", text="Status")
+        self.history_tree.heading("Date", text="Date")
+
+        self.history_tree.column("Title", width=180)
+        self.history_tree.column("Status", width=60)
+        self.history_tree.column("Date", width=100)
+
+        h_scroll = ttk.Scrollbar(hist_tree_frame, orient="vertical", command=self.history_tree.yview)
+        self.history_tree.configure(yscrollcommand=h_scroll.set)
+        self.history_tree.pack(side="left", fill="both", expand=True)
+        h_scroll.pack(side="right", fill="y")
+
+        self.load_history() # Initial load
 
         # === BOTTOM BAR ===
         bottom_bar = ttk.Frame(self.main_container)
@@ -330,6 +376,12 @@ class YTDownloaderGUI:
         self.audio_format_menu = ttk.Combobox(self.audio_tab, textvariable=self.audio_format_var, state="readonly", width=40)
         self.audio_format_menu.grid(row=0, column=1, sticky="ew", padx=10)
 
+        self.add_metadata_var = tk.BooleanVar()
+        ttk.Checkbutton(self.audio_tab, text="Add Metadata", variable=self.add_metadata_var).grid(row=1, column=0, columnspan=2, sticky="w", pady=5)
+
+        self.embed_thumbnail_var = tk.BooleanVar()
+        ttk.Checkbutton(self.audio_tab, text="Embed Thumbnail", variable=self.embed_thumbnail_var).grid(row=2, column=0, columnspan=2, sticky="w")
+
         # Advanced Tab
         self.subtitle_lang_var = tk.StringVar()
         ttk.Label(self.adv_tab, text="Subtitles:").grid(row=0, column=0, sticky="w", pady=5)
@@ -340,31 +392,111 @@ class YTDownloaderGUI:
         ttk.Combobox(self.adv_tab, textvariable=self.subtitle_format_var, values=["srt", "vtt", "ass"], state="readonly", width=8).grid(row=0, column=2)
 
         self.playlist_var = tk.BooleanVar()
-        ttk.Checkbutton(self.adv_tab, text="Download Playlist", variable=self.playlist_var).grid(row=1, column=0, columnspan=2, sticky="w", pady=10)
+        ttk.Checkbutton(self.adv_tab, text="Download Playlist", variable=self.playlist_var).grid(row=1, column=0, columnspan=2, sticky="w", pady=5)
         
         self.chapters_var = tk.BooleanVar()
-        ttk.Checkbutton(self.adv_tab, text="Split Chapters", variable=self.chapters_var).grid(row=2, column=0, columnspan=2, sticky="w")
+        ttk.Checkbutton(self.adv_tab, text="Split Chapters", variable=self.chapters_var).grid(row=2, column=0, columnspan=2, sticky="w", pady=5)
+
+        # Time Range (Download Sections)
+        range_frame = ttk.LabelFrame(self.adv_tab, text="Time Range (Optional)", padding=5)
+        range_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=10)
+
+        ttk.Label(range_frame, text="Start:").pack(side="left")
+        self.time_start_entry = ttk.Entry(range_frame, width=8)
+        self.time_start_entry.pack(side="left", padx=(2, 10))
+        self._create_tooltip(self.time_start_entry, "e.g. 00:01:30")
+
+        ttk.Label(range_frame, text="End:").pack(side="left")
+        self.time_end_entry = ttk.Entry(range_frame, width=8)
+        self.time_end_entry.pack(side="left", padx=(2, 0))
+        self._create_tooltip(self.time_end_entry, "e.g. 00:02:45")
 
         # Settings Tab
-        ttk.Label(self.settings_tab, text="Proxy:").grid(row=0, column=0, sticky="w", pady=5)
+        # FFmpeg Indicator
+        ff_status = "✅ Detected" if self.ffmpeg_available else "❌ Not Found"
+        ff_color = "green" if self.ffmpeg_available else "red"
+        ttk.Label(self.settings_tab, text="FFmpeg Status:").grid(row=0, column=0, sticky="w", pady=5)
+        ff_lbl = ttk.Label(self.settings_tab, text=ff_status, foreground=ff_color)
+        ff_lbl.grid(row=0, column=1, sticky="w", padx=10)
+
+        ttk.Button(self.settings_tab, text="Check for Updates", command=self.check_updates).grid(row=0, column=2, padx=10)
+
+        ttk.Label(self.settings_tab, text="Proxy:").grid(row=1, column=0, sticky="w", pady=5)
         self.proxy_entry = ttk.Entry(self.settings_tab, width=30)
-        self.proxy_entry.grid(row=0, column=1, padx=10)
+        self.proxy_entry.grid(row=1, column=1, padx=10)
         if self.config.get('proxy'): self.proxy_entry.insert(0, self.config.get('proxy', ''))
 
-        ttk.Label(self.settings_tab, text="Rate Limit:").grid(row=1, column=0, sticky="w", pady=5)
+        ttk.Label(self.settings_tab, text="Rate Limit:").grid(row=2, column=0, sticky="w", pady=5)
         self.ratelimit_entry = ttk.Entry(self.settings_tab, width=30)
-        self.ratelimit_entry.grid(row=1, column=1, padx=10)
+        self.ratelimit_entry.grid(row=2, column=1, padx=10)
         if self.config.get('rate_limit'): self.ratelimit_entry.insert(0, self.config.get('rate_limit', ''))
 
         # Cookies are advanced, maybe put them here or separate
-        ttk.Label(self.settings_tab, text="Browser Cookies:").grid(row=2, column=0, sticky="w", pady=5)
+        ttk.Label(self.settings_tab, text="Browser Cookies:").grid(row=3, column=0, sticky="w", pady=5)
         self.cookies_browser_var = tk.StringVar()
         self.cookies_browser_menu = ttk.Combobox(self.settings_tab, textvariable=self.cookies_browser_var, values=["", "chrome", "firefox", "edge"], state="readonly", width=20)
-        self.cookies_browser_menu.grid(row=2, column=1, padx=10)
+        self.cookies_browser_menu.grid(row=3, column=1, padx=10)
 
-        ttk.Label(self.settings_tab, text="Profile:").grid(row=3, column=0, sticky="w", pady=5)
+        ttk.Label(self.settings_tab, text="Profile:").grid(row=4, column=0, sticky="w", pady=5)
         self.cookies_profile_entry = ttk.Entry(self.settings_tab, width=30)
-        self.cookies_profile_entry.grid(row=3, column=1, padx=10)
+        self.cookies_profile_entry.grid(row=4, column=1, padx=10)
+
+    def check_updates(self):
+        import webbrowser
+        if messagebox.askyesno("Updates", "Check GitHub for the latest release?"):
+            webbrowser.open("https://github.com/yourusername/YTDownloader/releases")
+
+    def load_history(self):
+        """Load history from DB into the treeview."""
+        for i in self.history_tree.get_children():
+            self.history_tree.delete(i)
+
+        self._history_data = HistoryManager.get_history(limit=100)
+        for i, item in enumerate(self._history_data):
+            self.history_tree.insert("", "end", iid=i, values=(item['title'], item['status'], item['timestamp']))
+
+    def retry_history_item(self):
+        sel = self.history_tree.selection()
+        if not sel:
+            self.show_toast("Select an item to retry")
+            return
+
+        idx = int(sel[0])
+        if idx < 0 or idx >= len(self._history_data): return
+
+        item = self._history_data[idx]
+        url = item.get('url')
+        if not url: return
+
+        # Re-populate fields
+        self.url_entry.delete(0, tk.END)
+        self.url_entry.insert(0, url)
+        self.fetch_info()
+        self.show_toast("Loaded into main view")
+        self.notebook.select(self.video_tab) # Switch to video tab
+
+    def clear_history(self):
+        if messagebox.askyesno("Confirm", "Clear entire download history?"):
+            HistoryManager.clear_history()
+            self.load_history()
+
+    def move_queue_up(self):
+        sel = self.download_queue_tree.selection()
+        if not sel: return
+        idx = int(sel[0])
+        if idx > 0:
+            self.download_queue[idx], self.download_queue[idx-1] = self.download_queue[idx-1], self.download_queue[idx]
+            self.update_download_queue_list()
+            self.download_queue_tree.selection_set(str(idx-1))
+
+    def move_queue_down(self):
+        sel = self.download_queue_tree.selection()
+        if not sel: return
+        idx = int(sel[0])
+        if idx < len(self.download_queue) - 1:
+            self.download_queue[idx], self.download_queue[idx+1] = self.download_queue[idx+1], self.download_queue[idx]
+            self.update_download_queue_list()
+            self.download_queue_tree.selection_set(str(idx+1))
 
     def _create_tooltip(self, widget, text):
         def on_enter(event):
@@ -525,6 +657,17 @@ class YTDownloaderGUI:
         if path:
             self.path_entry.delete(0, tk.END)
             self.path_entry.insert(0, path)
+            self.update_disk_usage()
+
+    def update_disk_usage(self):
+        path = self.path_entry.get()
+        if not os.path.exists(path): return
+        try:
+            import shutil
+            total, used, free = shutil.disk_usage(path)
+            self.status_label.config(text=f"Free Space: {format_file_size(free)}")
+        except Exception:
+            pass
 
     def add_to_queue(self):
         url = self.url_entry.get().strip()
@@ -555,6 +698,11 @@ class YTDownloaderGUI:
         self.config.update({'proxy': proxy, 'rate_limit': rate_limit})
         ConfigManager.save_config(self.config)
 
+        # Parse time range
+        start = self.time_start_entry.get().strip()
+        end = self.time_end_entry.get().strip()
+        download_sections = f"*{start}-{end}" if start and end else None
+
         download_item = {
             "url": url,
             "video_format": video_format,
@@ -568,6 +716,9 @@ class YTDownloaderGUI:
             "rate_limit": rate_limit or None,
             "cookies_browser": self.cookies_browser_var.get() or None,
             "cookies_profile": self.cookies_profile_entry.get().strip() or None,
+            "download_sections": download_sections,
+            "add_metadata": self.add_metadata_var.get(),
+            "embed_thumbnail": self.embed_thumbnail_var.get(),
             "status": "Queued", "size": "N/A", "speed": "N/A", "eta": "N/A"
         }
         self.download_queue.append(download_item)
@@ -612,6 +763,7 @@ class YTDownloaderGUI:
 
             # Extract Format IDs
             video_fmt_str = item.get('video_format', 'best')
+            video_format = 'best' # Default
             if video_fmt_str == 'best':
                 video_format = 'best'
             else:
@@ -630,11 +782,23 @@ class YTDownloaderGUI:
                 item['playlist'], video_format, item['output_path'],
                 item['subtitle_lang'], item['subtitle_format'], item['split_chapters'],
                 item['proxy'], item['rate_limit'], self.cancel_token,
-                item.get('cookies_browser'), item.get('cookies_profile')
+                item.get('cookies_browser'), item.get('cookies_profile'),
+                item.get('download_sections'), item.get('add_metadata'), item.get('embed_thumbnail')
             )
             item['status'] = 'Completed'
             self.ui_queue.put((self._safe_clear_ui, {}))
             self.ui_queue.put((self.show_toast, {'message': "Download Complete!"}))
+
+            # Save to History
+            HistoryManager.add_entry(
+                item['url'],
+                item.get('title', 'Unknown'), # Title might be missing if fetch wasn't done properly or race condition, but usually safe
+                item['output_path'],
+                video_format,
+                "Completed",
+                item.get('size', 'N/A')
+            )
+            self.ui_queue.put((self.load_history, {}))
 
         except yt_dlp.utils.DownloadError as e:
             if "cancelled by user" in str(e):
@@ -642,9 +806,16 @@ class YTDownloaderGUI:
             else:
                 item['status'] = 'Error'
                 self.handle_error_threadsafe("Download Error", e)
+
+            HistoryManager.add_entry(item['url'], "Failed Download", item['output_path'], video_format, "Error", "0")
+            self.ui_queue.put((self.load_history, {}))
+
         except Exception as e:
             item['status'] = 'Error'
             self.handle_error_threadsafe("Unexpected Error", e)
+
+            HistoryManager.add_entry(item['url'], "Failed Download", item['output_path'], video_format, "Error", "0")
+            self.ui_queue.put((self.load_history, {}))
         finally:
             self.cancel_token = None
             self.current_download_item = None
@@ -672,6 +843,10 @@ class YTDownloaderGUI:
             item['size'] = format_file_size(total)
             item['speed'] = format_file_size(d.get('speed', 0)) + "/s"
             item['eta'] = f"{int(d.get('eta', 0))}s"
+
+            # Update title if available from d
+            if 'filename' in d:
+                item['title'] = Path(d['filename']).stem
 
             self.ui_queue.put((self.status_label.config, {'text': f"Downloading... {int(pct)}%"}))
             self.ui_queue.put((self.update_download_queue_list, {}))

@@ -53,3 +53,8 @@ def validate_rate_limit(rate_limit: str) -> bool:
     import re
     valid = bool(re.match(r'^\d+(\.\d+)?[KMGT]?$', rate_limit.strip()))
     return valid
+
+def is_ffmpeg_available() -> bool:
+    """Check if ffmpeg is available in the system path."""
+    import shutil
+    return shutil.which('ffmpeg') is not None

@@ -1,56 +1,29 @@
 # What's Next for YTDownloader
 
-This document outlines the roadmap for future development, identifying key areas for improvement and expansion.
+YTDownloader has reached a mature state with the release of v2.0. The next phase of development focuses on architectural modernization, cross-platform robustness, and enhanced user extensibility.
 
-## 🚀 Feature Expansion
+## 🚀 Roadmap v3.0
 
-### Backend
-*   **FFmpeg Integration:**
-    *   Ensure FFmpeg is bundled or properly detected for advanced post-processing (merging video/audio, converting formats).
-    *   Add a UI indicator for FFmpeg availability.
-*   **Advanced Download Options:**
-    *   Support for specific time range downloads (clipping).
-    *   Audio metadata editing (ID3 tags for MP3s).
-    *   Thumbnail embedding in audio files.
-*   **Authentication Manager:**
-    *   More robust handling of cookies.txt.
-    *   Integrated "Login" flow (via webview or browser extension bridge) to capture cookies automatically.
+### 1. Modern Architecture
+*   **Asyncio Migration:** Refactor the threading-based concurrency model to use Python's `asyncio`. This will improve responsiveness and simplify state management.
+*   **Plugin System:** Develop a plugin architecture to allow third-party developers to add support for new sites or post-processing steps without modifying the core code.
+*   **Web Interface:** Create a web-based frontend (using Flask/FastAPI + React/Vue) to allow YTDownloader to run on a headless server (NAS, Raspberry Pi) and be controlled remotely.
 
-### Frontend (Desktop)
-*   **Download Manager History:**
-    *   Persistent database (SQLite) of past downloads.
-    *   Ability to retry failed downloads from history.
-*   **Queue Management:**
-    *   Drag-and-drop reordering of queue items.
-    *   Priority settings (High, Normal, Low).
-*   **Visualizations:**
-    *   Real-time graphing of download speeds.
-    *   Disk space usage indicator.
+### 2. Cross-Platform Enhancements
+*   **MacOS Native Build:** Create a signed `.app` bundle for macOS to avoid security warnings.
+*   **Linux Flatpak/Snap:** Package the application for universal Linux distribution.
+*   **Mobile React Native:** Rebuild the mobile app using React Native to share more logic with the potential web interface and improve UI consistency.
 
-### Mobile (Android/iOS)
-*   **Native Integration:**
-    *   "Share to" functionality (share YouTube link from YouTube app to YTDownloader).
-    *   Background service for downloads.
-*   **UI Polish:**
-    *   Complete the KivyMD interface to match the desktop feature set.
+### 3. Advanced Features
+*   **Smart Downloads:** Automatically download new videos from subscribed channels (RSS feed integration).
+*   **Cloud Sync:** Sync download history and settings across devices using a simple cloud backend (or Google Drive/Dropbox integration).
+*   **Embedded Player:** Integrate a lightweight video player (MPV or VLC bindings) to preview downloaded files directly within the app.
 
-## 🛠 Technical Debt & Infrastructure
+### 4. Testing & Quality Assurance
+*   **E2E Testing:** Implement end-to-end tests using Playwright or similar tools to simulate real user interaction with the GUI.
+*   **Performance Profiling:** Optimize memory usage during large playlist downloads.
 
-### Testing
-*   **Integration Tests:**
-    *   Create a suite of tests that actually download small test files (using a local mock server or stable external test vectors) to verify the full pipeline.
-*   **Cross-Platform Testing:**
-    *   Automated CI pipelines for Windows, Linux, and macOS builds.
-
-### Security
-*   **Input Sanitization:**
-    *   Review all user inputs (filenames, URLs) to prevent command injection or path traversal, although `yt-dlp` handles much of this, extra layers are safer.
-*   **Dependency Scanning:**
-    *   Automated vulnerability scanning for `requirements.txt`.
-
-## 📦 Distribution
-
-*   **Auto-Update Mechanism:**
-    *   Implement a check-for-updates feature that downloads the latest EXE/APK from GitHub Releases.
-*   **Signed Binaries:**
-    *   Obtain code signing certificates to prevent "Unknown Publisher" warnings on Windows and macOS.
+## 💡 Ideas for Contributors
+*   **Localization:** Add support for multiple languages (i18n).
+*   **Theme Editor:** Allow users to create and save custom color themes.
+*   **CLI Version:** Expose a rich CLI interface that shares the same configuration and history database as the GUI.
