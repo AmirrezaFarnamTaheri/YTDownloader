@@ -150,7 +150,10 @@ def download_video(
     rate_limit: Optional[str] = None,
     cancel_token: Optional[Any] = None,
     cookies_from_browser: Optional[str] = None,
-    cookies_from_browser_profile: Optional[str] = None
+    cookies_from_browser_profile: Optional[str] = None,
+    download_sections: Optional[str] = None,
+    add_metadata: bool = False,
+    embed_thumbnail: bool = False
 ) -> None:
     """
     Downloads a video or playlist from the given URL using yt-dlp.
@@ -215,6 +218,23 @@ def download_video(
             '%(title)s',
             '%(section_number)02d - %(section_title)s.%(ext)s'
         )
+
+    # Download sections (time range)
+    if download_sections:
+        # format expected by yt-dlp: "*start-end"
+        ydl_opts['download_ranges'] = yt_dlp.utils.download_range_func(None, [(None, None)], sections=[download_sections])
+        # Force external downloader for accurate cutting if needed (often ffmpeg)
+        ydl_opts['force_keyframes_at_cuts'] = True
+
+    # Post-processing options
+    if add_metadata:
+        ydl_opts['addmetadata'] = True
+
+    if embed_thumbnail:
+        ydl_opts['writethumbnail'] = True
+        postprocessors = ydl_opts.get('postprocessors', [])
+        postprocessors.append({'key': 'EmbedThumbnail'})
+        ydl_opts['postprocessors'] = postprocessors
 
     # Configure proxy if provided (with validation)
     if proxy:

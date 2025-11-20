@@ -296,8 +296,11 @@ class HeadlessTk:
     def title(self, title: str) -> None:
         self._options["title"] = title
 
-    def geometry(self, geometry: str) -> None:
-        self._options["geometry"] = geometry
+    def geometry(self, geometry: str = "") -> Optional[str]:
+        if geometry:
+            self._options["geometry"] = geometry
+            return None
+        return self._options.get("geometry", "")
 
     def minsize(self, width: int, height: int) -> None:
         self._options["minsize"] = (width, height)
