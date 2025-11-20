@@ -1,78 +1,57 @@
 # YTDownloader
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
+![Python](https://img.shields.io/badge/python-3.8%2B-blue)
+![Status](https://img.shields.io/badge/status-stable-green)
 
-**YTDownloader** is a modern, powerful, and feature-rich desktop application for downloading videos and audio from YouTube and other supported sites. It leverages `yt-dlp` for robust extraction and features a sleek, dark-themed UI built with `sv_ttk`.
+**YTDownloader** is a modern, cross-platform desktop application for downloading videos and audio from YouTube and other supported sites. Built with Python, Tkinter (with `sv_ttk` theme), and `yt-dlp`.
 
-## ✨ Key Features
+## 🌟 Features
 
-*   **Modern UI:** Clean, responsive interface with dark mode support.
-*   **Smart Downloads:**
-    *   **RSS Feed Integration:** Automatically check channels for new videos.
-    *   Download Videos (up to 8K/HDR) or Audio only.
-    *   Playlist & Channel support.
-    *   Chapter splitting.
-    *   Subtitle extraction (multi-language).
-*   **Localization:**
-    *   Support for multiple languages including English, Spanish, and Farsi.
-*   **Advanced Control:**
-    *   **Proxy Support:** For restricted networks.
-    *   **Rate Limiting:** Control download speed.
-    *   **Cookie Import:** Bypass age restrictions using browser cookies.
-*   **Productivity:**
-    *   **Queue System:** Distinct download manager.
-    *   **Clipboard Monitoring:** Auto-detects copied links.
-    *   **History & Player:** View history and play downloaded files directly.
-    *   **Toast Notifications:** Non-intrusive status updates.
-*   **Cross-Platform:** Windows, Linux, macOS (and Android beta!).
+*   **Modern UI**: Dark-themed, responsive interface.
+*   **High Quality**: Download up to 4K/8K video and high-bitrate audio.
+*   **Batch Downloading**: Import URLs from a text file.
+*   **Scheduler**: Schedule downloads for a later time.
+*   **Post-Processing**: Automatically recode videos to MP4, MKV, AVI, etc.
+*   **Smart History**: Track and manage your downloaded files.
+*   **RSS Feed Support**: Auto-check channels for new videos.
+*   **Advanced Options**: Proxy support, rate limiting, browser cookies import, and metadata embedding.
 
 ## 🚀 Installation
 
-### Windows (Exe)
-Download the latest `YTDownloader.exe` from the [Releases](#) page.
+### One-Click Installers
+*   **Windows**: Run `install-and-run.bat` (or `install-and-run.ps1`).
+*   **Linux/macOS**: Run `install-and-run.sh`.
 
-### From Source
-
-1.  **Clone the repo:**
+### Manual Setup
+1.  **Clone the repo**:
     ```bash
     git clone https://github.com/yourusername/YTDownloader.git
     cd YTDownloader
     ```
-
-2.  **Install Dependencies:**
+2.  **Install dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
-    *Note: On Linux, you may need to install Tkinter (`sudo apt install python3-tk`).*
-
-3.  **Run:**
+3.  **Run**:
     ```bash
     python main.py
     ```
 
-## 📱 Mobile Version (Beta)
+**Note**: You must have [FFmpeg](https://ffmpeg.org/) installed and available in your system PATH for audio conversion and video merging features.
 
-A mobile version built with Kivy/KivyMD is available in the `mobile/` directory.
-To build for Android, see [mobile/README.md](mobile/README.md).
+## 📖 Documentation
+
+See the [WIKI](WIKI.md) for a comprehensive user guide.
+Check [SUGGESTIONS.md](SUGGESTIONS.md) for future roadmap ideas.
 
 ## 🛠 Development
 
-### Running Tests
+Run tests:
 ```bash
-python -m unittest discover tests
-```
-
-### Building Executable
-```bash
-pyinstaller ytdownloader.spec
+pytest --cov=. tests/
 ```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) (if available) or submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License.
+Contributions are welcome! Please check `CONTRIBUTING.md` for guidelines.

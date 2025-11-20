@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch, MagicMock, call
 import tkinter as tk
 from main import YTDownloaderGUI
+import datetime
 
 class TestYTDownloaderGUI(unittest.TestCase):
     """Test cases for YTDownloaderGUI class."""
@@ -37,7 +38,8 @@ class TestYTDownloaderGUI(unittest.TestCase):
         tabs = [self.app.notebook.tab(i, option='text') for i in range(self.app.notebook.index('end'))]
         # Note: Tabs changed in modern UI and localized
         # 'Video', 'Audio', 'Advanced', 'RSS', 'Settings' are default English keys
-        required_tabs = ['Video', 'Audio', 'Advanced', 'RSS', 'Settings']
+        # Added Post-Processing tab
+        required_tabs = ['Video', 'Audio', 'Advanced', 'Post-Processing', 'RSS', 'Settings']
         for tab in required_tabs:
             self.assertIn(tab, tabs)
 
@@ -165,10 +167,53 @@ class TestYTDownloaderGUI(unittest.TestCase):
              self.app.check_rss_feeds()
              # Wait for thread - hard to test async thread in unit test without joining
              # But we can check if thread started.
-             # For better testing, we might mock threading.Thread
              pass
-             # Real testing of threading logic requires refactoring for testability or using integration test patterns.
-             # For now we assume if it runs without error it is okay.
+
+    @patch('main.simpledialog.askstring')
+    @patch('main.YTDownloaderGUI.add_to_queue')
+    def test_schedule_download_dialog_success(self, mock_add, mock_ask):
+        self.app.url_entry.insert(0, "http://test.com")
+        mock_ask.return_value = "12:00"
+
+        # We need to mock datetime to ensure stable testing
+        with patch('main.datetime') as mock_datetime:
+            mock_datetime.datetime.now.return_value = datetime.datetime(2023, 1, 1, 10, 0, 0)
+            mock_datetime.datetime.strptime.side_effect = lambda t, f: datetime.datetime.strptime(t, f)
+            mock_datetime.datetime.combine.side_effect = lambda d, t: datetime.datetime.combine(d, t)
+
+            self.app.schedule_download_dialog()
+
+            mock_add.assert_called_once()
+            # Check that scheduled_time was passed
+            kwargs = mock_add.call_args[1]
+            self.assertIn('scheduled_time', kwargs)
+
+    def test_check_scheduled_downloads(self):
+        # Add a scheduled item
+        scheduled_time = datetime.datetime.now() - datetime.timedelta(minutes=1) # Past time
+        self.app.download_queue.append({
+            'url': 'http://test.com',
+            'status': 'Scheduled (12:00)',
+            'scheduled_time': scheduled_time,
+            'video_format': 'best'
+        })
+
+        with patch.object(self.app, 'process_download_queue') as mock_process:
+            self.app.check_scheduled_downloads()
+
+            self.assertEqual(self.app.download_queue[0]['status'], 'Queued')
+            mock_process.assert_called()
+
+    @patch('main.filedialog.askopenfilename')
+    @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="http://test1.com\nhttp://test2.com")
+    def test_import_urls_from_file_batch(self, mock_file, mock_dialog):
+        mock_dialog.return_value = "urls.txt"
+
+        self.app.import_urls_from_file()
+
+        self.assertEqual(len(self.app.download_queue), 2)
+        self.assertEqual(self.app.download_queue[0]['url'], "http://test1.com")
+        self.assertEqual(self.app.download_queue[1]['url'], "http://test2.com")
 
 if __name__ == '__main__':
     unittest.main()

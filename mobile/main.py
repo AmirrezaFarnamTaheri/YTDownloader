@@ -5,6 +5,7 @@ from kivymd.uix.button import MDFillRoundFlatButton
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.label import MDLabel
 from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.pickers import MDTimePicker
 from kivy.core.window import Window
 
 KV = '''
@@ -33,10 +34,23 @@ MDScreen:
             icon_right: "link"
             mode: "rectangle"
 
-        MDFillRoundFlatButton:
-            text: "Download"
-            pos_hint: {'center_x': .5}
-            on_release: app.download_video()
+        MDBoxLayout:
+            orientation: 'horizontal'
+            spacing: dp(10)
+            size_hint_y: None
+            height: dp(48)
+
+            MDFillRoundFlatButton:
+                text: "Download Now"
+                pos_hint: {'center_y': .5}
+                size_hint_x: 0.5
+                on_release: app.download_video()
+
+            MDFillRoundFlatButton:
+                text: "Schedule"
+                pos_hint: {'center_y': .5}
+                size_hint_x: 0.5
+                on_release: app.show_time_picker()
 
         MDLabel:
             id: status_label
@@ -58,9 +72,15 @@ class YTDownloaderApp(MDApp):
             return
 
         self.root.ids.status_label.text = f"Processing: {url}..."
-        # Note: Actual download logic needs to be integrated here,
-        # typically running in a background thread to avoid freezing UI.
-        # On Android, permissions (storage/internet) are handled in buildozer.spec.
+        # Note: Actual download logic would be shared with backend/downloader.py
+
+    def show_time_picker(self):
+        time_dialog = MDTimePicker()
+        time_dialog.bind(time=self.get_time)
+        time_dialog.open()
+
+    def get_time(self, instance, time):
+        self.root.ids.status_label.text = f"Scheduled for {time}"
 
 if __name__ == '__main__':
     YTDownloaderApp().run()

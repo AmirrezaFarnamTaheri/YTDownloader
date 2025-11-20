@@ -12,7 +12,7 @@ class TestGetVideoInfo(unittest.TestCase):
     """Test cases for get_video_info function."""
 
     @patch('downloader.yt_dlp.YoutubeDL')
-    def test_get_video_info_success(self, mock_youtube_dl):
+    def test_get_video_info_success(self, mock_youtube_dl, mock_mkdir=None):
         """Test successful video info retrieval."""
         mock_instance = MagicMock()
         mock_youtube_dl.return_value.__enter__.return_value = mock_instance
@@ -402,6 +402,20 @@ class TestDownloadVideo(unittest.TestCase):
         # mkdir should be called to create the output directory
         mock_mkdir.assert_called()
 
+    @patch('downloader.Path.mkdir')
+    @patch('downloader.yt_dlp.YoutubeDL')
+    def test_download_video_recode(self, mock_youtube_dl, mock_mkdir):
+        mock_instance = MagicMock()
+        mock_youtube_dl.return_value.__enter__.return_value = mock_instance
+
+        download_video(
+            url='test', progress_hook=lambda d,i: None, download_item={},
+            recode_video='mp4'
+        )
+
+        ydl_opts = mock_youtube_dl.call_args[0][0]
+        pps = ydl_opts['postprocessors']
+        self.assertTrue(any(p['key'] == 'FFmpegVideoConvertor' and p['preferedformat'] == 'mp4' for p in pps))
 
 if __name__ == '__main__':
     unittest.main()
