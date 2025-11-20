@@ -45,6 +45,8 @@ from typing import Optional, Dict, List, Any
 from config_manager import ConfigManager
 from ui_utils import UIConstants, format_file_size, validate_url, validate_proxy, validate_rate_limit, is_ffmpeg_available
 from history_manager import HistoryManager
+from rss_manager import RSSManager
+from localization_manager import LocalizationManager
 
 # Configure logging
 logger = logging.getLogger()
@@ -123,6 +125,11 @@ class YTDownloaderGUI:
         logger.info("Initialising YTDownloaderGUI")
         self.master = master
         self.config = ConfigManager.load_config()
+
+        # Load Language
+        lang = self.config.get('language', 'en')
+        LocalizationManager.load_language(lang)
+
         self._setup_main_window()
 
         # --- Application State ---
@@ -155,7 +162,7 @@ class YTDownloaderGUI:
 
     def _setup_main_window(self) -> None:
         """Configure the main window."""
-        self.master.title("YTDownloader - Advanced YouTube Video Downloader")
+        self.master.title(LocalizationManager.get("app_title"))
         self.master.geometry(f"{UIConstants.WINDOW_MIN_WIDTH}x{UIConstants.WINDOW_MIN_HEIGHT}")
         self.master.minsize(UIConstants.WINDOW_MIN_WIDTH, UIConstants.WINDOW_MIN_HEIGHT)
         self.master.update_idletasks()
@@ -191,7 +198,7 @@ class YTDownloaderGUI:
         
         theme_btn = ttk.Button(header_box, text="🌗", command=self.toggle_theme, width=3)
         theme_btn.pack(side="right")
-        self._create_tooltip(theme_btn, "Toggle Theme")
+        self._create_tooltip(theme_btn, LocalizationManager.get("toggle_theme"))
 
         # URL Input Area
         url_box = ttk.Frame(hero_frame)
@@ -200,11 +207,11 @@ class YTDownloaderGUI:
         self.url_entry = ttk.Entry(url_box, font=("Segoe UI", 11))
         self.url_entry.pack(side="left", fill="x", expand=True, padx=(0, 10), ipady=5)
         self.url_entry.bind('<Return>', lambda e: self.fetch_info())
-        self._create_tooltip(self.url_entry, "Paste YouTube URL here")
+        self._create_tooltip(self.url_entry, LocalizationManager.get("paste_url_tooltip"))
 
-        self.fetch_button = ttk.Button(url_box, text="Fetch Info", command=self.fetch_info, style="Accent.TButton", width=15)
+        self.fetch_button = ttk.Button(url_box, text=LocalizationManager.get("fetch_info"), command=self.fetch_info, style="Accent.TButton", width=15)
         self.fetch_button.pack(side="right")
-        self._create_tooltip(self.fetch_button, "Get video details")
+        self._create_tooltip(self.fetch_button, LocalizationManager.get("fetch_info_tooltip"))
 
         # === CONTENT AREA (Split View) ===
         content_pane = ttk.PanedWindow(self.main_container, orient="horizontal")
@@ -215,7 +222,7 @@ class YTDownloaderGUI:
         content_pane.add(left_panel, weight=1)
 
         # Preview Card (Initially Hidden)
-        self.preview_card = ttk.LabelFrame(left_panel, text="Preview", padding=15)
+        self.preview_card = ttk.LabelFrame(left_panel, text=LocalizationManager.get("preview"), padding=15)
         self.preview_card.pack(fill="x", pady=(0, 15))
         
         preview_layout = ttk.Frame(self.preview_card)
@@ -227,13 +234,13 @@ class YTDownloaderGUI:
         details_box = ttk.Frame(preview_layout)
         details_box.pack(side="left", fill="both", expand=True)
         
-        self.title_label = ttk.Label(details_box, text="No video loaded", font=("Segoe UI", 12, "bold"), wraplength=300)
+        self.title_label = ttk.Label(details_box, text=LocalizationManager.get("no_video_loaded"), font=("Segoe UI", 12, "bold"), wraplength=300)
         self.title_label.pack(anchor="w", pady=(0, 5))
         
-        self.duration_label = ttk.Label(details_box, text="Duration: --:--", foreground="gray")
+        self.duration_label = ttk.Label(details_box, text=f"{LocalizationManager.get('duration')}: --:--", foreground="gray")
         self.duration_label.pack(anchor="w")
 
-        self.loading_animation_label = ttk.Label(details_box, text="Fetching...", font=("Segoe UI", 10, "italic"))
+        self.loading_animation_label = ttk.Label(details_box, text=LocalizationManager.get("fetching"), font=("Segoe UI", 10, "italic"))
 
         # Options Notebook
         self.notebook = ttk.Notebook(left_panel)
@@ -250,7 +257,7 @@ class YTDownloaderGUI:
 
         # --- Queue Tab ---
         self.queue_tab = ttk.Frame(self.right_notebook)
-        self.right_notebook.add(self.queue_tab, text="Queue")
+        self.right_notebook.add(self.queue_tab, text=LocalizationManager.get("queue"))
 
         queue_header = ttk.Frame(self.queue_tab)
         queue_header.pack(fill="x", pady=(5, 5))
@@ -261,7 +268,7 @@ class YTDownloaderGUI:
 
         ttk.Button(q_ctrl_box, text="▲", width=3, command=self.move_queue_up).pack(side="left", padx=2)
         ttk.Button(q_ctrl_box, text="▼", width=3, command=self.move_queue_down).pack(side="left", padx=2)
-        ttk.Button(q_ctrl_box, text="Clear All", command=self.clear_ui, style="TButton").pack(side="left", padx=(5, 0))
+        ttk.Button(q_ctrl_box, text=LocalizationManager.get("clear_all"), command=self.clear_ui, style="TButton").pack(side="left", padx=(5, 0))
 
         # Treeview
         tree_frame = ttk.Frame(self.queue_tab)
@@ -269,9 +276,9 @@ class YTDownloaderGUI:
         
         columns = ("URL", "Status", "Progress")
         self.download_queue_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="browse")
-        self.download_queue_tree.heading("URL", text="Video")
-        self.download_queue_tree.heading("Status", text="Status")
-        self.download_queue_tree.heading("Progress", text="Progress")
+        self.download_queue_tree.heading("URL", text=LocalizationManager.get("video"))
+        self.download_queue_tree.heading("Status", text=LocalizationManager.get("status"))
+        self.download_queue_tree.heading("Progress", text=LocalizationManager.get("progress"))
         
         self.download_queue_tree.column("URL", width=150)
         self.download_queue_tree.column("Status", width=80)
@@ -292,22 +299,23 @@ class YTDownloaderGUI:
 
         # --- History Tab ---
         self.history_tab = ttk.Frame(self.right_notebook)
-        self.right_notebook.add(self.history_tab, text="History")
+        self.right_notebook.add(self.history_tab, text=LocalizationManager.get("history"))
 
         hist_header = ttk.Frame(self.history_tab)
         hist_header.pack(fill="x", pady=(5, 5))
-        ttk.Button(hist_header, text="Refresh", command=self.load_history).pack(side="left")
-        ttk.Button(hist_header, text="Retry Selected", command=self.retry_history_item).pack(side="left", padx=5)
-        ttk.Button(hist_header, text="Clear History", command=self.clear_history).pack(side="right")
+        ttk.Button(hist_header, text=LocalizationManager.get("refresh"), command=self.load_history).pack(side="left")
+        ttk.Button(hist_header, text=LocalizationManager.get("retry_selected"), command=self.retry_history_item).pack(side="left", padx=5)
+        ttk.Button(hist_header, text="Play", command=self.play_history_item).pack(side="left", padx=5)
+        ttk.Button(hist_header, text=LocalizationManager.get("clear_history"), command=self.clear_history).pack(side="right")
 
         hist_tree_frame = ttk.Frame(self.history_tab)
         hist_tree_frame.pack(fill="both", expand=True)
 
         h_cols = ("Title", "Status", "Date")
         self.history_tree = ttk.Treeview(hist_tree_frame, columns=h_cols, show="headings", selectmode="browse")
-        self.history_tree.heading("Title", text="Title")
-        self.history_tree.heading("Status", text="Status")
-        self.history_tree.heading("Date", text="Date")
+        self.history_tree.heading("Title", text=LocalizationManager.get("title"))
+        self.history_tree.heading("Status", text=LocalizationManager.get("status"))
+        self.history_tree.heading("Date", text=LocalizationManager.get("date"))
 
         self.history_tree.column("Title", width=180)
         self.history_tree.column("Status", width=60)
@@ -318,6 +326,7 @@ class YTDownloaderGUI:
         self.history_tree.pack(side="left", fill="both", expand=True)
         h_scroll.pack(side="right", fill="y")
 
+        self.history_tree.bind("<Double-1>", lambda e: self.play_history_item())
         self.load_history() # Initial load
 
         # === BOTTOM BAR ===
@@ -328,7 +337,7 @@ class YTDownloaderGUI:
         path_box = ttk.Frame(bottom_bar)
         path_box.pack(fill="x", pady=(0, 10))
         
-        ttk.Label(path_box, text="Save to:").pack(side="left", padx=(0, 5))
+        ttk.Label(path_box, text=LocalizationManager.get("save_to")).pack(side="left", padx=(0, 5))
         self.path_entry = ttk.Entry(path_box)
         self.path_entry.insert(0, str(Path.home() / "Downloads"))
         self.path_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
@@ -339,52 +348,53 @@ class YTDownloaderGUI:
         action_box = ttk.Frame(bottom_bar)
         action_box.pack(fill="x")
         
-        self.download_button = ttk.Button(action_box, text="Add to Queue", command=self.add_to_queue, style="Accent.TButton", width=20)
+        self.download_button = ttk.Button(action_box, text=LocalizationManager.get("add_to_queue"), command=self.add_to_queue, style="Accent.TButton", width=20)
         self.download_button.pack(side="right", padx=(5, 0))
         
-        self.pause_button = ttk.Button(action_box, text="Pause", command=self.toggle_pause_resume, state="disabled")
+        self.pause_button = ttk.Button(action_box, text=LocalizationManager.get("pause"), command=self.toggle_pause_resume, state="disabled")
         self.pause_button.pack(side="right", padx=(5, 0))
         
-        self.cancel_button = ttk.Button(action_box, text="Cancel", command=self.cancel_download, state="disabled")
+        self.cancel_button = ttk.Button(action_box, text=LocalizationManager.get("cancel"), command=self.cancel_download, state="disabled")
         self.cancel_button.pack(side="right")
 
         # Status Bar
         self.status_frame = ttk.Frame(self.master, relief="sunken", padding=(5, 2))
         self.status_frame.pack(side="bottom", fill="x")
         
-        self.status_label = ttk.Label(self.status_frame, text="Ready", font=("Segoe UI", 9))
+        self.status_label = ttk.Label(self.status_frame, text=LocalizationManager.get("ready"), font=("Segoe UI", 9))
         self.status_label.pack(side="left")
         
         self.progress_bar = ttk.Progressbar(self.status_frame, orient="horizontal", length=200, mode="determinate")
         self.progress_bar.pack(side="right", padx=(0, 5))
 
     def _create_tabs(self):
-        self.video_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.video_tab, text="Video")
-        self.audio_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.audio_tab, text="Audio")
-        self.adv_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.adv_tab, text="Advanced")
-        self.settings_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.settings_tab, text="Settings")
+        self.video_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.video_tab, text=LocalizationManager.get("tab_video"))
+        self.audio_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.audio_tab, text=LocalizationManager.get("tab_audio"))
+        self.adv_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.adv_tab, text=LocalizationManager.get("tab_advanced"))
+        self.rss_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.rss_tab, text=LocalizationManager.get("tab_rss"))
+        self.settings_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.settings_tab, text=LocalizationManager.get("tab_settings"))
 
         # Video Tab
-        ttk.Label(self.video_tab, text="Quality:").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Label(self.video_tab, text=LocalizationManager.get("quality")).grid(row=0, column=0, sticky="w", pady=5)
         self.video_format_var = tk.StringVar()
         self.video_format_menu = ttk.Combobox(self.video_tab, textvariable=self.video_format_var, state="readonly", width=40)
         self.video_format_menu.grid(row=0, column=1, sticky="ew", padx=10)
 
         # Audio Tab
-        ttk.Label(self.audio_tab, text="Format:").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Label(self.audio_tab, text=LocalizationManager.get("format")).grid(row=0, column=0, sticky="w", pady=5)
         self.audio_format_var = tk.StringVar()
         self.audio_format_menu = ttk.Combobox(self.audio_tab, textvariable=self.audio_format_var, state="readonly", width=40)
         self.audio_format_menu.grid(row=0, column=1, sticky="ew", padx=10)
 
         self.add_metadata_var = tk.BooleanVar()
-        ttk.Checkbutton(self.audio_tab, text="Add Metadata", variable=self.add_metadata_var).grid(row=1, column=0, columnspan=2, sticky="w", pady=5)
+        ttk.Checkbutton(self.audio_tab, text=LocalizationManager.get("add_metadata"), variable=self.add_metadata_var).grid(row=1, column=0, columnspan=2, sticky="w", pady=5)
 
         self.embed_thumbnail_var = tk.BooleanVar()
-        ttk.Checkbutton(self.audio_tab, text="Embed Thumbnail", variable=self.embed_thumbnail_var).grid(row=2, column=0, columnspan=2, sticky="w")
+        ttk.Checkbutton(self.audio_tab, text=LocalizationManager.get("embed_thumbnail"), variable=self.embed_thumbnail_var).grid(row=2, column=0, columnspan=2, sticky="w")
 
         # Advanced Tab
         self.subtitle_lang_var = tk.StringVar()
-        ttk.Label(self.adv_tab, text="Subtitles:").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Label(self.adv_tab, text=LocalizationManager.get("subtitles")).grid(row=0, column=0, sticky="w", pady=5)
         self.subtitle_lang_menu = ttk.Combobox(self.adv_tab, textvariable=self.subtitle_lang_var, state="readonly", width=30)
         self.subtitle_lang_menu.grid(row=0, column=1, sticky="ew", padx=10)
 
@@ -392,59 +402,91 @@ class YTDownloaderGUI:
         ttk.Combobox(self.adv_tab, textvariable=self.subtitle_format_var, values=["srt", "vtt", "ass"], state="readonly", width=8).grid(row=0, column=2)
 
         self.playlist_var = tk.BooleanVar()
-        ttk.Checkbutton(self.adv_tab, text="Download Playlist", variable=self.playlist_var).grid(row=1, column=0, columnspan=2, sticky="w", pady=5)
+        ttk.Checkbutton(self.adv_tab, text=LocalizationManager.get("download_playlist"), variable=self.playlist_var).grid(row=1, column=0, columnspan=2, sticky="w", pady=5)
         
         self.chapters_var = tk.BooleanVar()
-        ttk.Checkbutton(self.adv_tab, text="Split Chapters", variable=self.chapters_var).grid(row=2, column=0, columnspan=2, sticky="w", pady=5)
+        ttk.Checkbutton(self.adv_tab, text=LocalizationManager.get("split_chapters"), variable=self.chapters_var).grid(row=2, column=0, columnspan=2, sticky="w", pady=5)
 
         # Time Range (Download Sections)
-        range_frame = ttk.LabelFrame(self.adv_tab, text="Time Range (Optional)", padding=5)
+        range_frame = ttk.LabelFrame(self.adv_tab, text=LocalizationManager.get("time_range"), padding=5)
         range_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=10)
 
-        ttk.Label(range_frame, text="Start:").pack(side="left")
+        ttk.Label(range_frame, text=LocalizationManager.get("start")).pack(side="left")
         self.time_start_entry = ttk.Entry(range_frame, width=8)
         self.time_start_entry.pack(side="left", padx=(2, 10))
         self._create_tooltip(self.time_start_entry, "e.g. 00:01:30")
 
-        ttk.Label(range_frame, text="End:").pack(side="left")
+        ttk.Label(range_frame, text=LocalizationManager.get("end")).pack(side="left")
         self.time_end_entry = ttk.Entry(range_frame, width=8)
         self.time_end_entry.pack(side="left", padx=(2, 0))
         self._create_tooltip(self.time_end_entry, "e.g. 00:02:45")
+
+        # RSS Tab
+        ttk.Label(self.rss_tab, text=LocalizationManager.get("rss_channel_url")).pack(fill="x", pady=(0, 5))
+        rss_input_frame = ttk.Frame(self.rss_tab)
+        rss_input_frame.pack(fill="x", pady=(0, 10))
+        self.rss_entry = ttk.Entry(rss_input_frame)
+        self.rss_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        ttk.Button(rss_input_frame, text=LocalizationManager.get("add"), command=self.add_rss_feed).pack(side="right")
+
+        self.rss_list = tk.Listbox(self.rss_tab, height=6)
+        self.rss_list.pack(fill="both", expand=True, pady=(0, 10))
+
+        rss_btn_frame = ttk.Frame(self.rss_tab)
+        rss_btn_frame.pack(fill="x")
+        ttk.Button(rss_btn_frame, text=LocalizationManager.get("remove"), command=self.remove_rss_feed).pack(side="left")
+        ttk.Button(rss_btn_frame, text=LocalizationManager.get("check_now"), command=self.check_rss_feeds).pack(side="right")
+
+        self._load_rss_feeds()
 
         # Settings Tab
         # FFmpeg Indicator
         ff_status = "✅ Detected" if self.ffmpeg_available else "❌ Not Found"
         ff_color = "green" if self.ffmpeg_available else "red"
-        ttk.Label(self.settings_tab, text="FFmpeg Status:").grid(row=0, column=0, sticky="w", pady=5)
+        ttk.Label(self.settings_tab, text=LocalizationManager.get("ffmpeg_status")).grid(row=0, column=0, sticky="w", pady=5)
         ff_lbl = ttk.Label(self.settings_tab, text=ff_status, foreground=ff_color)
         ff_lbl.grid(row=0, column=1, sticky="w", padx=10)
 
-        ttk.Button(self.settings_tab, text="Check for Updates", command=self.check_updates).grid(row=0, column=2, padx=10)
+        ttk.Button(self.settings_tab, text=LocalizationManager.get("check_updates"), command=self.check_updates).grid(row=0, column=2, padx=10)
 
-        ttk.Label(self.settings_tab, text="Proxy:").grid(row=1, column=0, sticky="w", pady=5)
+        ttk.Label(self.settings_tab, text=LocalizationManager.get("proxy")).grid(row=1, column=0, sticky="w", pady=5)
         self.proxy_entry = ttk.Entry(self.settings_tab, width=30)
         self.proxy_entry.grid(row=1, column=1, padx=10)
         if self.config.get('proxy'): self.proxy_entry.insert(0, self.config.get('proxy', ''))
 
-        ttk.Label(self.settings_tab, text="Rate Limit:").grid(row=2, column=0, sticky="w", pady=5)
+        ttk.Label(self.settings_tab, text=LocalizationManager.get("rate_limit")).grid(row=2, column=0, sticky="w", pady=5)
         self.ratelimit_entry = ttk.Entry(self.settings_tab, width=30)
         self.ratelimit_entry.grid(row=2, column=1, padx=10)
         if self.config.get('rate_limit'): self.ratelimit_entry.insert(0, self.config.get('rate_limit', ''))
 
-        # Cookies are advanced, maybe put them here or separate
-        ttk.Label(self.settings_tab, text="Browser Cookies:").grid(row=3, column=0, sticky="w", pady=5)
+        # Cookies
+        ttk.Label(self.settings_tab, text=LocalizationManager.get("browser_cookies")).grid(row=3, column=0, sticky="w", pady=5)
         self.cookies_browser_var = tk.StringVar()
         self.cookies_browser_menu = ttk.Combobox(self.settings_tab, textvariable=self.cookies_browser_var, values=["", "chrome", "firefox", "edge"], state="readonly", width=20)
         self.cookies_browser_menu.grid(row=3, column=1, padx=10)
 
-        ttk.Label(self.settings_tab, text="Profile:").grid(row=4, column=0, sticky="w", pady=5)
+        ttk.Label(self.settings_tab, text=LocalizationManager.get("profile")).grid(row=4, column=0, sticky="w", pady=5)
         self.cookies_profile_entry = ttk.Entry(self.settings_tab, width=30)
         self.cookies_profile_entry.grid(row=4, column=1, padx=10)
 
+        # Language Selection
+        ttk.Label(self.settings_tab, text=LocalizationManager.get("language")).grid(row=5, column=0, sticky="w", pady=5)
+        self.lang_var = tk.StringVar(value=LocalizationManager._current_lang)
+        self.lang_menu = ttk.Combobox(self.settings_tab, textvariable=self.lang_var, values=LocalizationManager.get_available_languages(), state="readonly", width=10)
+        self.lang_menu.grid(row=5, column=1, padx=10)
+        self.lang_menu.bind("<<ComboboxSelected>>", self.change_language)
+
     def check_updates(self):
         import webbrowser
-        if messagebox.askyesno("Updates", "Check GitHub for the latest release?"):
+        if messagebox.askyesno(LocalizationManager.get("updates_title"), LocalizationManager.get("updates_msg")):
             webbrowser.open("https://github.com/yourusername/YTDownloader/releases")
+
+    def change_language(self, event=None):
+        lang = self.lang_var.get()
+        if lang != LocalizationManager._current_lang:
+            self.config['language'] = lang
+            ConfigManager.save_config(self.config)
+            self.show_toast("Please restart to apply language changes")
 
     def load_history(self):
         """Load history from DB into the treeview."""
@@ -458,7 +500,7 @@ class YTDownloaderGUI:
     def retry_history_item(self):
         sel = self.history_tree.selection()
         if not sel:
-            self.show_toast("Select an item to retry")
+            self.show_toast(LocalizationManager.get("select_item"))
             return
 
         idx = int(sel[0])
@@ -475,8 +517,37 @@ class YTDownloaderGUI:
         self.show_toast("Loaded into main view")
         self.notebook.select(self.video_tab) # Switch to video tab
 
+    def play_history_item(self):
+        sel = self.history_tree.selection()
+        if not sel: return
+
+        idx = int(sel[0])
+        if idx < 0 or idx >= len(self._history_data): return
+
+        item = self._history_data[idx]
+        path = item.get('file_path')
+
+        if path and os.path.exists(path):
+            self._open_file(path)
+        else:
+             # Fallback to opening the folder
+             out_path = item.get('output_path')
+             if out_path and os.path.exists(out_path):
+                 self._open_file(out_path)
+             else:
+                 self.show_toast("File not found")
+
+    def _open_file(self, path):
+        try:
+            if sys.platform == 'win32': os.startfile(path)
+            elif sys.platform == 'darwin': subprocess.Popen(['open', path])
+            else: subprocess.Popen(['xdg-open', path])
+        except Exception as e:
+            logger.error(f"Failed to open file {path}: {e}")
+            self.show_toast("Error opening file")
+
     def clear_history(self):
-        if messagebox.askyesno("Confirm", "Clear entire download history?"):
+        if messagebox.askyesno(LocalizationManager.get("confirm_title"), LocalizationManager.get("clear_history_msg")):
             HistoryManager.clear_history()
             self.load_history()
 
@@ -512,6 +583,66 @@ class YTDownloaderGUI:
                 del widget.tooltip
         widget.bind('<Enter>', on_enter)
         widget.bind('<Leave>', on_leave)
+
+    def _load_rss_feeds(self):
+        self.rss_list.delete(0, tk.END)
+        feeds = self.config.get('rss_feeds', [])
+        for feed in feeds:
+            self.rss_list.insert(tk.END, feed)
+
+    def add_rss_feed(self):
+        url = self.rss_entry.get().strip()
+        if not url: return
+
+        feeds = self.config.get('rss_feeds', [])
+        if url not in feeds:
+            feeds.append(url)
+            self.config['rss_feeds'] = feeds
+            ConfigManager.save_config(self.config)
+            self._load_rss_feeds()
+            self.rss_entry.delete(0, tk.END)
+
+    def remove_rss_feed(self):
+        sel = self.rss_list.curselection()
+        if not sel: return
+
+        feed = self.rss_list.get(sel[0])
+        feeds = self.config.get('rss_feeds', [])
+        if feed in feeds:
+            feeds.remove(feed)
+            self.config['rss_feeds'] = feeds
+            ConfigManager.save_config(self.config)
+            self._load_rss_feeds()
+
+    def check_rss_feeds(self):
+        feeds = self.config.get('rss_feeds', [])
+        if not feeds:
+            self.show_toast("No RSS feeds configured")
+            return
+
+        self.status_label.config(text="Checking RSS feeds...")
+
+        def _check():
+            found_count = 0
+            for feed_url in feeds:
+                video = RSSManager.get_latest_video(feed_url)
+                if video:
+                    # Check if already downloaded (optional, for now just check if in queue or history)
+                    # For simplicity, we'll just show what we found and offer to add.
+                    # Or better, auto-add to queue if 'Smart Download' was fully implemented.
+                    # Here we will just fetch info for the latest one found to demo.
+                    self.ui_queue.put((lambda: self.url_entry.delete(0, tk.END), {}))
+                    self.ui_queue.put((lambda: self.url_entry.insert(0, video['link']), {}))
+                    self.ui_queue.put((self.fetch_info, {}))
+                    found_count += 1
+                    break # Just load the first one found for now
+
+            if found_count == 0:
+                 self.ui_queue.put((self.show_toast, {'message': LocalizationManager.get("no_new_videos")}))
+            else:
+                 self.ui_queue.put((self.show_toast, {'message': LocalizationManager.get("loaded_rss")}))
+
+        threading.Thread(target=_check, daemon=True).start()
 
     def check_clipboard(self):
         """Monitor clipboard for YouTube links."""
@@ -682,17 +813,17 @@ class YTDownloaderGUI:
 
         proxy = self.proxy_entry.get().strip()
         if proxy and not validate_proxy(proxy):
-            messagebox.showerror("Invalid Proxy", "Invalid proxy format.")
+            messagebox.showerror(LocalizationManager.get("invalid_proxy"), LocalizationManager.get("invalid_proxy"))
             return
 
         rate_limit = self.ratelimit_entry.get().strip()
         if rate_limit and not validate_rate_limit(rate_limit):
-            messagebox.showerror("Invalid Rate Limit", "Invalid rate limit format.")
+            messagebox.showerror(LocalizationManager.get("invalid_rate_limit"), LocalizationManager.get("invalid_rate_limit"))
             return
         
         output_path = self.path_entry.get().strip()
         if not Path(output_path).exists():
-            messagebox.showerror("Invalid Path", "Output directory does not exist.")
+            messagebox.showerror(LocalizationManager.get("invalid_path"), LocalizationManager.get("invalid_path"))
             return
 
         self.config.update({'proxy': proxy, 'rate_limit': rate_limit})
@@ -749,7 +880,7 @@ class YTDownloaderGUI:
         self.is_paused = False
         self.update_download_queue_list()
         self.download_button.config(state="disabled")
-        self.pause_button.config(state="normal", text="Pause")
+        self.pause_button.config(state="normal", text=LocalizationManager.get("pause"))
         self.cancel_button.config(state="normal")
 
         thread = threading.Thread(target=self.download, args=(item,))
@@ -787,16 +918,19 @@ class YTDownloaderGUI:
             )
             item['status'] = 'Completed'
             self.ui_queue.put((self._safe_clear_ui, {}))
-            self.ui_queue.put((self.show_toast, {'message': "Download Complete!"}))
+            self.ui_queue.put((self.show_toast, {'message': LocalizationManager.get("download_complete")}))
 
             # Save to History
+            final_path = item.get('final_filename', item['output_path'])
+
             HistoryManager.add_entry(
                 item['url'],
-                item.get('title', 'Unknown'), # Title might be missing if fetch wasn't done properly or race condition, but usually safe
+                item.get('title', 'Unknown'),
                 item['output_path'],
                 video_format,
                 "Completed",
-                item.get('size', 'N/A')
+                item.get('size', 'N/A'),
+                file_path=final_path
             )
             self.ui_queue.put((self.load_history, {}))
 
@@ -805,14 +939,14 @@ class YTDownloaderGUI:
                 item['status'] = 'Cancelled'
             else:
                 item['status'] = 'Error'
-                self.handle_error_threadsafe("Download Error", e)
+                self.handle_error_threadsafe(LocalizationManager.get("download_error"), e)
 
             HistoryManager.add_entry(item['url'], "Failed Download", item['output_path'], video_format, "Error", "0")
             self.ui_queue.put((self.load_history, {}))
 
         except Exception as e:
             item['status'] = 'Error'
-            self.handle_error_threadsafe("Unexpected Error", e)
+            self.handle_error_threadsafe(LocalizationManager.get("unexpected_error"), e)
 
             HistoryManager.add_entry(item['url'], "Failed Download", item['output_path'], video_format, "Error", "0")
             self.ui_queue.put((self.load_history, {}))
@@ -821,7 +955,7 @@ class YTDownloaderGUI:
             self.current_download_item = None
             self.is_paused = False
             self.ui_queue.put((self.download_button.config, {'state': "normal"}))
-            self.ui_queue.put((self.pause_button.config, {'state': "disabled", 'text': "Pause"}))
+            self.ui_queue.put((self.pause_button.config, {'state': "disabled", 'text': LocalizationManager.get("pause")}))
             self.ui_queue.put((self.cancel_button.config, {'state': "disabled"}))
             self.ui_queue.put((self.update_download_queue_list, {}))
             if item['status'] != 'Cancelled':
@@ -847,11 +981,14 @@ class YTDownloaderGUI:
             # Update title if available from d
             if 'filename' in d:
                 item['title'] = Path(d['filename']).stem
+                item['final_filename'] = d['filename']
 
             self.ui_queue.put((self.status_label.config, {'text': f"Downloading... {int(pct)}%"}))
             self.ui_queue.put((self.update_download_queue_list, {}))
 
         elif d['status'] == 'finished':
+            if 'filename' in d:
+                item['final_filename'] = d['filename']
             self.ui_queue.put((self.progress_bar.config, {'value': 100}))
             self.ui_queue.put((self.status_label.config, {'text': "Processing..."}))
 
@@ -890,11 +1027,11 @@ class YTDownloaderGUI:
             if not self.is_downloading(): self.process_download_queue()
 
         except Exception as e:
-            messagebox.showerror("Import Error", str(e))
+            messagebox.showerror(LocalizationManager.get("import_error"), str(e))
 
     def cancel_download(self):
         if self.cancel_token:
-            if messagebox.askyesno("Confirm", "Cancel current download?"):
+            if messagebox.askyesno(LocalizationManager.get("confirm_title"), LocalizationManager.get("cancel_download_msg")):
                 self.cancel_token.cancel()
 
     def toggle_pause_resume(self):
@@ -902,11 +1039,11 @@ class YTDownloaderGUI:
         self.is_paused = not self.is_paused
         if self.is_paused:
             self.cancel_token.pause()
-            self.pause_button.config(text="Resume")
+            self.pause_button.config(text=LocalizationManager.get("resume"))
             self.status_label.config(text="Paused")
         else:
             self.cancel_token.resume()
-            self.pause_button.config(text="Pause")
+            self.pause_button.config(text=LocalizationManager.get("pause"))
             self.status_label.config(text="Resuming...")
 
     def toggle_fullscreen(self):
@@ -919,7 +1056,7 @@ class YTDownloaderGUI:
         if self.is_fullscreen: self.toggle_fullscreen()
 
     def show_about(self):
-        messagebox.showinfo("About", "YTDownloader v2.0\n\nAdvanced YouTube Video Downloader")
+        messagebox.showinfo("About", "YTDownloader v3.0\n\nAdvanced YouTube Video Downloader")
 
     def show_context_menu(self, event):
         if self.download_queue_tree.identify_row(event.y):

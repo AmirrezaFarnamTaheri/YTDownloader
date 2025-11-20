@@ -10,17 +10,21 @@
 
 *   **Modern UI:** Clean, responsive interface with dark mode support.
 *   **Smart Downloads:**
+    *   **RSS Feed Integration:** Automatically check channels for new videos.
     *   Download Videos (up to 8K/HDR) or Audio only.
     *   Playlist & Channel support.
     *   Chapter splitting.
     *   Subtitle extraction (multi-language).
+*   **Localization:**
+    *   Support for multiple languages including English, Spanish, and Farsi.
 *   **Advanced Control:**
     *   **Proxy Support:** For restricted networks.
     *   **Rate Limiting:** Control download speed.
     *   **Cookie Import:** Bypass age restrictions using browser cookies.
 *   **Productivity:**
-    *   **Queue System:** distinct download manager.
+    *   **Queue System:** Distinct download manager.
     *   **Clipboard Monitoring:** Auto-detects copied links.
+    *   **History & Player:** View history and play downloaded files directly.
     *   **Toast Notifications:** Non-intrusive status updates.
 *   **Cross-Platform:** Windows, Linux, macOS (and Android beta!).
 

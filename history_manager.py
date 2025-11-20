@@ -18,7 +18,7 @@ class HistoryManager:
 
     @staticmethod
     def init_db():
-        """Initialize the history database table."""
+        """Initialize the history database table and perform migrations."""
         try:
             with HistoryManager._get_connection() as conn:
                 cursor = conn.cursor()
@@ -34,21 +34,29 @@ class HistoryManager:
                         file_size TEXT
                     )
                 ''')
+
+                # Migration: Check for file_path column
+                cursor.execute("PRAGMA table_info(history)")
+                columns = [info[1] for info in cursor.fetchall()]
+                if 'file_path' not in columns:
+                    logger.info("Migrating database: Adding file_path column")
+                    cursor.execute("ALTER TABLE history ADD COLUMN file_path TEXT")
+
                 conn.commit()
             logger.info("History database initialized.")
         except Exception as e:
             logger.error(f"Failed to init history DB: {e}")
 
     @staticmethod
-    def add_entry(url: str, title: str, output_path: str, format_str: str, status: str, file_size: str):
+    def add_entry(url: str, title: str, output_path: str, format_str: str, status: str, file_size: str, file_path: str = None):
         """Add a new entry to the history."""
         try:
             with HistoryManager._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    INSERT INTO history (url, title, output_path, format_str, status, timestamp, file_size)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (url, title, output_path, format_str, status, datetime.now(), file_size))
+                    INSERT INTO history (url, title, output_path, format_str, status, timestamp, file_size, file_path)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (url, title, output_path, format_str, status, datetime.now(), file_size, file_path))
                 conn.commit()
             logger.debug(f"Added history entry: {title}")
         except Exception as e:
