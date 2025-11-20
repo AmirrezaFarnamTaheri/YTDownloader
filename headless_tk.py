@@ -93,6 +93,33 @@ class Scrollbar(_BaseWidget):
     def set(self, first: float, last: float) -> None: pass
 
 
+class Listbox(_BaseWidget):
+    """Headless Listbox."""
+
+    def __init__(self, master: Optional["HeadlessTk"] = None, **kwargs: Any):
+        super().__init__(master, **kwargs)
+        self._items: List[str] = []
+
+    def insert(self, index: int | str, *elements: str) -> None:
+        if index == "end":
+            self._items.extend(elements)
+        else:
+            # Simplified insert
+            self._items.extend(elements)
+
+    def delete(self, first: int | str, last: Optional[int | str] = None) -> None:
+        if first == 0 and last == "end":
+            self._items.clear()
+
+    def curselection(self) -> Tuple[int, ...]:
+        return (0,) if self._items else ()
+
+    def get(self, first: int | str, last: Optional[int | str] = None) -> Any:
+        if isinstance(first, int) and 0 <= first < len(self._items):
+             return self._items[first]
+        return ""
+
+
 class Label(_BaseWidget):
     """Headless label."""
 
@@ -254,6 +281,13 @@ class Treeview(_BaseWidget):
     def identify_row(self, _y: int) -> Optional[str]:  # pragma: no cover - not used in tests
         return self._order[0] if self._order else None
 
+    def item(self, item: str, option: Optional[str] = None, **kwargs: Any) -> Any:
+        if item in self._items:
+             if option is None and not kwargs:
+                 return self._items[item]
+             # Support setting/getting specific options if needed
+        return {}
+
 
 class Combobox(_BaseWidget):
     """Headless combobox managing a simple list of values."""
@@ -268,6 +302,11 @@ class Combobox(_BaseWidget):
 
     def get(self) -> str:
         return str(self.variable.get())
+
+    def __getitem__(self, key: str) -> Any:
+        if key == "values":
+            return self._values
+        return self._options.get(key)
 
     def config(self, **kwargs: Any) -> None:
         super().config(**kwargs)
@@ -292,6 +331,7 @@ class HeadlessTk:
         self._children: List[_BaseWidget] = []
         self._after_calls: List[Tuple[int, Callable[..., Any]]] = []
         self._options: Dict[str, Any] = {}
+        self.tk = self # Mock tk attribute
 
     def title(self, title: str) -> None:
         self._options["title"] = title
@@ -326,8 +366,17 @@ class HeadlessTk:
     def grid_rowconfigure(self, row: int, weight: int) -> None:
         self._options.setdefault("grid_rowconfigure", {})[row] = weight
 
-    def after(self, delay: int, func: Callable[..., Any]) -> None:
+    def after(self, delay: int, func: Callable[..., Any]) -> str:
         self._after_calls.append((delay, func))
+        return "after_id"
+
+    def after_cancel(self, id: str) -> None:
+        pass
+
+    def winfo_x(self) -> int: return 0
+    def winfo_y(self) -> int: return 0
+    def winfo_width(self) -> int: return 800
+    def winfo_height(self) -> int: return 600
 
     def withdraw(self) -> None:
         pass
@@ -374,6 +423,7 @@ def patch_tkinter():
     tk_module.BooleanVar = BooleanVar  # type: ignore[assignment]
     tk_module.StringVar = StringVar  # type: ignore[assignment]
     tk_module.Menu = Menu  # type: ignore[assignment]
+    tk_module.Listbox = Listbox # type: ignore[assignment]
     tk_module.END = "end"  # type: ignore[attr-defined]
     tk_module._ytdownloader_headless = True  # type: ignore[attr-defined]
 

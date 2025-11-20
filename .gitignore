@@ -7,3 +7,6 @@ dist/
 ytdownloader.log
 ytdownloader_installer.log
 venv/
+.coverage
+.pytest_cache/
+htmlcov/
