@@ -35,7 +35,7 @@ class _BaseWidget:
         self._options: Dict[str, Any] = {}
         self._bindings: Dict[str, Callable[..., Any]] = {}
         self._children: List["_BaseWidget"] = []
-        if master is not None:
+        if master is not None and hasattr(master, "_children"):
             master._children.append(self)
         self.config(**kwargs)
 
@@ -62,11 +62,35 @@ class _BaseWidget:
     def pack(self, **kwargs: Any) -> None:  # pragma: no cover - layout is a no-op in tests
         self._options.update({f"pack_{k}": v for k, v in kwargs.items()})
 
+    def pack_forget(self) -> None: # pragma: no cover
+        pass
+
     def bind(self, sequence: str, func: Callable[..., Any]) -> None:
         self._bindings[sequence] = func
 
     def destroy(self) -> None:  # pragma: no cover - not used in tests
         pass
+
+    def winfo_x(self) -> int: return 0
+    def winfo_y(self) -> int: return 0
+    def winfo_width(self) -> int: return 100
+    def winfo_height(self) -> int: return 100
+
+class Toplevel(_BaseWidget):
+    """Headless Toplevel window."""
+    def wm_overrideredirect(self, boolean: bool = False) -> None: pass
+    def wm_geometry(self, geometry: str) -> None: pass
+    def after(self, delay: int, func: Callable[..., Any]) -> None: pass
+
+
+class PanedWindow(_BaseWidget):
+    """Headless PanedWindow."""
+    def add(self, child: Any, weight: int = 0) -> None: pass
+
+
+class Scrollbar(_BaseWidget):
+    """Headless Scrollbar."""
+    def set(self, first: float, last: float) -> None: pass
 
 
 class Label(_BaseWidget):
@@ -182,7 +206,7 @@ class Notebook(_BaseWidget):
 class Treeview(_BaseWidget):
     """Headless treeview managing tabular data."""
 
-    def __init__(self, master: Optional["HeadlessTk"] = None, columns: Sequence[str] = (), show: str = "tree"):
+    def __init__(self, master: Optional["HeadlessTk"] = None, columns: Sequence[str] = (), show: str = "tree", selectmode: str = "browse"):
         super().__init__(master)
         self.columns = columns
         self.show = show
@@ -197,6 +221,8 @@ class Treeview(_BaseWidget):
 
     def column(self, column: str, **kwargs: Any) -> None:
         self._columns[column] = kwargs
+
+    def yview(self, *args): pass
 
     def insert(self, _parent: str, _index: str, iid: Optional[int | str] = None, values: Sequence[Any] = ()) -> None:
         iid_str = str(iid) if iid is not None else str(len(self._items))
@@ -279,6 +305,16 @@ class HeadlessTk:
     def config(self, **kwargs: Any) -> None:
         self._options.update(kwargs)
 
+    def update_idletasks(self) -> None: pass
+
+    def bind(self, sequence: str, func: Callable[..., Any]) -> None: pass
+
+    def iconbitmap(self, bitmap: str) -> None: pass
+
+    def clipboard_get(self) -> str: return ""
+
+    def attributes(self, *args) -> Any: pass
+
     configure = config
 
     def grid_columnconfigure(self, column: int, weight: int) -> None:
@@ -290,12 +326,18 @@ class HeadlessTk:
     def after(self, delay: int, func: Callable[..., Any]) -> None:
         self._after_calls.append((delay, func))
 
+    def withdraw(self) -> None:
+        pass
+
     def destroy(self) -> None:  # pragma: no cover - not used in tests
         self._children.clear()
 
 
 class _DummyFileDialog:
     def askdirectory(self) -> Optional[str]:
+        return None
+
+    def askopenfilename(self, **kwargs) -> Optional[str]:
         return None
 
 
@@ -325,6 +367,7 @@ def patch_tkinter():
     import tkinter as tk_module
 
     tk_module.Tk = HeadlessTk  # type: ignore[assignment]
+    tk_module.Toplevel = Toplevel # type: ignore[assignment]
     tk_module.BooleanVar = BooleanVar  # type: ignore[assignment]
     tk_module.StringVar = StringVar  # type: ignore[assignment]
     tk_module.Menu = Menu  # type: ignore[assignment]
@@ -345,6 +388,8 @@ def patch_tkinter():
             "Treeview": Treeview,
             "Progressbar": Progressbar,
             "Notebook": Notebook,
+            "PanedWindow": PanedWindow,
+            "Scrollbar": Scrollbar,
             "Style": Style,
         },
     )()
