@@ -153,7 +153,8 @@ def download_video(
     cookies_from_browser_profile: Optional[str] = None,
     download_sections: Optional[str] = None,
     add_metadata: bool = False,
-    embed_thumbnail: bool = False
+    embed_thumbnail: bool = False,
+    recode_video: Optional[str] = None
 ) -> None:
     """
     Downloads a video or playlist from the given URL using yt-dlp.
@@ -227,13 +228,23 @@ def download_video(
         ydl_opts['force_keyframes_at_cuts'] = True
 
     # Post-processing options
+    postprocessors = ydl_opts.get('postprocessors', [])
+
     if add_metadata:
         ydl_opts['addmetadata'] = True
+        postprocessors.append({'key': 'FFmpegMetadata'})
 
     if embed_thumbnail:
         ydl_opts['writethumbnail'] = True
-        postprocessors = ydl_opts.get('postprocessors', [])
         postprocessors.append({'key': 'EmbedThumbnail'})
+
+    if recode_video:
+        postprocessors.append({
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': recode_video,
+        })
+
+    if postprocessors:
         ydl_opts['postprocessors'] = postprocessors
 
     # Configure proxy if provided (with validation)

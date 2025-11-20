@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, simpledialog
 import sys
+import datetime
 
 # Try to initialise Tk to determine if a display is available.
 try:  # pragma: no cover - exercised implicitly in tests
@@ -152,6 +153,7 @@ class YTDownloaderGUI:
         self.ui_queue: queue.Queue = queue.Queue()
         self.master.after(UIConstants.QUEUE_POLL_INTERVAL, self.process_ui_queue)
         self.master.after(1000, self.check_clipboard)
+        self.master.after(5000, self.check_scheduled_downloads)
 
         # --- UI Setup ---
         self._create_widgets()
@@ -209,9 +211,20 @@ class YTDownloaderGUI:
         self.url_entry.bind('<Return>', lambda e: self.fetch_info())
         self._create_tooltip(self.url_entry, LocalizationManager.get("paste_url_tooltip"))
 
+        # Paste Button
+        paste_btn = ttk.Button(url_box, text="📋", width=3, command=self.paste_url)
+        paste_btn.pack(side="left", padx=(0, 10))
+        self._create_tooltip(paste_btn, "Paste from Clipboard")
+
         self.fetch_button = ttk.Button(url_box, text=LocalizationManager.get("fetch_info"), command=self.fetch_info, style="Accent.TButton", width=15)
         self.fetch_button.pack(side="right")
         self._create_tooltip(self.fetch_button, LocalizationManager.get("fetch_info_tooltip"))
+
+        # Batch Download Button (Visible)
+        batch_btn = ttk.Button(url_box, text="Batch", width=6, command=self.import_urls_from_file)
+        batch_btn.pack(side="right", padx=(0, 5))
+        self._create_tooltip(batch_btn, "Import URLs from text file")
+
 
         # === CONTENT AREA (Split View) ===
         content_pane = ttk.PanedWindow(self.main_container, orient="horizontal")
@@ -351,6 +364,9 @@ class YTDownloaderGUI:
         self.download_button = ttk.Button(action_box, text=LocalizationManager.get("add_to_queue"), command=self.add_to_queue, style="Accent.TButton", width=20)
         self.download_button.pack(side="right", padx=(5, 0))
         
+        self.schedule_button = ttk.Button(action_box, text="🕒 Schedule", command=self.schedule_download_dialog)
+        self.schedule_button.pack(side="right", padx=(5, 0))
+
         self.pause_button = ttk.Button(action_box, text=LocalizationManager.get("pause"), command=self.toggle_pause_resume, state="disabled")
         self.pause_button.pack(side="right", padx=(5, 0))
         
@@ -371,6 +387,7 @@ class YTDownloaderGUI:
         self.video_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.video_tab, text=LocalizationManager.get("tab_video"))
         self.audio_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.audio_tab, text=LocalizationManager.get("tab_audio"))
         self.adv_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.adv_tab, text=LocalizationManager.get("tab_advanced"))
+        self.post_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.post_tab, text="Post-Processing")
         self.rss_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.rss_tab, text=LocalizationManager.get("tab_rss"))
         self.settings_tab = ttk.Frame(self.notebook, padding=10); self.notebook.add(self.settings_tab, text=LocalizationManager.get("tab_settings"))
 
@@ -420,6 +437,13 @@ class YTDownloaderGUI:
         self.time_end_entry = ttk.Entry(range_frame, width=8)
         self.time_end_entry.pack(side="left", padx=(2, 0))
         self._create_tooltip(self.time_end_entry, "e.g. 00:02:45")
+
+        # Post-Processing Tab
+        ttk.Label(self.post_tab, text="Recode Video to:").grid(row=0, column=0, sticky="w", pady=5)
+        self.recode_var = tk.StringVar()
+        ttk.Combobox(self.post_tab, textvariable=self.recode_var, values=["", "mp4", "mkv", "avi", "webm"], state="readonly", width=10).grid(row=0, column=1, sticky="w", padx=10)
+        ttk.Label(self.post_tab, text="(Leave empty for no recoding)", font=("Segoe UI", 8, "italic")).grid(row=0, column=2, sticky="w")
+
 
         # RSS Tab
         ttk.Label(self.rss_tab, text=LocalizationManager.get("rss_channel_url")).pack(fill="x", pady=(0, 5))
@@ -800,7 +824,43 @@ class YTDownloaderGUI:
         except Exception:
             pass
 
-    def add_to_queue(self):
+    def schedule_download_dialog(self):
+        """Open a dialog to schedule the download."""
+        if not self.url_entry.get().strip():
+            self.show_toast("Enter URL first")
+            return
+
+        time_str = simpledialog.askstring("Schedule Download", "Enter start time (HH:MM 24h format):", parent=self.master)
+        if not time_str: return
+
+        try:
+            # Validate time format
+            scheduled_time = datetime.datetime.strptime(time_str, "%H:%M").time()
+            now = datetime.datetime.now()
+            scheduled_datetime = datetime.datetime.combine(now.date(), scheduled_time)
+            if scheduled_datetime < now:
+                scheduled_datetime += datetime.timedelta(days=1) # Next day
+
+            self.add_to_queue(scheduled_time=scheduled_datetime)
+            self.show_toast(f"Scheduled for {time_str}")
+
+        except ValueError:
+            messagebox.showerror("Invalid Time", "Please enter time in HH:MM format")
+
+    def check_scheduled_downloads(self):
+        """Check queue for scheduled items."""
+        now = datetime.datetime.now()
+        for item in self.download_queue:
+            if item['status'].startswith("Scheduled"):
+                sched_time = item.get('scheduled_time')
+                if sched_time and now >= sched_time:
+                    item['status'] = 'Queued' # Ready to start
+                    if not self.is_downloading():
+                        self.process_download_queue()
+        self.update_download_queue_list()
+        self.master.after(5000, self.check_scheduled_downloads)
+
+    def add_to_queue(self, scheduled_time=None):
         url = self.url_entry.get().strip()
         if not url or not validate_url(url):
             self.show_toast("Invalid URL")
@@ -834,6 +894,10 @@ class YTDownloaderGUI:
         end = self.time_end_entry.get().strip()
         download_sections = f"*{start}-{end}" if start and end else None
 
+        status = "Queued"
+        if scheduled_time:
+            status = f"Scheduled ({scheduled_time.strftime('%H:%M')})"
+
         download_item = {
             "url": url,
             "video_format": video_format,
@@ -850,13 +914,16 @@ class YTDownloaderGUI:
             "download_sections": download_sections,
             "add_metadata": self.add_metadata_var.get(),
             "embed_thumbnail": self.embed_thumbnail_var.get(),
-            "status": "Queued", "size": "N/A", "speed": "N/A", "eta": "N/A"
+            "recode_video": self.recode_var.get() if self.recode_var.get() else None,
+            "scheduled_time": scheduled_time,
+            "status": status, "size": "N/A", "speed": "N/A", "eta": "N/A"
         }
         self.download_queue.append(download_item)
         self.update_download_queue_list()
-        self.show_toast("Added to Queue")
-        if not self.is_downloading():
-            self.process_download_queue()
+        if not scheduled_time:
+            self.show_toast("Added to Queue")
+            if not self.is_downloading():
+                self.process_download_queue()
 
     def update_download_queue_list(self):
         for i in self.download_queue_tree.get_children():
@@ -914,7 +981,8 @@ class YTDownloaderGUI:
                 item['subtitle_lang'], item['subtitle_format'], item['split_chapters'],
                 item['proxy'], item['rate_limit'], self.cancel_token,
                 item.get('cookies_browser'), item.get('cookies_profile'),
-                item.get('download_sections'), item.get('add_metadata'), item.get('embed_thumbnail')
+                item.get('download_sections'), item.get('add_metadata'), item.get('embed_thumbnail'),
+                item.get('recode_video')
             )
             item['status'] = 'Completed'
             self.ui_queue.put((self._safe_clear_ui, {}))
