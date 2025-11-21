@@ -1,8 +1,8 @@
 # What's Next for StreamCatch
 
-StreamCatch is evolving into a comprehensive media management platform. Following the "IMPLEMENT THESE" directive, we are setting an ambitious roadmap for v4.0 and beyond.
+StreamCatch is evolving into a comprehensive media management platform. We have recently completed a major overhaul to include IDM-like features, generic file support, and enhanced UI.
 
-## 🚀 v4.0: The "Experience & Intelligence" Update
+## 🚀 v4.0: The "Intelligence & Ecosystem" Update
 
 ### 1. User Experience (UX) & Accessibility
 *   **Accessibility First**:
@@ -17,12 +17,9 @@ StreamCatch is evolving into a comprehensive media management platform. Followin
 *   **Theme Store**: Community-submitted themes.
 
 ### 2. Performance & Core Engineering
-*   **Download Acceleration**:
-    *   **Multi-threaded Downloading**: `aria2c` integration for faster downloads.
-    *   **Smart Buffer Management**: Optimized memory usage.
-*   **Hardware Acceleration**:
-    *   **GPU Transcoding**: NVENC/AMF via FFmpeg.
-    *   **GUI Rendering**: Metal/Vulkan/DX12 optimizations.
+*   **Browser Integration**: Chrome/Firefox extensions via Native Messaging to replace "Clipboard Monitor" with seamless "Click to Download".
+*   **Mirror Search**: Automatically find alternative mirrors for generic files.
+*   **P2P Support**: BitTorrent/Magnet link support (libtorrent).
 *   **Distributed Processing**:
     *   **Cluster Mode**: Master/Worker node delegation on LAN.
 *   **Multi-User Support**:
@@ -38,12 +35,21 @@ StreamCatch is evolving into a comprehensive media management platform. Followin
 *   **Auto-Categorization**: Organize into folders (Music, Tech, Gaming).
 
 ### 4. Integrations & Ecosystem
-*   **Browser Extensions**: Chrome/Firefox integration via Native Messaging.
-*   **Mobile Companion App**: Flutter mobile remote.
+*   **Mobile Companion App**: Enhanced mobile remote features.
 *   **Home Automation**: Home Assistant / MQTT support.
 *   **Media Server Hooks**: Plex/Jellyfin notification triggers.
 
-## ✅ Completed in v3.x
+## ✅ Completed in v3.5 (Current)
+*   **IDM-Like Features**:
+    *   **Clipboard Monitor**: Auto-detect URLs.
+    *   **Generic/Direct Download**: Robust file downloading support.
+    *   **Force Generic Mode**: Bypass extraction for direct links.
+*   **Platform Expansion**:
+    *   **Twitter/X & Instagram**: First-class support.
+    *   **Telegram**: Public channel scraping.
+*   **UI Overhaul**:
+    *   **New Aesthetics**: Indigo theme, platform icons, polished layout.
+    *   **Navigation Rail**: Better hierarchy.
 *   **Cloud Upload**: Google Drive (PyDrive2).
 *   **Social Sharing**: Discord Rich Presence.
 *   **Cross-Device Sync**: Export/Import configuration.
@@ -53,4 +59,4 @@ StreamCatch is evolving into a comprehensive media management platform. Followin
 *   **Scheduled Downloads**: Specific time scheduling.
 *   **RSS Feed Support**: Channel subscription.
 *   **Dashboard Analytics**: Visual stats.
-*   **Modern UI**: Flet-based interface.
+*   **Performance**: Aria2c and GPU acceleration support.

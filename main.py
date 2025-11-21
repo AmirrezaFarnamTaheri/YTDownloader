@@ -6,6 +6,7 @@ import os
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 from datetime import datetime, timedelta
+import pyperclip
 
 from downloader import get_video_info, download_video
 from config_manager import ConfigManager
@@ -44,11 +45,13 @@ class AppState:
         self.cloud_manager = CloudManager()
         self.social_manager = SocialManager()
         self.scheduled_time: Optional[datetime.time] = None
+        self.clipboard_monitor_active = False
 
         # UX States
         self.selected_queue_index = -1
         self.high_contrast = False
         self.selected_nav_index = 0
+        self.last_clipboard_content = ""
 
         # Try connecting to social
         threading.Thread(target=self.social_manager.connect, daemon=True).start()
@@ -82,12 +85,18 @@ class CancelToken:
                 raise Exception("Download cancelled by user.")
 
 def main(page: ft.Page):
-    page.title = "StreamCatch"
+    page.title = "StreamCatch - Ultimate Downloader"
     page.theme_mode = ft.ThemeMode.DARK
-    page.padding = 0 # Full bleed
+    page.padding = 0
     page.window_min_width = 1100
     page.window_min_height = 800
-    page.bgcolor = ft.Colors.BLACK # Deep background
+    page.bgcolor = ft.Colors.BLACK
+
+    # Apply a custom theme
+    page.theme = ft.Theme(
+        color_scheme_seed=ft.Colors.INDIGO,
+        visual_density=ft.ThemeVisualDensity.COMFORTABLE,
+    )
 
     # --- UI Components ---
 
@@ -125,9 +134,19 @@ def main(page: ft.Page):
     # 2. Content Areas
 
     # --- Download Tab Content ---
+
+    # Platform Icons
+    platform_icons = ft.Row([
+        ft.Icon(ft.Icons.ONDEMAND_VIDEO, color=ft.Colors.RED_400, tooltip="YouTube"),
+        ft.Icon(ft.Icons.TELEGRAM, color=ft.Colors.BLUE_400, tooltip="Telegram"),
+        ft.Icon(ft.Icons.ALTERNATE_EMAIL, color=ft.Colors.LIGHT_BLUE_400, tooltip="Twitter/X"),
+        ft.Icon(ft.Icons.CAMERA_ALT, color=ft.Colors.PINK_400, tooltip="Instagram"),
+        ft.Icon(ft.Icons.LINK, color=ft.Colors.GREY_400, tooltip="Generic Files"),
+    ], alignment=ft.MainAxisAlignment.CENTER, spacing=20)
+
     url_input = ft.TextField(
         label="URL",
-        hint_text="Paste YouTube, Telegram, Twitter, or direct file links...",
+        hint_text="Paste YouTube, Telegram, Twitter, Instagram, or file links...",
         expand=True,
         border_color=ft.Colors.BLUE_400,
         prefix_icon=ft.Icons.LINK,
@@ -135,6 +154,8 @@ def main(page: ft.Page):
         bgcolor=ft.Colors.GREY_900,
         border_radius=10
     )
+
+    clipboard_switch = ft.Switch(label="Clipboard Monitor", value=False, on_change=lambda e: toggle_clipboard_monitor(e.control.value))
 
     thumbnail_img = ft.Image(src="", width=400, height=225, fit=ft.ImageFit.COVER, border_radius=10, visible=False)
     title_text = ft.Text("", size=20, weight=ft.FontWeight.BOLD)
@@ -146,6 +167,8 @@ def main(page: ft.Page):
     # Advanced Options for Download
     playlist_cb = ft.Checkbox(label="Playlist", fill_color=ft.Colors.BLUE_400)
     sponsorblock_cb = ft.Checkbox(label="SponsorBlock", fill_color=ft.Colors.BLUE_400)
+    force_generic_cb = ft.Checkbox(label="Force Generic/Direct", fill_color=ft.Colors.ORANGE_400, tooltip="Bypass extraction and download directly")
+
     subtitle_dd = ft.Dropdown(label="Subtitles", options=[ft.dropdown.Option("None"), ft.dropdown.Option("en"), ft.dropdown.Option("es")], value="None", width=150, border_color=ft.Colors.GREY_700, border_radius=8)
 
     # New Feature Inputs
@@ -210,7 +233,11 @@ def main(page: ft.Page):
     download_view = ft.Container(
         padding=30,
         content=ft.Column([
-            ft.Text("New Download", size=32, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+            ft.Row([
+                ft.Text("StreamCatch", size=32, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                ft.Container(content=clipboard_switch, bgcolor=ft.Colors.GREY_900, padding=5, border_radius=5)
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            platform_icons,
             ft.Divider(color=ft.Colors.TRANSPARENT, height=20),
             ft.Row([url_input, fetch_btn], alignment=ft.MainAxisAlignment.CENTER),
             ft.Divider(height=30, color=ft.Colors.GREY_900),
@@ -242,7 +269,8 @@ def main(page: ft.Page):
                             ft.Row([video_format_dd, audio_format_dd]),
                             ft.Divider(height=20, color=ft.Colors.GREY_800),
                             ft.Text("Features", size=18, weight=ft.FontWeight.W_600),
-                            ft.Row([playlist_cb, sponsorblock_cb, subtitle_dd]),
+                            ft.Row([playlist_cb, sponsorblock_cb, force_generic_cb]),
+                            ft.Row([subtitle_dd]),
                             ft.Row([time_start, time_end]),
                             ft.Row([regex_filter]),
                             ft.Row([batch_btn, schedule_btn], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
@@ -503,6 +531,13 @@ def main(page: ft.Page):
         cinema_overlay.visible = enable
         page.update()
 
+    def toggle_clipboard_monitor(enable):
+        state.clipboard_monitor_active = enable
+        if enable:
+             page.show_snack_bar(ft.SnackBar(content=ft.Text("Clipboard Monitor Started")))
+        else:
+             page.show_snack_bar(ft.SnackBar(content=ft.Text("Clipboard Monitor Stopped")))
+
     def fetch_info_click(e):
         url = url_input.value
         if not url:
@@ -592,7 +627,8 @@ def main(page: ft.Page):
             "output_template": output_template_input.value,
             "start_time": time_start.value,
             "end_time": time_end.value,
-            "match_filter": regex_filter.value
+            "match_filter": regex_filter.value,
+            "force_generic": force_generic_cb.value
         }
         state.queue_manager.add_item(item)
 
@@ -651,15 +687,31 @@ def main(page: ft.Page):
         if item:
              threading.Thread(target=download_task, args=(item,), daemon=True).start()
 
-    # Background scheduler check
-    def scheduler_loop():
+    # Background scheduler & Clipboard check
+    def background_loop():
         while True:
-            time.sleep(10)
+            time.sleep(2)
+
+            # 1. Scheduler
             try:
                 process_queue()
             except: pass
 
-    threading.Thread(target=scheduler_loop, daemon=True).start()
+            # 2. Clipboard Monitor
+            if state.clipboard_monitor_active:
+                 try:
+                     content = pyperclip.paste()
+                     if content and content != state.last_clipboard_content:
+                         state.last_clipboard_content = content
+                         if validate_url(content):
+                             # Auto-paste into URL input
+                             url_input.value = content
+                             page.update()
+                             page.show_snack_bar(ft.SnackBar(content=ft.Text(f"URL detected: {content}")))
+                 except Exception as e:
+                     logger.warning(f"Clipboard error: {e}")
+
+    threading.Thread(target=background_loop, daemon=True).start()
 
     def download_task(item):
         item['status'] = 'Downloading'
@@ -698,6 +750,13 @@ def main(page: ft.Page):
                     # Save filename for history
                     item['final_filename'] = d.get('filename')
 
+            # Check for force generic
+            # If force_generic is True, we might want to bypass normal flow?
+            # Currently downloader.py doesn't have a force_generic flag in download_video explicitly,
+            # but we can simulate it or add it.
+            # For now, let's just pass it if we add it to downloader.py, or trust downloader.py's logic.
+            # I'll update downloader.py next to respect 'force_generic' if possible, or just rely on URL type.
+
             download_video(
                 item['url'],
                 progress_hook,
@@ -712,7 +771,8 @@ def main(page: ft.Page):
                 output_template=item.get('output_template'),
                 start_time=item.get('start_time'),
                 end_time=item.get('end_time'),
-                match_filter=item.get('match_filter')
+                match_filter=item.get('match_filter'),
+                force_generic=item.get('force_generic', False)
             )
 
             item['status'] = 'Completed'

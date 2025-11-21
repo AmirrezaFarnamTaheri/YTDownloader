@@ -1,11 +1,11 @@
-# StreamCatch - Modern Media Downloader
+# StreamCatch - Ultimate Media Downloader
 
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 ![Status](https://img.shields.io/badge/status-stable-green)
 ![Docker](https://img.shields.io/badge/docker-ready-blue)
 
-**StreamCatch** is a professional-grade, cross-platform media downloader designed for robustness, speed, and aesthetics. Built with Python and Flet, it offers a modern Material Design 3 interface with advanced features for power users.
+**StreamCatch** is a professional-grade, cross-platform media downloader designed for robustness, speed, and aesthetics. Built with Python and Flet, it offers a modern Material Design 3 interface with advanced features for power users, emulating the best features of IDM (Internet Download Manager).
 
 ## 👤 Credits
 
@@ -20,16 +20,22 @@
 - **Cinema Mode**: An immersive, distraction-free overlay for monitoring active downloads.
 - **Dashboard**: Real-time analytics and download statistics (Total Downloads, etc.).
 - **Card-Based Design**: Beautiful, responsive cards for download items with progress visualization.
+- **Platform Icons**: Quick indicators for YouTube, Telegram, Twitter, Instagram, and Generic Files.
 
 ### ⚡ Performance & Robustness
 - **Multi-threaded Queue**: A fully thread-safe `QueueManager` with atomic task claiming ensures stability and prevents race conditions.
-- **Aria2c Integration**: Accelerate downloads with multi-connection support.
+- **Aria2c Integration**: Accelerate downloads with multi-connection support (up to 16x speeds).
 - **GPU Acceleration**: Hardware-accelerated encoding/decoding (NVENC/VAAPI/QSV) via FFmpeg.
 - **Smart Resume**: Robust error handling and resume capabilities for interrupted downloads.
+- **IDM-Like Logic**: Optimized for speed and reliability.
 
 ### 🛠 Advanced Tools
-- **Broad Site Support**: Supports YouTube, Twitch, Twitter (X), Instagram, and many other platforms.
-- **Telegram & Generic Files**: Download public Telegram videos/images and generic files from direct links (IDM-style).
+- **Universal Site Support**:
+  - **YouTube**: 4K Video, Audio, Playlists, Channels.
+  - **Social Media**: **Twitter (X)**, **Instagram** (Reels/Posts), Twitch, TikTok.
+  - **Telegram**: Download videos and images from public channels.
+  - **Generic Files**: Direct download support for any file type (PDF, ZIP, ISO, etc.) with **Force Generic** mode.
+- **Clipboard Monitor**: Automatically detects URLs copied to the clipboard and prepares them for download.
 - **Time Range**: Download specific clips (Start/End time) without downloading the full video.
 - **SponsorBlock**: Automatically skip sponsored segments, intros, and outros.
 - **Playlist Support**: Batch download entire playlists with regex filtering.
@@ -81,9 +87,15 @@ StreamCatch runs on iOS and Android via Flet. See [SETUP_MOBILE.md](SETUP_MOBILE
 
 ### Managing the Queue
 - **Add**: Paste a URL and click "Fetch Info", then "Add to Queue".
+- **Clipboard Monitor**: Toggle the switch at the top right to auto-capture copied URLs.
 - **Batch Import**: Import a list of URLs from a text file.
 - **Schedule**: Set a specific time for downloads to start.
 - **Reorder**: Use Up/Down arrows to manage priority.
+
+### Download Options
+- **Video/Audio Quality**: Select specific formats.
+- **Force Generic/Direct**: Check this box to bypass video extraction and download the URL directly as a file.
+- **Subtitles**: Select language to embed.
 
 ### Dashboard
 - View total download count and statistics.

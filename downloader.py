@@ -171,7 +171,8 @@ def download_video(
     recode_video: Optional[str] = None,
     sponsorblock_remove: bool = False,
     use_aria2c: bool = False,
-    gpu_accel: Optional[str] = None
+    gpu_accel: Optional[str] = None,
+    force_generic: bool = False
 ) -> None:
     """
     Downloads a video or playlist.
@@ -191,7 +192,24 @@ def download_video(
     # We'll do a quick check.
 
     is_telegram = TelegramExtractor.is_telegram_url(url)
-    is_generic = False # Harder to know without checking HEAD again, but maybe we can trust yt-dlp to fail?
+
+    if force_generic:
+        logger.info("Force Generic Mode enabled. Bypassing yt-dlp extraction.")
+        # Attempt generic extraction immediately
+        info = GenericExtractor.extract(url)
+        if info and info.get('video_streams'):
+            direct_url = info['video_streams'][0]['url']
+            ext = info['video_streams'][0]['ext']
+            title = info['title']
+            filename = f"{title}.{ext}" if not title.endswith(f".{ext}") else title
+
+            logger.info(f"Downloading Generic file (Forced): {filename}")
+            download_generic(direct_url, output_path, filename, progress_hook, download_item, cancel_token)
+            return
+        else:
+            # If force generic fails, we might want to fall back or just fail.
+            # Let's try yt-dlp as a fallback if force_generic fails, just in case.
+            logger.warning("Force Generic failed. Falling back to yt-dlp...")
 
     # If it's Telegram, we MUST use our custom logic because yt-dlp fails or does nothing useful.
     if is_telegram:
