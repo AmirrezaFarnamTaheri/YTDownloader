@@ -28,6 +28,8 @@
 - **Smart Resume**: Robust error handling and resume capabilities for interrupted downloads.
 
 ### 🛠 Advanced Tools
+- **Broad Site Support**: Supports YouTube, Twitch, Twitter (X), Instagram, and many other platforms.
+- **Telegram & Generic Files**: Download public Telegram videos/images and generic files from direct links (IDM-style).
 - **Time Range**: Download specific clips (Start/End time) without downloading the full video.
 - **SponsorBlock**: Automatically skip sponsored segments, intros, and outros.
 - **Playlist Support**: Batch download entire playlists with regex filtering.
