@@ -15,7 +15,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -34,21 +34,21 @@ jobs:
 
     - name: Upload Artifact (Windows)
       if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: StreamCatch-Windows
         path: dist/StreamCatch.exe
 
     - name: Upload Artifact (Linux)
       if: matrix.os == 'ubuntu-latest'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: StreamCatch-Linux
         path: dist/StreamCatch
 
     - name: Upload Artifact (macOS)
       if: matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: StreamCatch-macOS
         path: dist/StreamCatch
@@ -59,26 +59,35 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Download Windows Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: StreamCatch-Windows
+          path: ./windows
 
       - name: Download Linux Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: StreamCatch-Linux
+          path: ./linux
 
       - name: Download macOS Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: StreamCatch-macOS
+          path: ./macos
+
+      - name: Rename artifacts for release
+        run: |
+          mv windows/StreamCatch.exe StreamCatch-Windows.exe
+          mv linux/StreamCatch StreamCatch-Linux
+          mv macos/StreamCatch StreamCatch-macOS
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            StreamCatch.exe
-            StreamCatch
-            StreamCatch-macOS/StreamCatch
+            StreamCatch-Windows.exe
+            StreamCatch-Linux
+            StreamCatch-macOS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
