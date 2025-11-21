@@ -1,11 +1,14 @@
 import yt_dlp
 import os
 import logging
-from typing import Optional, Dict, List, Any, Callable
+from typing import Optional, Dict, List, Any, Callable, TYPE_CHECKING
 from pathlib import Path
 
 # Import the new generic downloader module
 from generic_downloader import TelegramExtractor, GenericExtractor, download_generic
+
+if TYPE_CHECKING:
+    from utils import CancelToken
 
 logger = logging.getLogger(__name__)
 
@@ -67,14 +70,14 @@ def get_video_info(
             if "subtitles" in info_dict and info_dict["subtitles"]:
                 for lang, subs in info_dict["subtitles"].items():
                     if isinstance(subs, list):
-                        formats = [
+                        formats_list = [
                             sub.get("ext", "vtt") if isinstance(sub, dict) else str(sub)
                             for sub in subs
                         ]
                     else:
-                        formats = ["vtt"]
-                    if formats:
-                        subtitles[lang] = formats
+                        formats_list = ["vtt"]
+                    if formats_list:
+                        subtitles[lang] = formats_list
                     else:
                         subtitles[lang] = ["vtt"]
 
@@ -82,12 +85,12 @@ def get_video_info(
             if "automatic_captions" in info_dict and info_dict["automatic_captions"]:
                 for lang, subs in info_dict["automatic_captions"].items():
                     if isinstance(subs, list):
-                        formats = [
+                        formats_list = [
                             sub.get("ext", "vtt") if isinstance(sub, dict) else str(sub)
                             for sub in subs
                         ]
                     else:
-                        formats = ["vtt"]
+                        formats_list = ["vtt"]
                     auto_lang = f"{lang} (Auto)" if lang not in subtitles else lang
                     if formats_list:
                         subtitles[auto_lang] = formats_list
@@ -173,7 +176,7 @@ def download_video(
     split_chapters: bool = False,
     proxy: Optional[str] = None,
     rate_limit: Optional[str] = None,
-    cancel_token: Optional[Any] = None,
+    cancel_token: Optional["CancelToken"] = None,
     cookies_from_browser: Optional[str] = None,
     cookies_from_browser_profile: Optional[str] = None,
     start_time: Optional[str] = None,
@@ -196,7 +199,9 @@ def download_video(
     Path(output_path).mkdir(parents=True, exist_ok=True)
 
     # Check for hints in download_item or detect
-    is_telegram = (download_item or {}).get('is_telegram') or TelegramExtractor.is_telegram_url(url)
+    is_telegram = (download_item or {}).get(
+        "is_telegram"
+    ) or TelegramExtractor.is_telegram_url(url)
 
     if force_generic:
         logger.info("Force Generic Mode enabled. Bypassing yt-dlp extraction.")

@@ -1,5 +1,5 @@
 import flet as ft
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from theme import Theme
 
 
@@ -40,14 +40,19 @@ class DownloadItemControl:
             height=6,
             border_radius=3,
             color=Theme.PRIMARY,
-            bgcolor=Theme.BG_DARK,
+            bgcolor=ft.Colors.with_opacity(0.2, Theme.PRIMARY),
         )
 
-        self.status_text = ft.Text(item["status"], size=12, color=Theme.TEXT_SECONDARY)
-        self.details_text = ft.Text("Waiting...", size=12, color=Theme.TEXT_SECONDARY)
+        self.status_text = ft.Text(
+            item["status"],
+            size=12,
+            color=Theme.TEXT_SECONDARY,
+            weight=ft.FontWeight.W_500,
+        )
+        self.details_text = ft.Text("Waiting...", size=12, color=Theme.TEXT_MUTED)
         self.title_text = ft.Text(
             self.item.get("title", self.item["url"]),
-            weight=ft.FontWeight.W_600,
+            weight=ft.FontWeight.BOLD,
             size=15,
             overflow=ft.TextOverflow.ELLIPSIS,
             color=Theme.TEXT_PRIMARY,
@@ -55,27 +60,10 @@ class DownloadItemControl:
         )
 
         # Action container will be updated dynamically
-        self.actions_row = ft.Row(spacing=0, alignment=ft.MainAxisAlignment.CENTER)
+        self.actions_row = ft.Row(spacing=5, alignment=ft.MainAxisAlignment.END)
         self._update_actions()
 
         self.view = self.build()
-
-    def _get_icon_for_item(self):
-        url = self.item.get('url', '').lower()
-        if "youtube" in url or "youtu.be" in url:
-            return ft.Icon(ft.Icons.SMART_DISPLAY, size=24, color=ft.Colors.RED_400)
-        elif "t.me" in url or "telegram" in url:
-            return ft.Icon(ft.Icons.TELEGRAM, size=24, color=ft.Colors.BLUE_400)
-        elif "twitter" in url or "x.com" in url:
-            return ft.Icon(ft.Icons.ALTERNATE_EMAIL, size=24, color=ft.Colors.WHITE)
-        elif "instagram" in url:
-            return ft.Icon(ft.Icons.CAMERA_ALT, size=24, color=ft.Colors.PINK_400)
-        elif self.item.get("is_audio"):
-            return ft.Icon(ft.Icons.AUDIO_FILE, size=24, color=Theme.TEXT_SECONDARY)
-        elif self.item.get("is_playlist"):
-            return ft.Icon(ft.Icons.PLAYLIST_PLAY, size=24, color=Theme.TEXT_SECONDARY)
-        else:
-            return ft.Icon(ft.Icons.INSERT_DRIVE_FILE, size=24, color=Theme.TEXT_SECONDARY)
 
     def build(self):
         bg_color = (
@@ -83,26 +71,44 @@ class DownloadItemControl:
             if not self.is_selected
             else ft.Colors.with_opacity(0.1, Theme.PRIMARY)
         )
-        border_color = Theme.BORDER if not self.is_selected else Theme.PRIMARY
 
-        icon = ft.Icons.VIDEO_FILE
+        # Platform specific icon
+        url = self.item.get("url", "").lower()
+        icon_data = ft.Icons.INSERT_DRIVE_FILE
+        icon_color = Theme.TEXT_SECONDARY
+
+        if "youtube" in url or "youtu.be" in url:
+            icon_data = ft.Icons.ONDEMAND_VIDEO
+            icon_color = ft.Colors.RED_400
+        elif "t.me" in url or "telegram" in url:
+            icon_data = ft.Icons.TELEGRAM
+            icon_color = ft.Colors.BLUE_400
+        elif "twitter" in url or "x.com" in url:
+            icon_data = ft.Icons.ALTERNATE_EMAIL
+            icon_color = ft.Colors.WHITE
+        elif "instagram" in url:
+            icon_data = ft.Icons.CAMERA_ALT
+            icon_color = ft.Colors.PINK_400
+
         if self.item.get("is_audio"):
-            icon = ft.Icons.AUDIO_FILE
+            icon_data = ft.Icons.AUDIO_FILE
         elif self.item.get("is_playlist"):
-            icon = ft.Icons.PLAYLIST_PLAY
-        elif "telegram" in self.item.get("url", ""):
-            icon = ft.Icons.TELEGRAM
+            icon_data = ft.Icons.PLAYLIST_PLAY
 
         return ft.Container(
             content=ft.Row(
                 [
-                    # Thumbnail/Icon
+                    # Icon Container
                     ft.Container(
-                        content=ft.Icon(icon, size=24, color=Theme.TEXT_SECONDARY),
-                        width=48,
-                        height=48,
-                        bgcolor=Theme.BG_DARK,
-                        border_radius=8,
+                        content=ft.Icon(icon_data, size=28, color=icon_color),
+                        width=56,
+                        height=56,
+                        bgcolor=(
+                            ft.Colors.with_opacity(0.1, icon_color)
+                            if icon_color != Theme.TEXT_SECONDARY
+                            else Theme.BG_DARK
+                        ),
+                        border_radius=12,
                         alignment=ft.alignment.center,
                     ),
                     # Info Column
@@ -126,27 +132,46 @@ class DownloadItemControl:
                     # Actions
                     self.actions_row,
                 ],
-                spacing=12,
+                spacing=15,
             ),
-            padding=12,
+            padding=15,
             bgcolor=bg_color,
-            border=ft.border.all(1, border_color),
-            border_radius=12,
+            border_radius=16,
+            shadow=(
+                ft.BoxShadow(
+                    blur_radius=10,
+                    spread_radius=0,
+                    color=ft.Colors.with_opacity(0.1, ft.Colors.BLACK),
+                    offset=ft.Offset(0, 4),
+                )
+                if not self.is_selected
+                else None
+            ),
+            border=(
+                ft.border.all(1, Theme.BORDER)
+                if not self.is_selected
+                else ft.border.all(1, Theme.PRIMARY)
+            ),
             animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT),
+            margin=ft.margin.only(bottom=5),
         )
 
     def _update_actions(self):
         status = self.item.get("status", "Queued")
         actions = []
 
-        if status in ["Downloading", "Processing"]:
+        if status in ["Downloading", "Processing", "Allocating"]:
             actions.append(
                 ft.IconButton(
-                    ft.Icons.CANCEL,
+                    ft.Icons.CLOSE,
                     on_click=lambda e: self.on_cancel(self.item),
                     icon_size=20,
                     tooltip="Cancel",
                     icon_color=Theme.ERROR,
+                    style=ft.ButtonStyle(
+                        bgcolor=ft.Colors.with_opacity(0.1, Theme.ERROR),
+                        shape=ft.CircleBorder(),
+                    ),
                 )
             )
         elif status in ["Error", "Cancelled"] and self.on_retry:
@@ -160,9 +185,8 @@ class DownloadItemControl:
                 )
             )
 
-        if status == "Queued":
-            actions.insert(
-                0,
+        if status == "Queued" or status.startswith("Scheduled"):
+            actions.append(
                 ft.Column(
                     [
                         ft.IconButton(
@@ -184,18 +208,20 @@ class DownloadItemControl:
                     ],
                     spacing=0,
                     alignment=ft.MainAxisAlignment.CENTER,
-                ),
+                )
             )
 
-        actions.append(
-            ft.IconButton(
-                ft.Icons.DELETE,
-                on_click=lambda e: self.on_remove(self.item),
-                icon_size=20,
-                tooltip="Remove",
-                icon_color=Theme.TEXT_SECONDARY,
+        if status not in ["Downloading", "Processing", "Allocating"]:
+            actions.append(
+                ft.IconButton(
+                    ft.Icons.DELETE_OUTLINE,
+                    on_click=lambda e: self.on_remove(self.item),
+                    icon_size=20,
+                    tooltip="Remove",
+                    icon_color=Theme.TEXT_SECONDARY,
+                )
             )
-        )
+
         self.actions_row.controls = actions
         if self.actions_row.page:
             self.actions_row.update()
@@ -206,12 +232,18 @@ class DownloadItemControl:
         # Dynamic color for progress
         if self.item["status"] == "Error" or self.item["status"] == "Cancelled":
             self.progress_bar.color = Theme.ERROR
+            self.status_text.color = Theme.ERROR
         elif self.item["status"] == "Completed":
             self.progress_bar.color = Theme.SUCCESS
+            self.status_text.color = Theme.SUCCESS
         else:
             self.progress_bar.color = Theme.PRIMARY
+            self.status_text.color = Theme.TEXT_SECONDARY
 
-        if "speed" in self.item and self.item["status"] == "Downloading":
+        if "speed" in self.item and self.item["status"] in [
+            "Downloading",
+            "Processing",
+        ]:
             self.details_text.value = f"{self.item.get('size', '')} • {self.item.get('speed', '')} • ETA: {self.item.get('eta', '')}"
         else:
             self.details_text.value = ""

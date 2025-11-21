@@ -70,6 +70,7 @@ def is_ffmpeg_available() -> bool:
 
     return shutil.which("ffmpeg") is not None
 
+
 def open_folder(path: str):
     """Opens a folder in the system file manager."""
     if not path:

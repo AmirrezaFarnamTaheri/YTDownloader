@@ -4,8 +4,11 @@ import os
 import re
 import time
 from bs4 import BeautifulSoup
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any, Callable, TYPE_CHECKING
 from urllib.parse import unquote
+
+if TYPE_CHECKING:
+    from utils import CancelToken
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +36,7 @@ class TelegramExtractor:
             }
 
             logger.info(f"Scraping Telegram URL: {embed_url}")
-            response = requests.get(embed_url, headers=headers, timeout=10)
+            response = requests.get(embed_url, headers=headers, timeout=15)
             if response.status_code != 200:
                 logger.error(f"Failed to fetch Telegram page: {response.status_code}")
                 return None
@@ -193,7 +196,7 @@ def download_generic(
     filename: str,
     progress_hook: Callable,
     download_item: Dict[str, Any],
-    cancel_token: Any = None,
+    cancel_token: Optional["CancelToken"] = None,
 ):
     """
     Downloads a file using requests with streaming.
@@ -203,8 +206,8 @@ def download_generic(
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
 
-        # Start stream
-        with requests.get(url, stream=True, headers=headers, timeout=30) as r:
+        # Start stream with a slightly more generous timeout
+        with requests.get(url, stream=True, headers=headers, timeout=(10, 60)) as r:
             r.raise_for_status()
             total_size = int(r.headers.get("content-length", 0))
 
@@ -213,48 +216,40 @@ def download_generic(
 
             downloaded = 0
             start_time = time.time()
+            last_update_time = start_time
 
             with open(final_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if cancel_token and cancel_token.cancelled:
-                        raise Exception("Download cancelled by user")
-
-                    while cancel_token and cancel_token.is_paused:
-                        time.sleep(0.5)
-                        if cancel_token.cancelled:
-                            raise Exception("Download cancelled by user")
-
-                    # Handle pause if available on token (some implementations might not have it)
-                    if cancel_token and hasattr(cancel_token, 'is_paused'):
-                         while cancel_token.is_paused:
-                             time.sleep(0.5)
-                             if hasattr(cancel_token, 'cancelled') and cancel_token.cancelled:
-                                 raise Exception("Download cancelled by user")
+                for chunk in r.iter_content(chunk_size=32 * 1024):  # 32KB chunks
+                    if cancel_token:
+                        cancel_token.check()
 
                     if chunk:
                         f.write(chunk)
                         downloaded += len(chunk)
 
-                        # Calculate speed and ETA
-                        elapsed = time.time() - start_time
-                        speed = downloaded / elapsed if elapsed > 0 else 0
-                        eta = (
-                            (total_size - downloaded) / speed
-                            if speed > 0 and total_size > 0
-                            else 0
-                        )
+                        current_time = time.time()
+                        # Update UI every 0.1s or so to avoid flooding
+                        if current_time - last_update_time > 0.1:
+                            elapsed = current_time - start_time
+                            speed = downloaded / elapsed if elapsed > 0 else 0
+                            eta = (
+                                (total_size - downloaded) / speed
+                                if speed > 0 and total_size > 0
+                                else 0
+                            )
 
-                        progress_hook(
-                            {
-                                "status": "downloading",
-                                "downloaded_bytes": downloaded,
-                                "total_bytes": total_size,
-                                "speed": speed,
-                                "eta": eta,
-                                "filename": filename,
-                            },
-                            download_item,
-                        )
+                            progress_hook(
+                                {
+                                    "status": "downloading",
+                                    "downloaded_bytes": downloaded,
+                                    "total_bytes": total_size,
+                                    "speed": speed,
+                                    "eta": eta,
+                                    "filename": filename,
+                                },
+                                download_item,
+                            )
+                            last_update_time = current_time
 
             progress_hook(
                 {

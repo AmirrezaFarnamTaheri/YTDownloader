@@ -61,9 +61,9 @@ class HistoryView(BaseView):
                         ft.Icons.FOLDER_OPEN,
                         tooltip="Open Folder",
                         icon_color=Theme.PRIMARY,
-                        on_click=lambda e, p=item.get("output_path"): self.open_folder_safe(
-                            p
-                        ),
+                        on_click=lambda e, p=item.get(
+                            "output_path"
+                        ): self.open_folder_safe(p),
                     ),
                     ft.IconButton(
                         ft.Icons.COPY,

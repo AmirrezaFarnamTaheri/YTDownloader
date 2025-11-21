@@ -1,4 +1,5 @@
 """Lightweight in-repo clipboard helper used when the external pyperclip package is unavailable."""
+
 from typing import Optional
 
 # In-memory clipboard fallback. This is used in headless environments where
