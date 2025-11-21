@@ -14,6 +14,7 @@ from config_manager import ConfigManager
 from ui_utils import format_file_size, validate_url, is_ffmpeg_available
 from history_manager import HistoryManager
 from cloud_manager import CloudManager
+from social_manager import SocialManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -35,7 +36,11 @@ class AppState:
         # Feature flags / States
         self.cinema_mode = False
         self.cloud_manager = CloudManager()
+        self.social_manager = SocialManager()
         self.scheduled_time: Optional[datetime.time] = None
+
+        # Try connecting to social
+        threading.Thread(target=self.social_manager.connect, daemon=True).start()
 
 state = AppState()
 
@@ -215,6 +220,9 @@ def main(page: ft.Page):
     time_start = ft.TextField(label="Start (HH:MM:SS)", width=100)
     time_end = ft.TextField(label="End (HH:MM:SS)", width=100)
 
+    # Regex Filter
+    regex_filter = ft.TextField(label="Regex Filter (Playlist)", hint_text="e.g. ^Lecture \\d+", expand=True)
+
     # Batch Import Logic
     def on_file_picker_result(e: ft.FilePickerResultEvent):
         if e.files:
@@ -264,10 +272,34 @@ def main(page: ft.Page):
     # Settings Tab
     proxy_input = ft.TextField(label="Proxy", hint_text="http://user:pass@host:port", value=state.config.get('proxy', ''))
     rate_limit_input = ft.TextField(label="Rate Limit", hint_text="e.g. 5M", value=state.config.get('rate_limit', ''))
+    output_template_input = ft.TextField(label="Output Template", hint_text="%(title)s.%(ext)s", value=state.config.get('output_template', ''))
+
+    def export_data(e):
+        try:
+            from sync_manager import SyncManager
+            path = SyncManager.export_data()
+            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Data exported to {path}")))
+        except Exception as ex:
+             page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Export failed: {ex}")))
+
+    def import_data(e):
+        # Logic for import would typically involve a file picker
+        # For simplicity, we assume import from default location or implement picker
+        # Let's use a simple import from default for now
+        try:
+            from sync_manager import SyncManager
+            SyncManager.import_data()
+            page.show_snack_bar(ft.SnackBar(content=ft.Text("Data imported. Please restart.")))
+        except Exception as ex:
+             page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Import failed: {ex}")))
+
+    export_btn = ft.ElevatedButton("Export Data", on_click=export_data)
+    import_btn = ft.ElevatedButton("Import Data", on_click=import_data)
 
     def save_settings(e):
         state.config['proxy'] = proxy_input.value
         state.config['rate_limit'] = rate_limit_input.value
+        state.config['output_template'] = output_template_input.value
         ConfigManager.save_config(state.config)
         page.show_snack_bar(ft.SnackBar(content=ft.Text("Settings saved")))
 
@@ -319,13 +351,17 @@ def main(page: ft.Page):
                 sponsorblock_cb,
                 subtitle_dd,
                 ft.Row([time_start, time_end]),
+                regex_filter,
                 ft.Divider(),
                 ft.Row([batch_btn, schedule_btn])
             ]), padding=10)),
             ft.Tab(text="Settings", content=ft.Container(content=ft.Column([
                 proxy_input,
                 rate_limit_input,
-                save_settings_btn
+                output_template_input,
+                save_settings_btn,
+                ft.Divider(),
+                ft.Row([export_btn, import_btn])
             ]), padding=10)),
              ft.Tab(text="RSS", content=ft.Container(content=ft.Column([
                 ft.Row([rss_input, ft.IconButton(ft.Icons.ADD, on_click=add_rss)]),
@@ -487,6 +523,19 @@ def main(page: ft.Page):
         status = "Queued"
         sched_dt = None
         
+        # Time Validation
+        start_val = time_start.value.strip() if time_start.value else None
+        end_val = time_end.value.strip() if time_end.value else None
+
+        import re
+        time_pattern = r'^(\d{1,2}:)?\d{1,2}:\d{2}$'
+        if start_val and not re.match(time_pattern, start_val):
+             page.show_snack_bar(ft.SnackBar(content=ft.Text("Invalid Start Time format (HH:MM:SS or MM:SS)")))
+             return
+        if end_val and not re.match(time_pattern, end_val):
+             page.show_snack_bar(ft.SnackBar(content=ft.Text("Invalid End Time format (HH:MM:SS or MM:SS)")))
+             return
+
         if state.scheduled_time:
              now = datetime.now()
              sched_dt = datetime.combine(now.date(), state.scheduled_time)
@@ -502,7 +551,10 @@ def main(page: ft.Page):
             "output_path": str(Path.home() / "Downloads"),
             "playlist": playlist_cb.value,
             "sponsorblock": sponsorblock_cb.value,
-            "download_sections": f"*{time_start.value}-{time_end.value}" if time_start.value and time_end.value else None
+            "start_time": start_val,
+            "end_time": end_val,
+            "match_filter": regex_filter.value if regex_filter.value else None,
+            "output_template": output_template_input.value if output_template_input.value else None
         }
         state.download_queue.append(item)
         
@@ -618,6 +670,14 @@ def main(page: ft.Page):
                              cinema_overlay.content.controls[2].value = f"Downloading {item['url']}... {int(pct*100)}%"
                              cinema_overlay.update()
 
+                    # Social Update (Rate limit handled in manager implicitly or add throttle here)
+                    # We'll do it every 5% or so to avoid spamming RPC
+                    if int(pct * 100) % 5 == 0:
+                        state.social_manager.update_status(
+                            state="Downloading",
+                            details=f"{item.get('title', 'Video')} - {int(pct*100)}%"
+                        )
+
                     item['size'] = format_file_size(total)
                     item['speed'] = format_file_size(d.get('speed', 0)) + "/s"
                     item['eta'] = f"{int(d.get('eta', 0))}s"
@@ -629,6 +689,9 @@ def main(page: ft.Page):
                         item['control'].progress_bar.value = 1.0
                         item['control'].update_progress()
                     item['status'] = 'Processing'
+                    # Capture filename for cloud upload
+                    if 'filename' in d:
+                        item['final_filename'] = d['filename']
 
             download_video(
                 item['url'],
@@ -639,9 +702,14 @@ def main(page: ft.Page):
                 cancel_token=state.cancel_token,
                 sponsorblock_remove=item.get('sponsorblock', False),
                 playlist=item.get('playlist', False),
-                download_sections=item.get('download_sections')
+                start_time=item.get('start_time'),
+                end_time=item.get('end_time'),
+                match_filter=item.get('match_filter'),
+                output_template=item.get('output_template')
             )
             item['status'] = 'Completed'
+
+            state.social_manager.update_status(state="Idle", details="Ready to download")
 
             # Cloud Upload
             try:
@@ -662,7 +730,11 @@ def main(page: ft.Page):
                 item['status'] = 'Cancelled'
             else:
                 item['status'] = 'Error'
+                # Show error details in details_text indirectly by updating status or creating a way to see it
+                # For now, we'll append it to status if it's short, or log it
                 logger.error(f"Download error: {e}")
+                if 'control' in item and item['control']:
+                     item['control'].details_text.value = f"Error: {str(e)[:50]}..."
         finally:
             if 'control' in item and item['control']:
                 item['control'].update_progress()

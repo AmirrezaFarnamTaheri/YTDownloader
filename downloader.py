@@ -151,7 +151,10 @@ def download_video(
     cancel_token: Optional[Any] = None,
     cookies_from_browser: Optional[str] = None,
     cookies_from_browser_profile: Optional[str] = None,
-    download_sections: Optional[str] = None,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+    match_filter: Optional[str] = None,
+    output_template: Optional[str] = None,
     add_metadata: bool = False,
     embed_thumbnail: bool = False,
     recode_video: Optional[str] = None,
@@ -174,6 +177,8 @@ def download_video(
         rate_limit: Download speed limit (e.g., '50K', '4.2M') (default: None).
         cancel_token: CancelToken object for cancellation support (default: None).
         sponsorblock_remove: Whether to remove sponsored segments (default: False).
+        start_time: Optional start time for download (HH:MM:SS).
+        end_time: Optional end time for download (HH:MM:SS).
 
     Raises:
         yt_dlp.utils.DownloadError: If download fails (except for user cancellation).
@@ -190,7 +195,10 @@ def download_video(
         raise ValueError(f"Invalid output path: {output_path}") from e
     
     # Build output template with proper escaping
-    outtmpl = os.path.join(output_path, '%(title)s.%(ext)s')
+    if output_template:
+        outtmpl = os.path.join(output_path, output_template)
+    else:
+        outtmpl = os.path.join(output_path, '%(title)s.%(ext)s')
     
     ydl_opts: Dict[str, Any] = {
         'format': video_format,
@@ -204,6 +212,9 @@ def download_video(
         'no_warnings': False,
         'noplaylist': not playlist,  # Explicitly set playlist behavior
     }
+
+    if match_filter:
+        ydl_opts['matchtitle'] = match_filter
 
     # Add subtitle options if requested
     if subtitle_lang:
@@ -223,11 +234,19 @@ def download_video(
         )
 
     # Download sections (time range)
-    if download_sections:
-        # format expected by yt-dlp: "*start-end"
-        ydl_opts['download_ranges'] = yt_dlp.utils.download_range_func(None, [(None, None)], sections=[download_sections])
-        # Force external downloader for accurate cutting if needed (often ffmpeg)
-        ydl_opts['force_keyframes_at_cuts'] = True
+    if start_time and end_time:
+        try:
+            from yt_dlp.utils import parse_duration
+            start_sec = parse_duration(start_time)
+            end_sec = parse_duration(end_time)
+
+            def ranges_callback(info_dict, ydl):
+                return [{'start_time': start_sec, 'end_time': end_sec}]
+
+            ydl_opts['download_ranges'] = ranges_callback
+            ydl_opts['force_keyframes_at_cuts'] = True
+        except Exception as e:
+            logger.error(f"Error parsing time range: {e}")
 
     # Post-processing options
     postprocessors = ydl_opts.get('postprocessors', [])
@@ -286,6 +305,10 @@ def download_video(
         logger.info(f"Starting download: {url} (format: {video_format}, playlist: {playlist})")
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
+
+        # Capture final filename from hook if possible, but typically we do it via hook
+        # Since progress_hook is called, the logic should be there.
+
         logger.info(f"Download completed: {url}")
     except yt_dlp.utils.DownloadError as e:
         if "by user" in str(e):
