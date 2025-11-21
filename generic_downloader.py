@@ -2,6 +2,7 @@ import requests
 import logging
 import os
 import re
+import time
 from bs4 import BeautifulSoup
 from typing import Optional, Dict, Any, Callable
 from urllib.parse import unquote
@@ -199,24 +200,28 @@ def download_generic(
             final_path = os.path.join(output_path, filename)
 
             downloaded = 0
-            start_time = logging.time.time()
+            start_time = time.time()
 
             with open(final_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
-                    if cancel_token and cancel_token.cancelled:
-                        raise Exception("Download cancelled by user")
-
-                    while cancel_token and cancel_token.is_paused:
-                        logging.time.sleep(0.5)
-                        if cancel_token.cancelled:
-                             raise Exception("Download cancelled by user")
+                    if cancel_token:
+                         # Use check(d) if available, otherwise property checks
+                         if hasattr(cancel_token, 'check'):
+                             cancel_token.check(None) # Argument d is ignored in main.py check() anyway
+                         else:
+                             if getattr(cancel_token, 'cancelled', False):
+                                 raise Exception("Download cancelled by user")
+                             while getattr(cancel_token, 'is_paused', False):
+                                 time.sleep(0.5)
+                                 if getattr(cancel_token, 'cancelled', False):
+                                     raise Exception("Download cancelled by user")
 
                     if chunk:
                         f.write(chunk)
                         downloaded += len(chunk)
 
                         # Calculate speed and ETA
-                        elapsed = logging.time.time() - start_time
+                        elapsed = time.time() - start_time
                         speed = downloaded / elapsed if elapsed > 0 else 0
                         eta = (total_size - downloaded) / speed if speed > 0 and total_size > 0 else 0
 
