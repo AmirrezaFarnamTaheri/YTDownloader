@@ -1,30 +1,56 @@
 # What's Next for StreamCatch
 
-StreamCatch has reached a mature state with the release of v3.1. The recent updates have completed the major "Advanced Power Tools" and "Cloud Connectivity" milestones. The next phase (v4.0) will focus on AI integration and Plugin Architecture.
+StreamCatch is evolving into a comprehensive media management platform. Following the "IMPLEMENT THESE" directive, we are setting an ambitious roadmap for v4.0 and beyond.
 
-## 🌟 Vision v4.0: The "Intelligent" Update
+## 🚀 v4.0: The "Experience & Intelligence" Update
 
-### 1. AI & Smart Features
-*   **Video Summarization:** Integrate local LLMs (e.g., llama.cpp) to generate summaries of downloaded videos (especially lectures/talks).
-*   **Smart Auto-Tagging:** Analyze video title/description to automatically tag and categorize downloads.
-*   **Content Recommendations:** Suggest similar channels or videos based on download history.
+### 1. User Experience (UX) & Accessibility
+*   **Accessibility First**:
+    *   **Screen Reader Support**: Semantic labels for NVDA, JAWS, and VoiceOver.
+    *   **High Contrast Mode**: Dedicated theme for visually impaired users.
+    *   **Keyboard Navigation**: Full keyboard support (J/K to move, D to delete, Space to pause).
+*   **Voice Control**: Integration with SpeechRecognition for voice commands.
+*   **Adaptive Interface**:
+    *   **Compact Mode**: "Widget" style floating window.
+    *   **TV Mode**: 10-foot UI for HTPCs.
+*   **Natural Language Input**: Type commands like "Download the latest video from MKBHD in 1080p".
+*   **Theme Store**: Community-submitted themes.
 
-### 2. Extensibility (Plugin System)
-*   **Plugin API:** Allow community-created plugins to extend functionality (e.g., new extractors, post-processors).
-*   **Theme Store:** Community-submitted themes and layouts.
+### 2. Performance & Core Engineering
+*   **Download Acceleration**:
+    *   **Multi-threaded Downloading**: `aria2c` integration for faster downloads.
+    *   **Smart Buffer Management**: Optimized memory usage.
+*   **Hardware Acceleration**:
+    *   **GPU Transcoding**: NVENC/AMF via FFmpeg.
+    *   **GUI Rendering**: Metal/Vulkan/DX12 optimizations.
+*   **Distributed Processing**:
+    *   **Cluster Mode**: Master/Worker node delegation on LAN.
+*   **Multi-User Support**:
+    *   **Profiles**: Separate histories and queues.
+    *   **Role-Based Access**: Admin vs Guest.
+*   **Scripting**: Lua/Python hooks for custom logic.
 
-### 3. Remote & Web Control
-*   **Remote Interface:** A mobile-friendly web interface to control the downloader from another device on the local network.
-*   **Headless Server Mode:** Run StreamCatch as a background service on a NAS/Server.
+### 3. AI & Smart Features
+*   **Video Summarization**: Local LLM integration (Llama 3, Phi-3) for summaries.
+*   **Smart Auto-Tagging**: AI-based categorization and tagging.
+*   **Content Recommendations**: Suggestions based on history.
+*   **Sentiment Analysis**: Analyze comment sentiment.
+*   **Auto-Categorization**: Organize into folders (Music, Tech, Gaming).
 
-## ✅ Completed in v3.1
-*   **Cloud Upload:** Integrated Google Drive upload (PyDrive2).
-*   **Social Sharing:** Discord Rich Presence integration ("Now Downloading").
-*   **Cross-Device Sync:** Export/Import configuration and history.
-*   **Time Range Downloading:** Download specific sections (Start/End time).
-*   **Regex Filtering:** Filter playlists using Regular Expressions.
-*   **Custom Output Templates:** User-defined filename formats.
-*   **Scheduled Downloads:** Schedule downloads for specific times.
-*   **RSS Feed Support:** Subscribe to channels.
-*   **Dashboard Analytics:** Visual stats and charts.
-*   **Modern UI:** Complete rewrite in Flet.
+### 4. Integrations & Ecosystem
+*   **Browser Extensions**: Chrome/Firefox integration via Native Messaging.
+*   **Mobile Companion App**: Flutter mobile remote.
+*   **Home Automation**: Home Assistant / MQTT support.
+*   **Media Server Hooks**: Plex/Jellyfin notification triggers.
+
+## ✅ Completed in v3.x
+*   **Cloud Upload**: Google Drive (PyDrive2).
+*   **Social Sharing**: Discord Rich Presence.
+*   **Cross-Device Sync**: Export/Import configuration.
+*   **Time Range Downloading**: Download specific sections.
+*   **Regex Filtering**: Filter playlists.
+*   **Custom Output Templates**: User-defined filename formats.
+*   **Scheduled Downloads**: Specific time scheduling.
+*   **RSS Feed Support**: Channel subscription.
+*   **Dashboard Analytics**: Visual stats.
+*   **Modern UI**: Flet-based interface.

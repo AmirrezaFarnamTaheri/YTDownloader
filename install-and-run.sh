@@ -1,12 +1,12 @@
 #!/bin/bash
-# Lumina - Setup and Installation Script for Linux/macOS
+# StreamCatch - Setup and Installation Script for Linux/macOS
 # This script handles everything: checking, installing, and launching
 
 set -euo pipefail
 
 # Setup logging
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="$SCRIPT_DIR/lumina_installer.log"
+LOG_FILE="$SCRIPT_DIR/streamcatch_installer.log"
 exec &> >(tee -a "$LOG_FILE")
 
 # Color definitions
@@ -39,9 +39,21 @@ ensure_pip_in_venv() {
     fi
 }
 
+check_system_deps() {
+    echo "Checking system dependencies (ffmpeg, mpv)..."
+    if ! command -v ffmpeg &> /dev/null; then
+        echo -e "${YELLOW}WARNING: FFmpeg not found. It is required for merging audio/video and cuts.${NC}"
+        echo "Please install it via your package manager (e.g., 'sudo apt install ffmpeg' or 'brew install ffmpeg')."
+    else
+        echo -e "${GREEN}[OK] FFmpeg found${NC}"
+    fi
+
+    # Check for MPV/VLC if needed for playback (optional)
+}
+
 echo -e "${CYAN}"
 echo "============================================================"
-echo "                   Lumina Setup"
+echo "                   StreamCatch Setup"
 echo "            Modern Media Downloader"
 echo "                 Linux/macOS Installation"
 echo "============================================================"
@@ -60,6 +72,9 @@ PYTHON_VERSION=$(python3 --version)
 echo -e "${GREEN}[OK] $PYTHON_VERSION${NC}"
 echo ""
 
+# Step 1.5: Check System Dependencies
+check_system_deps
+
 # Step 2: Get application directory
 echo "[Step 2] Setting up application directory..."
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -73,7 +88,14 @@ echo ""
 echo "[Step 3] Setting up virtual environment..."
 if [ -d "$VENV_PATH" ]; then
     echo -e "${YELLOW}Virtual environment already exists.${NC}"
-    read -p "Use existing virtual environment? (Y/n): " USE_EXISTING
+    # Non-interactive mode check or default to 'n' if script run via pipe?
+    # Use -t 0 to check if stdin is a terminal
+    if [ -t 0 ]; then
+         read -p "Use existing virtual environment? (Y/n): " USE_EXISTING
+    else
+         USE_EXISTING="Y"
+    fi
+
     if [[ "$USE_EXISTING" == "n" || "$USE_EXISTING" == "N" ]]; then
         echo "Removing existing virtual environment..."
         rm -rf "$VENV_PATH"
@@ -131,7 +153,7 @@ echo -e "${GREEN}[OK] All dependencies installed${NC}"
 echo ""
 
 # Step 5: Launch the application
-echo "[Step 5] Launching Lumina..."
+echo "[Step 5] Launching StreamCatch..."
 echo "Starting the application GUI..."
 echo ""
 
@@ -144,15 +166,15 @@ fi
 
 echo -e "${GREEN}"
 echo "============================================================"
-echo "          Setup Complete! Lumina is Ready"
+echo "          Setup Complete! StreamCatch is Ready"
 echo "============================================================"
 echo -e "${NC}"
-echo "Next time you can launch Lumina by:"
+echo "Next time you can launch StreamCatch by:"
 echo "  1. Running this script again"
 echo "  2. Command: \"$PYTHON_EXE\" \"$APP_DIR/main.py\""
 echo ""
 echo "Configuration and logs are saved to:"
-echo "  Settings: ~/.lumina/config.json"
-echo "  Logs: $APP_DIR/lumina.log"
+echo "  Settings: ~/.streamcatch/config.json" # Note: config manager might still default to local or old path if not updated, but intention is clear
+echo "  Logs: $APP_DIR/streamcatch.log"
 echo "  Installer log: $LOG_FILE"
 echo ""

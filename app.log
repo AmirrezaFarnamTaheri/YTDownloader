@@ -1,0 +1,13 @@
+INFO:history_manager:History database initialized.
+INFO:flet:Assets path configured: /app/assets
+WARNING:social_manager:Failed to connect to Discord RPC: Could not find Discord installed and running on this machine.
+INFO:flet:Starting Flet web server on port 8550...
+INFO:flet_web.fastapi:Web renderer configured: WebRenderer.CANVAS_KIT
+INFO:flet_web.fastapi:Use color emoji: False
+INFO:flet_web.fastapi:Route URL strategy configured: path
+INFO:     Started server process [9814]
+INFO:     Waiting for application startup.
+INFO:flet_web.fastapi:Starting up Flet App Manager
+INFO:flet:App URL: http://127.0.0.1:8550
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8550 (Press CTRL+C to quit)

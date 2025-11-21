@@ -158,7 +158,9 @@ def download_video(
     add_metadata: bool = False,
     embed_thumbnail: bool = False,
     recode_video: Optional[str] = None,
-    sponsorblock_remove: bool = False
+    sponsorblock_remove: bool = False,
+    use_aria2c: bool = False,
+    gpu_accel: Optional[str] = None
 ) -> None:
     """
     Downloads a video or playlist from the given URL using yt-dlp.
@@ -179,6 +181,8 @@ def download_video(
         sponsorblock_remove: Whether to remove sponsored segments (default: False).
         start_time: Optional start time for download (HH:MM:SS).
         end_time: Optional end time for download (HH:MM:SS).
+        use_aria2c: Use aria2c as external downloader (default: False).
+        gpu_accel: GPU acceleration backend ('cuda', 'vulkan', 'auto') (default: None).
 
     Raises:
         yt_dlp.utils.DownloadError: If download fails (except for user cancellation).
@@ -215,6 +219,12 @@ def download_video(
 
     if match_filter:
         ydl_opts['matchtitle'] = match_filter
+
+    # Configure External Downloader (Aria2c)
+    if use_aria2c:
+        ydl_opts['external_downloader'] = 'aria2c'
+        # Default high-performance args for aria2c
+        ydl_opts['external_downloader_args'] = ['-x', '16', '-s', '16', '-k', '1M']
 
     # Add subtitle options if requested
     if subtitle_lang:
@@ -271,6 +281,38 @@ def download_video(
             'categories': ['sponsor', 'selfpromo', 'interaction', 'intro', 'outro', 'preview', 'music_offtopic'],
             'when': 'after_filter'
         })
+
+    # GPU Acceleration
+    if gpu_accel and gpu_accel.lower() != 'none':
+        # This attempts to use hardware encoders if re-encoding is needed
+        # For simple merges, ffmpeg usually copies.
+        # If we want to force hardware decoding/encoding, we'd need to be aggressive with args.
+        # Here we append args to the postprocessor args.
+
+        ffmpeg_args = []
+        if gpu_accel == 'cuda':
+             # Use NVENC for H.264 if possible (common case)
+             # This only applies if encoding happens.
+             ffmpeg_args.extend(['-c:v', 'h264_nvenc', '-preset', 'fast'])
+        elif gpu_accel == 'vulkan':
+             # Experimental/example
+             ffmpeg_args.extend(['-c:v', 'h264_vaapi']) # VAAPI often used with Vulkan context or similar on Linux
+
+        if ffmpeg_args:
+            # Add to postprocessor args for ffmpeg
+            # yt-dlp allows 'postprocessor_args' dict
+            if 'postprocessor_args' not in ydl_opts:
+                ydl_opts['postprocessor_args'] = {}
+
+            # We add it to 'Merger' or 'VideoConvertor'
+            # Safest is likely 'Merger' if it runs, or generally to ffmpeg if possible?
+            # yt-dlp structure: {'ffmpeg': args_list} applies to all ffmpeg calls? No, usually specific PP.
+            # But 'postprocessor_args' can be a dict with keys for specific PPs.
+            # Or a list for global args.
+            # Let's use the dictionary format for clarity if we knew the key.
+            # Simpler: use list for generic ffmpeg args.
+            # Actually, yt-dlp documentation says: dictionary `{'ffmpeg': []}` passes args to ffmpeg.
+            ydl_opts['postprocessor_args'] = {'ffmpeg': ffmpeg_args}
 
     if postprocessors:
         ydl_opts['postprocessors'] = postprocessors
