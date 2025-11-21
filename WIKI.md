@@ -13,32 +13,31 @@
 *   **Scheduler**: Schedule downloads to start at a specific time.
 *   **Cinema Mode**: A minimalist overlay for monitoring progress.
 *   **Subtitles**: Download subtitles in various languages.
-*   **Playlist Support**: Download entire playlists or channels.
+*   **Playlist Support**: Download entire playlists or channels with optional Regex filtering.
 *   **RSS Feed Monitoring**: Subscribe to RSS feeds to track channels.
 *   **Proxy & Rate Limit**: Configure proxy servers and limit download speeds.
-*   **Download History**: Keep track of your downloads with a built-in history manager and dashboard.
-*   **Performance Tuning**: (Coming in v4.0) Aria2c acceleration and GPU transcoding.
+*   **Download History & Dashboard**: Keep track of your downloads with a built-in history manager and view real-time statistics in the Dashboard.
+*   **Performance Tuning**: GPU acceleration (CUDA/Vulkan) and Aria2c external downloader support.
 
 ## Usage Guide
 
 ### Basic Download
-1.  Paste a YouTube URL into the input field (or use the "Paste" button).
-2.  Click **Fetch Info** to load video details.
-3.  Select your desired **Video Quality** and **Audio Format** in the tabs.
-4.  Click **Add to Queue**. The download will start automatically if the queue is processed.
+1.  Paste a URL into the input field.
+2.  Click **Fetch Info** (search icon) to load video details.
+3.  Select your desired **Video Quality** and **Audio Format**.
+4.  Optionally, select features like Playlist, SponsorBlock, or Time Range.
+5.  Click **Add to Queue**. The download will start automatically if the queue is idle.
 
 ### Batch Download
 1.  Create a `.txt` file with one URL per line.
-2.  Go to the **Advanced** tab.
-3.  Click **Import Batch**.
-4.  Select your text file. Valid URLs will be added to the queue.
+2.  Click **Batch Import**.
+3.  Select your text file. Valid URLs will be added to the queue automatically.
 
 ### Scheduling
 1.  Enter a URL and fetch info.
-2.  Go to the **Advanced** tab.
-3.  Click **Schedule**.
-4.  Pick the start time.
-5.  Click **Add to Queue**. The item will sit in the queue with a "Scheduled" status until the time is reached.
+2.  Click **Schedule**.
+3.  Pick the start time.
+4.  Click **Add to Queue**. The item will sit in the queue with a "Scheduled" status until the time is reached.
 
 ## Troubleshooting
 

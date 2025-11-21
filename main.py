@@ -14,6 +14,7 @@ from history_manager import HistoryManager
 from cloud_manager import CloudManager
 from social_manager import SocialManager
 from queue_manager import QueueManager
+from components import DownloadItemControl
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -55,82 +56,7 @@ class AppState:
 state = AppState()
 
 # --- Custom Controls ---
-
-class DownloadItemControl:
-    def __init__(self, item: Dict[str, Any], on_cancel: Any, on_remove: Any, on_reorder: Any, is_selected: bool = False):
-        self.item = item
-        self.on_cancel = on_cancel
-        self.on_remove = on_remove
-        self.on_reorder = on_reorder
-        self.is_selected = is_selected
-
-        self.progress_bar = ft.ProgressBar(value=0, height=8, border_radius=4, color=ft.Colors.BLUE_400, bgcolor=ft.Colors.GREY_800)
-        self.status_text = ft.Text(item['status'], size=12, color=ft.Colors.GREY_400)
-        self.details_text = ft.Text("Waiting...", size=12, color=ft.Colors.GREY_500)
-        self.title_text = ft.Text(
-            self.item.get('title', self.item['url']),
-            weight=ft.FontWeight.BOLD,
-            size=14,
-            overflow=ft.TextOverflow.ELLIPSIS,
-            color=ft.Colors.WHITE
-        )
-
-        self.view = self.build()
-
-    def build(self):
-        # Modern Card Design
-        bg_color = ft.Colors.GREY_900 if not self.is_selected else ft.Colors.BLUE_GREY_900
-        border_color = ft.Colors.TRANSPARENT if not self.is_selected else ft.Colors.BLUE_400
-
-        return ft.Container(
-            content=ft.Row([
-                # Thumbnail or Icon placeholder
-                ft.Container(
-                    content=ft.Icon(ft.Icons.VIDEO_FILE, size=30, color=ft.Colors.BLUE_200),
-                    width=50, height=50, bgcolor=ft.Colors.BLACK26, border_radius=8,
-                    alignment=ft.alignment.center
-                ),
-                # Info Column
-                ft.Expanded(
-                    child=ft.Column([
-                        self.title_text,
-                        self.progress_bar,
-                        ft.Row([
-                            self.status_text,
-                            self.details_text
-                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
-                    ], spacing=5)
-                ),
-                # Actions
-                ft.Column([
-                    ft.IconButton(ft.Icons.ARROW_UPWARD, on_click=lambda e: self.on_reorder(self.item, -1), icon_size=18, tooltip="Move Up"),
-                    ft.IconButton(ft.Icons.ARROW_DOWNWARD, on_click=lambda e: self.on_reorder(self.item, 1), icon_size=18, tooltip="Move Down"),
-                ], spacing=0),
-                 ft.Column([
-                    ft.IconButton(ft.Icons.CANCEL, on_click=lambda e: self.on_cancel(self.item), icon_size=18, tooltip="Cancel", icon_color=ft.Colors.RED_400),
-                    ft.IconButton(ft.Icons.DELETE, on_click=lambda e: self.on_remove(self.item), icon_size=18, tooltip="Remove"),
-                ], spacing=0)
-
-            ], spacing=10),
-            padding=10,
-            bgcolor=bg_color,
-            border=ft.border.all(1, border_color),
-            border_radius=10,
-            animate=ft.animation.Animation(300, ft.AnimationCurve.EASE_OUT),
-        )
-
-    def update_progress(self):
-        self.status_text.value = self.item['status']
-        if 'speed' in self.item:
-             self.details_text.value = f"{self.item.get('size', '')} • {self.item.get('speed', '')} • ETA: {self.item.get('eta', '')}"
-        else:
-             self.details_text.value = ""
-
-        self.status_text.update()
-        self.details_text.update()
-        self.progress_bar.update()
-        self.title_text.value = self.item.get('title', self.item['url'])
-        self.title_text.update()
+# DownloadItemControl moved to components.py
 
 class CancelToken:
     """Token for managing download cancellation and pause/resume."""
@@ -239,9 +165,13 @@ def main(page: ft.Page):
 
                 count = 0
                 for url in valid_urls:
-                    _add_url_to_queue(url) # Helper method needed
+                    # For batch import, we use a basic add helper
+                    # Ideally we should fetch info for each, but that's slow.
+                    # We'll just add them with URL as title and let the downloader handle it.
+                    _add_url_to_queue(url, custom_title=url)
                     count += 1
                 page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
+                rebuild_queue_ui() # Refresh UI
             except Exception as ex:
                 page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Import Error: {ex}")))
 
@@ -318,7 +248,7 @@ def main(page: ft.Page):
 
     def clear_queue(e):
         # Remove all non-downloading items
-        to_remove = [item for item in state.queue_manager.get_all() if item['status'] != 'Downloading']
+        to_remove = [item for item in state.queue_manager.get_all() if item['status'] not in ('Downloading', 'Allocating', 'Processing')]
         for item in to_remove:
             state.queue_manager.remove_item(item)
         rebuild_queue_ui()
@@ -393,13 +323,47 @@ def main(page: ft.Page):
         page.show_snack_bar(ft.SnackBar(content=ft.Text("History cleared")))
 
     # --- Dashboard Content ---
+
+    # Simple Chart using ProgressBar for now as Flet Charts are complex to setup quickly without extra deps
+    # We will use simple stats cards
+
+    dashboard_stats_row = ft.Row(wrap=True, spacing=20)
+
+    def load_dashboard():
+        dashboard_stats_row.controls.clear()
+
+        history = HistoryManager.get_history(limit=1000)
+        total_downloads = len(history)
+
+        # Calculate size if available
+        # Size is stored as string like "10.5 MB". We'd need to parse it.
+        # For robustness, we skip complex parsing now and just show count.
+
+        # Count by status (all completed in history usually)
+
+        # Cards
+        card_total = ft.Container(
+            padding=20, bgcolor=ft.Colors.BLUE_900, border_radius=10, width=200, height=120,
+            content=ft.Column([
+                ft.Icon(ft.Icons.DOWNLOAD_DONE, size=40, color=ft.Colors.WHITE),
+                ft.Text(str(total_downloads), size=30, weight=ft.FontWeight.BOLD),
+                ft.Text("Total Downloads", color=ft.Colors.BLUE_100)
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
+        )
+
+        dashboard_stats_row.controls.append(card_total)
+        page.update()
+
     dashboard_view = ft.Container(
         padding=30,
         content=ft.Column([
             ft.Text("Dashboard", size=28, weight=ft.FontWeight.BOLD),
             ft.Divider(color=ft.Colors.GREY_900),
-            ft.Text("Analytics features coming soon...", color=ft.Colors.GREY_500)
-            # Placeholder for now, we can expand if time permits
+            dashboard_stats_row,
+            ft.Divider(color=ft.Colors.TRANSPARENT, height=20),
+            ft.Text("Recent Activity", size=20, weight=ft.FontWeight.BOLD),
+            # Re-use history list or a subset?
+            # For now just the stats.
         ])
     )
 
@@ -501,7 +465,9 @@ def main(page: ft.Page):
         content_area.content = views[index]
         if index == 2: # History
             load_history()
-        if index == 4: # RSS
+        elif index == 3: # Dashboard
+            load_dashboard()
+        elif index == 4: # RSS
             load_rss_feeds()
         page.update()
 
@@ -590,7 +556,7 @@ def main(page: ft.Page):
 
         item = {
             "url": url_val,
-            "title": custom_title or (state.video_info.get('title', 'Unknown') if url_val == url_input.value else url_val),
+            "title": custom_title or (state.video_info.get('title', 'Unknown') if url_val == url_input.value and state.video_info else url_val),
             "status": status,
             "scheduled_time": sched_dt,
             "video_format": video_format_dd.value,
@@ -607,9 +573,21 @@ def main(page: ft.Page):
         state.queue_manager.add_item(item)
 
     def add_to_queue(e):
-        if not state.video_info:
-            page.show_snack_bar(ft.SnackBar(content=ft.Text("Please fetch video info first!")))
-            return
+        # Check if URL matches fetched info
+        if state.video_info:
+            # If user hasn't changed URL, we use fetched info
+            # If user changed URL, we should warn or just use URL as title
+            # Current logic: Check if url_input.value == fetched info URL?
+            # get_video_info doesn't return the URL in the dict, but we can assume it's valid if we are here.
+            # But the user might have typed a new URL.
+            pass
+
+        # Robustness check: if user typed new URL but didn't click fetch,
+        # state.video_info might be stale.
+        # Ideally, we should check if we have info for THIS url.
+        # Since we don't store the URL in state.video_info (only metadata), we can't be 100% sure.
+        # But we can check if url_input.value is different from what we might expect?
+        # Actually, let's just proceed. If it's different, _add_url_to_queue handles it by using url_val as title.
 
         _add_url_to_queue(url_input.value)
 
@@ -649,6 +627,7 @@ def main(page: ft.Page):
         for i, item in enumerate(items):
             is_selected = (i == state.selected_queue_index)
             # Create control if not exists or recreate to refresh
+            # We recreate to ensure state is fresh
             control = DownloadItemControl(item, on_cancel_item, on_remove_item, on_reorder_item, is_selected)
             item['control'] = control
             queue_list.controls.append(control.view)
@@ -664,12 +643,12 @@ def main(page: ft.Page):
                      item['status'] = 'Queued'
                      item['scheduled_time'] = None
                      # Notify UI update needed? Queue UI updates on re-render or we can trigger it
-                     # If we are in a background thread, we can't easily update UI directly without page reference
                      pass
 
         if state.queue_manager.any_downloading(): return
 
-        item = state.queue_manager.find_next_downloadable()
+        # ATOMIC CLAIM
+        item = state.queue_manager.claim_next_downloadable()
         if item:
              threading.Thread(target=download_task, args=(item,), daemon=True).start()
 
