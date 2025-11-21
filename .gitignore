@@ -5,6 +5,7 @@ build/
 dist/
 *.spec
 !streamcatch.spec
+!mobile/buildozer.spec
 ytdownloader.log
 ytdownloader_installer.log
 venv/
@@ -20,3 +21,13 @@ flet_server.log
 test_history.db
 test_history.db-shm
 test_history.db-wal
+
+# Mobile build artifacts
+mobile/.buildozer/
+mobile/bin/
+mobile/StreamCatch-ios/
+.buildozer/
+*.apk
+*.ipa
+*.xcarchive
+ipa-output/

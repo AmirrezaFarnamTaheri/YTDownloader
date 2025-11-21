@@ -82,3 +82,4 @@ class YTDownloaderApp(MDApp):
         self.root.ids.status_label.text = f"Scheduled for {time}"
 
 if __name__ == "__main__":
+    YTDownloaderApp().run()
