@@ -85,8 +85,9 @@ class TestGetVideoInfo(unittest.TestCase):
         mock_youtube_dl.return_value.__enter__.return_value = mock_instance
         mock_instance.extract_info.side_effect = yt_dlp.utils.DownloadError("Video not found")
 
-        with self.assertRaises(yt_dlp.utils.DownloadError):
-            get_video_info('https://www.youtube.com/watch?v=invalid')
+        # We expect None now as per robustness improvements
+        result = get_video_info('https://www.youtube.com/watch?v=invalid')
+        self.assertIsNone(result)
 
     @patch('downloader.yt_dlp.YoutubeDL')
     def test_get_video_info_unexpected_error(self, mock_youtube_dl):
