@@ -84,6 +84,14 @@ Access the UI at `http://localhost:8550`. Downloads are saved to `./downloads`.
 - **Windows**: `install-and-run.bat`
 - **Linux/macOS**: `install-and-run.sh`
 
+### 🏗️ Building Release Binaries
+- Ensure dependencies are installed: `pip install -r requirements.txt`
+- Package the desktop app with PyInstaller (includes locales and assets):
+  ```bash
+  pyinstaller --noconfirm streamcatch.spec
+  ```
+- Artifacts are written to `dist/StreamCatch` by default. The GitHub Actions workflow now builds Windows/macOS/Linux desktop binaries and archives Android/iOS mobile source bundles for downstream packaging.
+
 ## 📱 Mobile Support
 StreamCatch runs on iOS and Android via Flet. See [SETUP_MOBILE.md](SETUP_MOBILE.md) for details.
 
@@ -117,7 +125,7 @@ We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ### Running Tests
 ```bash
-python -m unittest discover -s tests -p "test_*.py" -v
+pytest
 ```
 
 ## 📄 License

@@ -3,11 +3,68 @@ import logging
 import os
 import re
 import time
-from bs4 import BeautifulSoup
+from html.parser import HTMLParser
 from typing import Optional, Dict, Any, Callable
 from urllib.parse import unquote
 
 logger = logging.getLogger(__name__)
+
+
+class _TelegramHTMLParser(HTMLParser):
+    """Lightweight parser to extract Telegram embed information without BeautifulSoup."""
+
+    def __init__(self):
+        super().__init__()
+        self.video_src: Optional[str] = None
+        self.photo_src: Optional[str] = None
+        self.og_video: Optional[str] = None
+        self.og_image: Optional[str] = None
+        self.caption_parts = []
+        self._collect_caption = False
+
+    def handle_starttag(self, tag, attrs):
+        attrs_dict = dict(attrs)
+        classes = attrs_dict.get('class', '').split()
+
+        if tag == 'video' and not self.video_src:
+            self.video_src = attrs_dict.get('src')
+
+        if tag == 'div' and 'tgme_widget_message_photo_wrap' in classes and not self.photo_src:
+            style = attrs_dict.get('style', '')
+            match = re.search(r"url\('?(.*?)'?\)", style)
+            if match:
+                self.photo_src = match.group(1)
+
+        if tag == 'meta':
+            if attrs_dict.get('property') == 'og:video' and not self.og_video:
+                self.og_video = attrs_dict.get('content')
+            if attrs_dict.get('property') == 'og:image' and not self.og_image:
+                self.og_image = attrs_dict.get('content')
+
+        if tag == 'div' and 'tgme_widget_message_text' in classes:
+            self._collect_caption = True
+
+    def handle_endtag(self, tag):
+        if tag == 'div' and self._collect_caption:
+            self._collect_caption = False
+
+    def handle_data(self, data):
+        if self._collect_caption:
+            self.caption_parts.append(data.strip())
+
+    @property
+    def caption(self) -> str:
+        return " ".join(part for part in self.caption_parts if part)
+
+    @property
+    def is_video(self) -> bool:
+        return bool(self.video_src or self.og_video)
+
+    @property
+    def media_extension(self) -> str:
+        if self.is_video:
+            return 'mp4'
+        return 'jpg'
 
 class TelegramExtractor:
     @staticmethod
@@ -42,53 +99,18 @@ class TelegramExtractor:
                 logger.error(f"Failed to fetch Telegram page: {response.status_code}")
                 return None
 
-            soup = BeautifulSoup(response.text, 'html.parser')
+            parser = _TelegramHTMLParser()
+            parser.feed(response.text)
 
-            # Try to find video
-            video_tag = soup.find('video')
-            image_tag = soup.find('div', class_='tgme_widget_message_photo_wrap')
-
-            media_url = None
-            ext = 'mp4'
-            is_video = False
-
-            if video_tag:
-                src = video_tag.get('src')
-                if src:
-                    media_url = src
-                    is_video = True
-                    ext = 'mp4'
-
-            if not media_url and image_tag:
-                # Extract background-image url
-                style = image_tag.get('style', '')
-                # style="background-image:url('https://...')"
-                match = re.search(r"url\('?(.*?)'?\)", style)
-                if match:
-                    media_url = match.group(1)
-                    is_video = False
-                    ext = 'jpg'
-
-            if not media_url:
-                # Fallback: Check Open Graph tags
-                og_video = soup.find('meta', property='og:video')
-                if og_video:
-                    media_url = og_video.get('content')
-                    is_video = True
-                else:
-                    og_image = soup.find('meta', property='og:image')
-                    if og_image:
-                        media_url = og_image.get('content')
-                        is_video = False
-                        ext = 'jpg'
+            media_url = parser.video_src or parser.photo_src or parser.og_video or parser.og_image
+            ext = parser.media_extension
+            is_video = parser.is_video
 
             if not media_url:
                 logger.warning("No media found on Telegram page.")
                 return None
 
-            # Get Title / Text
-            text_div = soup.find('div', class_='tgme_widget_message_text')
-            title = text_div.get_text(strip=True)[:50] if text_div else "Telegram_Media"
+            title = parser.caption.strip()[:50] if parser.caption else "Telegram_Media"
             if not title:
                 title = f"Telegram_{url.split('/')[-1]}"
 

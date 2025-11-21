@@ -4,6 +4,7 @@ __pycache__/
 build/
 dist/
 *.spec
+!streamcatch.spec
 ytdownloader.log
 ytdownloader_installer.log
 venv/
