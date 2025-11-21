@@ -13,3 +13,7 @@ pyinstaller>=6.0.0        # Create standalone executables
 black>=23.0.0             # Code formatting (optional)
 mypy>=1.0.0               # Type checking (optional)
 pylint>=3.0.0             # Code linting (optional)
+
+# Cloud & Social
+PyDrive2>=1.16.0          # Google Drive API wrapper
+pypresence>=4.2.0         # Discord Rich Presence

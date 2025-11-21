@@ -17,8 +17,10 @@
 *   **High Quality**: Download up to 4K/8K video and high-bitrate audio.
 *   **SponsorBlock**: Automatically remove sponsored segments.
 *   **Batch Downloading**: Import URLs from a text file.
+*   **Time Range Downloading**: Download specific sections of a video (Start/End time).
 *   **Scheduler**: Schedule downloads for later.
-*   **RSS Feed Support**: Subscribe to channels and auto-download (coming soon).
+*   **RSS Feed Support**: Subscribe to channels and auto-download.
+*   **Cloud Upload**: (Beta) Auto-upload completed downloads to cloud storage.
 *   **Advanced Options**: Proxy support, rate limiting, metadata embedding.
 
 ## 🚀 Installation

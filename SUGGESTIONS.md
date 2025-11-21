@@ -1,59 +1,68 @@
-# Suggestions for Future Improvements
+# Comprehensive Suggestions for StreamCatch
 
-This document outlines a comprehensive list of suggestions for elevating the YTDownloader project across various aspects: Frontend, Backend, DevOps, Features, and Security.
+This document outlines a detailed and comprehensive roadmap of suggestions to elevate **StreamCatch** (formerly YTDownloader) into a world-class media management and downloading platform. The suggestions are categorized by broad aspects of software engineering and product development.
 
-## 1. Frontend & UI/UX
+## 1. User Experience (UX) & Accessibility
+*   **Accessibility First**:
+    *   **Screen Reader Support**: Optimize Flet controls with semantic labels for NVDA, JAWS, and VoiceOver.
+    *   **High Contrast Mode**: Dedicated theme for visually impaired users.
+    *   **Keyboard Navigation**: Full keyboard support for queue management (J/K to move, D to delete, Space to pause).
+*   **Voice Control**: Integration with SpeechRecognition to allow voice commands (e.g., "Download this URL", "Pause all").
+*   **Adaptive Interface**:
+    *   **Compact Mode**: A "Widget" style floating window for always-on-top monitoring.
+    *   **TV Mode**: A 10-foot UI optimized for remote control usage on HTPCs.
+*   **Natural Language Input**: Allow users to type commands like "Download the latest video from MKBHD in 1080p" instead of pasting URLs.
 
-*   **Responsive Design**: Ensure the UI scales gracefully on different screen sizes (DPI awareness).
-*   **Drag & Drop**: Allow users to drag URL links or text files directly onto the application window to initiate downloads.
-*   **Themes Engine**: Expand beyond Light/Dark mode to support custom color schemes or user-defined CSS-like styling for `sv_ttk`.
-*   **Download Graph**: Visualize download speed and progress with a real-time graph widget.
-*   **Thumbnail Grid**: For playlists, show a grid view of thumbnails instead of a simple list.
-*   **Notifications**: Integrate native OS notifications (Toast on Windows, Notify-send on Linux, Notification Center on macOS) for completion alerts.
-*   **System Tray Icon**: Minimize to tray with background downloading and quick actions (Pause/Resume).
-*   **Localization Editor**: A built-in tool to help users translate the app strings and submit PRs.
+## 2. Performance & Core Engineering
+*   **Download Acceleration**:
+    *   **Multi-threaded Downloading**: Integrate `aria2c` as an external downloader backend for `yt-dlp` to accelerate downloads via multiple connections.
+    *   **Smart Buffer Management**: Optimize memory usage during high-speed downloads on low-RAM devices.
+*   **Hardware Acceleration**:
+    *   **GPU Transcoding**: Use NVENC/AMF via FFmpeg for faster video conversion and merging.
+    *   **GUI Rendering**: Ensure Flet/Flutter is using Metal/Vulkan/DX12 for UI rendering at 144Hz+.
+*   **Distributed Processing**:
+    *   **Cluster Mode**: Allow multiple StreamCatch instances on a LAN to share the download load (e.g., "Master" node delegates URLs to "Worker" nodes).
 
-## 2. Backend & Core Logic
+## 3. Security, Privacy & Anonymity
+*   **Network Security**:
+    *   **Built-in VPN/Tor**: Integration with Tor (via `stem`) to route downloads through the Tor network for anonymity.
+    *   **DNS over HTTPS (DoH)**: Use secure DNS resolvers to prevent ISP snooping on video metadata lookups.
+*   **Data Protection**:
+    *   **Encrypted Database**: Use SQLCipher for `history.db` to protect user's download history.
+    *   **Secure Erasure**: Option to secure-delete (overwrite) temporary files and cached fragments.
+*   **Authentication**:
+    *   **Biometric Lock**: Use Windows Hello / TouchID to open the application or access the "Hidden" category.
 
-*   **Plugin System**: Architecture to allow third-party plugins for post-processing or metadata fetching.
-*   **Database Migration**: Move from raw SQLite queries to an ORM (e.g., SQLAlchemy or Peewee) for better maintainability and migration support.
-*   **Asynchronous IO**: Refactor the download engine to use `asyncio` instead of threading for potentially better concurrency handling (though `yt-dlp` is synchronous, wrapping it might be complex).
-*   **Smart Queue**: Prioritize downloads based on size, estimated time, or user drag-and-drop reordering (already partially implemented).
-*   **Auto-Retry with Backoff**: Implement exponential backoff for network failures.
-*   **Bandwidth Scheduler**: Limit bandwidth usage during specific hours of the day automatically.
-*   **Duplicate Detection**: Check against the history database before adding to queue to prevent re-downloading the same video (hash-based or ID-based).
+## 4. Integrations & Ecosystem
+*   **Browser Extensions**:
+    *   **Chrome/Firefox Extension**: A "Send to StreamCatch" button in the browser toolbar that communicates with the desktop app via Native Messaging or Localhost API.
+*   **Mobile Companion App**:
+    *   **Flutter Mobile App**: A dedicated mobile remote that connects to the desktop instance via WebSocket to manage the queue.
+*   **Home Automation**:
+    *   **Home Assistant Integration**: MQTT support to report download status or trigger downloads from smart home automations (e.g., "Download news briefing when alarm goes off").
+*   **Media Server Hooks**:
+    *   **Plex/Jellyfin Notification**: Trigger library scans in Plex/Jellyfin immediately after a download completes and moves to the media folder.
 
-## 3. Mobile (Kivy/KivyMD)
+## 5. Content Management & Intelligence
+*   **AI & Machine Learning**:
+    *   **Video Summarization**: Use local LLMs (Llama 3, Phi-3) to generate text summaries of downloaded lectures or long-form content.
+    *   **Sentiment Analysis**: Analyze comments (if downloaded) to gauge viewer sentiment.
+    *   **Auto-Categorization**: Classify videos into folders (Music, Tech, Gaming) based on thumbnail/title analysis.
+*   **Media Library**:
+    *   **Deduplication**: Hash-based detection of duplicate files across the entire download library.
+    *   **Metadata Editor**: A robust tag editor (MusicBrainz Picard style) for fixing MP3/FLAC tags before export.
 
-*   **Shared Core**: Refactor `downloader.py` and `config_manager.py` into a pip-installable package or submodule shared by both Desktop and Mobile apps.
-*   **Intent Sharing**: On Android, allow "Share to YTDownloader" from the YouTube app.
-*   **Background Service**: Implement a Service on Android to keep downloads running when the app is minimized.
-*   **Storage Scoped Access**: Fully implement Android 10+ Scoped Storage APIs for saving files.
+## 6. Enterprise & Power User Features
+*   **Headless & Server**:
+    *   **Docker Container**: Official Docker image with a Web UI (StreamCatch-Web) for NAS deployment (Unraid, Synology).
+    *   **CLI v2**: A fully interactive TUI (Text User Interface) using `textual` for terminal-only usage.
+*   **Multi-User Support**:
+    *   **Profiles**: Support multiple user profiles with separate histories, queues, and cloud accounts.
+    *   **Role-Based Access**: Admin vs. Guest mode (Guest can queue but not delete).
+*   **Scripting & Automation**:
+    *   **Lua/Python Scripting**: Allow users to write hooks (e.g., `on_download_complete(item)`) to execute custom logic.
 
-## 4. DevOps & CI/CD
-
-*   **Automated Builds**: GitHub Actions to build binaries for Windows (.exe), Linux (AppImage), and macOS (.dmg) on every release tag.
-*   **Code Quality Gates**: Enforce Pylint/Flake8 and MyPy checks in CI before merging PRs.
-*   **Auto-Updater**: Implement an update mechanism that checks a JSON endpoint on GitHub Pages, downloads the new binary, and replaces the old one.
-*   **Docker Image**: Create a Docker container for a headless version of the downloader (web-interface based) for NAS/Server usage.
-
-## 5. Features
-
-*   **Subscriptions**: Allow users to "subscribe" to a YouTube channel within the app, checking for new videos daily and auto-downloading them.
-*   **Embedded Player**: Integrate a lightweight video player (e.g., `vlc-python` or `mpv`) to preview downloaded files directly in the app.
-*   **Audio Tagging**: Advanced ID3 tagging for audio downloads, fetching metadata from MusicBrainz or Spotify APIs.
-*   **Cloud Upload**: Automatically upload finished downloads to Google Drive, Dropbox, or OneDrive via API.
-*   **Remote Control**: A small web server API allowing you to trigger downloads on your desktop from your phone.
-
-## 6. Security & Privacy
-
-*   **Encrypted Config**: Store sensitive data (like cookies or proxy credentials) in the OS keychain (Windows Credential Manager, Gnome Keyring) instead of plain text.
-*   **Proxy Rotator**: Built-in support for rotating through a list of proxies to avoid IP bans.
-*   **Metadata Stripping**: Option to remove all metadata for privacy before saving.
-*   **Sandboxing**: Ensure the `ffmpeg` process runs with limited permissions if possible.
-
-## 7. Code Structure
-
-*   **Type Hinting**: Achieve 100% type coverage with MyPy strict mode.
-*   **Dependency Injection**: Use a DI container to manage dependencies like ConfigManager, HistoryManager, and UI components, making testing easier.
-*   **Docstrings**: Ensure every function and class has Google-style docstrings for auto-generating API documentation.
+## 7. Monetization & Community (Hypothetical)
+*   **Theme Store**: A marketplace for community-created themes.
+*   **Plugin Registry**: A central repository for extensions/plugins.
+*   **Crowdsourced SponsorBlock**: Contribute new segments back to the SponsorBlock database directly from the app.

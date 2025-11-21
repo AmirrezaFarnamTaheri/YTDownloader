@@ -7,13 +7,13 @@ logger = logging.getLogger(__name__)
 class CloudManager:
     """
     Manages cloud uploads.
-    Currently supports: Google Drive (Stub/Structure).
+    Currently supports: Google Drive (via PyDrive2).
     """
 
     def __init__(self):
         self.enabled = False
-        # In a real app, we would load credentials from a secure location or config
-        self.credentials_path = "credentials.json"
+        self.credentials_path = "client_secrets.json" # Standard PyDrive2 file
+        self.settings_path = "settings.yaml" # PyDrive2 settings
 
     def upload_file(self, file_path: str, provider: str = "google_drive"):
         """
@@ -21,7 +21,7 @@ class CloudManager:
 
         Args:
             file_path: Path to the file to upload.
-            provider: Cloud provider ('google_drive', 'dropbox', 'onedrive').
+            provider: Cloud provider ('google_drive').
 
         Raises:
             FileNotFoundError: If file does not exist.
@@ -37,21 +37,51 @@ class CloudManager:
 
     def _upload_to_google_drive(self, file_path: str):
         """
-        Upload logic for Google Drive.
-        Requires PyDrive2 or google-api-python-client.
-        This is a structural implementation that checks for credentials.
+        Upload logic for Google Drive using PyDrive2.
+        Requires client_secrets.json in the working directory.
         """
         if not os.path.exists(self.credentials_path):
-            logger.warning("Google Drive credentials not found. Skipping upload.")
-            raise Exception("Google Drive credentials not configured.")
+            logger.warning(f"Google Drive {self.credentials_path} not found. Skipping upload.")
+            raise Exception("Google Drive not configured (missing client_secrets.json).")
 
-        # Hypothetical implementation:
-        # from pydrive2.auth import GoogleAuth
-        # from pydrive2.drive import GoogleDrive
-        # gauth = GoogleAuth()
-        # gauth.LoadCredentialsFile(self.credentials_path)
-        # drive = GoogleDrive(gauth)
-        # file = drive.CreateFile({'title': os.path.basename(file_path)})
-        # file.SetContentFile(file_path)
-        # file.Upload()
-        logger.info(f"Would upload {file_path} to Google Drive if credentials existed.")
+        try:
+            from pydrive2.auth import GoogleAuth
+            from pydrive2.drive import GoogleDrive
+
+            # Automatic authentication (requires user interaction on first run or saved creds)
+            gauth = GoogleAuth()
+
+            # Try to load saved credentials
+            if os.path.exists("mycreds.txt"):
+                gauth.LoadCredentialsFile("mycreds.txt")
+
+            if gauth.credentials is None:
+                # This might open a browser window which is not ideal for headless,
+                # but for desktop app it is expected.
+                # In robust backend, we handle this carefully.
+                # For now, we assume it works or fails if no interaction possible.
+                # To avoid blocking indefinitely in headless:
+                if os.environ.get("HEADLESS_MODE"):
+                     raise Exception("Cannot authenticate in headless mode without saved creds.")
+                gauth.LocalWebserverAuth()
+            elif gauth.access_token_expired:
+                gauth.Refresh()
+            else:
+                gauth.Authorize()
+
+            gauth.SaveCredentialsFile("mycreds.txt")
+
+            drive = GoogleDrive(gauth)
+
+            file_name = os.path.basename(file_path)
+            file_drive = drive.CreateFile({'title': file_name})
+            file_drive.SetContentFile(file_path)
+            file_drive.Upload()
+            logger.info(f"Successfully uploaded {file_name} to Google Drive.")
+
+        except ImportError:
+            logger.error("PyDrive2 not installed.")
+            raise Exception("PyDrive2 dependency missing.")
+        except Exception as e:
+            logger.error(f"Google Drive upload failed: {e}")
+            raise
