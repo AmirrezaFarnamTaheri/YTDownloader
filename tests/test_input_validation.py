@@ -24,17 +24,6 @@ class TestInputValidation(unittest.TestCase):
             # 100:00 -> 100 doesn't match \d{1,2}.
             # Wait, regex matches from start.
         ]
-        # Let's check "100:00"
-        # \d{1,2} matches "10". Then :00. So "10:00" matches.
-        # If string is "100:00", ^\d{1,2} matches "10". Then :00. Then end $.
-        # So "100:00" should FAIL because it has extra 0 at start? No.
-        # "100:00". Group 1 optional. \d{1,2} matches "10". : \d{2} matches "00".
-        # The remaining "0" at start makes it fail? No.
-        # If I have "100:00".
-        # If I use match(), it tries to match from beginning.
-        # But \d{1,2} is greedy?
-        # Actually, regex is tricky.
-
         for t in invalid_inputs:
             with self.subTest(t=t):
                 self.assertFalse(self.time_pattern.match(t))

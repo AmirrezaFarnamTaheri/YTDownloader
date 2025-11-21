@@ -17,9 +17,6 @@ from config_manager import ConfigManager, CONFIG_FILE
 # For now, I will define a dummy CancelToken here or import from main if possible safely.
 # But checking main.py, CancelToken is defined there.
 
-# Let's mock CancelToken for the purpose of testing logic if it was moved,
-# OR better, let's just test ConfigManager here and leave CancelToken tests to test_main.py
-# since it's part of the main app logic now.
 
 
 class TestConfigManager(unittest.TestCase):

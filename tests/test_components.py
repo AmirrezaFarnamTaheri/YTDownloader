@@ -39,6 +39,8 @@ class TestDownloadItemControl(unittest.TestCase):
         control.details_text.update = MagicMock()
         control.progress_bar.update = MagicMock()
         control.title_text.update = MagicMock()
+        if hasattr(control, "actions_row") and control.actions_row.page:
+            control.actions_row.update = MagicMock()
 
         control.update_progress()
 

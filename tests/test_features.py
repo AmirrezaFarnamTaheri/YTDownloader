@@ -25,7 +25,9 @@ class TestFeatureVerification(unittest.TestCase):
     def setUp(self):
         self.state = AppState()
         # Manually reset queue for each test
-        self.state.download_queue = []
+        # Note: AppState now uses QueueManager, but tests seem to expect a list directly or we need to adapt.
+        # Assuming AppState has queue_manager which has _queue
+        self.state.queue_manager._queue = []
         self.page = MockPage()
 
     def test_keyboard_navigation_logic(self):

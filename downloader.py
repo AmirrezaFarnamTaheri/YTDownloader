@@ -89,8 +89,8 @@ def get_video_info(
                     else:
                         formats = ["vtt"]
                     auto_lang = f"{lang} (Auto)" if lang not in subtitles else lang
-                    if formats:
-                        subtitles[auto_lang] = formats
+                    if formats_list:
+                        subtitles[auto_lang] = formats_list
                     else:
                         subtitles[auto_lang] = ["vtt"]
 
@@ -195,17 +195,8 @@ def download_video(
     # Ensure output path exists
     Path(output_path).mkdir(parents=True, exist_ok=True)
 
-    # Re-fetch info if needed to check type (or check if it was passed in download_item??
-    # Ideally download_item should contain the 'is_telegram' or 'is_generic' flag from previous step.
-    # But download_item comes from queue which was built from UI state.
-    # We can try to detect again or pass metadata.
-    # For now, let's do a quick check or trust yt-dlp unless we know better.
-
-    # Ideally, we should pass the "info" object to download_video instead of just URL,
-    # but refactoring that signature might break other things.
-    # We'll do a quick check.
-
-    is_telegram = TelegramExtractor.is_telegram_url(url)
+    # Check for hints in download_item or detect
+    is_telegram = (download_item or {}).get('is_telegram') or TelegramExtractor.is_telegram_url(url)
 
     if force_generic:
         logger.info("Force Generic Mode enabled. Bypassing yt-dlp extraction.")

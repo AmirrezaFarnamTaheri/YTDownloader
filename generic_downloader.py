@@ -224,6 +224,13 @@ def download_generic(
                         if cancel_token.cancelled:
                             raise Exception("Download cancelled by user")
 
+                    # Handle pause if available on token (some implementations might not have it)
+                    if cancel_token and hasattr(cancel_token, 'is_paused'):
+                         while cancel_token.is_paused:
+                             time.sleep(0.5)
+                             if hasattr(cancel_token, 'cancelled') and cancel_token.cancelled:
+                                 raise Exception("Download cancelled by user")
+
                     if chunk:
                         f.write(chunk)
                         downloaded += len(chunk)

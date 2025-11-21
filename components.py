@@ -60,6 +60,23 @@ class DownloadItemControl:
 
         self.view = self.build()
 
+    def _get_icon_for_item(self):
+        url = self.item.get('url', '').lower()
+        if "youtube" in url or "youtu.be" in url:
+            return ft.Icon(ft.Icons.SMART_DISPLAY, size=24, color=ft.Colors.RED_400)
+        elif "t.me" in url or "telegram" in url:
+            return ft.Icon(ft.Icons.TELEGRAM, size=24, color=ft.Colors.BLUE_400)
+        elif "twitter" in url or "x.com" in url:
+            return ft.Icon(ft.Icons.ALTERNATE_EMAIL, size=24, color=ft.Colors.WHITE)
+        elif "instagram" in url:
+            return ft.Icon(ft.Icons.CAMERA_ALT, size=24, color=ft.Colors.PINK_400)
+        elif self.item.get("is_audio"):
+            return ft.Icon(ft.Icons.AUDIO_FILE, size=24, color=Theme.TEXT_SECONDARY)
+        elif self.item.get("is_playlist"):
+            return ft.Icon(ft.Icons.PLAYLIST_PLAY, size=24, color=Theme.TEXT_SECONDARY)
+        else:
+            return ft.Icon(ft.Icons.INSERT_DRIVE_FILE, size=24, color=Theme.TEXT_SECONDARY)
+
     def build(self):
         bg_color = (
             Theme.BG_CARD

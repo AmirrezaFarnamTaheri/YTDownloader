@@ -77,7 +77,11 @@ python main.py
 ### Configuration File
 Settings are stored in `~/.streamcatch/config.json`. You can manually edit this file if needed.
 
-## Troubleshooting
+### Managing the Queue
+- Navigate to the **Queue** tab.
+- **Reorder**: Use Up/Down arrows to prioritize downloads.
+- **Cancel/Retry**: Cancel running downloads or retry failed ones.
+- **Clear**: Remove finished items to clean up the view.
 
 **"FFmpeg not found"**
 - Ensure FFmpeg is installed and added to your system PATH.
