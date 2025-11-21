@@ -131,7 +131,9 @@ def get_video_info(
 
     except yt_dlp.utils.DownloadError as e:
         logger.error(f"Download error while fetching video info: {e}")
-        raise
+        # We return None here to signal failure without crashing app,
+        # but logging the error is crucial.
+        return None
     except Exception as e:
         logger.exception(f"Unexpected error while fetching video info: {e}")
         return None
@@ -250,6 +252,9 @@ def download_video(
             start_sec = parse_duration(start_time)
             end_sec = parse_duration(end_time)
 
+            if start_sec is None or end_sec is None:
+                 raise ValueError("Could not parse time format")
+
             def ranges_callback(info_dict, ydl):
                 return [{'start_time': start_sec, 'end_time': end_sec}]
 
@@ -257,6 +262,7 @@ def download_video(
             ydl_opts['force_keyframes_at_cuts'] = True
         except Exception as e:
             logger.error(f"Error parsing time range: {e}")
+            raise ValueError(f"Invalid time range format: {e}") from e
 
     # Post-processing options
     postprocessors = ydl_opts.get('postprocessors', [])
@@ -284,34 +290,13 @@ def download_video(
 
     # GPU Acceleration
     if gpu_accel and gpu_accel.lower() != 'none':
-        # This attempts to use hardware encoders if re-encoding is needed
-        # For simple merges, ffmpeg usually copies.
-        # If we want to force hardware decoding/encoding, we'd need to be aggressive with args.
-        # Here we append args to the postprocessor args.
-
         ffmpeg_args = []
         if gpu_accel == 'cuda':
-             # Use NVENC for H.264 if possible (common case)
-             # This only applies if encoding happens.
              ffmpeg_args.extend(['-c:v', 'h264_nvenc', '-preset', 'fast'])
         elif gpu_accel == 'vulkan':
-             # Experimental/example
-             ffmpeg_args.extend(['-c:v', 'h264_vaapi']) # VAAPI often used with Vulkan context or similar on Linux
+             ffmpeg_args.extend(['-c:v', 'h264_vaapi'])
 
         if ffmpeg_args:
-            # Add to postprocessor args for ffmpeg
-            # yt-dlp allows 'postprocessor_args' dict
-            if 'postprocessor_args' not in ydl_opts:
-                ydl_opts['postprocessor_args'] = {}
-
-            # We add it to 'Merger' or 'VideoConvertor'
-            # Safest is likely 'Merger' if it runs, or generally to ffmpeg if possible?
-            # yt-dlp structure: {'ffmpeg': args_list} applies to all ffmpeg calls? No, usually specific PP.
-            # But 'postprocessor_args' can be a dict with keys for specific PPs.
-            # Or a list for global args.
-            # Let's use the dictionary format for clarity if we knew the key.
-            # Simpler: use list for generic ffmpeg args.
-            # Actually, yt-dlp documentation says: dictionary `{'ffmpeg': []}` passes args to ffmpeg.
             ydl_opts['postprocessor_args'] = {'ffmpeg': ffmpeg_args}
 
     if postprocessors:
@@ -347,9 +332,6 @@ def download_video(
         logger.info(f"Starting download: {url} (format: {video_format}, playlist: {playlist})")
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-
-        # Capture final filename from hook if possible, but typically we do it via hook
-        # Since progress_hook is called, the logic should be there.
 
         logger.info(f"Download completed: {url}")
     except yt_dlp.utils.DownloadError as e:
