@@ -131,7 +131,8 @@ class TestMain(unittest.TestCase):
         mock_textfield.side_effect = lambda **kwargs: mock_url_input if kwargs.get('label') == "Paste Video URL" else MagicMock()
 
         mock_fetch_btn = MagicMock()
-        mock_elev_btn.side_effect = lambda text, on_click=None: mock_fetch_btn if text == "Fetch Info" else MagicMock()
+        # Handle arbitrary kwargs like tooltip
+        mock_elev_btn.side_effect = lambda text, on_click=None, **kwargs: mock_fetch_btn if text == "Fetch Info" else MagicMock()
 
         # Run main to initialize UI
         main(page)

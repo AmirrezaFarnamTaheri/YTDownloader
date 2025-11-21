@@ -2,7 +2,7 @@
 
 ## Introduction
 
-**Lumina** (formerly YTDownloader) is a robust, feature-rich desktop application for downloading videos and audio from YouTube and other supported sites. Built with Python and Flet, it offers a modern, responsive user interface and leverages the powerful `yt-dlp` library for reliable downloads.
+**StreamCatch** (formerly YTDownloader/Lumina) is a robust, feature-rich desktop application for downloading videos and audio from YouTube and other supported sites. Built with Python and Flet, it offers a modern, responsive user interface and leverages the powerful `yt-dlp` library for reliable downloads.
 
 ## Features
 
@@ -10,13 +10,14 @@
 *   **Format Selection**: Choose specific video resolutions (1080p, 4K, etc.) and audio qualities.
 *   **Audio Extraction**: Convert videos to high-quality audio (MP3, M4A, etc.).
 *   **Batch Download**: Import a list of URLs from a text file to download en masse.
-*   **Scheduler**: Schedule downloads to start at a specific time (e.g., during off-peak hours).
+*   **Scheduler**: Schedule downloads to start at a specific time.
 *   **Cinema Mode**: A minimalist overlay for monitoring progress.
 *   **Subtitles**: Download subtitles in various languages.
 *   **Playlist Support**: Download entire playlists or channels.
 *   **RSS Feed Monitoring**: Subscribe to RSS feeds to track channels.
 *   **Proxy & Rate Limit**: Configure proxy servers and limit download speeds.
 *   **Download History**: Keep track of your downloads with a built-in history manager and dashboard.
+*   **Performance Tuning**: (Coming in v4.0) Aria2c acceleration and GPU transcoding.
 
 ## Usage Guide
 
@@ -66,7 +67,7 @@ python -m unittest discover -s tests -p "test_*.py" -v
 ### Building
 To create a standalone executable:
 ```bash
-pyinstaller --onefile --windowed --noconsole --name Lumina --icon=assets/logo.ico main.py
+pyinstaller --onefile --windowed --noconsole --name StreamCatch --icon=assets/logo.svg main.py
 ```
 
 ## Roadmap

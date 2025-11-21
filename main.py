@@ -39,6 +39,10 @@ class AppState:
         self.social_manager = SocialManager()
         self.scheduled_time: Optional[datetime.time] = None
 
+        # UX States
+        self.selected_queue_index = -1 # For keyboard navigation
+        self.high_contrast = False
+
         # Try connecting to social
         threading.Thread(target=self.social_manager.connect, daemon=True).start()
 
@@ -47,30 +51,47 @@ state = AppState()
 # --- Custom Controls ---
 
 class DownloadItemControl:
-    def __init__(self, item: Dict[str, Any], on_cancel: Any, on_remove: Any, on_reorder: Any):
+    def __init__(self, item: Dict[str, Any], on_cancel: Any, on_remove: Any, on_reorder: Any, is_selected: bool = False):
         self.item = item
         self.on_cancel = on_cancel
         self.on_remove = on_remove
         self.on_reorder = on_reorder
+        self.is_selected = is_selected
         self.progress_bar = ft.ProgressBar(value=0, width=300)
-        self.status_text = ft.Text(item['status'])
-        self.details_text = ft.Text("Waiting...")
+        self.status_text = ft.Text(item['status'], tooltip=f"Status: {item['status']}")
+        self.details_text = ft.Text("Waiting...", tooltip="Download details")
         self.view = self.build()
 
     def build(self):
+        # Determine background color based on selection and theme
+        if state.high_contrast:
+            bg_color = ft.Colors.WHITE if self.is_selected else ft.Colors.BLACK
+            text_color = ft.Colors.BLACK if self.is_selected else ft.Colors.WHITE
+        else:
+            bg_color = ft.Colors.BLUE_GREY_900 if self.is_selected else "#2b2b2b" # Match surface variant
+            text_color = None # Default
+
         return ft.Card(
+            color=bg_color,
             content=ft.Container(
                 padding=10,
                 content=ft.Column([
                     ft.Row([
-                        ft.Icon(ft.Icons.DRAG_HANDLE, color=ft.Colors.GREY), # Visual cue for dragging
-                        ft.Text(self.item['url'], weight=ft.FontWeight.BOLD, overflow=ft.TextOverflow.ELLIPSIS, width=250),
+                        ft.Icon(ft.Icons.DRAG_HANDLE, color=text_color or ft.Colors.GREY),
+                        ft.Text(
+                            self.item['url'],
+                            weight=ft.FontWeight.BOLD,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                            width=250,
+                            color=text_color,
+                            tooltip=f"URL: {self.item['url']}"
+                        ),
                         ft.Row([
-                             ft.IconButton(ft.Icons.ARROW_UPWARD, on_click=lambda e: self.on_reorder(self.item, -1), tooltip="Move Up", icon_size=16),
-                             ft.IconButton(ft.Icons.ARROW_DOWNWARD, on_click=lambda e: self.on_reorder(self.item, 1), tooltip="Move Down", icon_size=16),
+                             ft.IconButton(ft.Icons.ARROW_UPWARD, on_click=lambda e: self.on_reorder(self.item, -1), tooltip="Move Up", icon_size=16, icon_color=text_color),
+                             ft.IconButton(ft.Icons.ARROW_DOWNWARD, on_click=lambda e: self.on_reorder(self.item, 1), tooltip="Move Down", icon_size=16, icon_color=text_color),
                         ]),
-                        ft.IconButton(ft.Icons.CANCEL, on_click=lambda e: self.on_cancel(self.item), tooltip="Cancel"),
-                        ft.IconButton(ft.Icons.DELETE, on_click=lambda e: self.on_remove(self.item), tooltip="Remove")
+                        ft.IconButton(ft.Icons.CANCEL, on_click=lambda e: self.on_cancel(self.item), tooltip="Cancel", icon_color=text_color),
+                        ft.IconButton(ft.Icons.DELETE, on_click=lambda e: self.on_remove(self.item), tooltip="Remove", icon_color=text_color)
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     self.status_text,
                     self.progress_bar,
@@ -116,6 +137,9 @@ def main(page: ft.Page):
     page.window_min_width = 1000
     page.window_min_height = 700
 
+    # Accessibility Semantics
+    page.semantics_mode = True
+
     # Create Logo SVG file if not exists (in case asset folder was missed)
     assets_dir = Path(__file__).parent / "assets"
     assets_dir.mkdir(exist_ok=True)
@@ -149,15 +173,16 @@ def main(page: ft.Page):
     )
 
     # Header
-    theme_icon = ft.IconButton(ft.Icons.DARK_MODE, on_click=lambda e: toggle_theme(e))
+    theme_icon = ft.IconButton(ft.Icons.DARK_MODE, on_click=lambda e: toggle_theme(e), tooltip="Toggle Dark/Light Theme")
+    high_contrast_btn = ft.IconButton(ft.Icons.CONTRAST, tooltip="High Contrast Mode", on_click=lambda e: toggle_high_contrast(e))
     cinema_btn = ft.IconButton(ft.Icons.FULLSCREEN, tooltip="Cinema Mode", on_click=lambda e: toggle_cinema_mode(e))
 
     # Logo
-    logo_img = ft.Image(src="assets/logo.svg", width=40, height=40)
+    logo_img = ft.Image(src="assets/logo.svg", width=40, height=40, tooltip="StreamCatch Logo")
 
     header = ft.Row([
         ft.Row([logo_img, ft.Text("StreamCatch", size=24, weight=ft.FontWeight.BOLD)]),
-        ft.Row([cinema_btn, theme_icon])
+        ft.Row([cinema_btn, high_contrast_btn, theme_icon])
     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
 
     # URL Input
@@ -174,7 +199,7 @@ def main(page: ft.Page):
         # Run in thread
         threading.Thread(target=fetch_info_task, args=(url_input.value,), daemon=True).start()
 
-    fetch_btn = ft.ElevatedButton("Fetch Info", on_click=fetch_info_click)
+    fetch_btn = ft.ElevatedButton("Fetch Info", on_click=fetch_info_click, tooltip="Fetch video metadata")
 
     async def paste_url(e):
         val = await page.get_clipboard()
@@ -184,12 +209,12 @@ def main(page: ft.Page):
 
     input_row = ft.Row([
         url_input,
-        ft.IconButton(ft.Icons.PASTE, on_click=paste_url, tooltip="Paste"),
+        ft.IconButton(ft.Icons.PASTE, on_click=paste_url, tooltip="Paste URL"),
         fetch_btn
     ])
 
     # Preview Section
-    thumbnail_img = ft.Image(src="", width=320, height=180, fit=ft.ImageFit.COVER, visible=False)
+    thumbnail_img = ft.Image(src="", width=320, height=180, fit=ft.ImageFit.COVER, visible=False, tooltip="Video Thumbnail")
     title_text = ft.Text("No video loaded", size=16, weight=ft.FontWeight.BOLD)
     duration_text = ft.Text("Duration: --:--")
 
@@ -215,6 +240,15 @@ def main(page: ft.Page):
     sponsorblock_cb = ft.Checkbox(label="Enable SponsorBlock (Skip Segments)")
     playlist_cb = ft.Checkbox(label="Download Playlist")
     subtitle_dd = ft.Dropdown(label="Subtitles", options=[ft.dropdown.Option("None"), ft.dropdown.Option("en"), ft.dropdown.Option("es")], value="None")
+
+    # Performance options (Placeholder UI for now, logic in downloader.py)
+    use_aria2c_cb = ft.Checkbox(label="Use Aria2c Accelerator (Multi-threaded)", value=state.config.get('use_aria2c', False))
+    gpu_accel_dd = ft.Dropdown(label="GPU Acceleration", options=[
+        ft.dropdown.Option("None"),
+        ft.dropdown.Option("auto"),
+        ft.dropdown.Option("cuda"),
+        ft.dropdown.Option("vulkan")
+    ], value=state.config.get('gpu_accel', 'None'))
 
     # Time Range
     time_start = ft.TextField(label="Start (HH:MM:SS)", width=100)
@@ -283,9 +317,6 @@ def main(page: ft.Page):
              page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Export failed: {ex}")))
 
     def import_data(e):
-        # Logic for import would typically involve a file picker
-        # For simplicity, we assume import from default location or implement picker
-        # Let's use a simple import from default for now
         try:
             from sync_manager import SyncManager
             SyncManager.import_data()
@@ -300,6 +331,8 @@ def main(page: ft.Page):
         state.config['proxy'] = proxy_input.value
         state.config['rate_limit'] = rate_limit_input.value
         state.config['output_template'] = output_template_input.value
+        state.config['use_aria2c'] = use_aria2c_cb.value
+        state.config['gpu_accel'] = gpu_accel_dd.value
         ConfigManager.save_config(state.config)
         page.show_snack_bar(ft.SnackBar(content=ft.Text("Settings saved")))
 
@@ -359,6 +392,10 @@ def main(page: ft.Page):
                 proxy_input,
                 rate_limit_input,
                 output_template_input,
+                ft.Text("Performance", weight=ft.FontWeight.BOLD),
+                use_aria2c_cb,
+                gpu_accel_dd,
+                ft.Divider(),
                 save_settings_btn,
                 ft.Divider(),
                 ft.Row([export_btn, import_btn])
@@ -373,7 +410,7 @@ def main(page: ft.Page):
     )
 
     # Queue Section
-    queue_list = ft.ListView(expand=True, spacing=10, padding=20, auto_scroll=True)
+    queue_list = ft.ListView(expand=True, spacing=10, padding=20, auto_scroll=False) # Auto scroll conflicts with nav?
 
     # History Section
     history_list = ft.ListView(expand=True, spacing=10, padding=20)
@@ -477,10 +514,59 @@ def main(page: ft.Page):
         theme_icon.icon = ft.Icons.DARK_MODE if page.theme_mode == ft.ThemeMode.LIGHT else ft.Icons.LIGHT_MODE
         page.update()
 
+    def toggle_high_contrast(e):
+        state.high_contrast = not state.high_contrast
+        # Re-apply theme colors manually if needed or just trigger redraw
+        # Flet doesn't have a built-in High Contrast theme mode, so we toggle custom logic
+        page.show_snack_bar(ft.SnackBar(content=ft.Text(f"High Contrast: {'ON' if state.high_contrast else 'OFF'}")))
+        rebuild_queue_ui()
+
     def toggle_cinema_mode(e):
         state.cinema_mode = not state.cinema_mode
         cinema_overlay.visible = state.cinema_mode
         page.update()
+
+    def handle_keyboard(e: ft.KeyboardEvent):
+        # Simple queue navigation
+        if not state.download_queue: return
+
+        # Avoid capturing if typing in text field?
+        # Flet doesn't easily expose focused control type, so we rely on users clicking out or using shortcuts
+
+        if e.key == "J": # Down
+            state.selected_queue_index += 1
+            if state.selected_queue_index >= len(state.download_queue):
+                state.selected_queue_index = 0
+            rebuild_queue_ui()
+
+        elif e.key == "K": # Up
+            state.selected_queue_index -= 1
+            if state.selected_queue_index < 0:
+                state.selected_queue_index = len(state.download_queue) - 1
+            rebuild_queue_ui()
+
+        elif e.key == "D": # Delete
+            if 0 <= state.selected_queue_index < len(state.download_queue):
+                item = state.download_queue[state.selected_queue_index]
+                on_remove_item(item)
+                # Adjust index
+                state.selected_queue_index = max(0, state.selected_queue_index - 1)
+                rebuild_queue_ui()
+
+        elif e.key == " ": # Pause/Resume
+            # Toggle global pause or specific item?
+            # Let's toggle global pause for now as per user request "Pause all" or similar context
+            # Actually request says "Space to pause".
+            # We will toggle the cancel token pause if active
+            if state.cancel_token:
+                if state.cancel_token.is_paused:
+                    state.cancel_token.resume()
+                    page.show_snack_bar(ft.SnackBar(content=ft.Text("Resumed")))
+                else:
+                    state.cancel_token.pause()
+                    page.show_snack_bar(ft.SnackBar(content=ft.Text("Paused")))
+
+    page.on_keyboard_event = handle_keyboard
 
     def fetch_info_task(url):
         try:
@@ -554,11 +640,18 @@ def main(page: ft.Page):
             "start_time": start_val,
             "end_time": end_val,
             "match_filter": regex_filter.value if regex_filter.value else None,
-            "output_template": output_template_input.value if output_template_input.value else None
+            "output_template": output_template_input.value if output_template_input.value else None,
+            "use_aria2c": use_aria2c_cb.value,
+            "gpu_accel": gpu_accel_dd.value
         }
         state.download_queue.append(item)
         
-        item_control = DownloadItemControl(item, on_cancel_item, on_remove_item, on_reorder_item)
+        # Check if this is the first item, select it
+        if len(state.download_queue) == 1:
+            state.selected_queue_index = 0
+
+        is_selected = (state.download_queue.index(item) == state.selected_queue_index)
+        item_control = DownloadItemControl(item, on_cancel_item, on_remove_item, on_reorder_item, is_selected=is_selected)
         item['control'] = item_control
         queue_list.controls.append(item_control.view)
         page.update()
@@ -597,7 +690,12 @@ def main(page: ft.Page):
 
     def rebuild_queue_ui():
         queue_list.controls.clear()
-        for q_item in state.download_queue:
+        for i, q_item in enumerate(state.download_queue):
+            # Update selection state in control
+            is_selected = (i == state.selected_queue_index)
+            # We need to recreate the control to update style or add a method to update style
+            # Recreating is easier for now
+            q_item['control'] = DownloadItemControl(q_item, on_cancel_item, on_remove_item, on_reorder_item, is_selected=is_selected)
             queue_list.controls.append(q_item['control'].view)
         page.update()
 
@@ -705,7 +803,9 @@ def main(page: ft.Page):
                 start_time=item.get('start_time'),
                 end_time=item.get('end_time'),
                 match_filter=item.get('match_filter'),
-                output_template=item.get('output_template')
+                output_template=item.get('output_template'),
+                use_aria2c=item.get('use_aria2c', False),
+                gpu_accel=item.get('gpu_accel')
             )
             item['status'] = 'Completed'
 
