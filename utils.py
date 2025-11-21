@@ -1,32 +1,74 @@
 import time
+import threading
 from typing import Any
 
 
 class CancelToken:
-    """Token for managing download cancellation and pause/resume."""
+    """Token for managing download cancellation and pause/resume with thread safety."""
 
-    def __init__(self):
-        self.cancelled = False
-        self.is_paused = False
+    def __init__(self, pause_timeout: float = 3600.0):
+        """
+        Initialize CancelToken.
+
+        Args:
+            pause_timeout: Maximum time (in seconds) to wait in paused state before auto-resuming.
+                          Default is 1 hour. Set to 0 for infinite wait (not recommended).
+        """
+        self._cancelled = False
+        self._is_paused = False
+        self._lock = threading.Lock()
+        self._pause_timeout = pause_timeout
 
     def cancel(self):
-        self.cancelled = True
+        """Set the cancellation flag in a thread-safe manner."""
+        with self._lock:
+            self._cancelled = True
 
     def pause(self):
-        self.is_paused = True
+        """Set the pause flag in a thread-safe manner."""
+        with self._lock:
+            self._is_paused = True
 
     def resume(self):
-        self.is_paused = False
+        """Clear the pause flag in a thread-safe manner."""
+        with self._lock:
+            self._is_paused = False
+
+    @property
+    def cancelled(self) -> bool:
+        """Thread-safe read of cancellation status."""
+        with self._lock:
+            return self._cancelled
+
+    @property
+    def is_paused(self) -> bool:
+        """Thread-safe read of pause status."""
+        with self._lock:
+            return self._is_paused
 
     def check(self, d: Any = None):
         """
         Checks if the download should be cancelled or paused.
         Accepts an argument 'd' to be compatible with yt-dlp progress hooks.
+
+        Raises:
+            Exception: If download is cancelled or pause timeout exceeded.
         """
         if self.cancelled:
             raise Exception("Download cancelled by user.")
 
-        while self.is_paused:
-            time.sleep(0.5)
-            if self.cancelled:
-                raise Exception("Download cancelled by user.")
+        if self.is_paused:
+            pause_start = time.time()
+            while self.is_paused:
+                time.sleep(0.5)
+                if self.cancelled:
+                    raise Exception("Download cancelled by user.")
+
+                # Check for timeout to prevent infinite pause
+                if self._pause_timeout > 0:
+                    elapsed = time.time() - pause_start
+                    if elapsed > self._pause_timeout:
+                        # Auto-resume after timeout
+                        with self._lock:
+                            self._is_paused = False
+                        raise Exception(f"Download paused for too long ({elapsed:.0f}s), auto-cancelled.")

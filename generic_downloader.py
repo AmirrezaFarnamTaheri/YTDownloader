@@ -16,7 +16,11 @@ logger = logging.getLogger(__name__)
 class TelegramExtractor:
     @staticmethod
     def is_telegram_url(url: str) -> bool:
-        return "t.me/" in url or "telegram.me/" in url
+        """Check if URL is a Telegram link with proper domain matching."""
+        import re
+        # Match exact domains to avoid false positives like "at.me/" or "not.me/"
+        pattern = r'(^|[:/])t\.me/|telegram\.me/'
+        return bool(re.search(pattern, url.lower()))
 
     @staticmethod
     def extract(url: str) -> Optional[Dict[str, Any]]:
@@ -144,9 +148,16 @@ class GenericExtractor:
             content_type = response.headers.get("Content-Type", "").lower()
             content_length = response.headers.get("Content-Length")
 
-            # If it's HTML, it's probably not a direct file (unless user wants to download the page)
+            # If it's HTML, it's probably not a direct file
+            # However, check file extension as fallback in case of wrong Content-Type
             if "text/html" in content_type:
-                return None
+                # Check if URL path has a non-html extension
+                from urllib.parse import urlparse
+                path = urlparse(url).path
+                ext = path.split('.')[-1].lower() if '.' in path else ''
+                # If has video/audio/archive extension, trust the URL over Content-Type
+                if ext not in ('mp4', 'webm', 'mkv', 'avi', 'mov', 'mp3', 'wav', 'flac', 'm4a', 'zip', 'rar', '7z', 'tar', 'gz'):
+                    return None
 
             # Determine filename
             filename = "downloaded_file"
@@ -197,69 +208,127 @@ def download_generic(
     progress_hook: Callable,
     download_item: Dict[str, Any],
     cancel_token: Optional["CancelToken"] = None,
+    max_retries: int = 3,
 ):
     """
     Downloads a file using requests with streaming.
+    Supports resumable downloads and retry with exponential backoff.
+
+    Args:
+        url: The direct URL to download
+        output_path: Directory to save the file
+        filename: Name of the file to save
+        progress_hook: Callback for progress updates
+        download_item: Download item dictionary for state updates
+        cancel_token: Token for cancellation support
+        max_retries: Maximum number of retry attempts
     """
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
 
-        # Start stream with a slightly more generous timeout
-        with requests.get(url, stream=True, headers=headers, timeout=(10, 60)) as r:
-            r.raise_for_status()
-            total_size = int(r.headers.get("content-length", 0))
+    final_path = os.path.join(output_path, filename)
+    downloaded = 0
 
-            # Determine final path
-            final_path = os.path.join(output_path, filename)
+    # Check if partial file exists (for resume support)
+    if os.path.exists(final_path):
+        downloaded = os.path.getsize(final_path)
+        logger.info(f"Resuming download from byte {downloaded}")
+        headers["Range"] = f"bytes={downloaded}-"
 
-            downloaded = 0
-            start_time = time.time()
-            last_update_time = start_time
+    retry_count = 0
+    last_error = None
 
-            with open(final_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=32 * 1024):  # 32KB chunks
-                    if cancel_token:
-                        cancel_token.check()
+    while retry_count <= max_retries:
+        try:
+            # Start stream with timeout (connection timeout: 15s, read timeout: 300s for large files)
+            with requests.get(url, stream=True, headers=headers, timeout=(15, 300)) as r:
+                r.raise_for_status()
 
-                    if chunk:
-                        f.write(chunk)
-                        downloaded += len(chunk)
+                # Handle resume response
+                if r.status_code == 206:
+                    # Partial content response (resume successful)
+                    content_range = r.headers.get("Content-Range", "")
+                    logger.info(f"Resume accepted: {content_range}")
+                    total_size = downloaded + int(r.headers.get("content-length", 0))
+                elif r.status_code == 200:
+                    # Full content (either new download or server doesn't support resume)
+                    total_size = int(r.headers.get("content-length", 0))
+                    if downloaded > 0:
+                        logger.warning("Server doesn't support resume, starting from beginning")
+                        downloaded = 0
+                else:
+                    total_size = int(r.headers.get("content-length", 0))
 
-                        current_time = time.time()
-                        # Update UI every 0.1s or so to avoid flooding
-                        if current_time - last_update_time > 0.1:
-                            elapsed = current_time - start_time
-                            speed = downloaded / elapsed if elapsed > 0 else 0
-                            eta = (
-                                (total_size - downloaded) / speed
-                                if speed > 0 and total_size > 0
-                                else 0
-                            )
+                start_time = time.time()
+                last_update_time = start_time
 
-                            progress_hook(
-                                {
-                                    "status": "downloading",
-                                    "downloaded_bytes": downloaded,
-                                    "total_bytes": total_size,
-                                    "speed": speed,
-                                    "eta": eta,
-                                    "filename": filename,
-                                },
-                                download_item,
-                            )
-                            last_update_time = current_time
+                # Open file in append mode if resuming, otherwise write mode
+                mode = "ab" if r.status_code == 206 else "wb"
+                with open(final_path, mode) as f:
+                    for chunk in r.iter_content(chunk_size=32 * 1024):  # 32KB chunks
+                        if cancel_token:
+                            cancel_token.check()
 
-            progress_hook(
-                {
-                    "status": "finished",
-                    "filename": final_path,
-                    "total_bytes": total_size,
-                },
-                download_item,
-            )
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
 
-    except Exception as e:
-        logger.error(f"Generic download error: {e}")
-        raise
+                            current_time = time.time()
+                            # Update UI every 0.1s or so to avoid flooding
+                            if current_time - last_update_time > 0.1:
+                                elapsed = current_time - start_time
+                                speed = downloaded / elapsed if elapsed > 0 else 0
+                                eta = (
+                                    (total_size - downloaded) / speed
+                                    if speed > 0 and total_size > 0
+                                    else 0
+                                )
+
+                                progress_hook(
+                                    {
+                                        "status": "downloading",
+                                        "downloaded_bytes": downloaded,
+                                        "total_bytes": total_size,
+                                        "speed": speed,
+                                        "eta": eta,
+                                        "filename": filename,
+                                    },
+                                    download_item,
+                                )
+                                last_update_time = current_time
+
+                progress_hook(
+                    {
+                        "status": "finished",
+                        "filename": final_path,
+                        "total_bytes": total_size,
+                    },
+                    download_item,
+                )
+
+                # Success - break retry loop
+                return
+
+        except (requests.exceptions.RequestException, IOError) as e:
+            last_error = e
+            retry_count += 1
+            if retry_count <= max_retries:
+                wait_time = 2 ** retry_count  # Exponential backoff: 2, 4, 8 seconds
+                logger.warning(f"Download failed (attempt {retry_count}/{max_retries}): {e}. Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+                # Update headers for resume on retry
+                if os.path.exists(final_path):
+                    downloaded = os.path.getsize(final_path)
+                    headers["Range"] = f"bytes={downloaded}-"
+            else:
+                logger.error(f"Generic download failed after {max_retries} retries: {e}")
+                raise
+        except Exception as e:
+            # Non-retryable errors (like cancellation)
+            logger.error(f"Generic download error: {e}")
+            raise
+
+    # If we exhausted retries
+    if last_error:
+        raise last_error

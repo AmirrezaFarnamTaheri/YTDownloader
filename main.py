@@ -65,24 +65,39 @@ download_view = None
 queue_view = None
 page = None
 
+# Lock to prevent concurrent process_queue calls
+_process_queue_lock = threading.Lock()
+
 
 def process_queue():
-    # Check for scheduled items
-    items = state.queue_manager.get_all()
-    now = datetime.now()
-    for item in items:
-        if item.get("scheduled_time") and str(item["status"]).startswith("Scheduled"):
-            if now >= item["scheduled_time"]:
-                item["status"] = "Queued"
-                item["scheduled_time"] = None
-
-    if state.queue_manager.any_downloading():
+    """
+    Process the queue to start the next download.
+    Uses a lock to prevent race conditions from concurrent calls.
+    """
+    # Acquire lock to prevent concurrent processing
+    if not _process_queue_lock.acquire(blocking=False):
+        # Another thread is already processing, skip
         return
 
-    # ATOMIC CLAIM
-    item = state.queue_manager.claim_next_downloadable()
-    if item:
-        threading.Thread(target=download_task, args=(item,), daemon=True).start()
+    try:
+        # Check for scheduled items
+        items = state.queue_manager.get_all()
+        now = datetime.now()
+        for item in items:
+            if item.get("scheduled_time") and str(item["status"]).startswith("Scheduled"):
+                if now >= item["scheduled_time"]:
+                    item["status"] = "Queued"
+                    item["scheduled_time"] = None
+
+        if state.queue_manager.any_downloading():
+            return
+
+        # ATOMIC CLAIM
+        item = state.queue_manager.claim_next_downloadable()
+        if item:
+            threading.Thread(target=download_task, args=(item,), daemon=True).start()
+    finally:
+        _process_queue_lock.release()
 
 
 def download_task(item):
@@ -165,8 +180,16 @@ def download_task(item):
 
 
 def fetch_info_task(url):
+    """Fetch video info in background with cookie support."""
     try:
-        info = get_video_info(url)
+        # Get selected browser cookies if available
+        cookies_from_browser = None
+        if download_view and hasattr(download_view, 'cookies_dd'):
+            cookies_value = download_view.cookies_dd.value
+            if cookies_value and cookies_value != "None":
+                cookies_from_browser = cookies_value
+
+        info = get_video_info(url, cookies_from_browser=cookies_from_browser)
         if not info:
             raise Exception("Failed to fetch info")
         state.video_info = info
@@ -346,13 +369,17 @@ def main(pg: ft.Page):
 
     # --- Background Logic ---
 
+    # Shutdown flag for graceful termination
+    shutdown_flag = threading.Event()
+
     def background_loop():
-        while True:
+        """Background loop for queue processing and clipboard monitoring."""
+        while not shutdown_flag.is_set():
             time.sleep(2)
             try:
                 process_queue()
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Error in process_queue: {e}", exc_info=True)
 
             if state.clipboard_monitor_active:
                 try:
@@ -360,7 +387,7 @@ def main(pg: ft.Page):
                     if content and content != state.last_clipboard_content:
                         state.last_clipboard_content = content
                         if validate_url(content) and download_view:
-                            # Only auto-paste if download view is active? Or just notify?
+                            # Only auto-paste if field is empty AND not focused
                             if not download_view.url_input.value:
                                 download_view.url_input.value = content
                                 if page:
@@ -370,8 +397,11 @@ def main(pg: ft.Page):
                                             content=ft.Text(f"URL detected: {content}")
                                         )
                                     )
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(f"Error in clipboard monitor: {e}", exc_info=True)
+
+    # Store shutdown flag in page for cleanup
+    page.on_disconnect = lambda _: shutdown_flag.set()
 
     threading.Thread(target=background_loop, daemon=True).start()
 

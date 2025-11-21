@@ -277,7 +277,7 @@ def download_video(
     }
 
     if match_filter:
-        ydl_opts["matchtitle"] = match_filter
+        ydl_opts["match_filter"] = match_filter
 
     if use_aria2c:
         ydl_opts["external_downloader"] = "aria2c"
@@ -306,6 +306,12 @@ def download_video(
             end_sec = parse_duration(end_time)
             if start_sec is None or end_sec is None:
                 raise ValueError("Could not parse time format")
+            # Validate that start < end
+            if start_sec >= end_sec:
+                raise ValueError(f"Start time ({start_time}) must be before end time ({end_time})")
+            # Validate non-negative times
+            if start_sec < 0 or end_sec < 0:
+                raise ValueError(f"Time values must be non-negative")
             ydl_opts["download_ranges"] = lambda info, ydl: [
                 {"start_time": start_sec, "end_time": end_sec}
             ]
@@ -325,7 +331,7 @@ def download_video(
 
     if recode_video:
         postprocessors.append(
-            {"key": "FFmpegVideoConvertor", "preferedformat": recode_video}
+            {"key": "FFmpegVideoConvertor", "preferredformat": recode_video}
         )
 
     if sponsorblock_remove:
@@ -364,7 +370,13 @@ def download_video(
         ydl_opts["proxy"] = proxy
 
     if rate_limit:
-        ydl_opts["ratelimit"] = rate_limit.strip().upper()
+        # Validate rate limit format before use
+        rate_limit_clean = rate_limit.strip()
+        if rate_limit_clean:
+            import re
+            if not re.match(r'^\d+(\.\d+)?[KMGT]?$', rate_limit_clean, re.IGNORECASE):
+                raise ValueError(f"Invalid rate limit format: {rate_limit}. Expected format: 50K, 4.2M, 1G, etc.")
+            ydl_opts["ratelimit"] = rate_limit_clean
 
     if cookies_from_browser:
         ydl_opts["cookies_from_browser"] = (

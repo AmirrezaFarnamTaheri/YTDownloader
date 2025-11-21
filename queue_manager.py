@@ -8,7 +8,26 @@ logger = logging.getLogger(__name__)
 class QueueManager:
     """
     Thread-safe manager for the download queue.
+
+    Status Lifecycle:
+    - "Queued" -> "Allocating" -> "Downloading" -> "Processing" -> "Completed"
+    - "Queued" -> "Allocating" -> "Downloading" -> "Error"
+    - "Queued" -> "Allocating" -> "Downloading" -> "Cancelled"
+    - "Scheduled (HH:MM)" -> "Queued" (when time reached)
+
+    Status Descriptions:
+    - Queued: Waiting to be downloaded
+    - Scheduled (HH:MM): Scheduled for later execution
+    - Allocating: Claimed by a worker (transitional state)
+    - Downloading: Currently downloading
+    - Processing: Post-processing (FFmpeg, SponsorBlock, etc.)
+    - Completed: Successfully finished
+    - Cancelled: User cancelled
+    - Error: Failed with error
     """
+
+    # Maximum queue size to prevent memory exhaustion
+    MAX_QUEUE_SIZE = 1000
 
     def __init__(self):
         self._queue: List[Dict[str, Any]] = []
@@ -60,8 +79,15 @@ class QueueManager:
                 logger.error(f"Error in queue listener: {e}")
 
     def add_item(self, item: Dict[str, Any]):
-        """Add an item to the queue."""
+        """
+        Add an item to the queue.
+
+        Raises:
+            ValueError: If queue is at maximum capacity.
+        """
         with self._lock:
+            if len(self._queue) >= self.MAX_QUEUE_SIZE:
+                raise ValueError(f"Queue is full (max {self.MAX_QUEUE_SIZE} items). Please clear some items first.")
             self._queue.append(item)
         self._notify_listeners_safe()
 
@@ -88,16 +114,8 @@ class QueueManager:
         if changed:
             self._notify_listeners_safe()
 
-    def find_next_downloadable(self) -> Optional[Dict[str, Any]]:
-        """
-        Find the next item that is ready to download.
-        DEPRECATED: Use claim_next_downloadable for atomic operations.
-        """
-        with self._lock:
-            for item in self._queue:
-                if item["status"] == "Queued":
-                    return item
-        return None
+    # NOTE: find_next_downloadable was removed as it's deprecated and could cause race conditions.
+    # Always use claim_next_downloadable() for atomic claim operations.
 
     def claim_next_downloadable(self) -> Optional[Dict[str, Any]]:
         """
