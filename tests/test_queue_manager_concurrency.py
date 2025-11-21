@@ -4,9 +4,10 @@ import sys
 import os
 
 # Adjust path to import modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from queue_manager import QueueManager
+
 
 class TestQueueManagerConcurrency(unittest.TestCase):
     def setUp(self):
@@ -15,7 +16,7 @@ class TestQueueManagerConcurrency(unittest.TestCase):
     def test_claim_next_downloadable_atomic(self):
         # Add multiple queued items
         for i in range(10):
-            self.qm.add_item({'id': i, 'status': 'Queued'})
+            self.qm.add_item({"id": i, "status": "Queued"})
 
         claimed_items = []
         lock = threading.Lock()
@@ -39,16 +40,17 @@ class TestQueueManagerConcurrency(unittest.TestCase):
         self.assertEqual(len(claimed_items), 10)
 
         # Check IDs are unique (no double claims)
-        ids = [item['id'] for item in claimed_items]
+        ids = [item["id"] for item in claimed_items]
         self.assertEqual(len(ids), len(set(ids)))
 
     def test_any_downloading_includes_allocating(self):
-        self.qm.add_item({'status': 'Allocating'})
+        self.qm.add_item({"status": "Allocating"})
         self.assertTrue(self.qm.any_downloading())
 
     def test_any_downloading_includes_processing(self):
-        self.qm.add_item({'status': 'Processing'})
+        self.qm.add_item({"status": "Processing"})
         self.assertTrue(self.qm.any_downloading())
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

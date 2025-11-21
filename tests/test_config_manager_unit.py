@@ -4,9 +4,10 @@ import sys
 import os
 
 # Adjust path to import modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config_manager import ConfigManager
+
 
 class TestConfigManager(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open, read_data='{"test": 1}')
@@ -18,7 +19,8 @@ class TestConfigManager(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open)
     def test_save_config(self, mock_file):
         ConfigManager.save_config({"test": 2})
-        mock_file.assert_called_with(ANY, 'w', encoding='utf-8')
+        mock_file.assert_called_with(ANY, "w", encoding="utf-8")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -4,10 +4,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class QueueManager:
     """
     Thread-safe manager for the download queue.
     """
+
     def __init__(self):
         self._queue: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
@@ -78,7 +80,10 @@ class QueueManager:
         changed = False
         with self._lock:
             if 0 <= index1 < len(self._queue) and 0 <= index2 < len(self._queue):
-                self._queue[index1], self._queue[index2] = self._queue[index2], self._queue[index1]
+                self._queue[index1], self._queue[index2] = (
+                    self._queue[index2],
+                    self._queue[index1],
+                )
                 changed = True
         if changed:
             self._notify_listeners_safe()
@@ -90,7 +95,7 @@ class QueueManager:
         """
         with self._lock:
             for item in self._queue:
-                if item['status'] == 'Queued':
+                if item["status"] == "Queued":
                     return item
         return None
 
@@ -101,17 +106,20 @@ class QueueManager:
         """
         with self._lock:
             for item in self._queue:
-                if item['status'] == 'Queued':
-                    item['status'] = 'Allocating' # Temporary status
+                if item["status"] == "Queued":
+                    item["status"] = "Allocating"  # Temporary status
                     return item
         return None
 
     def any_in_status(self, status: str) -> bool:
         """Check if any item has the given status."""
         with self._lock:
-            return any(item['status'] == status for item in self._queue)
+            return any(item["status"] == status for item in self._queue)
 
     def any_downloading(self) -> bool:
         """Check if any item is currently downloading."""
         with self._lock:
-            return any(item['status'] in ('Downloading', 'Allocating', 'Processing') for item in self._queue)
+            return any(
+                item["status"] in ("Downloading", "Allocating", "Processing")
+                for item in self._queue
+            )

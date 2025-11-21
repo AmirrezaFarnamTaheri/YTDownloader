@@ -5,6 +5,7 @@ from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
+
 class RSSManager:
     """Manages RSS feeds and checking for new videos."""
 
@@ -24,15 +25,18 @@ class RSSManager:
             response.raise_for_status()
 
             root = ET.fromstring(response.content)
-            ns = {'atom': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015'}
+            ns = {
+                "atom": "http://www.w3.org/2005/Atom",
+                "yt": "http://www.youtube.com/xml/schemas/2015",
+            }
 
             videos = []
-            for entry in root.findall('atom:entry', ns):
+            for entry in root.findall("atom:entry", ns):
                 video = {}
-                video['title'] = entry.find('atom:title', ns).text
-                video['link'] = entry.find('atom:link', ns).attrib['href']
-                video['published'] = entry.find('atom:published', ns).text
-                video['video_id'] = entry.find('yt:videoId', ns).text
+                video["title"] = entry.find("atom:title", ns).text
+                video["link"] = entry.find("atom:link", ns).attrib["href"]
+                video["published"] = entry.find("atom:published", ns).text
+                video["video_id"] = entry.find("yt:videoId", ns).text
                 videos.append(video)
 
             return videos
