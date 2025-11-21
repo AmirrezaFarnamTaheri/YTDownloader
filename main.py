@@ -126,8 +126,8 @@ def main(page: ft.Page):
 
     # --- Download Tab Content ---
     url_input = ft.TextField(
-        label="Video URL",
-        hint_text="Paste YouTube, Twitch, or other media links...",
+        label="URL",
+        hint_text="Paste YouTube, Telegram, Twitter, or direct file links...",
         expand=True,
         border_color=ft.Colors.BLUE_400,
         prefix_icon=ft.Icons.LINK,
@@ -526,13 +526,36 @@ def main(page: ft.Page):
             duration_text.value = info.get('duration', '')
 
             # Dropdowns
-            video_opts = [ft.dropdown.Option(key=s['format_id'], text=f"{s['resolution']} ({s['ext']})") for s in info.get('video_streams', [])]
-            video_format_dd.options = video_opts
-            if video_opts: video_format_dd.value = video_opts[0].key
+            video_streams = info.get('video_streams', [])
+            if not video_streams:
+                # Maybe only audio or generic file
+                pass
 
-            audio_opts = [ft.dropdown.Option(key=s['format_id'], text=f"{s['abr']}kbps ({s['ext']})") for s in info.get('audio_streams', [])]
+            video_opts = []
+            for s in video_streams:
+                label = f"{s.get('resolution', 'N/A')} ({s.get('ext', '?')})"
+                if s.get('filesize'):
+                    label += f" - {format_file_size(s['filesize'])}"
+                video_opts.append(ft.dropdown.Option(key=s['format_id'], text=label))
+
+            video_format_dd.options = video_opts
+            if video_opts:
+                video_format_dd.value = video_opts[0].key
+                video_format_dd.disabled = False
+            else:
+                video_format_dd.options = [ft.dropdown.Option(key="best", text="Best / Direct")]
+                video_format_dd.value = "best"
+                video_format_dd.disabled = True
+
+            audio_opts = [ft.dropdown.Option(key=s['format_id'], text=f"{s.get('abr', 'N/A')}kbps ({s.get('ext', '?')})") for s in info.get('audio_streams', [])]
             audio_format_dd.options = audio_opts
-            if audio_opts: audio_format_dd.value = audio_opts[0].key
+            if audio_opts:
+                audio_format_dd.value = audio_opts[0].key
+                audio_format_dd.disabled = False
+            else:
+                audio_format_dd.options = []
+                audio_format_dd.value = None
+                audio_format_dd.disabled = True
 
             page.show_snack_bar(ft.SnackBar(content=ft.Text("Metadata fetched successfully")))
 
