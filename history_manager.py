@@ -1,7 +1,8 @@
 import sqlite3
 import logging
+import time
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -10,45 +11,120 @@ DB_FILE = Path.home() / ".streamcatch" / "history.db"
 
 
 class HistoryManager:
-    """Manages download history using SQLite."""
+    """Manages download history using SQLite with validation and error handling."""
+
+    # Maximum retries for database lock
+    MAX_DB_RETRIES = 5
+    DB_RETRY_DELAY = 0.5  # seconds
 
     @staticmethod
-    def _get_connection():
+    def _get_connection(timeout: float = 10.0):
+        """
+        Get database connection with timeout.
+
+        Args:
+            timeout: Maximum time to wait for database lock (seconds)
+
+        Returns:
+            sqlite3.Connection
+        """
         DB_FILE.parent.mkdir(parents=True, exist_ok=True)
-        return sqlite3.connect(DB_FILE)
+        conn = sqlite3.connect(DB_FILE, timeout=timeout)
+        # Enable WAL mode for better concurrency
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+
+    @staticmethod
+    def _validate_input(url: str, title: str, output_path: str) -> None:
+        """
+        Validate inputs to prevent injection and ensure data integrity.
+
+        Args:
+            url: URL to validate
+            title: Title to validate
+            output_path: Path to validate
+
+        Raises:
+            ValueError: If validation fails
+        """
+        if not url or not isinstance(url, str):
+            raise ValueError("URL must be a non-empty string")
+        if len(url) > 2048:
+            raise ValueError("URL too long (max 2048 characters)")
+        if title and len(title) > 500:
+            raise ValueError("Title too long (max 500 characters)")
+        if output_path and len(output_path) > 1024:
+            raise ValueError("Output path too long (max 1024 characters)")
+        # Prevent null bytes (SQL injection vector)
+        if '\x00' in url or (title and '\x00' in title) or (output_path and '\x00' in output_path):
+            raise ValueError("Null bytes not allowed in inputs")
 
     @staticmethod
     def init_db():
         """Initialize the history database table and perform migrations."""
-        try:
-            with HistoryManager._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
+        retry_count = 0
+        last_error = None
+
+        while retry_count < HistoryManager.MAX_DB_RETRIES:
+            try:
+                with HistoryManager._get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS history (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            url TEXT NOT NULL,
+                            title TEXT,
+                            output_path TEXT,
+                            format_str TEXT,
+                            status TEXT,
+                            timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                            file_size TEXT
+                        )
                     """
-                    CREATE TABLE IF NOT EXISTS history (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        url TEXT NOT NULL,
-                        title TEXT,
-                        output_path TEXT,
-                        format_str TEXT,
-                        status TEXT,
-                        timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
-                        file_size TEXT
                     )
-                """
-                )
 
-                # Migration: Check for file_path column
-                cursor.execute("PRAGMA table_info(history)")
-                columns = [info[1] for info in cursor.fetchall()]
-                if "file_path" not in columns:
-                    logger.info("Migrating database: Adding file_path column")
-                    cursor.execute("ALTER TABLE history ADD COLUMN file_path TEXT")
+                    # Migration: Check for file_path column
+                    cursor.execute("PRAGMA table_info(history)")
+                    columns = [info[1] for info in cursor.fetchall()]
+                    if "file_path" not in columns:
+                        logger.info("Migrating database: Adding file_path column")
+                        cursor.execute("ALTER TABLE history ADD COLUMN file_path TEXT")
 
-                conn.commit()
-            logger.info("History database initialized.")
-        except Exception as e:
-            logger.error(f"Failed to init history DB: {e}")
+                    # Create indexes for better query performance
+                    cursor.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)"
+                    )
+                    cursor.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_history_status ON history(status)"
+                    )
+                    cursor.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)"
+                    )
+
+                    conn.commit()
+                logger.info("History database initialized with indexes.")
+                return  # Success
+
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e).lower():
+                    last_error = e
+                    retry_count += 1
+                    if retry_count < HistoryManager.MAX_DB_RETRIES:
+                        logger.warning(f"Database locked, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})...")
+                        time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
+                    else:
+                        logger.error(f"Failed to init history DB after {retry_count} retries: {e}")
+                        raise
+                else:
+                    logger.error(f"Failed to init history DB: {e}")
+                    raise
+            except Exception as e:
+                logger.error(f"Failed to init history DB: {e}")
+                raise
+
+        if last_error:
+            raise last_error
 
     @staticmethod
     def add_entry(
@@ -58,33 +134,73 @@ class HistoryManager:
         format_str: str,
         status: str,
         file_size: str,
-        file_path: str = None,
+        file_path: Optional[str] = None,
     ):
-        """Add a new entry to the history."""
-        try:
-            with HistoryManager._get_connection() as conn:
-                cursor = conn.cursor()
-                timestamp_str = datetime.now().isoformat()
-                cursor.execute(
-                    """
-                    INSERT INTO history (url, title, output_path, format_str, status, timestamp, file_size, file_path)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                    (
-                        url,
-                        title,
-                        output_path,
-                        format_str,
-                        status,
-                        timestamp_str,
-                        file_size,
-                        file_path,
-                    ),
-                )
-                conn.commit()
-            logger.debug(f"Added history entry: {title}")
-        except Exception as e:
-            logger.error(f"Failed to add history entry: {e}")
+        """
+        Add a new entry to the history with validation and retry logic.
+
+        Args:
+            url: Source URL
+            title: Download title
+            output_path: Output directory
+            format_str: Format string used
+            status: Download status
+            file_size: File size string
+            file_path: Full path to downloaded file
+
+        Raises:
+            ValueError: If validation fails
+        """
+        # Validate inputs
+        HistoryManager._validate_input(url, title or "", output_path or "")
+
+        retry_count = 0
+        last_error = None
+
+        while retry_count < HistoryManager.MAX_DB_RETRIES:
+            try:
+                with HistoryManager._get_connection() as conn:
+                    cursor = conn.cursor()
+                    timestamp_str = datetime.now().isoformat()
+                    cursor.execute(
+                        """
+                        INSERT INTO history (url, title, output_path, format_str, status, timestamp, file_size, file_path)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                        (
+                            url,
+                            title,
+                            output_path,
+                            format_str,
+                            status,
+                            timestamp_str,
+                            file_size,
+                            file_path,
+                        ),
+                    )
+                    conn.commit()
+                logger.debug(f"Added history entry: {title}")
+                return  # Success
+
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e).lower():
+                    last_error = e
+                    retry_count += 1
+                    if retry_count < HistoryManager.MAX_DB_RETRIES:
+                        logger.warning(f"Database locked, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})...")
+                        time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
+                    else:
+                        logger.error(f"Failed to add history entry after {retry_count} retries: {e}")
+                        raise
+                else:
+                    logger.error(f"Failed to add history entry: {e}")
+                    raise
+            except Exception as e:
+                logger.error(f"Failed to add history entry: {e}")
+                raise
+
+        if last_error:
+            raise last_error
 
     @staticmethod
     def get_history(limit: int = 50) -> List[Dict[str, Any]]:
