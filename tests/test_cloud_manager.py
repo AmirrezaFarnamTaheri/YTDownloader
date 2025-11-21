@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch, mock_open
 import os
-import sys
 from cloud_manager import CloudManager
 
 
@@ -56,7 +55,7 @@ class TestCloudManager(unittest.TestCase):
 
             self.manager.upload_file("test.txt", provider="google_drive")
 
-            # mock_gauth.Authorize.assert_called() # This might not be called if token is valid
+            mock_gauth.Authorize.assert_called()
             mock_drive_instance.CreateFile.assert_called_with({"title": "test.txt"})
             mock_file.SetContentFile.assert_called_with("test.txt")
             mock_file.Upload.assert_called()
@@ -120,6 +119,15 @@ class TestCloudManager(unittest.TestCase):
             self.manager.upload_file("test.txt")
 
             mock_gauth.LocalWebserverAuth.assert_called()
+
+    @patch("os.path.exists")
+    def test_upload_google_drive_import_error(self, mock_exists):
+        mock_exists.return_value = True
+        # Simulate import error
+        with patch.dict("sys.modules", {"pydrive2.auth": None}):
+            with patch("builtins.__import__", side_effect=ImportError):
+                with self.assertRaisesRegex(Exception, "PyDrive2 dependency missing"):
+                    self.manager.upload_file("test.txt")
 
     @patch("os.path.exists")
     @patch.dict(

@@ -19,7 +19,10 @@ class TestInputValidation(unittest.TestCase):
             "10:0",  # Need 2 digits for seconds
             ":10:00",
             "10:00:",
-            "100:00",
+            "100:00",  # Actually \d{1,2} matches 10, but wait
+            # ^(\d{1,2}:)?\d{1,2}:\d{2}$
+            # 100:00 -> 100 doesn't match \d{1,2}.
+            # Wait, regex matches from start.
         ]
         for t in invalid_inputs:
             with self.subTest(t=t):

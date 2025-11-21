@@ -33,9 +33,15 @@ class TestFeatureVerification(unittest.TestCase):
     def test_keyboard_navigation_logic(self):
         """Verify that J/K keys change the selected index in the queue."""
         # Add dummy items
-        self.state.queue_manager.add_item({"url": "http://a.com", "status": "Queued", "control": MagicMock()})
-        self.state.queue_manager.add_item({"url": "http://b.com", "status": "Queued", "control": MagicMock()})
-        self.state.queue_manager.add_item({"url": "http://c.com", "status": "Queued", "control": MagicMock()})
+        self.state.download_queue.append(
+            {"url": "http://a.com", "status": "Queued", "control": MagicMock()}
+        )
+        self.state.download_queue.append(
+            {"url": "http://b.com", "status": "Queued", "control": MagicMock()}
+        )
+        self.state.download_queue.append(
+            {"url": "http://c.com", "status": "Queued", "control": MagicMock()}
+        )
 
         self.state.selected_queue_index = 0  # Start at top
 
@@ -49,15 +55,14 @@ class TestFeatureVerification(unittest.TestCase):
 
         # Simulate 'J' (Loop around?) - Logic in main.py implements loop
         self.state.selected_queue_index += 1
-        queue_len = len(self.state.queue_manager.get_all())
-        if self.state.selected_queue_index >= queue_len:
+        if self.state.selected_queue_index >= len(self.state.download_queue):
             self.state.selected_queue_index = 0
         self.assertEqual(self.state.selected_queue_index, 0)
 
         # Simulate 'K' (Up) - Loop back
         self.state.selected_queue_index -= 1
         if self.state.selected_queue_index < 0:
-            self.state.selected_queue_index = queue_len - 1
+            self.state.selected_queue_index = len(self.state.download_queue) - 1
         self.assertEqual(self.state.selected_queue_index, 2)
 
     @patch("downloader.yt_dlp.YoutubeDL")

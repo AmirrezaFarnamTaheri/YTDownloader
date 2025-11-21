@@ -22,74 +22,63 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Install dependencies
+    - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pyinstaller
 
-    - name: Build desktop binaries
+    - name: Build with PyInstaller
       run: |
-        pyinstaller --noconfirm streamcatch.spec
+        pyinstaller StreamCatch.spec
 
-    - name: Upload desktop artifact
+    - name: Upload Artifact (Windows)
+      if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v3
       with:
-        name: StreamCatch-${{ matrix.os }}
-        path: dist/StreamCatch*
+        name: StreamCatch-Windows
+        path: dist/StreamCatch.exe
 
-  mobile-packaging:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+    - name: Upload Artifact (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: StreamCatch-Linux
+        path: dist/StreamCatch
 
-      - name: Archive Android source bundle
-        run: |
-          zip -r mobile-android-source.zip mobile
-
-      - name: Archive iOS source bundle
-        run: |
-          zip -r mobile-ios-source.zip mobile
-
-      - name: Upload mobile artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: StreamCatch-mobile-sources
-          path: |
-            mobile-android-source.zip
-            mobile-ios-source.zip
+    - name: Upload Artifact (macOS)
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: StreamCatch-macOS
+        path: dist/StreamCatch
 
   release:
-    needs: [build, mobile-packaging]
+    needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Download Artifacts (Windows)
+      - name: Download Windows Artifact
         uses: actions/download-artifact@v3
         with:
-          name: StreamCatch-windows-latest
+          name: StreamCatch-Windows
 
-      - name: Download Artifacts (Linux)
+      - name: Download Linux Artifact
         uses: actions/download-artifact@v3
         with:
-          name: StreamCatch-ubuntu-latest
+          name: StreamCatch-Linux
 
-      - name: Download Artifacts (macOS)
+      - name: Download macOS Artifact
         uses: actions/download-artifact@v3
         with:
-          name: StreamCatch-macos-latest
-
-      - name: Download Mobile Sources
-        uses: actions/download-artifact@v3
-        with:
-          name: StreamCatch-mobile-sources
+          name: StreamCatch-macOS
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/StreamCatch*
-            mobile-android-source.zip
-            mobile-ios-source.zip
+            StreamCatch.exe
+            StreamCatch
+            StreamCatch-macOS/StreamCatch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

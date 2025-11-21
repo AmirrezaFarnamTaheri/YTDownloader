@@ -5,10 +5,6 @@ from typing import Dict
 
 logger = logging.getLogger(__name__)
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 class LocalizationManager:
     """Manages localization strings."""
 
@@ -21,15 +17,14 @@ class LocalizationManager:
         try:
             path = Path(__file__).parent / "locales" / f"{lang_code}.json"
             if path.exists():
-<<<<<<< HEAD
-                with open(path, 'r', encoding='utf-8') as f:
+                with open(path, "r", encoding="utf-8") as f:
                     cls._strings = json.load(f)
                     cls._current_lang = lang_code
             else:
-                logger.warning(f"Language file {path} not found. Falling back to English.")
+                logger.warning(
+                    f"Language file {path} not found. Falling back to English."
+                )
                 if lang_code != "en":
-                     cls.load_language("en")
-=======
                 with open(path, "r", encoding="utf-8") as f:
                     cls._strings = json.load(f)
                     cls._current_lang = lang_code
@@ -39,7 +34,7 @@ class LocalizationManager:
                 )
                 if lang_code != "en":
                     cls.load_language("en")
->>>>>>> origin/main
+
         except Exception as e:
             logger.error(f"Error loading language {lang_code}: {e}")
 

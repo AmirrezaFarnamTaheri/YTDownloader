@@ -2,6 +2,7 @@ import flet as ft
 from typing import Dict, Any
 from theme import Theme
 
+
 class EmptyState(ft.Container):
     def __init__(self, icon: str, message: str):
         super().__init__()
@@ -15,6 +16,7 @@ class EmptyState(ft.Container):
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             alignment=ft.MainAxisAlignment.CENTER,
         )
+
 
 class DownloadItemControl:
     def __init__(
@@ -52,9 +54,10 @@ class DownloadItemControl:
             max_lines=1,
         )
 
-        self.icon = self._get_icon_for_item()
+        # Action container will be updated dynamically
         self.actions_row = ft.Row(spacing=0, alignment=ft.MainAxisAlignment.CENTER)
         self._update_actions()
+
         self.view = self.build()
 
     def _get_icon_for_item(self):
@@ -75,7 +78,6 @@ class DownloadItemControl:
             return ft.Icon(ft.Icons.INSERT_DRIVE_FILE, size=24, color=Theme.TEXT_SECONDARY)
 
     def build(self):
-        # Modern Card Design with "Glassmorphism" feel
         bg_color = (
             Theme.BG_CARD
             if not self.is_selected
@@ -83,43 +85,55 @@ class DownloadItemControl:
         )
         border_color = Theme.BORDER if not self.is_selected else Theme.PRIMARY
 
-        return ft.Container(
-            content=ft.Row([
-                # Icon Container
-                ft.Container(
-                    content=self.icon,
-                    width=50, height=50,
-                    bgcolor=Theme.BG_DARK,
-                    border_radius=12,
-                    alignment=ft.alignment.center,
-                    border=ft.border.all(1, Theme.BG_DARK)
-                ),
-                # Info Column
-                ft.Column([
-                    ft.Row([self.title_text], alignment=ft.MainAxisAlignment.START),
-                    self.progress_bar,
-                    ft.Row([
-                        self.status_text,
-                        ft.Container(expand=True),
-                        self.details_text
-                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
-                ], spacing=6, expand=True),
+        icon = ft.Icons.VIDEO_FILE
+        if self.item.get("is_audio"):
+            icon = ft.Icons.AUDIO_FILE
+        elif self.item.get("is_playlist"):
+            icon = ft.Icons.PLAYLIST_PLAY
+        elif "telegram" in self.item.get("url", ""):
+            icon = ft.Icons.TELEGRAM
 
-                # Actions
-                self.actions_row
-            ], spacing=12),
+        return ft.Container(
+            content=ft.Row(
+                [
+                    # Thumbnail/Icon
+                    ft.Container(
+                        content=ft.Icon(icon, size=24, color=Theme.TEXT_SECONDARY),
+                        width=48,
+                        height=48,
+                        bgcolor=Theme.BG_DARK,
+                        border_radius=8,
+                        alignment=ft.alignment.center,
+                    ),
+                    # Info Column
+                    ft.Column(
+                        [
+                            ft.Row(
+                                [
+                                    self.title_text,
+                                ],
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            ),
+                            self.progress_bar,
+                            ft.Row(
+                                [self.status_text, self.details_text],
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            ),
+                        ],
+                        spacing=6,
+                        expand=True,
+                    ),
+                    # Actions
+                    self.actions_row,
+                ],
+                spacing=12,
+            ),
             padding=12,
             bgcolor=bg_color,
             border=ft.border.all(1, border_color),
-            border_radius=16,
+            border_radius=12,
             animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT),
-            on_hover=self._on_hover
         )
-
-    def _on_hover(self, e):
-        # e.control.bgcolor = Theme.BG_CARD if e.data == "true" and not self.is_selected else (Theme.BG_CARD if not self.is_selected else ft.Colors.with_opacity(0.1, Theme.PRIMARY))
-        # e.control.update()
-        pass
 
     def _update_actions(self):
         status = self.item.get("status", "Queued")
@@ -128,11 +142,11 @@ class DownloadItemControl:
         if status in ["Downloading", "Processing"]:
             actions.append(
                 ft.IconButton(
-                    ft.Icons.STOP_CIRCLE_OUTLINED,
+                    ft.Icons.CANCEL,
                     on_click=lambda e: self.on_cancel(self.item),
-                    icon_size=24,
+                    icon_size=20,
                     tooltip="Cancel",
-                    icon_color=ft.Colors.RED_300,
+                    icon_color=Theme.ERROR,
                 )
             )
         elif status in ["Error", "Cancelled"] and self.on_retry:
@@ -140,7 +154,7 @@ class DownloadItemControl:
                 ft.IconButton(
                     ft.Icons.REFRESH,
                     on_click=lambda e: self.on_retry(self.item),
-                    icon_size=24,
+                    icon_size=20,
                     tooltip="Retry",
                     icon_color=Theme.WARNING,
                 )
@@ -156,7 +170,7 @@ class DownloadItemControl:
                             on_click=lambda e: self.on_reorder(self.item, -1),
                             icon_size=18,
                             tooltip="Move Up",
-                            style=ft.ButtonStyle(padding=0, shape=ft.CircleBorder()),
+                            style=ft.ButtonStyle(padding=0),
                             icon_color=Theme.TEXT_SECONDARY,
                         ),
                         ft.IconButton(
@@ -164,7 +178,7 @@ class DownloadItemControl:
                             on_click=lambda e: self.on_reorder(self.item, 1),
                             icon_size=18,
                             tooltip="Move Down",
-                            style=ft.ButtonStyle(padding=0, shape=ft.CircleBorder()),
+                            style=ft.ButtonStyle(padding=0),
                             icon_color=Theme.TEXT_SECONDARY,
                         ),
                     ],
@@ -175,11 +189,11 @@ class DownloadItemControl:
 
         actions.append(
             ft.IconButton(
-                ft.Icons.DELETE_OUTLINE,
+                ft.Icons.DELETE,
                 on_click=lambda e: self.on_remove(self.item),
-                icon_size=24,
+                icon_size=20,
                 tooltip="Remove",
-                icon_color=ft.Colors.GREY_500,
+                icon_color=Theme.TEXT_SECONDARY,
             )
         )
         self.actions_row.controls = actions
@@ -187,30 +201,25 @@ class DownloadItemControl:
             self.actions_row.update()
 
     def update_progress(self):
-        self.status_text.value = self.item['status']
+        self.status_text.value = self.item["status"]
 
         # Dynamic color for progress
         if self.item["status"] == "Error" or self.item["status"] == "Cancelled":
-             self.status_text.color = Theme.ERROR
-             self.progress_bar.color = Theme.ERROR
+            self.progress_bar.color = Theme.ERROR
         elif self.item["status"] == "Completed":
-             self.status_text.color = Theme.SUCCESS
-             self.progress_bar.color = Theme.SUCCESS
-        elif self.item["status"] == "Downloading":
-             self.status_text.color = Theme.PRIMARY
-             self.progress_bar.color = Theme.PRIMARY
+            self.progress_bar.color = Theme.SUCCESS
         else:
-             self.status_text.color = Theme.TEXT_SECONDARY
-             self.progress_bar.color = Theme.PRIMARY
+            self.progress_bar.color = Theme.PRIMARY
 
-        if 'speed' in self.item and self.item['status'] == 'Downloading':
-             self.details_text.value = f"{self.item.get('size', '')}  •  {self.item.get('speed', '')}  •  ETA: {self.item.get('eta', '')}"
+        if "speed" in self.item and self.item["status"] == "Downloading":
+            self.details_text.value = f"{self.item.get('size', '')} • {self.item.get('speed', '')} • ETA: {self.item.get('eta', '')}"
         else:
-             self.details_text.value = ""
+            self.details_text.value = ""
 
         self.status_text.update()
         self.details_text.update()
         self.progress_bar.update()
-        self.title_text.value = self.item.get('title', self.item['url'])
+        self.title_text.value = self.item.get("title", self.item["url"])
         self.title_text.update()
+
         self._update_actions()

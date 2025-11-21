@@ -67,14 +67,14 @@ def get_video_info(
             if "subtitles" in info_dict and info_dict["subtitles"]:
                 for lang, subs in info_dict["subtitles"].items():
                     if isinstance(subs, list):
-                        formats_list = [
+                        formats = [
                             sub.get("ext", "vtt") if isinstance(sub, dict) else str(sub)
                             for sub in subs
                         ]
                     else:
-                        formats_list = ["vtt"]
-                    if formats_list:
-                        subtitles[lang] = formats_list
+                        formats = ["vtt"]
+                    if formats:
+                        subtitles[lang] = formats
                     else:
                         subtitles[lang] = ["vtt"]
 
@@ -82,12 +82,12 @@ def get_video_info(
             if "automatic_captions" in info_dict and info_dict["automatic_captions"]:
                 for lang, subs in info_dict["automatic_captions"].items():
                     if isinstance(subs, list):
-                        formats_list = [
+                        formats = [
                             sub.get("ext", "vtt") if isinstance(sub, dict) else str(sub)
                             for sub in subs
                         ]
                     else:
-                        formats_list = ["vtt"]
+                        formats = ["vtt"]
                     auto_lang = f"{lang} (Auto)" if lang not in subtitles else lang
                     if formats_list:
                         subtitles[auto_lang] = formats_list
@@ -144,8 +144,6 @@ def get_video_info(
                 "audio_streams": audio_streams,
                 "chapters": info_dict.get("chapters", None),
                 "original_url": url,
-                "is_telegram": False,
-                "is_generic": False
             }
 
             logger.info(f"Successfully fetched video info: {result['title']}")
@@ -247,6 +245,10 @@ def download_video(
             return
         else:
             raise Exception("Could not extract Telegram media")
+
+    # For generic files, we could try GenericExtractor if yt-dlp fails.
+    # But since we are inside download_video, we usually expect yt-dlp to work unless we specifically identified it as generic.
+    # However, if the user put a generic link in Queue, we might not know until we try.
 
     # Let's try yt-dlp first. If it fails with DownloadError, we check Generic.
 

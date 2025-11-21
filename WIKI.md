@@ -1,14 +1,13 @@
 # StreamCatch Wiki
 
-Welcome to the **StreamCatch** Wiki! StreamCatch is a modern, powerful, and soulful media downloader built with Python and Flet. This documentation covers the architecture, features, and advanced usage of the StreamCatch media downloader.
+Welcome to the **StreamCatch** Wiki! StreamCatch is a modern, powerful, and soulful media downloader built with Python and Flet.
 
 ## Table of Contents
 1. [Features](#features)
-2. [Architecture](#architecture)
-3. [Installation](#installation)
-4. [Usage Guide](#usage-guide)
-5. [Advanced Configuration & Features](#advanced-configuration--features)
-6. [Troubleshooting](#troubleshooting)
+2. [Installation](#installation)
+3. [Usage Guide](#usage-guide)
+4. [Advanced Configuration](#advanced-configuration)
+5. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -27,35 +26,6 @@ Welcome to the **StreamCatch** Wiki! StreamCatch is a modern, powerful, and soul
 - **RSS Integration**: Follow your favorite channels and download latest videos.
 - **Cloud Upload**: (Experimental) Upload finished downloads to Google Drive.
 
----
-
-## Architecture
-
-StreamCatch uses a modular architecture to ensure robustness and maintainability.
-
-### Frontend
-- **Framework**: Flet (based on Flutter).
-- **Design System**: Material Design 3.
-- **Platform**: Windows, macOS, Linux, Web, iOS, Android.
-- **State Management**: `AppState` singleton with observable properties.
-
-### Backend
-- **Downloader Engine**: `yt-dlp` for video extraction, `requests` for generic file downloads.
-- **Queue Management**: `QueueManager` provides atomic, thread-safe operations for managing concurrent downloads.
-- **Storage**: SQLite via `HistoryManager` for persistent history; JSON for configuration.
-
-### Pipeline
-1.  **Input**: URL from user or Clipboard Monitor.
-2.  **Validation**: `ui_utils.validate_url`.
-3.  **Info Extraction**: `downloader.get_video_info` (tries `yt-dlp` -> `TelegramExtractor` -> `GenericExtractor`).
-4.  **Queuing**: Item added to `QueueManager`.
-5.  **Processing**: Background thread claims item via `claim_next_downloadable()`.
-6.  **Downloading**: `downloader.download_video` executes the download with progress hooks.
-7.  **Post-Processing**: FFmpeg (conversion, metadata, thumbnail).
-8.  **Completion**: History updated, notification sent.
-
----
-
 ## Installation
 
 ### Windows
@@ -72,8 +42,6 @@ StreamCatch uses a modular architecture to ensure robustness and maintainability
 pip install -r requirements.txt
 python main.py
 ```
-
----
 
 ## Usage Guide
 
@@ -98,28 +66,9 @@ python main.py
 3. Click **Add**.
 4. Switch to the **Latest Items** tab to see recent videos and copy their links.
 
----
+## Advanced Configuration
 
-## Advanced Configuration & Features
-
-### Core Components
-
-#### Downloader Module (`downloader.py`)
-The heart of the application. It wraps `yt-dlp` but adds a robust layer of error handling and fallback mechanisms.
-- **Robustness**: If `yt-dlp` fails to identify a URL (e.g., a direct file link served with `content-disposition`), it falls back to `GenericExtractor`.
-- **Telegram**: A custom `TelegramExtractor` scrapes public Telegram channels for video/image content.
-
-#### Queue Manager (`queue_manager.py`)
-Handles the download queue.
-- **Thread Safety**: All operations are locked.
-- **Atomic Claiming**: The `claim_next_downloadable()` method prevents race conditions where multiple worker threads might try to download the same file.
-
-#### Generic Downloader (`generic_downloader.py`)
-A specialized module for non-video sites.
-- **Streaming**: Downloads large files in chunks to keep memory usage low.
-- **Resumability**: (Future plan) Can be extended to support `Range` headers.
-
-### Settings
+### Settings Tab
 - **Proxy**: Set an HTTP/SOCKS proxy for downloads.
 - **Rate Limit**: Limit download speed (e.g., `5M` for 5MB/s).
 - **GPU Acceleration**: Enable CUDA or Vulkan for FFmpeg operations (requires hardware support).
@@ -128,30 +77,24 @@ A specialized module for non-video sites.
 ### Configuration File
 Settings are stored in `~/.streamcatch/config.json`. You can manually edit this file if needed.
 
-### Special Modes
-- **Force Generic Mode**: Bypasses extraction logic and treats the URL as a direct download source (useful for direct CDN links).
-- **Time Range Downloading**: Uses `yt-dlp`'s `download_ranges` to download only a portion of a video (Format: `HH:MM:SS`).
+### Managing the Queue
+- Navigate to the **Queue** tab.
+- **Reorder**: Use Up/Down arrows to prioritize downloads.
+- **Cancel/Retry**: Cancel running downloads or retry failed ones.
+- **Clear**: Remove finished items to clean up the view.
 
----
-
-## Troubleshooting
-
-### "FFmpeg not found"
+**"FFmpeg not found"**
 - Ensure FFmpeg is installed and added to your system PATH.
 - On Windows, the installer script attempts to check this.
 
-### "Download Error"
+**"Download Error"**
 - Check your internet connection.
-- Verify the URL works in a browser.
 - If it's a YouTube link, try updating `yt-dlp`: `pip install -U yt-dlp`.
-- Try "Force Generic" if it's a direct file link.
+- Try using "Force Generic" if the specific extractor fails.
 
-### "Browser Cookies not working"
+**"Browser Cookies not working"**
 - Ensure the selected browser is installed and you are logged in.
 - Close the browser before starting the download to unlock the cookie database.
-
-### Visual Glitches
-If the UI looks incorrect, ensure you are not using a custom scaling factor that interferes with Flet/Flutter rendering.
 
 ---
 *Built with Soul by Jules.*

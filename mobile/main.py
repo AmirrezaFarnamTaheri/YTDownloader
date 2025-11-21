@@ -8,11 +8,7 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.pickers import MDTimePicker
 from kivy.core.window import Window
 
-<<<<<<< HEAD
 KV = '''
-=======
-KV = """
->>>>>>> origin/main
 MDScreen:
     md_bg_color: app.theme_cls.bg_dark
 
@@ -61,12 +57,6 @@ MDScreen:
             text: "Ready"
             halign: "center"
             theme_text_color: "Secondary"
-<<<<<<< HEAD
-'''
-=======
-"""
-
->>>>>>> origin/main
 
 class YTDownloaderApp(MDApp):
     def build(self):
@@ -91,10 +81,4 @@ class YTDownloaderApp(MDApp):
     def get_time(self, instance, time):
         self.root.ids.status_label.text = f"Scheduled for {time}"
 
-<<<<<<< HEAD
-if __name__ == '__main__':
-=======
-
 if __name__ == "__main__":
->>>>>>> origin/main
-    YTDownloaderApp().run()

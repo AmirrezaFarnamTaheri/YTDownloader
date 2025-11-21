@@ -10,6 +10,14 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from config_manager import ConfigManager, CONFIG_FILE
 
+# CancelToken is now in main.py, but we can define a simple mock or import it if it was standalone.
+# For this test file, we will test ConfigManager only, or update import.
+# Since main.py depends on Flet, importing it might trigger Flet init.
+# Ideally CancelToken should be in a separate util file.
+# For now, I will define a dummy CancelToken here or import from main if possible safely.
+# But checking main.py, CancelToken is defined there.
+
+
 
 class TestConfigManager(unittest.TestCase):
     """Test cases for ConfigManager."""

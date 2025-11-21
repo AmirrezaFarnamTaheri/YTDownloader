@@ -31,13 +31,6 @@ class TestSocialManager(unittest.TestCase):
     def test_connect_import_error(self):
         # Simulate ImportError by ensuring pypresence cannot be imported
         with patch.dict("sys.modules", {"pypresence": None}):
-            # We patch the constructor logic if possible, but here we rely on
-            # mock.dict above to make 'from pypresence import Presence' fail or return Mock
-            # Actually, 'from pypresence import Presence' inside the method needs to fail.
-            # If we mock sys.modules, imports might succeed with a Mock object.
-            # To force ImportError, we can set side_effect on __import__ or just rely on logic.
-            # Since pypresence is in requirements, it is installed.
-            # So we must force failure.
             with patch("builtins.__import__", side_effect=ImportError):
                 manager = SocialManager()
                 manager.connect()

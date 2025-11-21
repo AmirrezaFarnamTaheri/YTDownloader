@@ -216,12 +216,13 @@ def download_generic(
 
             with open(final_path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=8192):
-                    if cancel_token:
-                         # Use check(d) if available, otherwise property checks
-                         if hasattr(cancel_token, 'check'):
-                             cancel_token.check(None)
-                         elif hasattr(cancel_token, 'cancelled') and cancel_token.cancelled:
-                             raise Exception("Download cancelled by user")
+                    if cancel_token and cancel_token.cancelled:
+                        raise Exception("Download cancelled by user")
+
+                    while cancel_token and cancel_token.is_paused:
+                        time.sleep(0.5)
+                        if cancel_token.cancelled:
+                            raise Exception("Download cancelled by user")
 
                     # Handle pause if available on token (some implementations might not have it)
                     if cancel_token and hasattr(cancel_token, 'is_paused'):
