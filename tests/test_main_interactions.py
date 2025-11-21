@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock, ANY
 import tkinter as tk
-from main import YTDownloaderGUI
+from main_legacy import YTDownloaderGUI
 import queue
 
 class TestMainInteractions(unittest.TestCase):
@@ -19,8 +19,8 @@ class TestMainInteractions(unittest.TestCase):
         except:
             pass
 
-    @patch('main.sv_ttk.toggle_theme')
-    @patch('main.ConfigManager.save_config')
+    @patch('main_legacy.sv_ttk.toggle_theme')
+    @patch('main_legacy.ConfigManager.save_config')
     def test_toggle_theme(self, mock_save, mock_toggle):
         initial_mode = self.app.dark_mode.get()
         self.app.toggle_theme()
@@ -28,7 +28,7 @@ class TestMainInteractions(unittest.TestCase):
         mock_toggle.assert_called_once()
         mock_save.assert_called()
 
-    @patch('main.get_video_info')
+    @patch('main_legacy.get_video_info')
     def test_fetch_info_success(self, mock_get_info):
         # Mock info
         mock_get_info.return_value = {
@@ -42,7 +42,7 @@ class TestMainInteractions(unittest.TestCase):
         self.app.url_entry.insert(0, "http://youtube.com/watch?v=123")
 
         # Mock requests for thumbnail
-        with patch('main.requests.get') as mock_req:
+        with patch('main_legacy.requests.get') as mock_req:
             mock_req.return_value.content = b'fakeimage'
             mock_req.return_value.raise_for_status = MagicMock()
 
@@ -61,7 +61,7 @@ class TestMainInteractions(unittest.TestCase):
             self.assertIn("10:00", self.app.duration_label.cget('text'))
             self.assertEqual(self.app.subtitle_lang_menu['values'], ('en',))
 
-    @patch('main.download_video')
+    @patch('main_legacy.download_video')
     def test_download_execution(self, mock_download):
         # Setup an item with all required keys
         self.app.download_queue.append({
@@ -103,8 +103,8 @@ class TestMainInteractions(unittest.TestCase):
         mock_download.assert_called()
         self.assertEqual(self.app.download_queue[0]['status'], 'Completed')
 
-    @patch('main.YTDownloaderGUI.start_download_thread')
-    @patch('main.filedialog.askopenfilename')
+    @patch('main_legacy.YTDownloaderGUI.start_download_thread')
+    @patch('main_legacy.filedialog.askopenfilename')
     def test_import_urls(self, mock_ask, mock_start_thread):
         # Mock file content
         with patch('builtins.open', unittest.mock.mock_open(read_data="http://test1.com\nhttp://test2.com")):
@@ -115,13 +115,13 @@ class TestMainInteractions(unittest.TestCase):
             self.assertEqual(self.app.download_queue[0]['url'], "http://test1.com")
 
     def test_change_language(self):
-        with patch('main.ConfigManager.save_config') as mock_save:
+        with patch('main_legacy.ConfigManager.save_config') as mock_save:
             self.app.lang_var.set("es")
             self.app.change_language()
             mock_save.assert_called()
             self.assertEqual(self.app.config['language'], 'es')
 
-    @patch('main.HistoryManager.get_history')
+    @patch('main_legacy.HistoryManager.get_history')
     def test_load_history(self, mock_get):
         mock_get.return_value = [{'title': 'H1', 'status': 'Completed', 'timestamp': '2023-01-01'}]
         self.app.load_history()
@@ -130,8 +130,8 @@ class TestMainInteractions(unittest.TestCase):
         item = self.app.history_tree.item(children[0])
         self.assertEqual(item['values'][0], 'H1')
 
-    @patch('main.os.startfile', create=True)
-    @patch('main.sys')
+    @patch('main_legacy.os.startfile', create=True)
+    @patch('main_legacy.sys')
     def test_play_history_item(self, mock_sys, mock_start):
         mock_sys.platform = 'win32'
         # Setup history
@@ -140,7 +140,7 @@ class TestMainInteractions(unittest.TestCase):
         self.app.history_tree.insert("", "end", iid=0, values=('T',))
         self.app.history_tree.selection_set(0)
 
-        with patch('main.os.path.exists') as mock_exists:
+        with patch('main_legacy.os.path.exists') as mock_exists:
             mock_exists.return_value = True
             self.app.play_history_item()
             mock_start.assert_called_with('/tmp/vid.mp4')

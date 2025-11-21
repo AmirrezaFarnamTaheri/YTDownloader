@@ -154,7 +154,8 @@ def download_video(
     download_sections: Optional[str] = None,
     add_metadata: bool = False,
     embed_thumbnail: bool = False,
-    recode_video: Optional[str] = None
+    recode_video: Optional[str] = None,
+    sponsorblock_remove: bool = False
 ) -> None:
     """
     Downloads a video or playlist from the given URL using yt-dlp.
@@ -172,6 +173,7 @@ def download_video(
         proxy: Proxy URL for the download (e.g., 'http://proxy:8080') (default: None).
         rate_limit: Download speed limit (e.g., '50K', '4.2M') (default: None).
         cancel_token: CancelToken object for cancellation support (default: None).
+        sponsorblock_remove: Whether to remove sponsored segments (default: False).
 
     Raises:
         yt_dlp.utils.DownloadError: If download fails (except for user cancellation).
@@ -242,6 +244,13 @@ def download_video(
         postprocessors.append({
             'key': 'FFmpegVideoConvertor',
             'preferedformat': recode_video,
+        })
+
+    if sponsorblock_remove:
+        postprocessors.append({
+            'key': 'SponsorBlock',
+            'categories': ['sponsor', 'selfpromo', 'interaction', 'intro', 'outro', 'preview', 'music_offtopic'],
+            'when': 'after_filter'
         })
 
     if postprocessors:

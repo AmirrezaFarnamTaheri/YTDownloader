@@ -5,7 +5,7 @@ Tests cover UI initialization, user interactions, and event handling.
 import unittest
 from unittest.mock import patch, MagicMock, call
 import tkinter as tk
-from main import YTDownloaderGUI
+from main_legacy import YTDownloaderGUI
 import datetime
 
 class TestYTDownloaderGUI(unittest.TestCase):
@@ -58,20 +58,20 @@ class TestYTDownloaderGUI(unittest.TestCase):
         self.assertEqual(self.app.title_label.cget("text"), "No video loaded")
         self.assertEqual(self.app.progress_bar['value'], 0)
 
-    @patch('main.YTDownloaderGUI.show_toast')
+    @patch('main_legacy.YTDownloaderGUI.show_toast')
     def test_fetch_info_empty_url(self, mock_toast):
         """Test fetch_info with empty URL shows toast."""
         self.app.url_entry.delete(0, tk.END)
         self.app.fetch_info()
         mock_toast.assert_called_once()
 
-    @patch('main.YTDownloaderGUI.show_toast')
+    @patch('main_legacy.YTDownloaderGUI.show_toast')
     def test_add_to_queue_empty_url(self, mock_toast):
         self.app.url_entry.delete(0, tk.END)
         self.app.add_to_queue()
         mock_toast.assert_called()
 
-    @patch('main.YTDownloaderGUI.show_toast')
+    @patch('main_legacy.YTDownloaderGUI.show_toast')
     def test_add_to_queue_success(self, mock_toast):
         """Test successful addition to queue."""
         self.app.url_entry.insert(0, "https://www.youtube.com/watch?v=test")
@@ -94,7 +94,7 @@ class TestYTDownloaderGUI(unittest.TestCase):
         self.app.download_queue[0]['status'] = 'Downloading'
         self.assertTrue(self.app.is_downloading())
 
-    @patch('main.YTDownloaderGUI.show_toast')
+    @patch('main_legacy.YTDownloaderGUI.show_toast')
     def test_remove_from_queue(self, mock_toast):
         # Add items
         self.app.download_queue.append({'url': '1', 'status': 'Queued'})
@@ -114,7 +114,7 @@ class TestYTDownloaderGUI(unittest.TestCase):
         self.app.process_ui_queue()
         mock_func.assert_called_with(a=1)
 
-    @patch('main.messagebox.showerror')
+    @patch('main_legacy.messagebox.showerror')
     def test_handle_error_threadsafe(self, mock_showerror):
         # queue the error
         self.app.handle_error_threadsafe("Title", "Error")
@@ -122,9 +122,9 @@ class TestYTDownloaderGUI(unittest.TestCase):
         self.app.process_ui_queue()
         mock_showerror.assert_called_with("Title", "Error")
 
-    @patch('main.subprocess.Popen')
-    @patch('main.sys')
-    @patch('main.os.startfile', create=True)
+    @patch('main_legacy.subprocess.Popen')
+    @patch('main_legacy.sys')
+    @patch('main_legacy.os.startfile', create=True)
     def test_open_file_location(self, mock_startfile, mock_sys, mock_popen):
         # Add dummy item
         self.app.download_queue.append({'url': 'u', 'status': 'Completed', 'output_path': '/tmp/test'})
@@ -141,21 +141,21 @@ class TestYTDownloaderGUI(unittest.TestCase):
         self.app.open_file_location()
         mock_popen.assert_called_with(['xdg-open', '/tmp/test'])
 
-    @patch('main.HistoryManager.clear_history')
-    @patch('main.messagebox.askyesno')
+    @patch('main_legacy.HistoryManager.clear_history')
+    @patch('main_legacy.messagebox.askyesno')
     def test_clear_history_confirm(self, mock_ask, mock_clear):
         mock_ask.return_value = True
         self.app.clear_history()
         mock_clear.assert_called_once()
 
-    @patch('main.HistoryManager.clear_history')
-    @patch('main.messagebox.askyesno')
+    @patch('main_legacy.HistoryManager.clear_history')
+    @patch('main_legacy.messagebox.askyesno')
     def test_clear_history_cancel(self, mock_ask, mock_clear):
         mock_ask.return_value = False
         self.app.clear_history()
         mock_clear.assert_not_called()
 
-    @patch('main.RSSManager.get_latest_video')
+    @patch('main_legacy.RSSManager.get_latest_video')
     def test_check_rss_feeds(self, mock_get_video):
         # Setup config
         self.app.config['rss_feeds'] = ['http://rss.xml']
@@ -169,14 +169,14 @@ class TestYTDownloaderGUI(unittest.TestCase):
              # But we can check if thread started.
              pass
 
-    @patch('main.simpledialog.askstring')
-    @patch('main.YTDownloaderGUI.add_to_queue')
+    @patch('main_legacy.simpledialog.askstring')
+    @patch('main_legacy.YTDownloaderGUI.add_to_queue')
     def test_schedule_download_dialog_success(self, mock_add, mock_ask):
         self.app.url_entry.insert(0, "http://test.com")
         mock_ask.return_value = "12:00"
 
         # We need to mock datetime to ensure stable testing
-        with patch('main.datetime') as mock_datetime:
+        with patch('main_legacy.datetime') as mock_datetime:
             mock_datetime.datetime.now.return_value = datetime.datetime(2023, 1, 1, 10, 0, 0)
             mock_datetime.datetime.strptime.side_effect = lambda t, f: datetime.datetime.strptime(t, f)
             mock_datetime.datetime.combine.side_effect = lambda d, t: datetime.datetime.combine(d, t)
@@ -204,7 +204,7 @@ class TestYTDownloaderGUI(unittest.TestCase):
             self.assertEqual(self.app.download_queue[0]['status'], 'Queued')
             mock_process.assert_called()
 
-    @patch('main.filedialog.askopenfilename')
+    @patch('main_legacy.filedialog.askopenfilename')
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="http://test1.com\nhttp://test2.com")
     def test_import_urls_from_file_batch(self, mock_file, mock_dialog):
         mock_dialog.return_value = "urls.txt"

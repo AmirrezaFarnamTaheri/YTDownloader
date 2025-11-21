@@ -8,7 +8,7 @@ import shutil
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 from config_manager import ConfigManager, CONFIG_FILE
-from main import CancelToken
+from main_legacy import CancelToken
 import yt_dlp
 
 class TestConfigManager(unittest.TestCase):
