@@ -15,9 +15,10 @@ class DownloadItemControl:
         self.title_text = ft.Text(
             self.item.get('title', self.item['url']),
             weight=ft.FontWeight.BOLD,
-            size=14,
+            size=16,
             overflow=ft.TextOverflow.ELLIPSIS,
-            color=ft.Colors.WHITE
+            color=ft.Colors.WHITE,
+            max_lines=1
         )
 
         self.view = self.build()
@@ -31,8 +32,8 @@ class DownloadItemControl:
             content=ft.Row([
                 # Thumbnail or Icon placeholder
                 ft.Container(
-                    content=ft.Icon(ft.Icons.VIDEO_FILE, size=30, color=ft.Colors.BLUE_200),
-                    width=50, height=50, bgcolor=ft.Colors.BLACK26, border_radius=8,
+                    content=ft.Icon(ft.Icons.VIDEO_FILE, size=32, color=ft.Colors.BLUE_200),
+                    width=60, height=60, bgcolor=ft.Colors.BLACK26, border_radius=8,
                     alignment=ft.alignment.center
                 ),
                 # Info Column - using expand=True instead of ft.Expanded
@@ -43,24 +44,31 @@ class DownloadItemControl:
                         self.status_text,
                         self.details_text
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
-                ], spacing=5, expand=True),
+                ], spacing=8, expand=True),
 
                 # Actions
-                ft.Column([
-                    ft.IconButton(ft.Icons.ARROW_UPWARD, on_click=lambda e: self.on_reorder(self.item, -1), icon_size=18, tooltip="Move Up"),
-                    ft.IconButton(ft.Icons.ARROW_DOWNWARD, on_click=lambda e: self.on_reorder(self.item, 1), icon_size=18, tooltip="Move Down"),
-                ], spacing=0),
-                 ft.Column([
-                    ft.IconButton(ft.Icons.CANCEL, on_click=lambda e: self.on_cancel(self.item), icon_size=18, tooltip="Cancel", icon_color=ft.Colors.RED_400),
-                    ft.IconButton(ft.Icons.DELETE, on_click=lambda e: self.on_remove(self.item), icon_size=18, tooltip="Remove"),
-                ], spacing=0)
+                ft.Row([
+                    ft.Column([
+                        ft.IconButton(ft.Icons.KEYBOARD_ARROW_UP, on_click=lambda e: self.on_reorder(self.item, -1), icon_size=20, tooltip="Move Up", style=ft.ButtonStyle(padding=0)),
+                        ft.IconButton(ft.Icons.KEYBOARD_ARROW_DOWN, on_click=lambda e: self.on_reorder(self.item, 1), icon_size=20, tooltip="Move Down", style=ft.ButtonStyle(padding=0)),
+                    ], spacing=0, alignment=ft.MainAxisAlignment.CENTER),
 
-            ], spacing=10),
-            padding=10,
+                    ft.IconButton(ft.Icons.CANCEL, on_click=lambda e: self.on_cancel(self.item), icon_size=20, tooltip="Cancel", icon_color=ft.Colors.RED_400),
+                    ft.IconButton(ft.Icons.DELETE, on_click=lambda e: self.on_remove(self.item), icon_size=20, tooltip="Remove", icon_color=ft.Colors.GREY_400),
+                ], spacing=5, alignment=ft.MainAxisAlignment.CENTER)
+
+            ], spacing=15),
+            padding=15,
             bgcolor=bg_color,
             border=ft.border.all(1, border_color),
-            border_radius=10,
+            border_radius=12,
             animate=ft.Animation(300, ft.AnimationCurve.EASE_OUT),
+            shadow=ft.BoxShadow(
+                spread_radius=1,
+                blur_radius=5,
+                color=ft.Colors.BLACK12,
+                offset=ft.Offset(0, 2),
+            )
         )
 
     def update_progress(self):

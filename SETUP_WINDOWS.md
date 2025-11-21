@@ -1,4 +1,4 @@
-# YTDownloader - Windows Setup Guide
+# StreamCatch - Windows Setup Guide
 
 Complete setup and installation guide for Windows users.
 
@@ -7,17 +7,17 @@ Complete setup and installation guide for Windows users.
 ### Option 1: Using the Batch Script (Recommended for most users)
 
 1. **Download the repository** or clone it to your computer
-2. **Right-click** on `install-and-run.bat` in the YTDownloader folder
+2. **Right-click** on `install-and-run.bat` in the StreamCatch folder
 3. **Click** "Run as administrator" (optional but recommended)
 4. **Wait** for the installation to complete
-5. **YTDownloader will launch automatically!**
+5. **StreamCatch will launch automatically!**
 
 ### Option 2: Using PowerShell Script (Advanced users)
 
 1. **Open PowerShell** as Administrator
-2. **Navigate** to the YTDownloader folder:
+2. **Navigate** to the StreamCatch folder:
    ```powershell
-   cd "C:\path\to\YTDownloader"
+   cd "C:\path\to\StreamCatch"
    ```
 3. **Run the setup script**:
    ```powershell
@@ -25,7 +25,7 @@ Complete setup and installation guide for Windows users.
    .\install-and-run.ps1
    ```
 4. **Wait** for installation to complete
-5. **YTDownloader will launch automatically!**
+5. **StreamCatch will launch automatically!**
 
 ## What These Scripts Do
 
@@ -34,7 +34,7 @@ Complete setup and installation guide for Windows users.
 - ✓ Creates a Python virtual environment
 - ✓ Installs all required dependencies
 - ✓ Creates desktop and Start Menu shortcuts
-- ✓ Launches the YTDownloader GUI
+- ✓ Launches the StreamCatch GUI
 - ✓ Works on all Windows versions
 
 ### install-and-run.ps1
@@ -67,16 +67,16 @@ If you don't have Python installed:
    python --version
    ```
 
-### Step 2: Download YTDownloader
+### Step 2: Download StreamCatch
 
 **Option A: Clone from GitHub**
 ```cmd
-git clone https://github.com/AmirrezaFarnamTaheri/YTDownloader.git
-cd YTDownloader
+git clone https://github.com/AmirrezaFarnamTaheri/StreamCatch.git
+cd StreamCatch
 ```
 
 **Option B: Download ZIP**
-1. Visit: https://github.com/AmirrezaFarnamTaheri/YTDownloader
+1. Visit: https://github.com/AmirrezaFarnamTaheri/StreamCatch
 2. Click "Code" → "Download ZIP"
 3. Extract the ZIP file to your desired location
 
@@ -85,7 +85,7 @@ cd YTDownloader
 ### Using Batch Script (Recommended)
 
 1. **Open File Explorer**
-2. **Navigate** to the YTDownloader folder
+2. **Navigate** to the StreamCatch folder
 3. **Right-click** on `install-and-run.bat`
 4. **Select** "Run as administrator"
 5. **Command Prompt window** will open and show:
@@ -95,7 +95,7 @@ cd YTDownloader
    ...
    ```
 6. **Wait** for all steps to complete (typically 2-5 minutes)
-7. **YTDownloader GUI** will open automatically
+7. **StreamCatch GUI** will open automatically
 8. **Done!** The app is now installed
 
 ### Troubleshooting the Batch Script
@@ -113,7 +113,7 @@ cd YTDownloader
 - **Solution**: Check your internet connection
 - **Alternative**: Run the script again, it will use existing venv
 
-**Issue**: YTDownloader doesn't launch
+**Issue**: StreamCatch doesn't launch
 - **Solution**: Check that `main.py` exists in the folder
 - **Alternative**: Manually run: `venv\Scripts\python.exe main.py`
 
@@ -128,16 +128,16 @@ cd YTDownloader
    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
    ```
 4. **Type** `Y` and press Enter to confirm
-5. **Navigate** to YTDownloader folder:
+5. **Navigate** to StreamCatch folder:
    ```powershell
-   cd "C:\path\to\YTDownloader"
+   cd "C:\path\to\StreamCatch"
    ```
 6. **Run** the script:
    ```powershell
    .\install-and-run.ps1
    ```
 7. **Watch** the colored output showing progress
-8. **YTDownloader** will launch when complete
+8. **StreamCatch** will launch when complete
 
 ### PowerShell Script Options
 
@@ -162,9 +162,9 @@ If the automated scripts fail, you can install manually:
 - Type `cmd`
 - Press Enter
 
-### Step 2: Navigate to YTDownloader
+### Step 2: Navigate to StreamCatch
 ```cmd
-cd C:\path\to\YTDownloader
+cd C:\path\to\StreamCatch
 ```
 
 ### Step 3: Create virtual environment
@@ -187,7 +187,7 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Step 7: Run YTDownloader
+### Step 7: Run StreamCatch
 ```cmd
 python main.py
 ```
@@ -196,20 +196,20 @@ python main.py
 
 ## After Installation
 
-### Launching YTDownloader
+### Launching StreamCatch
 
-After the setup script completes, you can launch YTDownloader in several ways:
+After the setup script completes, you can launch StreamCatch in several ways:
 
 **Method 1: Desktop Shortcut** (Easiest)
-- Double-click the "YTDownloader" shortcut on your desktop
+- Double-click the "StreamCatch" shortcut on your desktop
 
 **Method 2: Start Menu**
-- Search for "YTDownloader" in Windows Start Menu
+- Search for "StreamCatch" in Windows Start Menu
 - Click the result to launch
 
 **Method 3: Command Prompt**
 ```cmd
-cd C:\path\to\YTDownloader
+cd C:\path\to\StreamCatch
 venv\Scripts\python.exe main.py
 ```
 
@@ -225,7 +225,7 @@ install-and-run.bat
 ### Settings Location
 Settings are automatically saved to:
 ```
-C:\Users\[YourUsername]\.ytdownloader\config.json
+C:\Users\[YourUsername]\.streamcatch\config.json
 ```
 
 This file stores:
@@ -235,7 +235,7 @@ This file stores:
 ### Logs Location
 Application logs are saved to:
 ```
-C:\path\to\YTDownloader\ytdownloader.log
+C:\path\to\StreamCatch\streamcatch.log
 ```
 
 Check this file if you encounter issues.
@@ -244,15 +244,15 @@ Check this file if you encounter issues.
 
 ## Uninstallation
 
-To completely remove YTDownloader:
+To completely remove StreamCatch:
 
-1. **Delete the YTDownloader folder**
+1. **Delete the StreamCatch folder**
 2. **Delete desktop shortcuts** (right-click → Delete)
 3. **Uninstall Start Menu shortcut**:
    - Right-click Start Menu
-   - Select "Uninstall" on YTDownloader
+   - Select "Uninstall" on StreamCatch
 4. **Optional**: Delete configuration:
-   - Delete `C:\Users\[YourUsername]\.ytdownloader\` folder
+   - Delete `C:\Users\[YourUsername]\.streamcatch\` folder
 
 Python itself will remain installed for other programs.
 
@@ -275,13 +275,13 @@ Python itself will remain installed for other programs.
 - **Alternative**: Use Settings tab → Proxy to configure proxy
 
 **Issue**: GUI doesn't open
-- **Solution**: Check `ytdownloader.log` for error details
+- **Solution**: Check `streamcatch.log` for error details
 - **Report**: Create an issue on GitHub with log contents
 
 ### Support Resources
 
-- **Documentation**: https://github.com/AmirrezaFarnamTaheri/YTDownloader/blob/main/README.md
-- **Issues**: https://github.com/AmirrezaFarnamTaheri/YTDownloader/issues
+- **Documentation**: https://github.com/AmirrezaFarnamTaheri/StreamCatch/blob/main/README.md
+- **Issues**: https://github.com/AmirrezaFarnamTaheri/StreamCatch/issues
 - **Discussions**: GitHub Discussions tab
 
 ---
@@ -298,7 +298,7 @@ C:\Python311\python.exe main.py
 
 ### Creating Custom Shortcuts
 
-Create a batch file called `run-ytdownloader.bat`:
+Create a batch file called `run-streamcatch.bat`:
 
 ```batch
 @echo off
@@ -312,7 +312,7 @@ pause
 To update to the latest compatible versions:
 
 ```cmd
-cd C:\path\to\YTDownloader
+cd C:\path\to\StreamCatch
 venv\Scripts\python.exe -m pip install --upgrade -r requirements.txt
 ```
 
@@ -320,14 +320,14 @@ venv\Scripts\python.exe -m pip install --upgrade -r requirements.txt
 
 ## Version History
 
-- **2.0** - Comprehensive refactor with Windows setup scripts
+- **2.0** - Rebrand to StreamCatch with Flet UI
 - **1.0** - Initial release
 
 ---
 
 ## License
 
-YTDownloader is licensed under the MIT License. See LICENSE file for details.
+StreamCatch is licensed under the MIT License. See LICENSE file for details.
 
 ---
 

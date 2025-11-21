@@ -433,5 +433,20 @@ class TestDownloadVideo(unittest.TestCase):
         pps = ydl_opts['postprocessors']
         self.assertTrue(any(p['key'] == 'SponsorBlock' for p in pps))
 
+    @patch('downloader.Path.mkdir')
+    @patch('downloader.yt_dlp.YoutubeDL')
+    def test_download_video_gpu_accel(self, mock_youtube_dl, mock_mkdir):
+        mock_instance = MagicMock()
+        mock_youtube_dl.return_value.__enter__.return_value = mock_instance
+
+        download_video(
+            url='test', progress_hook=lambda d,i: None, download_item={},
+            gpu_accel='cuda'
+        )
+
+        ydl_opts = mock_youtube_dl.call_args[0][0]
+        self.assertIn('postprocessor_args', ydl_opts)
+        self.assertIn('h264_nvenc', ydl_opts['postprocessor_args']['ffmpeg'])
+
 if __name__ == '__main__':
     unittest.main()

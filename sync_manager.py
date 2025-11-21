@@ -57,22 +57,17 @@ class SyncManager:
                 ConfigManager.save_config(data['config'])
 
             # Import History
-            # Note: HistoryManager currently doesn't have bulk import.
-            # We can iterate and add. This might duplicate if ID checks aren't perfect.
-            # But history_manager.add_history generates ID.
-            # Ideally we clear or merge. For now, we'll merge by re-adding (ignoring duplicates if possible or just appending).
-            # A robust implementation would check for duplicates.
-            # Since user wants 100% robustness, let's check duplicates by URL/Title match?
-            # Or simpler: We can't easily merge without unique constraints.
-            # Let's trust `add_history` to handle it or just accept duplicates for now as "Import" often implies appending.
-            # Actually, `history_manager.py` might not have duplicate check.
-
-            # Let's do a basic import
             if 'history' in data:
                 for item in data['history']:
-                     # Basic check to avoid exact duplicates in recent history?
-                     # For now, just add.
-                     HistoryManager.add_history(item)
+                     HistoryManager.add_entry(
+                        url=item.get('url', ''),
+                        title=item.get('title', ''),
+                        output_path=item.get('output_path', ''),
+                        format_str=item.get('format_str', ''),
+                        status=item.get('status', 'Imported'),
+                        file_size=item.get('file_size', 'N/A'),
+                        file_path=item.get('file_path')
+                     )
 
             logger.info(f"Data imported from {input_path}")
 

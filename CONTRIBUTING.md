@@ -1,6 +1,6 @@
-# Contributing to YTDownloader
+# Contributing to StreamCatch
 
-Thank you for your interest in contributing to YTDownloader! We welcome contributions from the community. This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to StreamCatch! We welcome contributions from the community. This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -40,8 +40,8 @@ Have an idea for improvement? [Open an issue](https://github.com/AmirrezaFarnamT
 
 2. **Clone your fork**:
    ```bash
-   git clone https://github.com/your-username/YTDownloader.git
-   cd YTDownloader
+   git clone https://github.com/your-username/StreamCatch.git
+   cd StreamCatch
    ```
 
 3. **Create a feature branch**:
@@ -181,16 +181,17 @@ Keep the subject line to 50 characters.
 ## Project Structure
 
 ```
-YTDownloader/
-├── main.py                # GUI implementation
+StreamCatch/
+├── main.py                # GUI implementation (Flet)
 ├── downloader.py          # Core download logic
+├── components.py          # UI components
+├── config_manager.py      # Configuration management
+├── history_manager.py     # History management
+├── queue_manager.py       # Download queue management
 ├── requirements.txt       # Python dependencies
-├── tests/
-│   ├── test_gui.py        # GUI tests
-│   └── test_downloader.py # Downloader tests
+├── tests/                 # Test suite
 └── docs/
     ├── README.md          # User documentation
-    ├── CHANGELOG.md       # Version history
     ├── CONTRIBUTING.md    # This file
     └── CODE_OF_CONDUCT.md # Community guidelines
 ```
@@ -208,4 +209,4 @@ Contributors will be recognized in:
 - Release notes for features/bug fixes
 - GitHub contributors page
 
-Thank you for making YTDownloader better! 🎉
+Thank you for making StreamCatch better! 🎉
