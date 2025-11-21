@@ -6,7 +6,7 @@ from typing import Dict, Any
 logger = logging.getLogger(__name__)
 
 # Configuration file path
-CONFIG_FILE = Path.home() / '.lumina' / 'config.json'
+CONFIG_FILE = Path.home() / '.streamcatch' / 'config.json'
 
 class ConfigManager:
     """Manages application configuration."""

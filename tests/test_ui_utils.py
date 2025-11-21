@@ -2,7 +2,8 @@
 Unit tests for UI utility functions.
 """
 import unittest
-from ui_utils import validate_url, validate_proxy, validate_rate_limit, format_file_size
+from ui_utils import validate_url, validate_proxy, validate_rate_limit, format_file_size, is_ffmpeg_available
+from unittest.mock import patch
 
 class TestUIUtils(unittest.TestCase):
     """Test cases for utility functions."""
@@ -28,6 +29,16 @@ class TestUIUtils(unittest.TestCase):
         self.assertEqual(format_file_size(0), '0.00 B')
         self.assertEqual(format_file_size(1024), '1.00 KB')
         self.assertEqual(format_file_size(1048576), '1.00 MB')
+
+    @patch('shutil.which')
+    def test_is_ffmpeg_available_true(self, mock_which):
+        mock_which.return_value = '/usr/bin/ffmpeg'
+        self.assertTrue(is_ffmpeg_available())
+
+    @patch('shutil.which')
+    def test_is_ffmpeg_available_false(self, mock_which):
+        mock_which.return_value = None
+        self.assertFalse(is_ffmpeg_available())
 
 if __name__ == '__main__':
     unittest.main()
