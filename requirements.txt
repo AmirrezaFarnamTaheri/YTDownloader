@@ -3,7 +3,6 @@ yt-dlp>=2023.11.16        # YouTube video downloader library
 Pillow>=10.0.0            # Image processing for thumbnails
 requests>=2.31.0          # HTTP library for fetching resources
 flet>=0.21.0              # Modern UI framework
-beautifulsoup4>=4.12.0    # Screen scraping for Telegram/Generic sites
 
 # Development & Testing
 pytest>=7.4.0             # Testing framework
