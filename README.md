@@ -4,18 +4,21 @@
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 ![Status](https://img.shields.io/badge/status-stable-green)
 
-**YTDownloader** is a modern, cross-platform desktop application for downloading videos and audio from YouTube and other supported sites. Built with Python, Tkinter (with `sv_ttk` theme), and `yt-dlp`.
+**YTDownloader** is a modern, cross-platform desktop application for downloading videos and audio from YouTube and other supported sites.
+
+> **New in v3.0**: Fully rewritten UI using [Flet](https://flet.dev) (Flutter for Python) for a smoother, responsive experience with glassmorphism effects and fluid animations.
 
 ## 🌟 Features
 
-*   **Modern UI**: Dark-themed, responsive interface.
+*   **Modern UI**: New Flet-based interface with Dark Mode, Glassmorphism, and responsive layout.
+*   **Cinema Mode**: Minimalist focus view for monitoring downloads.
+*   **Interactive Queue**: Drag-and-drop reordering, easy management.
+*   **Dashboard Analytics**: Visual stats for your downloads.
 *   **High Quality**: Download up to 4K/8K video and high-bitrate audio.
-*   **Batch Downloading**: Import URLs from a text file.
-*   **Scheduler**: Schedule downloads for a later time.
-*   **Post-Processing**: Automatically recode videos to MP4, MKV, AVI, etc.
-*   **Smart History**: Track and manage your downloaded files.
-*   **RSS Feed Support**: Auto-check channels for new videos.
-*   **Advanced Options**: Proxy support, rate limiting, browser cookies import, and metadata embedding.
+*   **SponsorBlock**: Automatically remove sponsored segments.
+*   **Batch Downloading**: Import URLs from a text file (Support coming soon in new UI).
+*   **Scheduler**: Schedule downloads (Support coming soon in new UI).
+*   **Advanced Options**: Proxy support, rate limiting, metadata embedding.
 
 ## 🚀 Installation
 
@@ -32,11 +35,13 @@
 2.  **Install dependencies**:
     ```bash
     pip install -r requirements.txt
+    pip install flet  # Required for new UI
     ```
 3.  **Run**:
     ```bash
     python main.py
     ```
+    *Note: To run the legacy Tkinter version, execute `python main_legacy.py`.*
 
 **Note**: You must have [FFmpeg](https://ffmpeg.org/) installed and available in your system PATH for audio conversion and video merging features.
 
