@@ -18,11 +18,11 @@
 ### 🎨 Modern & Immersive UI
 - **Navigation Rail**: Clean sidebar navigation for quick access to Queues, History, and Settings.
 - **Cinema Mode**: An immersive, distraction-free overlay for monitoring active downloads.
-- **Dashboard**: Real-time analytics and download statistics.
+- **Dashboard**: Real-time analytics and download statistics (Total Downloads, etc.).
 - **Card-Based Design**: Beautiful, responsive cards for download items with progress visualization.
 
 ### ⚡ Performance & Robustness
-- **Multi-threaded Queue**: A thread-safe `QueueManager` ensures stability even under heavy load.
+- **Multi-threaded Queue**: A fully thread-safe `QueueManager` with atomic task claiming ensures stability and prevents race conditions.
 - **Aria2c Integration**: Accelerate downloads with multi-connection support.
 - **GPU Acceleration**: Hardware-accelerated encoding/decoding (NVENC/VAAPI/QSV) via FFmpeg.
 - **Smart Resume**: Robust error handling and resume capabilities for interrupted downloads.
@@ -79,8 +79,13 @@ StreamCatch runs on iOS and Android via Flet. See [SETUP_MOBILE.md](SETUP_MOBILE
 
 ### Managing the Queue
 - **Add**: Paste a URL and click "Fetch Info", then "Add to Queue".
-- **Reorder**: Use Up/Down arrows.
-- **Prioritize**: The queue processes items sequentially unless concurrent downloading is enabled.
+- **Batch Import**: Import a list of URLs from a text file.
+- **Schedule**: Set a specific time for downloads to start.
+- **Reorder**: Use Up/Down arrows to manage priority.
+
+### Dashboard
+- View total download count and statistics.
+- Monitor recent activity.
 
 ### Configuration
 Settings are persisted in `~/.streamcatch/config.json`. You can configure:

@@ -57,10 +57,25 @@ class QueueManager:
                 logger.error(f"Error in queue listener: {e}")
 
     def find_next_downloadable(self) -> Optional[Dict[str, Any]]:
-        """Find the next item that is ready to download."""
+        """
+        Find the next item that is ready to download.
+        DEPRECATED: Use claim_next_downloadable for atomic operations.
+        """
         with self._lock:
             for item in self._queue:
                 if item['status'] == 'Queued':
+                    return item
+        return None
+
+    def claim_next_downloadable(self) -> Optional[Dict[str, Any]]:
+        """
+        Atomically find the next 'Queued' item and mark it as 'Allocated' (or 'Downloading').
+        This prevents race conditions where multiple threads might pick the same item.
+        """
+        with self._lock:
+            for item in self._queue:
+                if item['status'] == 'Queued':
+                    item['status'] = 'Allocating' # Temporary status
                     return item
         return None
 
@@ -70,5 +85,6 @@ class QueueManager:
             return any(item['status'] == status for item in self._queue)
 
     def any_downloading(self) -> bool:
+        """Check if any item is currently downloading."""
         with self._lock:
-            return any(item['status'] == 'Downloading' for item in self._queue)
+            return any(item['status'] in ('Downloading', 'Allocating', 'Processing') for item in self._queue)
