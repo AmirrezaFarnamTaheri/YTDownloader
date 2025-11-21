@@ -30,7 +30,7 @@ class HistoryManager:
                         output_path TEXT,
                         format_str TEXT,
                         status TEXT,
-                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
                         file_size TEXT
                     )
                 ''')
@@ -53,10 +53,11 @@ class HistoryManager:
         try:
             with HistoryManager._get_connection() as conn:
                 cursor = conn.cursor()
+                timestamp_str = datetime.now().isoformat()
                 cursor.execute('''
                     INSERT INTO history (url, title, output_path, format_str, status, timestamp, file_size, file_path)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (url, title, output_path, format_str, status, datetime.now(), file_size, file_path))
+                ''', (url, title, output_path, format_str, status, timestamp_str, file_size, file_path))
                 conn.commit()
             logger.debug(f"Added history entry: {title}")
         except Exception as e:

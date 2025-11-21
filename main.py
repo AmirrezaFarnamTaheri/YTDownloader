@@ -98,6 +98,7 @@ def main(page: ft.Page):
         min_width=100,
         min_extended_width=200,
         group_alignment=-0.9,
+        bgcolor=ft.Colors.GREY_900,
         destinations=[
             ft.NavigationRailDestination(
                 icon=ft.Icons.DOWNLOAD, selected_icon=ft.Icons.DOWNLOAD_DONE, label="Download"
@@ -130,25 +131,27 @@ def main(page: ft.Page):
         expand=True,
         border_color=ft.Colors.BLUE_400,
         prefix_icon=ft.Icons.LINK,
-        text_size=16
+        text_size=16,
+        bgcolor=ft.Colors.GREY_900,
+        border_radius=10
     )
 
     thumbnail_img = ft.Image(src="", width=400, height=225, fit=ft.ImageFit.COVER, border_radius=10, visible=False)
     title_text = ft.Text("", size=20, weight=ft.FontWeight.BOLD)
     duration_text = ft.Text("", color=ft.Colors.GREY_400)
 
-    video_format_dd = ft.Dropdown(label="Video Quality", options=[], expand=True, border_color=ft.Colors.GREY_700)
-    audio_format_dd = ft.Dropdown(label="Audio Format", options=[], expand=True, border_color=ft.Colors.GREY_700)
+    video_format_dd = ft.Dropdown(label="Video Quality", options=[], expand=True, border_color=ft.Colors.GREY_700, border_radius=8)
+    audio_format_dd = ft.Dropdown(label="Audio Format", options=[], expand=True, border_color=ft.Colors.GREY_700, border_radius=8)
 
     # Advanced Options for Download
     playlist_cb = ft.Checkbox(label="Playlist", fill_color=ft.Colors.BLUE_400)
     sponsorblock_cb = ft.Checkbox(label="SponsorBlock", fill_color=ft.Colors.BLUE_400)
-    subtitle_dd = ft.Dropdown(label="Subtitles", options=[ft.dropdown.Option("None"), ft.dropdown.Option("en"), ft.dropdown.Option("es")], value="None", width=150, border_color=ft.Colors.GREY_700)
+    subtitle_dd = ft.Dropdown(label="Subtitles", options=[ft.dropdown.Option("None"), ft.dropdown.Option("en"), ft.dropdown.Option("es")], value="None", width=150, border_color=ft.Colors.GREY_700, border_radius=8)
 
     # New Feature Inputs
-    time_start = ft.TextField(label="Start (HH:MM:SS)", width=150, border_color=ft.Colors.GREY_700)
-    time_end = ft.TextField(label="End (HH:MM:SS)", width=150, border_color=ft.Colors.GREY_700)
-    regex_filter = ft.TextField(label="Playlist Regex Filter", expand=True, border_color=ft.Colors.GREY_700)
+    time_start = ft.TextField(label="Start (HH:MM:SS)", width=150, border_color=ft.Colors.GREY_700, border_radius=8)
+    time_end = ft.TextField(label="End (HH:MM:SS)", width=150, border_color=ft.Colors.GREY_700, border_radius=8)
+    regex_filter = ft.TextField(label="Playlist Regex Filter", expand=True, border_color=ft.Colors.GREY_700, border_radius=8)
 
     # Batch Import
     def on_file_picker_result(e: ft.FilePickerResultEvent):
@@ -165,13 +168,10 @@ def main(page: ft.Page):
 
                 count = 0
                 for url in valid_urls:
-                    # For batch import, we use a basic add helper
-                    # Ideally we should fetch info for each, but that's slow.
-                    # We'll just add them with URL as title and let the downloader handle it.
                     _add_url_to_queue(url, custom_title=url)
                     count += 1
                 page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
-                rebuild_queue_ui() # Refresh UI
+                rebuild_queue_ui()
             except Exception as ex:
                 page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Import Error: {ex}")))
 
@@ -197,18 +197,22 @@ def main(page: ft.Page):
         icon=ft.Icons.ADD,
         bgcolor=ft.Colors.BLUE_600,
         color=ft.Colors.WHITE,
-        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8), padding=20),
+        style=ft.ButtonStyle(
+            shape=ft.RoundedRectangleBorder(radius=12),
+            padding=20,
+            elevation=5,
+        ),
         on_click=lambda e: add_to_queue(e)
     )
 
-    fetch_btn = ft.IconButton(ft.Icons.SEARCH, on_click=lambda e: fetch_info_click(e), tooltip="Fetch Info", icon_color=ft.Colors.BLUE_400)
+    fetch_btn = ft.IconButton(ft.Icons.SEARCH, on_click=lambda e: fetch_info_click(e), tooltip="Fetch Info", icon_color=ft.Colors.BLUE_400, icon_size=30)
 
     download_view = ft.Container(
         padding=30,
         content=ft.Column([
-            ft.Text("New Download", size=28, weight=ft.FontWeight.BOLD),
+            ft.Text("New Download", size=32, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
             ft.Divider(color=ft.Colors.TRANSPARENT, height=20),
-            ft.Row([url_input, fetch_btn]),
+            ft.Row([url_input, fetch_btn], alignment=ft.MainAxisAlignment.CENTER),
             ft.Divider(height=30, color=ft.Colors.GREY_900),
             ft.Row([
                 # Left: Preview
@@ -218,33 +222,41 @@ def main(page: ft.Page):
                              ft.Container(bgcolor=ft.Colors.BLACK54, width=400, height=225, border_radius=10), # Placeholder
                              thumbnail_img
                         ]),
-                        border_radius=10,
-                        border=ft.border.all(1, ft.Colors.GREY_800)
+                        border_radius=12,
+                        border=ft.border.all(1, ft.Colors.GREY_800),
+                        shadow=ft.BoxShadow(blur_radius=10, color=ft.Colors.BLACK)
                     ),
                     title_text,
                     duration_text
                 ], alignment=ft.MainAxisAlignment.START),
 
                 # Right: Options
-                ft.Container(width=20), # Spacer
+                ft.Container(width=40), # Spacer
                 ft.Column([
-                    ft.Text("Format Options", size=18, weight=ft.FontWeight.W_600),
-                    ft.Row([video_format_dd, audio_format_dd]),
-                    ft.Divider(height=20, color=ft.Colors.GREY_800),
-                    ft.Text("Features", size=18, weight=ft.FontWeight.W_600),
-                    ft.Row([playlist_cb, sponsorblock_cb, subtitle_dd]),
-                    ft.Row([time_start, time_end]),
-                    ft.Row([regex_filter]),
-                    ft.Row([batch_btn, schedule_btn]),
-                    ft.Divider(height=40, color=ft.Colors.TRANSPARENT),
-                    download_btn
+                    ft.Container(
+                        padding=20,
+                        bgcolor=ft.Colors.GREY_900,
+                        border_radius=12,
+                        content=ft.Column([
+                            ft.Text("Format Options", size=18, weight=ft.FontWeight.W_600),
+                            ft.Row([video_format_dd, audio_format_dd]),
+                            ft.Divider(height=20, color=ft.Colors.GREY_800),
+                            ft.Text("Features", size=18, weight=ft.FontWeight.W_600),
+                            ft.Row([playlist_cb, sponsorblock_cb, subtitle_dd]),
+                            ft.Row([time_start, time_end]),
+                            ft.Row([regex_filter]),
+                            ft.Row([batch_btn, schedule_btn], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ])
+                    ),
+                    ft.Divider(height=30, color=ft.Colors.TRANSPARENT),
+                    ft.Row([download_btn], alignment=ft.MainAxisAlignment.END)
                 ], expand=True)
             ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.START)
         ], scroll=ft.ScrollMode.AUTO)
     )
 
     # --- Queue Tab Content ---
-    queue_list = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO, expand=True)
+    queue_list = ft.Column(spacing=15, scroll=ft.ScrollMode.AUTO, expand=True)
 
     def clear_queue(e):
         # Remove all non-downloading items
@@ -324,9 +336,6 @@ def main(page: ft.Page):
 
     # --- Dashboard Content ---
 
-    # Simple Chart using ProgressBar for now as Flet Charts are complex to setup quickly without extra deps
-    # We will use simple stats cards
-
     dashboard_stats_row = ft.Row(wrap=True, spacing=20)
 
     def load_dashboard():
@@ -335,18 +344,12 @@ def main(page: ft.Page):
         history = HistoryManager.get_history(limit=1000)
         total_downloads = len(history)
 
-        # Calculate size if available
-        # Size is stored as string like "10.5 MB". We'd need to parse it.
-        # For robustness, we skip complex parsing now and just show count.
-
-        # Count by status (all completed in history usually)
-
-        # Cards
         card_total = ft.Container(
-            padding=20, bgcolor=ft.Colors.BLUE_900, border_radius=10, width=200, height=120,
+            padding=20, bgcolor=ft.Colors.BLUE_900, border_radius=12, width=240, height=140,
+            shadow=ft.BoxShadow(blur_radius=10, color=ft.Colors.BLACK26),
             content=ft.Column([
                 ft.Icon(ft.Icons.DOWNLOAD_DONE, size=40, color=ft.Colors.WHITE),
-                ft.Text(str(total_downloads), size=30, weight=ft.FontWeight.BOLD),
+                ft.Text(str(total_downloads), size=36, weight=ft.FontWeight.BOLD),
                 ft.Text("Total Downloads", color=ft.Colors.BLUE_100)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
         )
@@ -362,13 +365,11 @@ def main(page: ft.Page):
             dashboard_stats_row,
             ft.Divider(color=ft.Colors.TRANSPARENT, height=20),
             ft.Text("Recent Activity", size=20, weight=ft.FontWeight.BOLD),
-            # Re-use history list or a subset?
-            # For now just the stats.
         ])
     )
 
     # --- RSS Content ---
-    rss_input = ft.TextField(label="Feed URL", expand=True, border_color=ft.Colors.GREY_700)
+    rss_input = ft.TextField(label="Feed URL", expand=True, border_color=ft.Colors.GREY_700, border_radius=8)
     rss_list_view = ft.ListView(expand=True)
 
     def load_rss_feeds():
@@ -413,13 +414,13 @@ def main(page: ft.Page):
     )
 
     # --- Settings Content ---
-    proxy_input = ft.TextField(label="Proxy", value=state.config.get('proxy', ''), border_color=ft.Colors.GREY_700)
-    rate_limit_input = ft.TextField(label="Rate Limit (e.g. 5M)", value=state.config.get('rate_limit', ''), border_color=ft.Colors.GREY_700)
-    output_template_input = ft.TextField(label="Output Template", value=state.config.get('output_template', '%(title)s.%(ext)s'), border_color=ft.Colors.GREY_700)
+    proxy_input = ft.TextField(label="Proxy", value=state.config.get('proxy', ''), border_color=ft.Colors.GREY_700, border_radius=8)
+    rate_limit_input = ft.TextField(label="Rate Limit (e.g. 5M)", value=state.config.get('rate_limit', ''), border_color=ft.Colors.GREY_700, border_radius=8)
+    output_template_input = ft.TextField(label="Output Template", value=state.config.get('output_template', '%(title)s.%(ext)s'), border_color=ft.Colors.GREY_700, border_radius=8)
     use_aria2c_cb = ft.Checkbox(label="Use Aria2c Accelerator", value=state.config.get('use_aria2c', False))
     gpu_accel_dd = ft.Dropdown(label="GPU Acceleration", options=[
         ft.dropdown.Option("None"), ft.dropdown.Option("auto"), ft.dropdown.Option("cuda"), ft.dropdown.Option("vulkan")
-    ], value=state.config.get('gpu_accel', 'None'), border_color=ft.Colors.GREY_700)
+    ], value=state.config.get('gpu_accel', 'None'), border_color=ft.Colors.GREY_700, border_radius=8)
 
     def save_settings(e):
         state.config['proxy'] = proxy_input.value
@@ -443,7 +444,7 @@ def main(page: ft.Page):
             use_aria2c_cb,
             gpu_accel_dd,
             ft.Divider(height=20, color=ft.Colors.GREY_800),
-            ft.ElevatedButton("Save Configuration", on_click=save_settings, bgcolor=ft.Colors.BLUE_600, color=ft.Colors.WHITE)
+            ft.ElevatedButton("Save Configuration", on_click=save_settings, bgcolor=ft.Colors.BLUE_600, color=ft.Colors.WHITE, style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=8)))
         ], scroll=ft.ScrollMode.AUTO)
     )
 
@@ -573,32 +574,10 @@ def main(page: ft.Page):
         state.queue_manager.add_item(item)
 
     def add_to_queue(e):
-        # Check if URL matches fetched info
-        if state.video_info:
-            # If user hasn't changed URL, we use fetched info
-            # If user changed URL, we should warn or just use URL as title
-            # Current logic: Check if url_input.value == fetched info URL?
-            # get_video_info doesn't return the URL in the dict, but we can assume it's valid if we are here.
-            # But the user might have typed a new URL.
-            pass
-
-        # Robustness check: if user typed new URL but didn't click fetch,
-        # state.video_info might be stale.
-        # Ideally, we should check if we have info for THIS url.
-        # Since we don't store the URL in state.video_info (only metadata), we can't be 100% sure.
-        # But we can check if url_input.value is different from what we might expect?
-        # Actually, let's just proceed. If it's different, _add_url_to_queue handles it by using url_val as title.
-
         _add_url_to_queue(url_input.value)
-
-        # Reset one-time use fields if needed, or keep them. Keeping for UX.
-        # Reset scheduled time after adding to avoid persistent scheduling
         state.scheduled_time = None
-
         rebuild_queue_ui()
         page.show_snack_bar(ft.SnackBar(content=ft.Text("Added to queue")))
-
-        # Auto-start if queue was empty/idle
         process_queue()
 
     def on_cancel_item(item):
@@ -626,8 +605,6 @@ def main(page: ft.Page):
         items = state.queue_manager.get_all()
         for i, item in enumerate(items):
             is_selected = (i == state.selected_queue_index)
-            # Create control if not exists or recreate to refresh
-            # We recreate to ensure state is fresh
             control = DownloadItemControl(item, on_cancel_item, on_remove_item, on_reorder_item, is_selected)
             item['control'] = control
             queue_list.controls.append(control.view)
@@ -642,7 +619,6 @@ def main(page: ft.Page):
                 if now >= item['scheduled_time']:
                      item['status'] = 'Queued'
                      item['scheduled_time'] = None
-                     # Notify UI update needed? Queue UI updates on re-render or we can trigger it
                      pass
 
         if state.queue_manager.any_downloading(): return
