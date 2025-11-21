@@ -4,7 +4,7 @@ param(
     [string]$Proxy = ""
 )
 
-# YTDownloader - Complete Setup and Installation Script for Windows
+# Lumina - Complete Setup and Installation Script for Windows
 # This script handles everything: checking dependencies, installing, and launching the app
 
 $ErrorActionPreference = "Stop"
@@ -14,7 +14,7 @@ if (-not $scriptDir) {
     $scriptDir = (Get-Location).Path
 }
 
-$LogFile = Join-Path $scriptDir "ytdownloader_installer.log"
+$LogFile = Join-Path $scriptDir "lumina_installer.log"
 $script:InstallerTranscriptActive = $false
 try {
     # Ensure log file directory exists and is writable
@@ -91,13 +91,13 @@ try {
 }
 Write-Host @"
 ╔═══════════════════════════════════════════════════════════╗
-║                    YTDownloader Setup                     ║
-║            Advanced YouTube Video Downloader              ║
+║                      Lumina Setup                         ║
+║               Modern Media Downloader                     ║
 ║                   Windows Installation                    ║
 ╚═══════════════════════════════════════════════════════════╝
 "@ -ForegroundColor Cyan
 
-Write-Info "Starting YTDownloader setup and installation..."
+Write-Info "Starting Lumina setup and installation..."
 Write-Host ""
 
 # Step 1: Check if Python is installed
@@ -240,8 +240,8 @@ Write-Status "Step 6: Creating shortcuts and configuration..." -Color $CYAN
 
 # Create Desktop shortcut
 $desktopPath = [Environment]::GetFolderPath("Desktop")
-$shortcutPath = Join-Path $desktopPath "YTDownloader.lnk"
-$iconPath = Join-Path $appDir "icon.ico"
+$shortcutPath = Join-Path $desktopPath "Lumina.lnk"
+$iconPath = Join-Path $appDir "assets\logo.ico"
 
 try {
     $WshShell = New-Object -ComObject WScript.Shell
@@ -249,7 +249,7 @@ try {
     $shortcut.TargetPath = $pythonExe
     $shortcut.Arguments = "`"$(Join-Path $appDir 'main.py')`""
     $shortcut.WorkingDirectory = $appDir
-    $shortcut.Description = "YTDownloader - Advanced YouTube Video Downloader"
+    $shortcut.Description = "Lumina - Modern Media Downloader"
     if (Test-Path $iconPath) {
         try {
             $shortcut.IconLocation = $iconPath
@@ -265,11 +265,11 @@ try {
 
 # Create Start Menu shortcut
 $startMenuPath = [Environment]::GetFolderPath("StartMenu")
-$startMenuDir = Join-Path $startMenuPath "Programs\YTDownloader"
+$startMenuDir = Join-Path $startMenuPath "Programs\Lumina"
 if (-not (Test-Path $startMenuDir)) {
     New-Item -ItemType Directory -Path $startMenuDir -Force | Out-Null
 }
-$startMenuShortcut = Join-Path $startMenuDir "YTDownloader.lnk"
+$startMenuShortcut = Join-Path $startMenuDir "Lumina.lnk"
 
 try {
     $WshShell = New-Object -ComObject WScript.Shell
@@ -277,7 +277,7 @@ try {
     $shortcut.TargetPath = $pythonExe
     $shortcut.Arguments = "`"$(Join-Path $appDir 'main.py')`""
     $shortcut.WorkingDirectory = $appDir
-    $shortcut.Description = "YTDownloader - Advanced YouTube Video Downloader"
+    $shortcut.Description = "Lumina - Modern Media Downloader"
     if (Test-Path $iconPath) {
         try {
             $shortcut.IconLocation = $iconPath
@@ -294,7 +294,7 @@ try {
 Write-Host ""
 
 # Step 7: Launch the application
-Write-Status "Step 7: Launching YTDownloader..." -Color $CYAN
+Write-Status "Step 7: Launching Lumina..." -Color $CYAN
 Write-Info "Starting the application GUI..."
 Write-Host ""
 
@@ -312,36 +312,35 @@ try {
     } else {
         Start-Process $pythonExe -ArgumentList $mainPyPath -WorkingDirectory $appDir
     }
-    Write-Success "YTDownloader is launching..."
+    Write-Success "Lumina is launching..."
     Start-Sleep -Seconds 2
 } catch {
-    Write-Error-Custom "Failed to start YTDownloader: $_"
+    Write-Error-Custom "Failed to start Lumina: $_"
     Write-Info "You can manually run it with: $pythonExe $mainPyPath"
 }
 
 Write-Host ""
 Write-Host "╔═══════════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║          Setup Complete! YTDownloader is Ready            ║" -ForegroundColor Green
+Write-Host "║          Setup Complete! Lumina is Ready                  ║" -ForegroundColor Green
 Write-Host "╚═══════════════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""
 
-Write-Host "Next time you can launch YTDownloader by:" -ForegroundColor White
+Write-Host "Next time you can launch Lumina by:" -ForegroundColor White
 Write-Host "  1. Double-clicking the shortcut on your Desktop" -ForegroundColor Cyan
-Write-Host "  2. Searching for 'YTDownloader' in the Start Menu" -ForegroundColor Cyan
+Write-Host "  2. Searching for 'Lumina' in the Start Menu" -ForegroundColor Cyan
 Write-Host "  3. Running: $pythonExe $mainPyPath" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Info "For help and documentation, visit:"
-Write-Host "  https://github.com/AmirrezaFarnamTaheri/YTDownloader" -ForegroundColor Cyan
+Write-Host "  https://github.com/AmirrezaFarnamTaheri/Lumina" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Info "Configuration and logs are saved to:"
-Write-Host "  Settings: $([Environment]::GetFolderPath('UserProfile'))\.ytdownloader\config.json" -ForegroundColor Cyan
-Write-Host "  Logs: $appDir\ytdownloader.log" -ForegroundColor Cyan
+Write-Host "  Settings: $([Environment]::GetFolderPath('UserProfile'))\.lumina\config.json" -ForegroundColor Cyan
+Write-Host "  Logs: $appDir\lumina.log" -ForegroundColor Cyan
 Write-Host "  Installer log: $LogFile" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Success "Setup completed successfully!"
 Write-Host ""
 Stop-And-Exit 0
-

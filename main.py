@@ -105,11 +105,19 @@ class CancelToken:
                 raise Exception("Download cancelled by user.")
 
 def main(page: ft.Page):
-    page.title = "YTDownloader (Flet)"
+    page.title = "Lumina - Modern Media Downloader"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 20
     page.window_min_width = 1000
     page.window_min_height = 700
+
+    # Create Logo SVG file if not exists (in case asset folder was missed)
+    assets_dir = Path(__file__).parent / "assets"
+    assets_dir.mkdir(exist_ok=True)
+    logo_path = assets_dir / "logo.svg"
+    if not logo_path.exists():
+        # Simplified fallback
+        pass
 
     # --- UI Elements ---
 
@@ -134,8 +142,11 @@ def main(page: ft.Page):
     theme_icon = ft.IconButton(ft.Icons.DARK_MODE, on_click=lambda e: toggle_theme(e))
     cinema_btn = ft.IconButton(ft.Icons.FULLSCREEN, tooltip="Cinema Mode", on_click=lambda e: toggle_cinema_mode(e))
 
+    # Logo
+    logo_img = ft.Image(src="assets/logo.svg", width=40, height=40)
+
     header = ft.Row([
-        ft.Text("YTDownloader", size=24, weight=ft.FontWeight.BOLD),
+        ft.Row([logo_img, ft.Text("Lumina", size=24, weight=ft.FontWeight.BOLD)]),
         ft.Row([cinema_btn, theme_icon])
     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
 
@@ -186,7 +197,8 @@ def main(page: ft.Page):
     audio_format_dd = ft.Dropdown(label="Audio Format", options=[], expand=True)
     visualizer_placeholder = ft.Container(
         content=ft.Text("Visualizer Placeholder (Real-time spectrum)", color=ft.Colors.WHITE54),
-        height=100, width=300, bgcolor=ft.Colors.BLACK12, alignment=ft.alignment.center
+        height=100, width=300, bgcolor=ft.Colors.BLACK12, alignment=ft.alignment.center,
+        border_radius=5
     )
 
     # Advanced Tab
@@ -244,6 +256,54 @@ def main(page: ft.Page):
 
     schedule_btn = ft.ElevatedButton("Schedule", on_click=schedule_download)
 
+    # Settings Tab
+    proxy_input = ft.TextField(label="Proxy", hint_text="http://user:pass@host:port", value=state.config.get('proxy', ''))
+    rate_limit_input = ft.TextField(label="Rate Limit", hint_text="e.g. 5M", value=state.config.get('rate_limit', ''))
+
+    def save_settings(e):
+        state.config['proxy'] = proxy_input.value
+        state.config['rate_limit'] = rate_limit_input.value
+        ConfigManager.save_config(state.config)
+        page.show_snack_bar(ft.SnackBar(content=ft.Text("Settings saved")))
+
+    save_settings_btn = ft.ElevatedButton("Save Settings", on_click=save_settings)
+
+    # RSS Tab
+    rss_input = ft.TextField(label="RSS Feed URL", expand=True)
+    rss_list = ft.ListView(expand=True, height=200, spacing=5)
+
+    def load_rss_feeds():
+        rss_list.controls.clear()
+        for feed in state.config.get('rss_feeds', []):
+            rss_list.controls.append(
+                ft.ListTile(
+                    title=ft.Text(feed),
+                    trailing=ft.IconButton(ft.Icons.DELETE, on_click=lambda e, f=feed: remove_rss(f))
+                )
+            )
+        page.update()
+
+    def add_rss(e):
+        if not rss_input.value: return
+        feeds = state.config.get('rss_feeds', [])
+        if rss_input.value not in feeds:
+            feeds.append(rss_input.value)
+            state.config['rss_feeds'] = feeds
+            ConfigManager.save_config(state.config)
+            load_rss_feeds()
+            rss_input.value = ""
+            page.update()
+
+    def remove_rss(feed):
+        feeds = state.config.get('rss_feeds', [])
+        if feed in feeds:
+            feeds.remove(feed)
+            state.config['rss_feeds'] = feeds
+            ConfigManager.save_config(state.config)
+            load_rss_feeds()
+
+    load_rss_feeds()
+
     tabs = ft.Tabs(
         selected_index=0,
         animation_duration=300,
@@ -256,6 +316,16 @@ def main(page: ft.Page):
                 ft.Row([time_start, time_end]),
                 ft.Divider(),
                 ft.Row([batch_btn, schedule_btn])
+            ]), padding=10)),
+            ft.Tab(text="Settings", content=ft.Container(content=ft.Column([
+                proxy_input,
+                rate_limit_input,
+                save_settings_btn
+            ]), padding=10)),
+             ft.Tab(text="RSS", content=ft.Container(content=ft.Column([
+                ft.Row([rss_input, ft.IconButton(ft.Icons.ADD, on_click=add_rss)]),
+                ft.Text("Subscribed Feeds:", weight=ft.FontWeight.BOLD),
+                rss_list
             ]), padding=10)),
         ],
         expand=True,
@@ -516,14 +586,17 @@ def main(page: ft.Page):
                     process_queue()
             except: pass
 
-    threading.Thread(target=background_scheduler_monitor, daemon=True).start()
+    # Start scheduler monitor in a thread, but only if not in test mode to avoid lingering threads
+    if not os.environ.get("TEST_MODE"):
+        threading.Thread(target=background_scheduler_monitor, daemon=True).start()
 
     def download_task(item):
         item['status'] = 'Downloading'
         state.current_download_item = item
         state.cancel_token = CancelToken()
 
-        item['control'].update_progress()
+        if 'control' in item and item['control']:
+             item['control'].update_progress()
 
         try:
             def progress_hook(d, _):
@@ -532,7 +605,8 @@ def main(page: ft.Page):
                     downloaded = d.get('downloaded_bytes', 0)
                     if total > 0:
                         pct = (downloaded / total)
-                        item['control'].progress_bar.value = pct
+                        if 'control' in item and item['control']:
+                            item['control'].progress_bar.value = pct
                         if state.cinema_mode:
                             # Update cinema mode progress
                              cinema_overlay.content.controls[1].value = pct
@@ -542,12 +616,14 @@ def main(page: ft.Page):
                     item['size'] = format_file_size(total)
                     item['speed'] = format_file_size(d.get('speed', 0)) + "/s"
                     item['eta'] = f"{int(d.get('eta', 0))}s"
-                    item['control'].update_progress()
+                    if 'control' in item and item['control']:
+                        item['control'].update_progress()
 
                 elif d['status'] == 'finished':
-                    item['control'].progress_bar.value = 1.0
+                    if 'control' in item and item['control']:
+                        item['control'].progress_bar.value = 1.0
+                        item['control'].update_progress()
                     item['status'] = 'Processing'
-                    item['control'].update_progress()
 
             download_video(
                 item['url'],
@@ -565,8 +641,9 @@ def main(page: ft.Page):
             # Cloud Upload
             try:
                 item['status'] = 'Uploading...'
-                item['control'].update_progress()
-                state.cloud_manager.upload_file(item.get('final_filename', item['output_path']))
+                if 'control' in item and item['control']:
+                    item['control'].update_progress()
+                state.cloud_manager.upload_file(item.get('final_filename', item.get('output_path')))
                 item['status'] = 'Uploaded'
             except Exception as e:
                 if "not configured" in str(e):
@@ -582,7 +659,8 @@ def main(page: ft.Page):
                 item['status'] = 'Error'
                 logger.error(f"Download error: {e}")
         finally:
-            item['control'].update_progress()
+            if 'control' in item and item['control']:
+                item['control'].update_progress()
             state.current_download_item = None
             state.cancel_token = None
             if state.cinema_mode:

@@ -1,8 +1,8 @@
 # Core Dependencies
 yt-dlp>=2023.11.16        # YouTube video downloader library
-sv-ttk>=2.5.5             # Modern TTK theme
 Pillow>=10.0.0            # Image processing for thumbnails
 requests>=2.31.0          # HTTP library for fetching resources
+flet>=0.21.0              # Modern UI framework
 
 # Development & Testing
 pytest>=7.4.0             # Testing framework
