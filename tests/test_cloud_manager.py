@@ -1,59 +1,146 @@
 import unittest
+from unittest.mock import MagicMock, patch, mock_open
 import os
-from unittest.mock import patch, MagicMock
+import sys
 from cloud_manager import CloudManager
+
 
 class TestCloudManager(unittest.TestCase):
 
+    def setUp(self):
+        self.manager = CloudManager()
+
     def test_upload_file_not_found(self):
-        cm = CloudManager()
         with self.assertRaises(FileNotFoundError):
-            cm.upload_file("non_existent_file.txt")
+            self.manager.upload_file("non_existent_file.txt")
 
-    def test_upload_unsupported_provider(self):
-        # Create a dummy file
-        with open("dummy.txt", "w") as f:
-            f.write("test")
+    @patch("os.path.exists")
+    def test_upload_file_unsupported_provider(self, mock_exists):
+        mock_exists.return_value = True
+        with self.assertRaises(NotImplementedError):
+            self.manager.upload_file("test.txt", provider="dropbox")
 
-        cm = CloudManager()
-        try:
-            with self.assertRaises(NotImplementedError):
-                cm.upload_file("dummy.txt", provider="dropbox")
-        finally:
-            if os.path.exists("dummy.txt"):
-                os.remove("dummy.txt")
-
-    @patch('os.path.exists')
-    def test_upload_google_drive_missing_creds(self, mock_exists):
-        # Mock file exists check to return True for file_path, False for credentials
+    @patch("os.path.exists")
+    def test_upload_google_drive_missing_secrets(self, mock_exists):
+        # Mock file exists for the file to upload, but return False for secrets
         def side_effect(path):
-            if path == "dummy.txt": return True
-            if path == "client_secrets.json": return False
+            if path == "test.txt":
+                return True
+            if path == "client_secrets.json":
+                return False
             return False
+
         mock_exists.side_effect = side_effect
 
-        cm = CloudManager()
         with self.assertRaisesRegex(Exception, "Google Drive not configured"):
-             cm.upload_file("dummy.txt", provider="google_drive")
+            self.manager.upload_file("test.txt", provider="google_drive")
 
-    @patch('os.path.exists')
-    @patch('pydrive2.auth.GoogleAuth')
-    @patch('pydrive2.drive.GoogleDrive')
-    def test_upload_to_google_drive_success(self, MockGoogleDrive, MockGoogleAuth, mock_exists):
-         # Mock file exists for everything
-         mock_exists.return_value = True
+    @patch("os.path.exists")
+    @patch.dict(
+        "sys.modules", {"pydrive2.auth": MagicMock(), "pydrive2.drive": MagicMock()}
+    )
+    def test_upload_google_drive_success(self, mock_exists):
+        mock_exists.return_value = True
 
-         mock_gauth = MockGoogleAuth.return_value
-         mock_gauth.credentials = MagicMock()
-         mock_gauth.access_token_expired = False
+        with patch("pydrive2.auth.GoogleAuth") as MockAuth, patch(
+            "pydrive2.drive.GoogleDrive"
+        ) as MockDrive:
 
-         mock_drive = MockGoogleDrive.return_value
-         mock_file = MagicMock()
-         mock_drive.CreateFile.return_value = mock_file
+            mock_gauth = MockAuth.return_value
+            mock_gauth.credentials = MagicMock()  # Simulate credentials exist
+            mock_gauth.access_token_expired = False
 
-         cm = CloudManager()
-         cm.upload_file("dummy.txt", provider="google_drive")
+            mock_drive_instance = MockDrive.return_value
+            mock_file = MagicMock()
+            mock_drive_instance.CreateFile.return_value = mock_file
 
-         mock_drive.CreateFile.assert_called()
-         mock_file.SetContentFile.assert_called_with("dummy.txt")
-         mock_file.Upload.assert_called()
+            self.manager.upload_file("test.txt", provider="google_drive")
+
+            # mock_gauth.Authorize.assert_called() # This might not be called if token is valid
+            mock_drive_instance.CreateFile.assert_called_with({"title": "test.txt"})
+            mock_file.SetContentFile.assert_called_with("test.txt")
+            mock_file.Upload.assert_called()
+
+    @patch("os.path.exists")
+    @patch.dict(
+        "sys.modules", {"pydrive2.auth": MagicMock(), "pydrive2.drive": MagicMock()}
+    )
+    def test_upload_google_drive_refresh_token(self, mock_exists):
+        mock_exists.return_value = True
+
+        with patch("pydrive2.auth.GoogleAuth") as MockAuth, patch(
+            "pydrive2.drive.GoogleDrive"
+        ) as MockDrive:
+
+            mock_gauth = MockAuth.return_value
+            mock_gauth.credentials = MagicMock()
+            mock_gauth.access_token_expired = True
+
+            self.manager.upload_file("test.txt")
+
+            mock_gauth.Refresh.assert_called()
+
+    @patch("os.path.exists")
+    @patch.dict(
+        "sys.modules", {"pydrive2.auth": MagicMock(), "pydrive2.drive": MagicMock()}
+    )
+    def test_upload_google_drive_no_creds_headless(self, mock_exists):
+        mock_exists.return_value = True
+
+        with patch("pydrive2.auth.GoogleAuth") as MockAuth, patch.dict(
+            os.environ, {"HEADLESS_MODE": "1"}
+        ):
+
+            mock_gauth = MockAuth.return_value
+            mock_gauth.credentials = None
+
+            with self.assertRaisesRegex(
+                Exception, "Cannot authenticate in headless mode"
+            ):
+                self.manager.upload_file("test.txt")
+
+    @patch("os.path.exists")
+    @patch.dict(
+        "sys.modules", {"pydrive2.auth": MagicMock(), "pydrive2.drive": MagicMock()}
+    )
+    def test_upload_google_drive_no_creds_interactive(self, mock_exists):
+        mock_exists.return_value = True
+
+        with patch("pydrive2.auth.GoogleAuth") as MockAuth, patch(
+            "pydrive2.drive.GoogleDrive"
+        ) as MockDrive:
+
+            mock_gauth = MockAuth.return_value
+            mock_gauth.credentials = None
+
+            # Assume not headless
+            if "HEADLESS_MODE" in os.environ:
+                del os.environ["HEADLESS_MODE"]
+
+            self.manager.upload_file("test.txt")
+
+            mock_gauth.LocalWebserverAuth.assert_called()
+
+    @patch("os.path.exists")
+    @patch.dict(
+        "sys.modules", {"pydrive2.auth": MagicMock(), "pydrive2.drive": MagicMock()}
+    )
+    def test_upload_google_drive_general_exception(self, mock_exists):
+        mock_exists.return_value = True
+
+        with patch("pydrive2.auth.GoogleAuth") as MockAuth:
+            mock_gauth = MockAuth.return_value
+            # We need to make sure we are not failing on the check for access_token_expired
+            # The code path is:
+            # 1. gauth = GoogleAuth()
+            # 2. LoadCredentialsFile
+            # 3. Check credentials is None?
+
+            # Let's mock such that we have credentials, but Authorize fails.
+            mock_gauth.credentials = MagicMock()
+            mock_gauth.access_token_expired = False
+
+            mock_gauth.Authorize.side_effect = Exception("Auth failed")
+
+            with self.assertRaisesRegex(Exception, "Auth failed"):
+                self.manager.upload_file("test.txt")

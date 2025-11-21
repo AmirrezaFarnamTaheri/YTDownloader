@@ -4,16 +4,17 @@ import sys
 import os
 
 # Adjust path to import modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from queue_manager import QueueManager
+
 
 class TestQueueManagerBasic(unittest.TestCase):
     def setUp(self):
         self.qm = QueueManager()
 
     def test_add_remove_item(self):
-        item = {'url': 'http://test', 'status': 'Queued'}
+        item = {"url": "http://test", "status": "Queued"}
         self.qm.add_item(item)
         self.assertEqual(len(self.qm.get_all()), 1)
 
@@ -21,8 +22,8 @@ class TestQueueManagerBasic(unittest.TestCase):
         self.assertEqual(len(self.qm.get_all()), 0)
 
     def test_swap_items(self):
-        item1 = {'url': '1', 'status': 'Queued'}
-        item2 = {'url': '2', 'status': 'Queued'}
+        item1 = {"url": "1", "status": "Queued"}
+        item2 = {"url": "2", "status": "Queued"}
         self.qm.add_item(item1)
         self.qm.add_item(item2)
 
@@ -35,7 +36,9 @@ class TestQueueManagerBasic(unittest.TestCase):
         # Basic race condition check for standard add (not claim)
         threads = []
         for i in range(100):
-            t = threading.Thread(target=self.qm.add_item, args=({'id': i, 'status': 'Queued'},))
+            t = threading.Thread(
+                target=self.qm.add_item, args=({"id": i, "status": "Queued"},)
+            )
             threads.append(t)
             t.start()
 
@@ -44,5 +47,6 @@ class TestQueueManagerBasic(unittest.TestCase):
 
         self.assertEqual(len(self.qm.get_all()), 100)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
