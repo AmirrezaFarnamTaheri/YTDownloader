@@ -138,9 +138,15 @@ class TestMain(unittest.TestCase):
 
         # 1. Test Theme Toggle
         # Extract the on_click handlers
-        theme_btn_call = [c for c in mock_icon_btn.call_args_list if c.kwargs.get('on_click') and 'tooltip' not in c.kwargs]
+        # theme_icon is created with ft.Icons.DARK_MODE and has no tooltip.
+        theme_btn_call = [
+            c for c in mock_icon_btn.call_args_list
+            if c.kwargs.get('on_click')
+            and 'tooltip' not in c.kwargs
+            and (c.args[0] == ft.Icons.DARK_MODE if c.args else False)
+        ]
         if theme_btn_call:
-            toggle_theme = theme_btn_call[-1].kwargs['on_click']
+            toggle_theme = theme_btn_call[0].kwargs['on_click']
             toggle_theme(None)
             # Verify theme changed
             self.assertNotEqual(page.theme_mode, ft.ThemeMode.DARK) # Toggled

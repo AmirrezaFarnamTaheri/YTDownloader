@@ -57,5 +57,14 @@ class TestConfigManager(unittest.TestCase):
         config = ConfigManager.load_config()
         self.assertEqual(config, {})
 
+    @patch("builtins.open", side_effect=IOError("Permission denied"))
+    def test_save_config_permission_error(self, mock_open):
+        """Test saving config when permission is denied."""
+        data = {'test_key': 'test_value'}
+        # Should log error but not raise exception
+        ConfigManager.save_config(data)
+        # We assume it succeeded if no exception, but we can verify logging if we mocked logger
+        # For now, just ensuring it doesn't crash is enough.
+
 if __name__ == '__main__':
     unittest.main()

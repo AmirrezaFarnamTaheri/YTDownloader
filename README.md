@@ -1,10 +1,10 @@
-# Lumina - Modern Media Downloader
+# StreamCatch - Modern Media Downloader
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 ![Status](https://img.shields.io/badge/status-stable-green)
 
-**Lumina** (formerly YTDownloader) is a modern, cross-platform desktop application for downloading videos and audio from YouTube and other supported sites.
+**StreamCatch** (formerly Lumina/YTDownloader) is a modern, cross-platform desktop application for downloading videos and audio from YouTube and other supported sites.
 
 > **New in v3.0**: Fully rewritten UI using [Flet](https://flet.dev) (Flutter for Python) for a smoother, responsive experience with glassmorphism effects and fluid animations.
 
@@ -30,8 +30,8 @@
 ### Manual Setup
 1.  **Clone the repo**:
     ```bash
-    git clone https://github.com/yourusername/Lumina.git
-    cd Lumina
+    git clone https://github.com/yourusername/StreamCatch.git
+    cd StreamCatch
     ```
 2.  **Install dependencies**:
     ```bash

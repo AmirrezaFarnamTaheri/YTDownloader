@@ -105,7 +105,7 @@ class CancelToken:
                 raise Exception("Download cancelled by user.")
 
 def main(page: ft.Page):
-    page.title = "Lumina - Modern Media Downloader"
+    page.title = "StreamCatch - Modern Media Downloader"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 20
     page.window_min_width = 1000
@@ -117,7 +117,12 @@ def main(page: ft.Page):
     logo_path = assets_dir / "logo.svg"
     if not logo_path.exists():
         # Simplified fallback
-        pass
+        try:
+            # Create a simple placeholder SVG
+            with open(logo_path, 'w', encoding='utf-8') as f:
+                f.write('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" stroke="blue" stroke-width="4" fill="lightblue" /><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="white" font-size="20">SC</text></svg>')
+        except Exception as e:
+            logger.warning(f"Failed to create fallback logo: {e}")
 
     # --- UI Elements ---
 
@@ -146,7 +151,7 @@ def main(page: ft.Page):
     logo_img = ft.Image(src="assets/logo.svg", width=40, height=40)
 
     header = ft.Row([
-        ft.Row([logo_img, ft.Text("Lumina", size=24, weight=ft.FontWeight.BOLD)]),
+        ft.Row([logo_img, ft.Text("StreamCatch", size=24, weight=ft.FontWeight.BOLD)]),
         ft.Row([cinema_btn, theme_icon])
     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
 
