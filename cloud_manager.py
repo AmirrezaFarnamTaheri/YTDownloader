@@ -4,6 +4,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+
 class CloudManager:
     """
     Manages cloud uploads.
@@ -12,8 +13,8 @@ class CloudManager:
 
     def __init__(self):
         self.enabled = False
-        self.credentials_path = "client_secrets.json" # Standard PyDrive2 file
-        self.settings_path = "settings.yaml" # PyDrive2 settings
+        self.credentials_path = "client_secrets.json"  # Standard PyDrive2 file
+        self.settings_path = "settings.yaml"  # PyDrive2 settings
 
     def upload_file(self, file_path: str, provider: str = "google_drive"):
         """
@@ -41,8 +42,12 @@ class CloudManager:
         Requires client_secrets.json in the working directory.
         """
         if not os.path.exists(self.credentials_path):
-            logger.warning(f"Google Drive {self.credentials_path} not found. Skipping upload.")
-            raise Exception("Google Drive not configured (missing client_secrets.json).")
+            logger.warning(
+                f"Google Drive {self.credentials_path} not found. Skipping upload."
+            )
+            raise Exception(
+                "Google Drive not configured (missing client_secrets.json)."
+            )
 
         try:
             from pydrive2.auth import GoogleAuth
@@ -62,7 +67,9 @@ class CloudManager:
                 # For now, we assume it works or fails if no interaction possible.
                 # To avoid blocking indefinitely in headless:
                 if os.environ.get("HEADLESS_MODE"):
-                     raise Exception("Cannot authenticate in headless mode without saved creds.")
+                    raise Exception(
+                        "Cannot authenticate in headless mode without saved creds."
+                    )
                 gauth.LocalWebserverAuth()
             elif gauth.access_token_expired:
                 gauth.Refresh()
@@ -74,7 +81,7 @@ class CloudManager:
             drive = GoogleDrive(gauth)
 
             file_name = os.path.basename(file_path)
-            file_drive = drive.CreateFile({'title': file_name})
+            file_drive = drive.CreateFile({"title": file_name})
             file_drive.SetContentFile(file_path)
             file_drive.Upload()
             logger.info(f"Successfully uploaded {file_name} to Google Drive.")

@@ -7,7 +7,7 @@
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-95%25-green)
 
-**StreamCatch** is a professional-grade, cross-platform media downloader designed for accuracy, precision, and speed. It combines a modern Material Design 3 interface with a robust backend capable of handling complex media extraction pipelines, making it the ultimate tool for archiving and downloading content.
+**StreamCatch** is a professional-grade, cross-platform media downloader designed for accuracy, precision, and speed. Built with Python and Flet, it combines a modern Material Design 3 interface with a robust backend capable of handling complex media extraction pipelines, making it the ultimate tool for archiving and downloading content.
 
 ## 👤 Credits
 
@@ -38,7 +38,7 @@
   - **YouTube**: 4K Video, Audio, Playlists, Channels.
   - **Social Media**: **Twitter (X)**, **Instagram** (Reels/Posts), Twitch, TikTok.
   - **Telegram**: Download videos and images from public channels using a custom scraping engine.
-  - **Generic Files**: Direct download support for any file type (PDF, ZIP, ISO, etc.).
+  - **Generic Files**: Direct download support for any file type (PDF, ZIP, ISO, etc.) with **Force Generic** mode.
 - **Clipboard Monitor**: Automatically detects URLs copied to the clipboard and prepares them for download.
 - **Time Range**: Download specific clips (Start/End time) without downloading the full video.
 - **SponsorBlock**: Automatically skip sponsored segments, intros, and outros.
@@ -50,7 +50,13 @@
 - **RSS Feed Manager**: Subscribe to channels and auto-download new content.
 - **Discord RPC**: Show off your downloading status to friends.
 
-## 🚀 Quick Start
+## 🚀 Installation
+
+### 📦 Binary Releases (Recommended)
+We provide standalone executable binaries for Windows, Linux, and macOS. No Python installation required.
+1. Go to the **[Releases](../../releases)** page.
+2. Download the version for your OS (`StreamCatch.exe` for Windows, `StreamCatch` for Linux/Mac).
+3. Run the file.
 
 ### 🐳 Docker (Web Interface)
 Run StreamCatch as a self-hosted web service:
@@ -59,13 +65,13 @@ docker-compose up -d
 ```
 Access the UI at `http://localhost:8550`. Downloads are saved to `./downloads`.
 
-### 💻 Desktop (Windows/Mac/Linux)
+### 💻 Source (Developers)
 
 #### Prerequisites
 - Python 3.8+
 - FFmpeg (required for post-processing)
 
-#### Installation
+#### Setup
 1.  **Clone the repository**:
     ```bash
     git clone https://github.com/AmirrezaFarnamTaheri/StreamCatch.git

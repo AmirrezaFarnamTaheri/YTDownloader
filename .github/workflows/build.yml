@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  desktop-build:
+  build:
+    name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -25,6 +26,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install pyinstaller
 
     - name: Build desktop binaries
       run: |
@@ -56,3 +58,38 @@ jobs:
           path: |
             mobile-android-source.zip
             mobile-ios-source.zip
+
+  release:
+    needs: [build, mobile-packaging]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download Artifacts (Windows)
+        uses: actions/download-artifact@v3
+        with:
+          name: StreamCatch-windows-latest
+
+      - name: Download Artifacts (Linux)
+        uses: actions/download-artifact@v3
+        with:
+          name: StreamCatch-ubuntu-latest
+
+      - name: Download Artifacts (macOS)
+        uses: actions/download-artifact@v3
+        with:
+          name: StreamCatch-macos-latest
+
+      - name: Download Mobile Sources
+        uses: actions/download-artifact@v3
+        with:
+          name: StreamCatch-mobile-sources
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/StreamCatch*
+            mobile-android-source.zip
+            mobile-ios-source.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

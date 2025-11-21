@@ -4,7 +4,10 @@ __pycache__/
 build/
 dist/
 *.spec
+<<<<<<< HEAD
 !streamcatch.spec
+=======
+>>>>>>> origin/main
 ytdownloader.log
 ytdownloader_installer.log
 venv/
