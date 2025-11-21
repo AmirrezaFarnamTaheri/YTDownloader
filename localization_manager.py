@@ -25,14 +25,6 @@ class LocalizationManager:
                     f"Language file {path} not found. Falling back to English."
                 )
                 if lang_code != "en":
-                with open(path, "r", encoding="utf-8") as f:
-                    cls._strings = json.load(f)
-                    cls._current_lang = lang_code
-            else:
-                logger.warning(
-                    f"Language file {path} not found. Falling back to English."
-                )
-                if lang_code != "en":
                     cls.load_language("en")
 
         except Exception as e:
@@ -50,4 +42,6 @@ class LocalizationManager:
     def get_available_languages(cls) -> list:
         """Get list of available language codes."""
         locales_dir = Path(__file__).parent / "locales"
-        return [f.stem for f in locales_dir.glob("*.json")]
+        if locales_dir.exists():
+            return [f.stem for f in locales_dir.glob("*.json")]
+        return ["en"]

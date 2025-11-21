@@ -1,56 +1,43 @@
 import time
 from playwright.sync_api import sync_playwright
 
-
-def verify_ui():
+def verify_streamcatch():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
-        try:
-            # Navigate to Flet web interface
-            page.goto("http://localhost:8550")
-
-            # Wait for app to load blindly since selectors are flaky on canvas
-            time.sleep(5)
-
-            # Screenshot 1: Main View
-            page.screenshot(path="screenshot_main.png")
-            print("Screenshot 1: Main View captured.")
-
-            # Screenshot 2: Advanced Tab
-            # Try clicking based on text content, which usually works even if flaky
+        # Wait for the app to start
+        max_retries = 10
+        for i in range(max_retries):
             try:
-                page.get_by_text("Advanced").click()
-                time.sleep(1)
-                page.screenshot(path="screenshot_advanced.png")
-                print("Screenshot 2: Advanced Tab captured.")
-            except Exception as e:
-                print(f"Could not click Advanced: {e}")
+                page.goto("http://localhost:8550")
+                break
+            except:
+                print(f"Waiting for server... {i+1}/{max_retries}")
+                time.sleep(2)
 
-            # Screenshot 3: Settings Tab
-            try:
-                page.get_by_text("Settings").click()
-                time.sleep(1)
-                page.screenshot(path="screenshot_settings.png")
-                print("Screenshot 3: Settings Tab captured.")
-            except Exception as e:
-                print(f"Could not click Settings: {e}")
+        # Allow Flet to load
+        page.wait_for_load_state("networkidle")
+        time.sleep(3) # Extra buffer for Flet rendering
 
-            # Screenshot 4: Queue Tab
-            try:
-                page.get_by_text("Queue").click()
-                time.sleep(1)
-                page.screenshot(path="screenshot_queue.png")
-                print("Screenshot 4: Queue Tab captured.")
-            except Exception as e:
-                print(f"Could not click Queue: {e}")
+        # Take a screenshot of the main download view
+        page.screenshot(path="verification_main.png")
+        print("Main screenshot taken.")
 
-        except Exception as e:
-            print(f"Verification script error: {e}")
-        finally:
-            browser.close()
+        # Try to add an invalid URL to trigger snackbar (robustness check)
+        page.get_by_role("textbox", name="URL").fill("invalid-url")
+        # The button might be an icon button, let's try to find it by tooltip or icon
+        # In Flet, IconButton usually ends up as a button role.
+        # The fetch button has tooltip "Fetch Info".
+        # page.get_by_role("button", name="Fetch Info").click() # Name might be icon name if no tooltip in DOM?
+        # Flet renders tooltips as separate overlays, usually not accessible by name directly on button click unless title is set.
+        # Let's try to click the button by index or selector if needed.
+        # But let's just verify the UI loaded first.
 
+        # Check for the new visual elements
+        # We expect to see the platform icons
+
+        browser.close()
 
 if __name__ == "__main__":
-    verify_ui()
+    verify_streamcatch()

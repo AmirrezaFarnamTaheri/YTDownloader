@@ -18,7 +18,6 @@ from config_manager import ConfigManager, CONFIG_FILE
 # But checking main.py, CancelToken is defined there.
 
 
-
 class TestConfigManager(unittest.TestCase):
     """Test cases for ConfigManager."""
 
