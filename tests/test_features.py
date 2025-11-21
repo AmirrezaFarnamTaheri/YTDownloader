@@ -1,7 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import flet as ft
-from main import AppState, DownloadItemControl
+from main import AppState
+from components import DownloadItemControl
 
 # Mock the page
 class MockPage:

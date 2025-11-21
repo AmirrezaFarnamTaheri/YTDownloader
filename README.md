@@ -46,7 +46,13 @@
 - **RSS Feed Manager**: Subscribe to channels and auto-download new content.
 - **Discord RPC**: Show off your downloading status to friends.
 
-## 🚀 Quick Start
+## 🚀 Installation
+
+### 📦 Binary Releases (Recommended)
+We provide standalone executable binaries for Windows, Linux, and macOS. No Python installation required.
+1. Go to the **[Releases](../../releases)** page.
+2. Download the version for your OS (`StreamCatch.exe` for Windows, `StreamCatch` for Linux/Mac).
+3. Run the file.
 
 ### 🐳 Docker (Web Interface)
 Run StreamCatch as a self-hosted web service:
@@ -55,13 +61,13 @@ docker-compose up -d
 ```
 Access the UI at `http://localhost:8550`. Downloads are saved to `./downloads`.
 
-### 💻 Desktop (Windows/Mac/Linux)
+### 💻 Source (Developers)
 
 #### Prerequisites
 - Python 3.8+
 - FFmpeg (required for post-processing)
 
-#### Installation
+#### Setup
 1.  **Clone the repository**:
     ```bash
     git clone https://github.com/AmirrezaFarnamTaheri/StreamCatch.git

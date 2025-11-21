@@ -2,6 +2,7 @@ import requests
 import logging
 import os
 import re
+import time
 from bs4 import BeautifulSoup
 from typing import Optional, Dict, Any, Callable
 from urllib.parse import unquote
@@ -20,13 +21,8 @@ class TelegramExtractor:
         to find the video or image source.
         """
         try:
-            # Convert standard link to embed link or s/ link to get preview content
-            # Actually, just fetching the t.me link often gives a 'view in channel' page
-            # but sometimes contains the Open Graph tags.
-            # Let's try to fetch the embed version which is usually cleaner for scraping.
-            # Format: https://t.me/channel/123?embed=1
-
-            if "?embed=1" not in url:
+            # Normalize URL
+            if "?embed=1" not in url and "embed=1" not in url:
                 embed_url = f"{url}?embed=1"
             else:
                 embed_url = url
@@ -96,7 +92,7 @@ class TelegramExtractor:
 
             return {
                 'title': title,
-                'thumbnail': None, # Could extract user avatar or og:image
+                'thumbnail': None,
                 'duration': 'N/A',
                 'video_streams': [{
                     'url': media_url,
@@ -105,9 +101,9 @@ class TelegramExtractor:
                     'resolution': 'Original',
                     'filesize': None
                 }],
-                'audio_streams': [], # Usually mixed in
+                'audio_streams': [],
                 'is_telegram': True,
-                'url': url # Original URL
+                'url': url
             }
 
         except Exception as e:
@@ -125,7 +121,13 @@ class GenericExtractor:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
             logger.info(f"Checking Generic URL: {url}")
-            response = requests.head(url, headers=headers, allow_redirects=True, timeout=10)
+
+            try:
+                response = requests.head(url, headers=headers, allow_redirects=True, timeout=10)
+            except requests.exceptions.RequestException:
+                # HEAD failed, try GET with stream=True to avoid downloading body
+                response = requests.get(url, headers=headers, stream=True, timeout=10, allow_redirects=True)
+                response.close() # Close connection immediately
 
             # Check content type
             content_type = response.headers.get('Content-Type', '').lower()
@@ -199,7 +201,7 @@ def download_generic(
             final_path = os.path.join(output_path, filename)
 
             downloaded = 0
-            start_time = logging.time.time()
+            start_time = time.time()
 
             with open(final_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
@@ -207,7 +209,7 @@ def download_generic(
                         raise Exception("Download cancelled by user")
 
                     while cancel_token and cancel_token.is_paused:
-                        logging.time.sleep(0.5)
+                        time.sleep(0.5)
                         if cancel_token.cancelled:
                              raise Exception("Download cancelled by user")
 
@@ -216,7 +218,7 @@ def download_generic(
                         downloaded += len(chunk)
 
                         # Calculate speed and ETA
-                        elapsed = logging.time.time() - start_time
+                        elapsed = time.time() - start_time
                         speed = downloaded / elapsed if elapsed > 0 else 0
                         eta = (total_size - downloaded) / speed if speed > 0 and total_size > 0 else 0
 
