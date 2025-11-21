@@ -100,7 +100,11 @@ jobs:
       with:
         xcode-version: latest-stable
 
-    - name: Build IPA (requires code signing)
+    - name: Copy exportOptions.plist to Xcode project
+      run: |
+        cp mobile/exportOptions.plist mobile/StreamCatch-ios/exportOptions.plist
+
+    - name: Archive iOS app
       working-directory: ./mobile/StreamCatch-ios
       continue-on-error: true
       run: |
@@ -110,14 +114,23 @@ jobs:
           -scheme StreamCatch \
           -configuration Release \
           -archivePath StreamCatch.xcarchive \
-          archive || echo "Code signing not configured - skipping IPA build"
+          archive
+
+    - name: Export IPA from archive
+      working-directory: ./mobile/StreamCatch-ios
+      continue-on-error: true
+      run: |
+        xcodebuild -exportArchive \
+          -archivePath StreamCatch.xcarchive \
+          -exportPath ./ipa-output \
+          -exportOptionsPlist exportOptions.plist
 
     - name: Upload IPA Artifact
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: StreamCatch-iOS-IPA
-        path: mobile/StreamCatch-ios/*.ipa
+        path: mobile/StreamCatch-ios/ipa-output/*.ipa
         if-no-files-found: warn
 
   release:

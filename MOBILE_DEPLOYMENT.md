@@ -92,7 +92,10 @@ Edit `mobile/buildozer.spec` to customize:
 
 ## iOS IPA Build
 
-The iOS build uses [Kivy-iOS](https://github.com/kivy/kivy-ios) toolchain to create IPA files.
+The iOS build uses [Kivy-iOS](https://github.com/kivy/kivy-ios) toolchain to create IPA files. The build process consists of two steps:
+
+1. **Archive** - Creates a `.xcarchive` containing the compiled app
+2. **Export** - Exports the archive to an `.ipa` file using code signing
 
 ### Requirements
 
@@ -101,6 +104,8 @@ The iOS build uses [Kivy-iOS](https://github.com/kivy/kivy-ios) toolchain to cre
 - Code signing certificates
 - Provisioning profiles
 - Team ID configuration
+
+Both the archive and export steps require proper code signing to succeed.
 
 ### Code Signing Setup
 

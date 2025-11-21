@@ -30,3 +30,4 @@ mobile/StreamCatch-ios/
 *.apk
 *.ipa
 *.xcarchive
+ipa-output/
