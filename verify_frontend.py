@@ -1,6 +1,7 @@
 from playwright.sync_api import sync_playwright
 import time
 
+
 def verify_frontend():
     with sync_playwright() as p:
         # Launch browser
@@ -31,11 +32,11 @@ def verify_frontend():
             try:
                 page.click("text=Queue", timeout=5000)
             except:
-                 print("Could not click 'Queue' text, trying by accessibility label...")
-                 # Flet NavigationRailDestination label
-                 page.get_by_label("Queue").click()
+                print("Could not click 'Queue' text, trying by accessibility label...")
+                # Flet NavigationRailDestination label
+                page.get_by_label("Queue").click()
 
-            time.sleep(2) # Animation wait
+            time.sleep(2)  # Animation wait
             page.screenshot(path="verification_queue.png")
             print("Queue page screenshot taken.")
 
@@ -62,6 +63,7 @@ def verify_frontend():
             page.screenshot(path="verification_error.png")
         finally:
             browser.close()
+
 
 if __name__ == "__main__":
     verify_frontend()

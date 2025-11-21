@@ -2,9 +2,10 @@ import unittest
 from unittest.mock import patch, MagicMock
 from rss_manager import RSSManager
 
+
 class TestRSSManager(unittest.TestCase):
 
-    @patch('rss_manager.requests.get')
+    @patch("rss_manager.requests.get")
     def test_parse_feed_success(self, mock_get):
         # Mock XML response
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
@@ -20,29 +21,29 @@ class TestRSSManager(unittest.TestCase):
         </feed>
         """
         mock_response = MagicMock()
-        mock_response.content = xml_content.encode('utf-8')
+        mock_response.content = xml_content.encode("utf-8")
         mock_response.raise_for_status.return_value = None
         mock_get.return_value = mock_response
 
         videos = RSSManager.parse_feed("http://fake.url")
         self.assertEqual(len(videos), 1)
-        self.assertEqual(videos[0]['title'], "Test Video")
-        self.assertEqual(videos[0]['video_id'], "VIDEO_ID")
-        self.assertEqual(videos[0]['link'], "https://www.youtube.com/watch?v=VIDEO_ID")
+        self.assertEqual(videos[0]["title"], "Test Video")
+        self.assertEqual(videos[0]["video_id"], "VIDEO_ID")
+        self.assertEqual(videos[0]["link"], "https://www.youtube.com/watch?v=VIDEO_ID")
 
-    @patch('rss_manager.requests.get')
+    @patch("rss_manager.requests.get")
     def test_parse_feed_error(self, mock_get):
         mock_get.side_effect = Exception("Network error")
         videos = RSSManager.parse_feed("http://fake.url")
         self.assertEqual(videos, [])
 
-    @patch('rss_manager.RSSManager.parse_feed')
+    @patch("rss_manager.RSSManager.parse_feed")
     def test_get_latest_video(self, mock_parse):
-        mock_parse.return_value = [{'title': 'Latest', 'link': 'http://link'}]
+        mock_parse.return_value = [{"title": "Latest", "link": "http://link"}]
         video = RSSManager.get_latest_video("http://fake.url")
-        self.assertEqual(video['title'], 'Latest')
+        self.assertEqual(video["title"], "Latest")
 
-    @patch('rss_manager.RSSManager.parse_feed')
+    @patch("rss_manager.RSSManager.parse_feed")
     def test_get_latest_video_none(self, mock_parse):
         mock_parse.return_value = []
         video = RSSManager.get_latest_video("http://fake.url")

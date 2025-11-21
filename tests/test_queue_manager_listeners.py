@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 from queue_manager import QueueManager
 
+
 class TestQueueManagerListeners(unittest.TestCase):
 
     def test_add_remove_listener(self):
@@ -46,8 +47,8 @@ class TestQueueManagerListeners(unittest.TestCase):
         listener = MagicMock()
         qm.add_listener(listener)
 
-        qm.remove_item({"id": 999}) # Not in queue
+        qm.remove_item({"id": 999})  # Not in queue
         listener.assert_not_called()
 
-        qm.swap_items(0, 5) # Invalid index
+        qm.swap_items(0, 5)  # Invalid index
         listener.assert_not_called()

@@ -3,13 +3,21 @@ from theme import Theme
 from .base_view import BaseView
 from history_manager import HistoryManager
 
+
 class DashboardView(BaseView):
     def __init__(self):
         super().__init__("Dashboard", ft.Icons.DASHBOARD)
         self.stats_row = ft.Row(wrap=True, spacing=20)
         self.add_control(self.stats_row)
         self.add_control(ft.Divider(color=ft.Colors.TRANSPARENT, height=20))
-        self.add_control(ft.Text("Recent Activity", size=20, weight=ft.FontWeight.BOLD, color=Theme.TEXT_PRIMARY))
+        self.add_control(
+            ft.Text(
+                "Recent Activity",
+                size=20,
+                weight=ft.FontWeight.BOLD,
+                color=Theme.TEXT_PRIMARY,
+            )
+        )
 
     def load(self):
         self.stats_row.controls.clear()
@@ -20,17 +28,35 @@ class DashboardView(BaseView):
         # This would require parsing file_size string back to bytes or storing bytes in DB
         # For now, just count.
 
-        card = self._create_stat_card("Total Downloads", str(total_downloads), ft.Icons.DOWNLOAD_DONE, Theme.PRIMARY)
+        card = self._create_stat_card(
+            "Total Downloads",
+            str(total_downloads),
+            ft.Icons.DOWNLOAD_DONE,
+            Theme.PRIMARY,
+        )
         self.stats_row.controls.append(card)
         self.update()
 
     def _create_stat_card(self, title, value, icon, color):
         return ft.Container(
-            padding=20, bgcolor=Theme.BG_CARD, border_radius=12, width=240, height=140,
+            padding=20,
+            bgcolor=Theme.BG_CARD,
+            border_radius=12,
+            width=240,
+            height=140,
             border=ft.border.all(1, Theme.BORDER),
-            content=ft.Column([
-                ft.Icon(icon, size=40, color=color),
-                ft.Text(value, size=36, weight=ft.FontWeight.BOLD, color=Theme.TEXT_PRIMARY),
-                ft.Text(title, color=Theme.TEXT_SECONDARY)
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
+            content=ft.Column(
+                [
+                    ft.Icon(icon, size=40, color=color),
+                    ft.Text(
+                        value,
+                        size=36,
+                        weight=ft.FontWeight.BOLD,
+                        color=Theme.TEXT_PRIMARY,
+                    ),
+                    ft.Text(title, color=Theme.TEXT_SECONDARY),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
         )

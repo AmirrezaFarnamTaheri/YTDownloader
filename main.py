@@ -16,6 +16,7 @@ from cloud_manager import CloudManager
 from social_manager import SocialManager
 from queue_manager import QueueManager
 from theme import Theme
+from app_layout import AppLayout
 
 # Import Views
 from views.download_view import DownloadView
@@ -26,8 +27,11 @@ from views.rss_view import RSSView
 from views.settings_view import SettingsView
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
+
 
 # --- State Management ---
 class AppState:
@@ -52,6 +56,7 @@ class AppState:
         # Try connecting to social
         threading.Thread(target=self.social_manager.connect, daemon=True).start()
 
+
 state = AppState()
 
 # Global variables for access (refactor later if possible)
@@ -59,8 +64,10 @@ download_view = None
 queue_view = None
 page = None
 
+
 class CancelToken:
     """Token for managing download cancellation and pause/resume."""
+
     def __init__(self):
         self.cancelled = False
         self.is_paused = False
@@ -82,102 +89,117 @@ class CancelToken:
             if self.cancelled:
                 raise Exception("Download cancelled by user.")
 
+
 def process_queue():
     # Check for scheduled items
     items = state.queue_manager.get_all()
     now = datetime.now()
     for item in items:
-        if item.get('scheduled_time') and item['status'].startswith("Scheduled"):
-            if now >= item['scheduled_time']:
-                 item['status'] = 'Queued'
-                 item['scheduled_time'] = None
+        if item.get("scheduled_time") and item["status"].startswith("Scheduled"):
+            if now >= item["scheduled_time"]:
+                item["status"] = "Queued"
+                item["scheduled_time"] = None
 
-    if state.queue_manager.any_downloading(): return
+    if state.queue_manager.any_downloading():
+        return
 
     # ATOMIC CLAIM
     item = state.queue_manager.claim_next_downloadable()
     if item:
-         threading.Thread(target=download_task, args=(item,), daemon=True).start()
+        threading.Thread(target=download_task, args=(item,), daemon=True).start()
+
 
 def download_task(item):
-    item['status'] = 'Downloading'
+    item["status"] = "Downloading"
     state.current_download_item = item
     state.cancel_token = CancelToken()
 
-    if 'control' in item: item['control'].update_progress()
+    if "control" in item:
+        item["control"].update_progress()
 
     try:
+
         def progress_hook(d, _):
-            if d['status'] == 'downloading':
-                total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
-                downloaded = d.get('downloaded_bytes', 0)
+            if d["status"] == "downloading":
+                total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
+                downloaded = d.get("downloaded_bytes", 0)
                 if total > 0:
                     pct = downloaded / total
-                    if 'control' in item:
-                        item['control'].progress_bar.value = pct
+                    if "control" in item:
+                        item["control"].progress_bar.value = pct
 
-                item['speed'] = format_file_size(d.get('speed', 0)) + "/s"
-                item['size'] = format_file_size(total)
-                item['eta'] = f"{d.get('eta', 0)}s"
+                item["speed"] = format_file_size(d.get("speed", 0)) + "/s"
+                item["size"] = format_file_size(total)
+                item["eta"] = f"{d.get('eta', 0)}s"
 
-                if 'control' in item: item['control'].update_progress()
+                if "control" in item:
+                    item["control"].update_progress()
 
-            elif d['status'] == 'finished':
-                item['status'] = 'Processing'
-                if 'control' in item:
-                    item['control'].progress_bar.value = 1.0
-                    item['control'].update_progress()
-                item['final_filename'] = d.get('filename')
+            elif d["status"] == "finished":
+                item["status"] = "Processing"
+                if "control" in item:
+                    item["control"].progress_bar.value = 1.0
+                    item["control"].update_progress()
+                item["final_filename"] = d.get("filename")
+
+        # Extract cookies if passed
+        cookies = item.get("cookies_from_browser")
 
         download_video(
-            item['url'],
+            item["url"],
             progress_hook,
             item,
-            video_format=item.get('video_format', 'best'),
-            output_path=item.get('output_path'),
+            video_format=item.get("video_format", "best"),
+            output_path=item.get("output_path"),
             cancel_token=state.cancel_token,
-            sponsorblock_remove=item.get('sponsorblock', False),
-            playlist=item.get('playlist', False),
-            use_aria2c=item.get('use_aria2c', False),
-            gpu_accel=item.get('gpu_accel'),
-            output_template=item.get('output_template'),
-            start_time=item.get('start_time'),
-            end_time=item.get('end_time'),
-            force_generic=item.get('force_generic', False)
+            sponsorblock_remove=item.get("sponsorblock", False),
+            playlist=item.get("playlist", False),
+            use_aria2c=item.get("use_aria2c", False),
+            gpu_accel=item.get("gpu_accel"),
+            output_template=item.get("output_template"),
+            start_time=item.get("start_time"),
+            end_time=item.get("end_time"),
+            force_generic=item.get("force_generic", False),
+            cookies_from_browser=cookies,
         )
 
-        item['status'] = 'Completed'
+        item["status"] = "Completed"
         HistoryManager.add_entry(
-            url=item['url'],
-            title=item.get('title', 'Unknown'),
-            output_path=item.get('output_path'),
-            format_str=item.get('video_format'),
-            status='Completed',
-            file_size=item.get('size', 'N/A'),
-            file_path=item.get('final_filename')
+            url=item["url"],
+            title=item.get("title", "Unknown"),
+            output_path=item.get("output_path"),
+            format_str=item.get("video_format"),
+            status="Completed",
+            file_size=item.get("size", "N/A"),
+            file_path=item.get("final_filename"),
         )
 
     except Exception as e:
         if "cancelled" in str(e):
-            item['status'] = 'Cancelled'
+            item["status"] = "Cancelled"
         else:
-            item['status'] = 'Error'
+            item["status"] = "Error"
             logger.error(f"Download failed: {e}")
     finally:
-        if 'control' in item: item['control'].update_progress()
+        if "control" in item:
+            item["control"].update_progress()
         state.current_download_item = None
         state.cancel_token = None
         process_queue()
 
+
 def fetch_info_task(url):
     try:
         info = get_video_info(url)
-        if not info: raise Exception("Failed to fetch info")
+        if not info:
+            raise Exception("Failed to fetch info")
         state.video_info = info
         if download_view:
             download_view.update_info(info)
         if page:
-            page.show_snack_bar(ft.SnackBar(content=ft.Text("Metadata fetched successfully")))
+            page.show_snack_bar(
+                ft.SnackBar(content=ft.Text("Metadata fetched successfully"))
+            )
     except Exception as e:
         logger.error(f"Fetch error: {e}")
         if page:
@@ -187,6 +209,7 @@ def fetch_info_task(url):
             download_view.fetch_btn.disabled = False
         if page:
             page.update()
+
 
 def main(pg: ft.Page):
     global page, download_view, queue_view
@@ -205,8 +228,8 @@ def main(pg: ft.Page):
 
     def on_fetch_info(url):
         if not url:
-             page.show_snack_bar(ft.SnackBar(content=ft.Text("Please enter a URL")))
-             return
+            page.show_snack_bar(ft.SnackBar(content=ft.Text("Please enter a URL")))
+            return
 
         download_view.fetch_btn.disabled = True
         page.update()
@@ -216,29 +239,34 @@ def main(pg: ft.Page):
         # Process data and add to queue
         status = "Queued"
         sched_dt = None
-        
+
         if state.scheduled_time:
-             now = datetime.now()
-             sched_dt = datetime.combine(now.date(), state.scheduled_time)
-             if sched_dt < now:
-                 sched_dt += timedelta(days=1)
-             status = f"Scheduled ({sched_dt.strftime('%H:%M')})"
+            now = datetime.now()
+            sched_dt = datetime.combine(now.date(), state.scheduled_time)
+            if sched_dt < now:
+                sched_dt += timedelta(days=1)
+            status = f"Scheduled ({sched_dt.strftime('%H:%M')})"
 
         item = {
-            "url": data['url'],
-            "title": state.video_info.get('title', 'Unknown') if data['url'] == download_view.url_input.value and state.video_info else data['url'],
+            "url": data["url"],
+            "title": (
+                state.video_info.get("title", "Unknown")
+                if data["url"] == download_view.url_input.value and state.video_info
+                else data["url"]
+            ),
             "status": status,
             "scheduled_time": sched_dt,
-            "video_format": data['video_format'],
+            "video_format": data["video_format"],
             "output_path": str(Path.home() / "Downloads"),
-            "playlist": data['playlist'],
-            "sponsorblock": data['sponsorblock'],
-            "use_aria2c": state.config.get('use_aria2c', False),
-            "gpu_accel": state.config.get('gpu_accel', 'None'),
-            "output_template": data['output_template'],
-            "start_time": data['start_time'],
-            "end_time": data['end_time'],
-            "force_generic": data['force_generic']
+            "playlist": data["playlist"],
+            "sponsorblock": data["sponsorblock"],
+            "use_aria2c": state.config.get("use_aria2c", False),
+            "gpu_accel": state.config.get("gpu_accel", "None"),
+            "output_template": data["output_template"],
+            "start_time": data["start_time"],
+            "end_time": data["end_time"],
+            "force_generic": data["force_generic"],
+            "cookies_from_browser": data.get("cookies_from_browser"),
         }
         state.queue_manager.add_item(item)
         state.scheduled_time = None
@@ -247,11 +275,11 @@ def main(pg: ft.Page):
         process_queue()
 
     def on_cancel_item(item):
-        item['status'] = 'Cancelled'
+        item["status"] = "Cancelled"
         if state.current_download_item == item and state.cancel_token:
             state.cancel_token.cancel()
-        if 'control' in item:
-            item['control'].update_progress()
+        if "control" in item:
+            item["control"].update_progress()
 
     def on_remove_item(item):
         state.queue_manager.remove_item(item)
@@ -266,58 +294,64 @@ def main(pg: ft.Page):
                 state.queue_manager.swap_items(idx, new_idx)
                 queue_view.rebuild()
 
+    def on_retry_item(item):
+        # Logic to retry download
+        item["status"] = "Queued"
+        item["speed"] = ""
+        item["eta"] = ""
+        item["size"] = ""
+        queue_view.rebuild()
+        process_queue()
+
     def on_batch_import():
-        # Already handled in View logic? View needs to call this back if file picker needs page overlay.
-        pass # Implemented via passing FilePicker to View or managing it here.
+        pass
+
+    def on_toggle_clipboard(active):
+        state.clipboard_monitor_active = active
+        msg = "Clipboard Monitor Enabled" if active else "Clipboard Monitor Disabled"
+        page.show_snack_bar(ft.SnackBar(content=ft.Text(msg)))
 
     # --- Views Initialization ---
     download_view = DownloadView(on_fetch_info, on_add_to_queue, None, None, state)
-    queue_view = QueueView(state.queue_manager, on_cancel_item, on_remove_item, on_reorder_item)
+    # Pass on_retry_item to QueueView
+    queue_view = QueueView(
+        state.queue_manager, on_cancel_item, on_remove_item, on_reorder_item
+    )
+    queue_view.on_retry = on_retry_item
+
     history_view = HistoryView()
     dashboard_view = DashboardView()
     rss_view = RSSView(state.config)
     settings_view = SettingsView(state.config)
 
-    views_list = [download_view, queue_view, history_view, dashboard_view, rss_view, settings_view]
+    views_list = [
+        download_view,
+        queue_view,
+        history_view,
+        dashboard_view,
+        rss_view,
+        settings_view,
+    ]
 
     # --- Navigation ---
-    content_area = ft.Container(expand=True, bgcolor=Theme.BG_DARK)
 
     def navigate_to(index):
-        content_area.content = views_list[index]
-        if index == 2: history_view.load()
-        elif index == 3: dashboard_view.load()
-        elif index == 4: rss_view.load()
+        app_layout.set_content(views_list[index])
+        if index == 2:
+            history_view.load()
+        elif index == 3:
+            dashboard_view.load()
+        elif index == 4:
+            rss_view.load()
         page.update()
 
-    nav_rail = ft.NavigationRail(
-        selected_index=0,
-        label_type=ft.NavigationRailLabelType.ALL,
-        min_width=100,
-        min_extended_width=200,
-        group_alignment=-0.9,
-        bgcolor=Theme.BG_CARD,
-        destinations=[
-            ft.NavigationRailDestination(icon=ft.Icons.DOWNLOAD, selected_icon=ft.Icons.DOWNLOAD_DONE, label="Download"),
-            ft.NavigationRailDestination(icon=ft.Icons.QUEUE_MUSIC, selected_icon=ft.Icons.QUEUE_MUSIC_ROUNDED, label="Queue"),
-            ft.NavigationRailDestination(icon=ft.Icons.HISTORY, selected_icon=ft.Icons.HISTORY_TOGGLE_OFF, label="History"),
-            ft.NavigationRailDestination(icon=ft.Icons.DASHBOARD, selected_icon=ft.Icons.DASHBOARD_CUSTOMIZE, label="Dashboard"),
-            ft.NavigationRailDestination(icon=ft.Icons.RSS_FEED, label="RSS"),
-            ft.NavigationRailDestination(icon=ft.Icons.SETTINGS, label="Settings"),
-        ],
-        on_change=lambda e: navigate_to(e.control.selected_index),
+    app_layout = AppLayout(
+        page, navigate_to, on_toggle_clipboard, state.clipboard_monitor_active
     )
 
     # Initial View
-    content_area.content = download_view
-
-    layout = ft.Row([
-        nav_rail,
-        ft.VerticalDivider(width=1, color=Theme.BORDER),
-        content_area
-    ], expand=True, spacing=0)
-
-    page.add(layout)
+    app_layout.set_content(download_view)
+    page.add(app_layout.view)
 
     # --- Background Logic ---
 
@@ -326,21 +360,33 @@ def main(pg: ft.Page):
             time.sleep(2)
             try:
                 process_queue()
-            except: pass
+            except:
+                pass
 
             if state.clipboard_monitor_active:
                 try:
-                     content = pyperclip.paste()
-                     if content and content != state.last_clipboard_content:
-                         state.last_clipboard_content = content
-                         if validate_url(content) and download_view:
-                             download_view.url_input.value = content
-                             if page:
-                                 page.update()
-                                 page.show_snack_bar(ft.SnackBar(content=ft.Text(f"URL detected: {content}")))
-                except: pass
+                    content = pyperclip.paste()
+                    if content and content != state.last_clipboard_content:
+                        state.last_clipboard_content = content
+                        if validate_url(content) and download_view:
+                            # Only auto-paste if download view is active? Or just notify?
+                            # User requirement was "better visibility and control".
+                            # Let's just notify for now to avoid annoying auto-paste.
+                            # Or update the input field if empty.
+                            if not download_view.url_input.value:
+                                download_view.url_input.value = content
+                                if page:
+                                    page.update()
+                                    page.show_snack_bar(
+                                        ft.SnackBar(
+                                            content=ft.Text(f"URL detected: {content}")
+                                        )
+                                    )
+                except:
+                    pass
 
     threading.Thread(target=background_loop, daemon=True).start()
+
 
 if __name__ == "__main__":
     if os.environ.get("FLET_WEB"):

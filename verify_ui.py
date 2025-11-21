@@ -1,6 +1,7 @@
 import time
 from playwright.sync_api import sync_playwright
 
+
 def verify_ui():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -34,7 +35,7 @@ def verify_ui():
                 page.screenshot(path="screenshot_settings.png")
                 print("Screenshot 3: Settings Tab captured.")
             except Exception as e:
-                 print(f"Could not click Settings: {e}")
+                print(f"Could not click Settings: {e}")
 
             # Screenshot 4: Queue Tab
             try:
@@ -43,12 +44,13 @@ def verify_ui():
                 page.screenshot(path="screenshot_queue.png")
                 print("Screenshot 4: Queue Tab captured.")
             except Exception as e:
-                 print(f"Could not click Queue: {e}")
+                print(f"Could not click Queue: {e}")
 
         except Exception as e:
             print(f"Verification script error: {e}")
         finally:
             browser.close()
+
 
 if __name__ == "__main__":
     verify_ui()

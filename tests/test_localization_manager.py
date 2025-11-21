@@ -3,6 +3,7 @@ from unittest.mock import patch, mock_open
 import json
 from localization_manager import LocalizationManager
 
+
 class TestLocalizationManager(unittest.TestCase):
 
     def test_get_default(self):
@@ -14,7 +15,9 @@ class TestLocalizationManager(unittest.TestCase):
         LocalizationManager._strings = {"greet": "Hello {}"}
         self.assertEqual(LocalizationManager.get("greet", "World"), "Hello World")
 
-    @patch("builtins.open", new_callable=mock_open, read_data='{"app_title": "Test App"}')
+    @patch(
+        "builtins.open", new_callable=mock_open, read_data='{"app_title": "Test App"}'
+    )
     @patch("pathlib.Path.exists")
     def test_load_language_success(self, mock_exists, mock_file):
         mock_exists.return_value = True
@@ -27,8 +30,12 @@ class TestLocalizationManager(unittest.TestCase):
         # Mock exists to return False for 'fr', but True for 'en' (second call)
         mock_exists.side_effect = [False, True]
 
-        with patch("builtins.open", new_callable=mock_open, read_data='{"app_title": "English App"}'):
-             LocalizationManager.load_language("fr")
+        with patch(
+            "builtins.open",
+            new_callable=mock_open,
+            read_data='{"app_title": "English App"}',
+        ):
+            LocalizationManager.load_language("fr")
 
         self.assertEqual(LocalizationManager.get("app_title"), "English App")
 

@@ -9,6 +9,7 @@ from views.rss_view import RSSView
 from views.settings_view import SettingsView
 from main import AppState
 
+
 class TestViews(unittest.TestCase):
 
     def setUp(self):
@@ -35,15 +36,22 @@ class TestViews(unittest.TestCase):
         view = DownloadView(MagicMock(), MagicMock(), None, None, self.state)
         view._Control__page = MagicMock()
         info = {
-            'title': 'Test',
-            'duration': '10:00',
-            'thumbnail': 'http://thumb.com',
-            'video_streams': [{'format_id': '1', 'resolution': '1080p', 'ext': 'mp4', 'filesize': 1000}],
-            'audio_streams': []
+            "title": "Test",
+            "duration": "10:00",
+            "thumbnail": "http://thumb.com",
+            "video_streams": [
+                {
+                    "format_id": "1",
+                    "resolution": "1080p",
+                    "ext": "mp4",
+                    "filesize": 1000,
+                }
+            ],
+            "audio_streams": [],
         }
         view.update_info(info)
-        self.assertEqual(view.title_text.value, 'Test')
-        self.assertEqual(view.video_format_dd.options[0].key, '1')
+        self.assertEqual(view.title_text.value, "Test")
+        self.assertEqual(view.video_format_dd.options[0].key, "1")
 
     def test_queue_view_rebuild(self):
         on_cancel = MagicMock()
@@ -51,7 +59,7 @@ class TestViews(unittest.TestCase):
         on_reorder = MagicMock()
 
         # Add item to queue
-        item = {'url': 'http://test.com', 'status': 'Queued', 'title': 'Test'}
+        item = {"url": "http://test.com", "status": "Queued", "title": "Test"}
         self.state.queue_manager.add_item(item)
 
         view = QueueView(self.state.queue_manager, on_cancel, on_remove, on_reorder)
@@ -61,21 +69,25 @@ class TestViews(unittest.TestCase):
         self.assertEqual(len(view.queue_list.controls), 1)
 
         # Test clear finished
-        self.state.queue_manager.add_item({'url': 'http://done.com', 'status': 'Completed', 'title': 'Done'})
+        self.state.queue_manager.add_item(
+            {"url": "http://done.com", "status": "Completed", "title": "Done"}
+        )
         view.clear_finished(None)
         on_remove.assert_called()
 
-    @patch('history_manager.HistoryManager.get_history')
+    @patch("history_manager.HistoryManager.get_history")
     def test_history_view_load(self, mock_get_history):
-        mock_get_history.return_value = [{'url': 'http://h.com', 'title': 'Hist', 'status': 'Completed'}]
+        mock_get_history.return_value = [
+            {"url": "http://h.com", "title": "Hist", "status": "Completed"}
+        ]
         view = HistoryView()
         view._Control__page = MagicMock()
         view.load()
         self.assertEqual(len(view.history_list.controls), 1)
 
-    @patch('history_manager.HistoryManager.get_history')
+    @patch("history_manager.HistoryManager.get_history")
     def test_dashboard_view_load(self, mock_get_history):
-        mock_get_history.return_value = [{'url': 'http://h.com'}]
+        mock_get_history.return_value = [{"url": "http://h.com"}]
         view = DashboardView()
         view._Control__page = MagicMock()
         view.load()
@@ -83,7 +95,7 @@ class TestViews(unittest.TestCase):
         self.assertEqual(len(view.stats_row.controls), 1)
 
     def test_rss_view(self):
-        config = {'rss_feeds': []}
+        config = {"rss_feeds": []}
         view = RSSView(config)
         # Mock page
         view._Control__page = MagicMock()
@@ -91,22 +103,23 @@ class TestViews(unittest.TestCase):
         # Add feed
         view.rss_input.value = "http://rss.com"
         view.add_rss(None)
-        self.assertIn("http://rss.com", config['rss_feeds'])
+        self.assertIn("http://rss.com", config["rss_feeds"])
 
         # Remove feed
         view.remove_rss("http://rss.com")
-        self.assertNotIn("http://rss.com", config['rss_feeds'])
+        self.assertNotIn("http://rss.com", config["rss_feeds"])
 
-    @patch('config_manager.ConfigManager.save_config')
+    @patch("config_manager.ConfigManager.save_config")
     def test_settings_view_save(self, mock_save):
-        config = {'proxy': ''}
+        config = {"proxy": ""}
         view = SettingsView(config)
         view._Control__page = MagicMock()
         view.proxy_input.value = "http://proxy.com"
         view.save_settings(None)
 
-        self.assertEqual(config['proxy'], "http://proxy.com")
+        self.assertEqual(config["proxy"], "http://proxy.com")
         mock_save.assert_called()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
