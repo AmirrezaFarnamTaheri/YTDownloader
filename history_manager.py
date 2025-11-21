@@ -6,7 +6,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-DB_FILE = Path.home() / '.ytdownloader' / 'history.db'
+DB_FILE = Path.home() / '.lumina' / 'history.db'
 
 class HistoryManager:
     """Manages download history using SQLite."""

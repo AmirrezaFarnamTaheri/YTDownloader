@@ -1,12 +1,12 @@
 #!/bin/bash
-# YTDownloader - Setup and Installation Script for Linux/macOS
+# Lumina - Setup and Installation Script for Linux/macOS
 # This script handles everything: checking, installing, and launching
 
 set -euo pipefail
 
 # Setup logging
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="$SCRIPT_DIR/ytdownloader_installer.log"
+LOG_FILE="$SCRIPT_DIR/lumina_installer.log"
 exec &> >(tee -a "$LOG_FILE")
 
 # Color definitions
@@ -41,8 +41,8 @@ ensure_pip_in_venv() {
 
 echo -e "${CYAN}"
 echo "============================================================"
-echo "                   YTDownloader Setup"
-echo "            Advanced YouTube Video Downloader"
+echo "                   Lumina Setup"
+echo "            Modern Media Downloader"
 echo "                 Linux/macOS Installation"
 echo "============================================================"
 echo -e "${NC}"
@@ -131,7 +131,7 @@ echo -e "${GREEN}[OK] All dependencies installed${NC}"
 echo ""
 
 # Step 5: Launch the application
-echo "[Step 5] Launching YTDownloader..."
+echo "[Step 5] Launching Lumina..."
 echo "Starting the application GUI..."
 echo ""
 
@@ -144,18 +144,15 @@ fi
 
 echo -e "${GREEN}"
 echo "============================================================"
-echo "          Setup Complete! YTDownloader is Ready"
+echo "          Setup Complete! Lumina is Ready"
 echo "============================================================"
 echo -e "${NC}"
-echo "Next time you can launch YTDownloader by:"
+echo "Next time you can launch Lumina by:"
 echo "  1. Running this script again"
 echo "  2. Command: \"$PYTHON_EXE\" \"$APP_DIR/main.py\""
 echo ""
 echo "Configuration and logs are saved to:"
-echo "  Settings: ~/.ytdownloader/config.json"
-echo "  Logs: $APP_DIR/ytdownloader.log"
+echo "  Settings: ~/.lumina/config.json"
+echo "  Logs: $APP_DIR/lumina.log"
 echo "  Installer log: $LOG_FILE"
-echo ""
-echo "For help and documentation, visit:"
-echo "  https://github.com/AmirrezaFarnamTaheri/YTDownloader"
 echo ""

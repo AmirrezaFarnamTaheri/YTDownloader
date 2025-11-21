@@ -1,9 +1,9 @@
 @echo off
-REM YTDownloader - Setup and Installation Batch Script for Windows
+REM Lumina - Setup and Installation Batch Script for Windows
 REM This script handles everything: checking, installing, and launching
 
-set "LOG_FILE=%~dp0ytdownloader_installer.log"
-set "WRAPPER_PS=%TEMP%\ytd_installer_wrapper.ps1"
+set "LOG_FILE=%~dp0lumina_installer.log"
+set "WRAPPER_PS=%TEMP%\lumina_installer_wrapper.ps1"
 
 if /i "%~1"=="__run_main__" (
     shift
@@ -82,8 +82,8 @@ cls
 
 echo.
 echo ============================================================
-echo                    YTDownloader Setup
-echo             Advanced YouTube Video Downloader
+echo                    Lumina Setup
+echo             Modern Media Downloader
 echo                  Windows Installation
 echo ============================================================
 echo.
@@ -217,9 +217,9 @@ echo.
 
 REM Step 5: Create shortcuts
 echo [Step 5] Creating shortcuts...
-set ICON_PATH=%APP_DIR%icon.ico
+set ICON_PATH=%APP_DIR%assets\logo.ico
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $shell = New-Object -ComObject WScript.Shell; $desktop = [Environment]::GetFolderPath('Desktop'); $shortcut = $shell.CreateShortcut((Join-Path $desktop 'YTDownloader.lnk')); $shortcut.TargetPath = '%PYTHON_EXE%'; $shortcut.Arguments = '%APP_DIR%main.py'; $shortcut.WorkingDirectory = '%APP_DIR%'; $shortcut.Description = 'YTDownloader - Advanced YouTube Video Downloader'; if (Test-Path '%ICON_PATH%') { $shortcut.IconLocation = '%ICON_PATH%' }; $shortcut.Save()"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $shell = New-Object -ComObject WScript.Shell; $desktop = [Environment]::GetFolderPath('Desktop'); $shortcut = $shell.CreateShortcut((Join-Path $desktop 'Lumina.lnk')); $shortcut.TargetPath = '%PYTHON_EXE%'; $shortcut.Arguments = '%APP_DIR%main.py'; $shortcut.WorkingDirectory = '%APP_DIR%'; $shortcut.Description = 'Lumina - Modern Media Downloader'; if (Test-Path '%ICON_PATH%') { $shortcut.IconLocation = '%ICON_PATH%' }; $shortcut.Save()"
 if errorlevel 1 (
     color 0E
     echo WARNING: Could not create desktop shortcut.
@@ -230,7 +230,7 @@ if errorlevel 1 (
 echo.
 
 REM Step 6: Launch the application
-echo [Step 6] Launching YTDownloader...
+echo [Step 6] Launching Lumina...
 echo Starting the application GUI...
 echo.
 
@@ -247,21 +247,21 @@ timeout /t 2 /nobreak
 color 0A
 echo.
 echo ============================================================
-echo           Setup Complete! YTDownloader is Ready
+echo           Setup Complete! Lumina is Ready
 echo ============================================================
 echo.
-echo Next time you can launch YTDownloader by:
+echo Next time you can launch Lumina by:
 echo   1. Double-clicking the shortcut on your Desktop
 echo   2. Running the batch file again
 echo   3. Command: "%PYTHON_EXE%" "%APP_DIR%main.py"
 echo.
 echo Configuration and logs are saved to:
-echo   Settings: %USERPROFILE%\.ytdownloader\config.json
-echo   App logs: %APP_DIR%ytdownloader.log
+echo   Settings: %USERPROFILE%\.lumina\config.json
+echo   App logs: %APP_DIR%lumina.log
 echo   Installer log: %LOG_FILE%
 echo.
 echo For help and documentation, visit:
-echo   https://github.com/AmirrezaFarnamTaheri/YTDownloader
+echo   https://github.com/AmirrezaFarnamTaheri/Lumina
 echo.
 pause
 exit /b 0
