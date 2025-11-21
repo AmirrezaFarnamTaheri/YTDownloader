@@ -1,91 +1,89 @@
-# Wiki
+# StreamCatch Wiki
 
-## Introduction
+Welcome to the StreamCatch Wiki. This documentation covers the architecture, features, and advanced usage of the StreamCatch media downloader.
 
-**StreamCatch** (formerly YTDownloader/Lumina) is a robust, feature-rich desktop application for downloading media from the internet. Built with Python and Flet, it offers a modern, responsive user interface and leverages the powerful `yt-dlp` library alongside custom extractors for Telegram and generic files, emulating the capabilities of professional tools like Internet Download Manager (IDM).
+## Table of Contents
+1. [Architecture](#architecture)
+2. [Core Components](#core-components)
+3. [Advanced Features](#advanced-features)
+4. [Troubleshooting](#troubleshooting)
 
-## Features
+---
 
-*   **Modern UI**: Clean, dark-themed interface using `Flet` with a Navigation Rail and Dashboard.
-*   **Universal Downloader**:
-    *   **YouTube & Video Sites**: Supports thousands of sites via `yt-dlp` (YouTube, Twitch, etc.).
-    *   **Social Media**: Dedicated support for **Twitter (X)**, **Instagram** (Reels/Posts), **TikTok**.
-    *   **Telegram**: Scrape and download public files from Telegram channels (t.me links).
-    *   **Generic Files**: Download any direct link (PDF, ISO, ZIP) robustly.
-*   **Clipboard Monitor**: Automatically detects URLs copied to your system clipboard and prompts to download them.
-*   **Format Selection**: Choose specific video resolutions (1080p, 4K, etc.) and audio qualities.
-*   **Audio Extraction**: Convert videos to high-quality audio (MP3, M4A, etc.).
-*   **Batch Download**: Import a list of URLs from a text file to download en masse.
-*   **Scheduler**: Schedule downloads to start at a specific time.
-*   **Cinema Mode**: A minimalist overlay for monitoring progress without distractions.
-*   **Subtitles**: Download subtitles in various languages.
-*   **Playlist Support**: Download entire playlists or channels with optional Regex filtering.
-*   **RSS Feed Monitoring**: Subscribe to RSS feeds to track channels.
-*   **Proxy & Rate Limit**: Configure proxy servers and limit download speeds.
-*   **Download History & Dashboard**: Keep track of your downloads with a built-in history manager and view real-time statistics.
-*   **Performance Tuning**: GPU acceleration (CUDA/Vulkan) and Aria2c external downloader support.
+## Architecture
 
-## Usage Guide
+StreamCatch uses a modular architecture to ensure robustness and maintainability.
 
-### Basic Download
-1.  Paste a URL into the input field.
-2.  Click **Fetch Info** (search icon) to load video details.
-3.  Select your desired **Video Quality** and **Audio Format**.
-4.  Optionally, select features like Playlist, SponsorBlock, or Time Range.
-5.  Click **Add to Queue**. The download will start automatically if the queue is idle.
+### Frontend
+- **Framework**: Flet (based on Flutter).
+- **Design System**: Material Design 3.
+- **Platform**: Windows, macOS, Linux, Web, iOS, Android.
+- **State Management**: `AppState` singleton with observable properties.
 
-### Clipboard Monitor (Auto-Paste)
-1.  Toggle the **Clipboard Monitor** switch in the top-right corner of the Download tab.
-2.  Copy any supported URL (YouTube, Twitter, direct file link) in your browser.
-3.  StreamCatch will automatically detect it, paste it into the URL field, and notify you via a SnackBar.
+### Backend
+- **Downloader Engine**: `yt-dlp` for video extraction, `requests` for generic file downloads.
+- **Queue Management**: `QueueManager` provides atomic, thread-safe operations for managing concurrent downloads.
+- **Storage**: SQLite via `HistoryManager` for persistent history; JSON for configuration.
 
-### Force Generic / Direct Download
-If you have a link to a file (e.g., `http://example.com/file.zip`) or if automatic extraction fails:
-1.  Paste the URL.
-2.  Check the **Force Generic/Direct** checkbox.
-3.  Click **Add to Queue**.
-This bypasses metadata extraction and uses a direct stream download logic, similar to IDM.
+### Pipeline
+1.  **Input**: URL from user or Clipboard Monitor.
+2.  **Validation**: `ui_utils.validate_url`.
+3.  **Info Extraction**: `downloader.get_video_info` (tries `yt-dlp` -> `TelegramExtractor` -> `GenericExtractor`).
+4.  **Queuing**: Item added to `QueueManager`.
+5.  **Processing**: Background thread claims item via `claim_next_downloadable()`.
+6.  **Downloading**: `downloader.download_video` executes the download with progress hooks.
+7.  **Post-Processing**: FFmpeg (conversion, metadata, thumbnail).
+8.  **Completion**: History updated, notification sent.
 
-### Batch Download
-1.  Create a `.txt` file with one URL per line.
-2.  Click **Batch Import**.
-3.  Select your text file. Valid URLs will be added to the queue automatically.
+---
 
-### Scheduling
-1.  Enter a URL and fetch info.
-2.  Click **Schedule**.
-3.  Pick the start time.
-4.  Click **Add to Queue**. The item will sit in the queue with a "Scheduled" status until the time is reached.
+## Core Components
+
+### Downloader Module (`downloader.py`)
+The heart of the application. It wraps `yt-dlp` but adds a robust layer of error handling and fallback mechanisms.
+- **Robustness**: If `yt-dlp` fails to identify a URL (e.g., a direct file link served with `content-disposition`), it falls back to `GenericExtractor`.
+- **Telegram**: A custom `TelegramExtractor` scrapes public Telegram channels for video/image content.
+
+### Queue Manager (`queue_manager.py`)
+Handles the download queue.
+- **Thread Safety**: All operations are locked.
+- **Atomic Claiming**: The `claim_next_downloadable()` method prevents race conditions where multiple worker threads might try to download the same file.
+
+### Generic Downloader (`generic_downloader.py`)
+A specialized module for non-video sites.
+- **Streaming**: Downloads large files in chunks to keep memory usage low.
+- **Resumability**: (Future plan) Can be extended to support `Range` headers.
+
+---
+
+## Advanced Features
+
+### Force Generic Mode
+Sometimes, `yt-dlp` might try to interpret a direct file link (like `.mp4` from a CDN) as a webpage and fail. "Force Generic" bypasses the extraction logic and treats the URL as a direct download source.
+
+### Time Range Downloading
+StreamCatch allows downloading only a portion of a video.
+- **Implementation**: Uses `yt-dlp`'s `download_ranges` with FFmpeg cutting.
+- **Format**: `HH:MM:SS` (e.g., `00:01:30` to `00:02:00`).
+
+### GPU Acceleration
+Users can select `cuda` (NVIDIA), `vulkan` (AMD/Intel), or `auto` to speed up video recoding. This passes the appropriate flags to FFmpeg.
+
+### Proxy & Privacy
+Support for HTTP/HTTPS/SOCKS proxies to bypass geo-restrictions. Browser cookies can also be imported to access age-restricted content.
+
+---
 
 ## Troubleshooting
 
-### FFmpeg Not Found
-*   The app requires FFmpeg for merging video/audio and post-processing.
-*   **Windows**: Download FFmpeg and add it to your System PATH, or place `ffmpeg.exe` in the app directory.
-*   **Linux**: Install via `sudo apt install ffmpeg`.
+### "FFmpeg not found"
+Ensure FFmpeg is installed and in your system PATH. StreamCatch requires it for merging video/audio and format conversion.
 
-### Download Error / Network Error
-*   Check your internet connection.
-*   If using a proxy, verify the settings in the **Settings** tab.
+### "Download Error"
+- Check your internet connection.
+- Verify the URL works in a browser.
+- Try "Force Generic" if it's a direct file link.
+- Update the application to get the latest `yt-dlp` core.
 
-## Developer Guide
-
-### Setup
-1.  Clone the repository.
-2.  Install dependencies: `pip install -r requirements.txt`.
-3.  Run the app: `python main.py`.
-
-### Testing
-Run unit tests:
-```bash
-python -m unittest discover -s tests -p "test_*.py" -v
-```
-
-### Building
-To create a standalone executable:
-```bash
-pyinstaller --onefile --windowed --noconsole --name StreamCatch --icon=assets/logo.svg main.py
-```
-
-## Roadmap
-See [WHATS_NEXT.md](WHATS_NEXT.md) and [SUGGESTIONS.md](SUGGESTIONS.md) for future roadmap ideas.
+### Visual Glitches
+If the UI looks incorrect, ensure you are not using a custom scaling factor that interferes with Flet/Flutter rendering.

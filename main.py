@@ -58,9 +58,6 @@ class AppState:
 
 state = AppState()
 
-# --- Custom Controls ---
-# DownloadItemControl moved to components.py
-
 class CancelToken:
     """Token for managing download cancellation and pause/resume."""
     def __init__(self):
@@ -85,17 +82,18 @@ class CancelToken:
                 raise Exception("Download cancelled by user.")
 
 def main(page: ft.Page):
-    page.title = "StreamCatch - Ultimate Downloader"
+    page.title = "StreamCatch"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
     page.window_min_width = 1100
     page.window_min_height = 800
     page.bgcolor = ft.Colors.BLACK
 
-    # Apply a custom theme
+    # Apply a custom modern theme
     page.theme = ft.Theme(
         color_scheme_seed=ft.Colors.INDIGO,
-        visual_density=ft.ThemeVisualDensity.COMFORTABLE,
+        font_family="Roboto",
+        use_material3=True
     )
 
     # --- UI Components ---
@@ -110,22 +108,22 @@ def main(page: ft.Page):
         bgcolor=ft.Colors.GREY_900,
         destinations=[
             ft.NavigationRailDestination(
-                icon=ft.Icons.DOWNLOAD, selected_icon=ft.Icons.DOWNLOAD_DONE, label="Download"
+                icon=ft.Icons.DOWNLOAD_ROUNDED, selected_icon=ft.Icons.DOWNLOAD_DONE_ROUNDED, label="Download"
             ),
             ft.NavigationRailDestination(
-                icon=ft.Icons.QUEUE_MUSIC, selected_icon=ft.Icons.QUEUE_MUSIC_ROUNDED, label="Queue"
+                icon=ft.Icons.QUEUE_MUSIC_ROUNDED, selected_icon=ft.Icons.QUEUE_MUSIC, label="Queue"
             ),
             ft.NavigationRailDestination(
-                icon=ft.Icons.HISTORY, selected_icon=ft.Icons.HISTORY_TOGGLE_OFF, label="History"
+                icon=ft.Icons.HISTORY_TOGGLE_OFF_ROUNDED, selected_icon=ft.Icons.HISTORY, label="History"
             ),
             ft.NavigationRailDestination(
-                icon=ft.Icons.DASHBOARD, selected_icon=ft.Icons.DASHBOARD_CUSTOMIZE, label="Dashboard"
+                icon=ft.Icons.DASHBOARD_CUSTOMIZE_ROUNDED, selected_icon=ft.Icons.DASHBOARD, label="Dashboard"
             ),
             ft.NavigationRailDestination(
-                icon=ft.Icons.RSS_FEED, label="RSS"
+                icon=ft.Icons.RSS_FEED_ROUNDED, label="RSS"
             ),
             ft.NavigationRailDestination(
-                icon=ft.Icons.SETTINGS, label="Settings"
+                icon=ft.Icons.SETTINGS_ROUNDED, label="Settings"
             ),
         ],
         on_change=lambda e: navigate_to(e.control.selected_index),
@@ -137,44 +135,49 @@ def main(page: ft.Page):
 
     # Platform Icons
     platform_icons = ft.Row([
-        ft.Icon(ft.Icons.ONDEMAND_VIDEO, color=ft.Colors.RED_400, tooltip="YouTube"),
+        ft.Icon(ft.Icons.SMART_DISPLAY, color=ft.Colors.RED_400, tooltip="YouTube"),
         ft.Icon(ft.Icons.TELEGRAM, color=ft.Colors.BLUE_400, tooltip="Telegram"),
         ft.Icon(ft.Icons.ALTERNATE_EMAIL, color=ft.Colors.LIGHT_BLUE_400, tooltip="Twitter/X"),
         ft.Icon(ft.Icons.CAMERA_ALT, color=ft.Colors.PINK_400, tooltip="Instagram"),
-        ft.Icon(ft.Icons.LINK, color=ft.Colors.GREY_400, tooltip="Generic Files"),
-    ], alignment=ft.MainAxisAlignment.CENTER, spacing=20)
+        ft.Icon(ft.Icons.INSERT_DRIVE_FILE, color=ft.Colors.GREY_400, tooltip="Generic Files"),
+    ], alignment=ft.MainAxisAlignment.CENTER, spacing=30)
 
     url_input = ft.TextField(
-        label="URL",
-        hint_text="Paste YouTube, Telegram, Twitter, Instagram, or file links...",
+        label="Paste Link",
+        hint_text="YouTube, Telegram, Twitter, Instagram, or direct links...",
         expand=True,
         border_color=ft.Colors.BLUE_400,
         prefix_icon=ft.Icons.LINK,
         text_size=16,
         bgcolor=ft.Colors.GREY_900,
-        border_radius=10
+        border_radius=12
     )
 
-    clipboard_switch = ft.Switch(label="Clipboard Monitor", value=False, on_change=lambda e: toggle_clipboard_monitor(e.control.value))
+    clipboard_switch = ft.Switch(
+        label="Clipboard Monitor",
+        value=False,
+        on_change=lambda e: toggle_clipboard_monitor(e.control.value),
+        active_color=ft.Colors.BLUE_400
+    )
 
-    thumbnail_img = ft.Image(src="", width=400, height=225, fit=ft.ImageFit.COVER, border_radius=10, visible=False)
-    title_text = ft.Text("", size=20, weight=ft.FontWeight.BOLD)
-    duration_text = ft.Text("", color=ft.Colors.GREY_400)
+    thumbnail_img = ft.Image(src="", width=400, height=225, fit=ft.ImageFit.COVER, border_radius=12, visible=False)
+    title_text = ft.Text("", size=22, weight=ft.FontWeight.BOLD, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS)
+    duration_text = ft.Text("", color=ft.Colors.GREY_400, size=14)
 
-    video_format_dd = ft.Dropdown(label="Video Quality", options=[], expand=True, border_color=ft.Colors.GREY_700, border_radius=8)
-    audio_format_dd = ft.Dropdown(label="Audio Format", options=[], expand=True, border_color=ft.Colors.GREY_700, border_radius=8)
+    video_format_dd = ft.Dropdown(label="Video Quality", options=[], expand=True, border_color=ft.Colors.GREY_700, border_radius=12, text_size=14)
+    audio_format_dd = ft.Dropdown(label="Audio Format", options=[], expand=True, border_color=ft.Colors.GREY_700, border_radius=12, text_size=14)
 
     # Advanced Options for Download
     playlist_cb = ft.Checkbox(label="Playlist", fill_color=ft.Colors.BLUE_400)
     sponsorblock_cb = ft.Checkbox(label="SponsorBlock", fill_color=ft.Colors.BLUE_400)
-    force_generic_cb = ft.Checkbox(label="Force Generic/Direct", fill_color=ft.Colors.ORANGE_400, tooltip="Bypass extraction and download directly")
+    force_generic_cb = ft.Checkbox(label="Force Generic", fill_color=ft.Colors.ORANGE_400, tooltip="Bypass extraction")
 
-    subtitle_dd = ft.Dropdown(label="Subtitles", options=[ft.dropdown.Option("None"), ft.dropdown.Option("en"), ft.dropdown.Option("es")], value="None", width=150, border_color=ft.Colors.GREY_700, border_radius=8)
+    subtitle_dd = ft.Dropdown(label="Subtitles", options=[ft.dropdown.Option("None"), ft.dropdown.Option("en"), ft.dropdown.Option("es")], value="None", width=160, border_color=ft.Colors.GREY_700, border_radius=12)
 
     # New Feature Inputs
-    time_start = ft.TextField(label="Start (HH:MM:SS)", width=150, border_color=ft.Colors.GREY_700, border_radius=8)
-    time_end = ft.TextField(label="End (HH:MM:SS)", width=150, border_color=ft.Colors.GREY_700, border_radius=8)
-    regex_filter = ft.TextField(label="Playlist Regex Filter", expand=True, border_color=ft.Colors.GREY_700, border_radius=8)
+    time_start = ft.TextField(label="Start (HH:MM:SS)", width=160, border_color=ft.Colors.GREY_700, border_radius=12, text_size=14)
+    time_end = ft.TextField(label="End (HH:MM:SS)", width=160, border_color=ft.Colors.GREY_700, border_radius=12, text_size=14)
+    regex_filter = ft.TextField(label="Playlist Regex Filter", expand=True, border_color=ft.Colors.GREY_700, border_radius=12, text_size=14)
 
     # Batch Import
     def on_file_picker_result(e: ft.FilePickerResultEvent):
@@ -201,7 +204,7 @@ def main(page: ft.Page):
     file_picker = ft.FilePicker(on_result=on_file_picker_result)
     page.overlay.append(file_picker)
 
-    batch_btn = ft.OutlinedButton("Batch Import", icon=ft.Icons.UPLOAD_FILE, on_click=lambda _: file_picker.pick_files(allow_multiple=False, allowed_extensions=['txt']))
+    batch_btn = ft.TextButton("Batch Import", icon=ft.Icons.UPLOAD_FILE, on_click=lambda _: file_picker.pick_files(allow_multiple=False, allowed_extensions=['txt']))
 
     # Scheduler
     schedule_time_picker = ft.TimePicker(confirm_text="Schedule", error_invalid_text="Time out of range")
@@ -213,70 +216,85 @@ def main(page: ft.Page):
     schedule_time_picker.on_change = on_time_picked
     page.overlay.append(schedule_time_picker)
 
-    schedule_btn = ft.OutlinedButton("Schedule", icon=ft.Icons.SCHEDULE, on_click=lambda _: schedule_time_picker.pick_time())
+    schedule_btn = ft.TextButton("Schedule", icon=ft.Icons.SCHEDULE, on_click=lambda _: schedule_time_picker.pick_time())
 
     download_btn = ft.ElevatedButton(
         "Add to Queue",
-        icon=ft.Icons.ADD,
+        icon=ft.Icons.ADD_CIRCLE_OUTLINE,
         bgcolor=ft.Colors.BLUE_600,
         color=ft.Colors.WHITE,
         style=ft.ButtonStyle(
-            shape=ft.RoundedRectangleBorder(radius=12),
-            padding=20,
-            elevation=5,
+            shape=ft.RoundedRectangleBorder(radius=16),
+            padding=24,
+            elevation=4,
         ),
         on_click=lambda e: add_to_queue(e)
     )
 
-    fetch_btn = ft.IconButton(ft.Icons.SEARCH, on_click=lambda e: fetch_info_click(e), tooltip="Fetch Info", icon_color=ft.Colors.BLUE_400, icon_size=30)
+    fetch_btn = ft.IconButton(
+        ft.Icons.SEARCH_ROUNDED,
+        on_click=lambda e: fetch_info_click(e),
+        tooltip="Fetch Info",
+        icon_color=ft.Colors.BLUE_400,
+        icon_size=32,
+        style=ft.ButtonStyle(bgcolor=ft.Colors.GREY_900, shape=ft.RoundedRectangleBorder(radius=12))
+    )
 
     download_view = ft.Container(
-        padding=30,
+        padding=40,
         content=ft.Column([
             ft.Row([
-                ft.Text("StreamCatch", size=32, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-                ft.Container(content=clipboard_switch, bgcolor=ft.Colors.GREY_900, padding=5, border_radius=5)
+                ft.Text("StreamCatch", size=36, weight=ft.FontWeight.W_900, color=ft.Colors.WHITE, font_family="Roboto"),
+                ft.Container(content=clipboard_switch, bgcolor=ft.Colors.GREY_900, padding=10, border_radius=12)
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+
+            ft.Container(height=20),
             platform_icons,
-            ft.Divider(color=ft.Colors.TRANSPARENT, height=20),
-            ft.Row([url_input, fetch_btn], alignment=ft.MainAxisAlignment.CENTER),
-            ft.Divider(height=30, color=ft.Colors.GREY_900),
+            ft.Container(height=20),
+
+            ft.Row([url_input, ft.Container(width=10), fetch_btn], alignment=ft.MainAxisAlignment.CENTER),
+
+            ft.Divider(height=40, color=ft.Colors.GREY_800),
+
             ft.Row([
                 # Left: Preview
                 ft.Column([
                     ft.Container(
                         content=ft.Stack([
-                             ft.Container(bgcolor=ft.Colors.BLACK54, width=400, height=225, border_radius=10), # Placeholder
+                             ft.Container(bgcolor=ft.Colors.BLACK87, width=400, height=225, border_radius=12), # Placeholder
                              thumbnail_img
                         ]),
                         border_radius=12,
                         border=ft.border.all(1, ft.Colors.GREY_800),
-                        shadow=ft.BoxShadow(blur_radius=10, color=ft.Colors.BLACK)
+                        shadow=ft.BoxShadow(blur_radius=15, color=ft.Colors.BLACK)
                     ),
                     title_text,
                     duration_text
-                ], alignment=ft.MainAxisAlignment.START),
+                ], alignment=ft.MainAxisAlignment.START, width=420),
 
                 # Right: Options
                 ft.Container(width=40), # Spacer
                 ft.Column([
                     ft.Container(
-                        padding=20,
+                        padding=25,
                         bgcolor=ft.Colors.GREY_900,
-                        border_radius=12,
+                        border_radius=16,
+                        border=ft.border.all(1, ft.Colors.GREY_800),
                         content=ft.Column([
-                            ft.Text("Format Options", size=18, weight=ft.FontWeight.W_600),
+                            ft.Text("Quality & Format", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200),
                             ft.Row([video_format_dd, audio_format_dd]),
-                            ft.Divider(height=20, color=ft.Colors.GREY_800),
-                            ft.Text("Features", size=18, weight=ft.FontWeight.W_600),
+                            ft.Container(height=10),
+
+                            ft.Text("Options", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200),
                             ft.Row([playlist_cb, sponsorblock_cb, force_generic_cb]),
-                            ft.Row([subtitle_dd]),
-                            ft.Row([time_start, time_end]),
+                            ft.Row([subtitle_dd, time_start, time_end]),
                             ft.Row([regex_filter]),
+
+                            ft.Divider(color=ft.Colors.GREY_800),
                             ft.Row([batch_btn, schedule_btn], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                         ])
                     ),
-                    ft.Divider(height=30, color=ft.Colors.TRANSPARENT),
+                    ft.Container(height=20),
                     ft.Row([download_btn], alignment=ft.MainAxisAlignment.END)
                 ], expand=True)
             ], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.START)
@@ -284,7 +302,7 @@ def main(page: ft.Page):
     )
 
     # --- Queue Tab Content ---
-    queue_list = ft.Column(spacing=15, scroll=ft.ScrollMode.AUTO, expand=True)
+    queue_list = ft.Column(spacing=10, scroll=ft.ScrollMode.AUTO, expand=True)
 
     def clear_queue(e):
         # Remove all non-downloading items
@@ -294,13 +312,13 @@ def main(page: ft.Page):
         rebuild_queue_ui()
 
     queue_view = ft.Container(
-        padding=30,
+        padding=40,
         content=ft.Column([
             ft.Row([
                 ft.Text("Download Queue", size=28, weight=ft.FontWeight.BOLD),
                 ft.OutlinedButton("Clear Queue", icon=ft.Icons.CLEAR_ALL, on_click=clear_queue)
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-            ft.Divider(color=ft.Colors.GREY_900),
+            ft.Divider(color=ft.Colors.GREY_800),
             queue_list
         ], expand=True)
     )
@@ -316,14 +334,15 @@ def main(page: ft.Page):
                 ft.Container(
                     padding=15,
                     bgcolor=ft.Colors.GREY_900,
-                    border_radius=8,
+                    border_radius=12,
+                    border=ft.border.all(1, ft.Colors.GREY_800),
                     content=ft.Row([
-                        ft.Icon(ft.Icons.CHECK_CIRCLE, color=ft.Colors.GREEN_400),
+                        ft.Icon(ft.Icons.CHECK_CIRCLE_ROUNDED, color=ft.Colors.GREEN_400),
                         ft.Column([
-                            ft.Text(item.get('title', item['url']), weight=ft.FontWeight.BOLD, overflow=ft.TextOverflow.ELLIPSIS, width=400),
-                            ft.Text(f"{item.get('timestamp')} | {item.get('file_size', 'N/A')}", size=12, color=ft.Colors.GREY_500)
+                            ft.Text(item.get('title', item['url']), weight=ft.FontWeight.BOLD, overflow=ft.TextOverflow.ELLIPSIS, width=450, size=16),
+                            ft.Text(f"{item.get('timestamp')} • {item.get('file_size', 'N/A')}", size=12, color=ft.Colors.GREY_500)
                         ]),
-                        ft.Spacer(),
+                        ft.Container(expand=True),
                         ft.IconButton(ft.Icons.FOLDER_OPEN, tooltip="Open Folder", on_click=lambda e, p=item.get('output_path'): open_folder(p)),
                         ft.IconButton(ft.Icons.COPY, tooltip="Copy URL", on_click=lambda e, u=item['url']: page.set_clipboard(u))
                     ])
@@ -346,13 +365,13 @@ def main(page: ft.Page):
             page.show_snack_bar(ft.SnackBar(content=ft.Text("Could not open folder")))
 
     history_view = ft.Container(
-        padding=30,
+        padding=40,
         content=ft.Column([
             ft.Row([
                 ft.Text("History", size=28, weight=ft.FontWeight.BOLD),
                 ft.OutlinedButton("Clear History", icon=ft.Icons.DELETE_SWEEP, on_click=lambda e: clear_history_action())
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-            ft.Divider(color=ft.Colors.GREY_900),
+            ft.Divider(color=ft.Colors.GREY_800),
             history_list
         ], expand=True)
     )
@@ -372,32 +391,55 @@ def main(page: ft.Page):
         history = HistoryManager.get_history(limit=1000)
         total_downloads = len(history)
 
+        # Calculate total size (approx)
+        total_size_mb = 0
+        for h in history:
+            size_str = h.get('file_size', '0')
+            # Very rough parsing, just for show in this demo
+            if 'MB' in size_str:
+                try: total_size_mb += float(size_str.split()[0])
+                except: pass
+            elif 'GB' in size_str:
+                try: total_size_mb += float(size_str.split()[0]) * 1024
+                except: pass
+
         card_total = ft.Container(
-            padding=20, bgcolor=ft.Colors.BLUE_900, border_radius=12, width=240, height=140,
-            shadow=ft.BoxShadow(blur_radius=10, color=ft.Colors.BLACK26),
+            padding=25, bgcolor=ft.Colors.BLUE_900, border_radius=20, width=260, height=160,
+            shadow=ft.BoxShadow(blur_radius=15, color=ft.Colors.BLACK45),
             content=ft.Column([
-                ft.Icon(ft.Icons.DOWNLOAD_DONE, size=40, color=ft.Colors.WHITE),
-                ft.Text(str(total_downloads), size=36, weight=ft.FontWeight.BOLD),
-                ft.Text("Total Downloads", color=ft.Colors.BLUE_100)
+                ft.Icon(ft.Icons.DOWNLOAD_DONE_ROUNDED, size=48, color=ft.Colors.WHITE),
+                ft.Text(str(total_downloads), size=42, weight=ft.FontWeight.BOLD),
+                ft.Text("Total Downloads", color=ft.Colors.BLUE_100, size=14)
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
         )
 
-        dashboard_stats_row.controls.append(card_total)
+        card_size = ft.Container(
+            padding=25, bgcolor=ft.Colors.INDIGO_900, border_radius=20, width=260, height=160,
+            shadow=ft.BoxShadow(blur_radius=15, color=ft.Colors.BLACK45),
+            content=ft.Column([
+                ft.Icon(ft.Icons.SD_STORAGE_ROUNDED, size=48, color=ft.Colors.WHITE),
+                ft.Text(f"{int(total_size_mb/1024)} GB", size=42, weight=ft.FontWeight.BOLD),
+                ft.Text("Total Size", color=ft.Colors.INDIGO_100, size=14)
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
+        )
+
+        dashboard_stats_row.controls.extend([card_total, card_size])
         page.update()
 
     dashboard_view = ft.Container(
-        padding=30,
+        padding=40,
         content=ft.Column([
             ft.Text("Dashboard", size=28, weight=ft.FontWeight.BOLD),
-            ft.Divider(color=ft.Colors.GREY_900),
+            ft.Divider(color=ft.Colors.GREY_800),
             dashboard_stats_row,
-            ft.Divider(color=ft.Colors.TRANSPARENT, height=20),
+            ft.Divider(color=ft.Colors.TRANSPARENT, height=30),
             ft.Text("Recent Activity", size=20, weight=ft.FontWeight.BOLD),
+            # Could reuse history list here or a simplified version
         ])
     )
 
     # --- RSS Content ---
-    rss_input = ft.TextField(label="Feed URL", expand=True, border_color=ft.Colors.GREY_700, border_radius=8)
+    rss_input = ft.TextField(label="Feed URL", expand=True, border_color=ft.Colors.GREY_700, border_radius=12)
     rss_list_view = ft.ListView(expand=True)
 
     def load_rss_feeds():
@@ -406,8 +448,8 @@ def main(page: ft.Page):
             rss_list_view.controls.append(
                 ft.ListTile(
                     leading=ft.Icon(ft.Icons.RSS_FEED, color=ft.Colors.ORANGE_400),
-                    title=ft.Text(feed),
-                    trailing=ft.IconButton(ft.Icons.DELETE, on_click=lambda e, f=feed: remove_rss(f))
+                    title=ft.Text(feed, weight=ft.FontWeight.W_500),
+                    trailing=ft.IconButton(ft.Icons.DELETE_OUTLINE, on_click=lambda e, f=feed: remove_rss(f))
                 )
             )
         page.update()
@@ -432,23 +474,23 @@ def main(page: ft.Page):
             load_rss_feeds()
 
     rss_view = ft.Container(
-        padding=30,
+        padding=40,
         content=ft.Column([
             ft.Text("RSS Manager", size=28, weight=ft.FontWeight.BOLD),
-            ft.Divider(color=ft.Colors.GREY_900),
-            ft.Row([rss_input, ft.IconButton(ft.Icons.ADD_CIRCLE, on_click=add_rss, icon_size=40, icon_color=ft.Colors.BLUE_400)]),
+            ft.Divider(color=ft.Colors.GREY_800),
+            ft.Row([rss_input, ft.IconButton(ft.Icons.ADD_CIRCLE, on_click=add_rss, icon_size=48, icon_color=ft.Colors.BLUE_400)]),
             rss_list_view
         ], expand=True)
     )
 
     # --- Settings Content ---
-    proxy_input = ft.TextField(label="Proxy", value=state.config.get('proxy', ''), border_color=ft.Colors.GREY_700, border_radius=8)
-    rate_limit_input = ft.TextField(label="Rate Limit (e.g. 5M)", value=state.config.get('rate_limit', ''), border_color=ft.Colors.GREY_700, border_radius=8)
-    output_template_input = ft.TextField(label="Output Template", value=state.config.get('output_template', '%(title)s.%(ext)s'), border_color=ft.Colors.GREY_700, border_radius=8)
-    use_aria2c_cb = ft.Checkbox(label="Use Aria2c Accelerator", value=state.config.get('use_aria2c', False))
+    proxy_input = ft.TextField(label="Proxy URL", value=state.config.get('proxy', ''), border_color=ft.Colors.GREY_700, border_radius=12)
+    rate_limit_input = ft.TextField(label="Rate Limit (e.g. 5M)", value=state.config.get('rate_limit', ''), border_color=ft.Colors.GREY_700, border_radius=12)
+    output_template_input = ft.TextField(label="Output Filename Template", value=state.config.get('output_template', '%(title)s.%(ext)s'), border_color=ft.Colors.GREY_700, border_radius=12)
+    use_aria2c_cb = ft.Checkbox(label="Enable Aria2c Accelerator", value=state.config.get('use_aria2c', False))
     gpu_accel_dd = ft.Dropdown(label="GPU Acceleration", options=[
         ft.dropdown.Option("None"), ft.dropdown.Option("auto"), ft.dropdown.Option("cuda"), ft.dropdown.Option("vulkan")
-    ], value=state.config.get('gpu_accel', 'None'), border_color=ft.Colors.GREY_700, border_radius=8)
+    ], value=state.config.get('gpu_accel', 'None'), border_color=ft.Colors.GREY_700, border_radius=12)
 
     def save_settings(e):
         state.config['proxy'] = proxy_input.value
@@ -460,19 +502,26 @@ def main(page: ft.Page):
         page.show_snack_bar(ft.SnackBar(content=ft.Text("Settings saved successfully!")))
 
     settings_view = ft.Container(
-        padding=30,
+        padding=40,
         content=ft.Column([
             ft.Text("Settings", size=28, weight=ft.FontWeight.BOLD),
-            ft.Divider(color=ft.Colors.GREY_900),
+            ft.Divider(color=ft.Colors.GREY_800),
+
+            ft.Text("Network", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200),
             proxy_input,
             rate_limit_input,
+            ft.Container(height=10),
+
+            ft.Text("Filesystem", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200),
             output_template_input,
-            ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
-            ft.Text("Performance", size=18, weight=ft.FontWeight.W_600),
+            ft.Container(height=10),
+
+            ft.Text("Performance", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_200),
             use_aria2c_cb,
             gpu_accel_dd,
-            ft.Divider(height=20, color=ft.Colors.GREY_800),
-            ft.ElevatedButton("Save Configuration", on_click=save_settings, bgcolor=ft.Colors.BLUE_600, color=ft.Colors.WHITE, style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=8)))
+
+            ft.Divider(height=30, color=ft.Colors.GREY_800),
+            ft.ElevatedButton("Save Configuration", on_click=save_settings, bgcolor=ft.Colors.BLUE_600, color=ft.Colors.WHITE, style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=12)))
         ], scroll=ft.ScrollMode.AUTO)
     )
 
@@ -513,11 +562,14 @@ def main(page: ft.Page):
     cinema_overlay = ft.Container(
         visible=False, expand=True, bgcolor=ft.Colors.BLACK, alignment=ft.alignment.center,
         content=ft.Column([
-             ft.Icon(ft.Icons.MOVIE, size=50, color=ft.Colors.BLUE_400),
-             ft.Text("Cinema Mode", size=30, weight=ft.FontWeight.BOLD),
-             ft.ProgressBar(width=500, color=ft.Colors.BLUE_400, bgcolor=ft.Colors.GREY_800),
-             ft.Text("Downloading...", color=ft.Colors.GREY_400),
-             ft.OutlinedButton("Exit", on_click=lambda e: toggle_cinema_mode(False))
+             ft.Icon(ft.Icons.MOVIE_FILTER_ROUNDED, size=64, color=ft.Colors.BLUE_400),
+             ft.Text("Cinema Mode", size=32, weight=ft.FontWeight.BOLD),
+             ft.Container(height=20),
+             ft.ProgressBar(width=600, height=10, color=ft.Colors.BLUE_400, bgcolor=ft.Colors.GREY_800, border_radius=5),
+             ft.Container(height=10),
+             ft.Text("Downloading...", color=ft.Colors.GREY_400, size=16),
+             ft.Container(height=40),
+             ft.OutlinedButton("Exit Mode", on_click=lambda e: toggle_cinema_mode(False), style=ft.ButtonStyle(padding=20))
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
     )
 
@@ -562,9 +614,6 @@ def main(page: ft.Page):
 
             # Dropdowns
             video_streams = info.get('video_streams', [])
-            if not video_streams:
-                # Maybe only audio or generic file
-                pass
 
             video_opts = []
             for s in video_streams:
@@ -731,8 +780,8 @@ def main(page: ft.Page):
                             item['control'].progress_bar.value = pct
 
                         if state.cinema_mode:
-                            cinema_overlay.content.controls[2].value = pct
-                            cinema_overlay.content.controls[3].value = f"Downloading {int(pct*100)}%"
+                            cinema_overlay.content.controls[3].value = pct
+                            cinema_overlay.content.controls[5].value = f"Downloading {int(pct*100)}%"
                             cinema_overlay.update()
 
                     item['speed'] = format_file_size(d.get('speed', 0)) + "/s"
@@ -749,13 +798,6 @@ def main(page: ft.Page):
 
                     # Save filename for history
                     item['final_filename'] = d.get('filename')
-
-            # Check for force generic
-            # If force_generic is True, we might want to bypass normal flow?
-            # Currently downloader.py doesn't have a force_generic flag in download_video explicitly,
-            # but we can simulate it or add it.
-            # For now, let's just pass it if we add it to downloader.py, or trust downloader.py's logic.
-            # I'll update downloader.py next to respect 'force_generic' if possible, or just rely on URL type.
 
             download_video(
                 item['url'],
