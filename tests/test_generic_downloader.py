@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from generic_downloader import TelegramExtractor, GenericExtractor
+from downloader.extractors.telegram import TelegramExtractor
+from downloader.extractors.generic import GenericExtractor
 
 
 class TestTelegramExtractor(unittest.TestCase):

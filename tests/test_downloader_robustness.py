@@ -1,7 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import yt_dlp
-from downloader import get_video_info, download_video
+from downloader.info import get_video_info
+from downloader.core import download_video
 
 class TestDownloaderRobustness(unittest.TestCase):
 
@@ -20,10 +21,9 @@ class TestDownloaderRobustness(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual(info['title'], 'Test Video')
 
-    @patch("yt_dlp.YoutubeDL")
-    def test_download_video_with_ranges(self, mock_ydl_class):
-        mock_ydl = mock_ydl_class.return_value
-        mock_ydl.__enter__.return_value = mock_ydl
+    @patch("downloader.core.YTDLPWrapper.download")
+    def test_download_video_with_ranges(self, mock_ytdlp_download):
+        # We need to test if the options passed to YTDLPWrapper contain download_ranges
 
         # Call with start/end time
         download_video(
@@ -34,14 +34,15 @@ class TestDownloaderRobustness(unittest.TestCase):
             end_time="00:00:20",
         )
 
-        # Verify download_ranges was set in opts
-        call_args = mock_ydl_class.call_args[0][0]
-        self.assertIn('download_ranges', call_args)
-        self.assertTrue(callable(call_args['download_ranges']))
-        self.assertTrue(call_args['force_keyframes_at_cuts'])
+        # Verify options in the call args
+        args, _ = mock_ytdlp_download.call_args
+        options = args[4] # 5th argument is options
 
-    @patch("yt_dlp.YoutubeDL")
-    def test_download_video_invalid_ranges(self, mock_ydl_class):
+        self.assertIn('download_ranges', options)
+        self.assertTrue(callable(options['download_ranges']))
+        self.assertTrue(options['force_keyframes_at_cuts'])
+
+    def test_download_video_invalid_ranges(self):
         """Test that invalid time ranges raise a ValueError."""
         # Mock parse_duration inside downloader module context
         with patch('yt_dlp.utils.parse_duration') as mock_parse:

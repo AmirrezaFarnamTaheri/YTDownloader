@@ -2,6 +2,8 @@ import flet as ft
 from theme import Theme
 from .base_view import BaseView
 from ui_utils import format_file_size, open_folder
+from views.components.input_card import DownloadInputCard
+from views.components.preview_card import DownloadPreviewCard
 import logging
 import os
 
@@ -46,7 +48,7 @@ class DownloadView(BaseView):
             self.open_folder_btn
         ])
 
-        # --- Input Area ---
+        # --- Input Components ---
         self.url_input = ft.TextField(
             label="Video URL",
             hint_text="Paste YouTube, Telegram, Twitter link here...",
@@ -72,7 +74,6 @@ class DownloadView(BaseView):
             ),
         )
 
-        # Browser Cookie Selection
         self.cookies_dd = ft.Dropdown(
             label="Browser Cookies",
             options=[
@@ -95,7 +96,7 @@ class DownloadView(BaseView):
             dense=True,
         )
 
-        # --- Preview Area ---
+        # --- Preview Components ---
         self.thumbnail_img = ft.Image(
             src="",
             width=320,
@@ -118,7 +119,7 @@ class DownloadView(BaseView):
 
         self.duration_text = ft.Text("Paste a URL to begin", color=Theme.TEXT_SECONDARY)
 
-        # --- Options Area ---
+        # --- Options Components ---
         self.video_format_dd = ft.Dropdown(
             label="Video Quality",
             options=[],
@@ -181,7 +182,7 @@ class DownloadView(BaseView):
             dense=True,
         )
 
-        # Advanced Options Expansion
+        # Advanced Options
         self.advanced_options = ft.ExpansionTile(
             title=ft.Text("Advanced Options", color=Theme.TEXT_SECONDARY),
             icon_color=Theme.PRIMARY,
@@ -213,44 +214,14 @@ class DownloadView(BaseView):
         self.build_layout()
 
     def build_layout(self):
-        # Platform Icons Row
-        platform_icons = ft.Row(
-            [
-                ft.Icon(ft.Icons.ONDEMAND_VIDEO, color=ft.Colors.RED_400, tooltip="YouTube"),
-                ft.Icon(ft.Icons.TELEGRAM, color=ft.Colors.BLUE_400, tooltip="Telegram"),
-                ft.Icon(ft.Icons.ALTERNATE_EMAIL, color=ft.Colors.LIGHT_BLUE_400, tooltip="Twitter/X"),
-                ft.Icon(ft.Icons.CAMERA_ALT, color=ft.Colors.PINK_400, tooltip="Instagram"),
-                ft.Icon(ft.Icons.LINK, color=Theme.TEXT_MUTED, tooltip="Generic Files"),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            spacing=20,
-            opacity=0.7,
+        input_card = DownloadInputCard(
+            self.on_fetch_info,
+            self.url_input,
+            self.fetch_btn,
+            self.cookies_dd
         )
 
-        # Input Section Card
-        input_section = ft.Container(
-            padding=20,
-            bgcolor=Theme.BG_CARD,
-            border_radius=16,
-            border=ft.border.all(1, Theme.BORDER),
-            content=ft.Column([
-                platform_icons,
-                ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
-                ft.Row([self.url_input, self.fetch_btn], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Row([self.cookies_dd], alignment=ft.MainAxisAlignment.END),
-            ])
-        )
-
-        # Preview & Options Section
-        # We use a responsive row or just a column since standard layout is vertical scrolling
-        preview_card = ft.Container(
-            padding=0,
-            bgcolor=ft.Colors.BLACK,
-            border_radius=12,
-            content=self.thumbnail_img,
-            alignment=ft.alignment.center,
-            shadow=ft.BoxShadow(blur_radius=15, color=ft.Colors.BLACK54),
-        )
+        preview_card = DownloadPreviewCard(self.thumbnail_img)
 
         details_col = ft.Column(
             [
@@ -274,7 +245,7 @@ class DownloadView(BaseView):
             spacing=30,
         )
 
-        self.add_control(input_section)
+        self.add_control(input_card)
         self.add_control(ft.Divider(height=30, color=ft.Colors.TRANSPARENT))
         self.add_control(ft.Container(content=main_content, padding=10))
 

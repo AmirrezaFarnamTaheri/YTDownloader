@@ -1,6 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from downloader import get_video_info, download_video
+from downloader.info import get_video_info
+from downloader.core import download_video
+from downloader.extractors.telegram import TelegramExtractor
+from downloader.extractors.generic import GenericExtractor
+from downloader.engines.generic import download_generic
 import yt_dlp
 
 
@@ -29,7 +33,7 @@ class TestDownloaderRobustness(unittest.TestCase):
         mock_instance.extract_info.side_effect = yt_dlp.utils.DownloadError("Fail")
 
         # Mock generic extractor fallback
-        with patch("downloader.GenericExtractor.extract") as mock_generic:
+        with patch("downloader.info.GenericExtractor.extract") as mock_generic:
             mock_generic.return_value = {
                 "title": "Fallback Generic",
                 "video_streams": [],
@@ -45,8 +49,8 @@ class TestDownloaderRobustness(unittest.TestCase):
         mock_hook = MagicMock()
         item = {}
 
-        with patch("downloader.GenericExtractor.extract") as mock_generic, patch(
-            "downloader.download_generic"
+        with patch("downloader.core.GenericExtractor.extract") as mock_generic, patch(
+            "downloader.core.download_generic"
         ) as mock_download:
 
             mock_generic.return_value = {
@@ -66,9 +70,9 @@ class TestDownloaderRobustness(unittest.TestCase):
         item = {}
 
         with patch(
-            "downloader.TelegramExtractor.is_telegram_url", return_value=True
-        ), patch("downloader.TelegramExtractor.extract") as mock_extract, patch(
-            "downloader.download_generic"
+            "downloader.core.TelegramExtractor.is_telegram_url", return_value=True
+        ), patch("downloader.core.TelegramExtractor.extract") as mock_extract, patch(
+            "downloader.core.download_generic"
         ) as mock_download:
 
             mock_extract.return_value = {

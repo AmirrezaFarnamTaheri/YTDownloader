@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch, ANY
 import threading
 import time
 from datetime import datetime, timedelta
-from main import fetch_info_task
+from tasks_extended import fetch_info_task
 from tasks import process_queue, download_task
 from app_state import AppState
 from utils import CancelToken
@@ -21,7 +21,7 @@ class TestMainLogic(unittest.TestCase):
         self.mock_state.current_download_item = None
 
         # Patch the global state in tasks and main
-        self.patcher_main = patch("main.state", self.mock_state)
+        self.patcher_main = patch("tasks_extended.state", self.mock_state)
         self.patcher_tasks = patch("tasks.state", self.mock_state)
         self.patcher_main.start()
         self.patcher_tasks.start()
@@ -179,30 +179,26 @@ class TestMainLogic(unittest.TestCase):
 
     # --- Fetch Info Task Tests ---
 
-    @patch("main.get_video_info")
-    @patch("main.download_view")
-    @patch("main.page")
-    def test_fetch_info_task_success(
-        self, mock_page, mock_download_view, mock_get_info
-    ):
+    @patch("tasks_extended.get_video_info")
+    def test_fetch_info_task_success(self, mock_get_info):
         mock_get_info.return_value = {"title": "Test Video"}
+        mock_view = MagicMock()
+        mock_page = MagicMock()
 
-        fetch_info_task("http://video")
+        fetch_info_task("http://video", mock_view, mock_page)
 
         self.assertEqual(self.mock_state.video_info["title"], "Test Video")
-        mock_download_view.update_info.assert_called()
+        mock_view.update_info.assert_called()
         mock_page.show_snack_bar.assert_called()
 
-    @patch("main.get_video_info")
-    @patch("main.download_view")
-    @patch("main.page")
-    def test_fetch_info_task_failure(
-        self, mock_page, mock_download_view, mock_get_info
-    ):
+    @patch("tasks_extended.get_video_info")
+    def test_fetch_info_task_failure(self, mock_get_info):
         mock_get_info.return_value = None
+        mock_view = MagicMock()
+        mock_page = MagicMock()
 
-        fetch_info_task("http://video")
+        fetch_info_task("http://video", mock_view, mock_page)
 
         # Should raise exception and log error
         mock_page.show_snack_bar.assert_called()  # With Error
-        mock_download_view.fetch_btn.disabled = False  # Reset button
+        # mock_download_view.fetch_btn.disabled = False  # Reset button (checked via mock call if needed)
