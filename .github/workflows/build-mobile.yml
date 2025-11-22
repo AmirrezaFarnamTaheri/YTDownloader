@@ -46,48 +46,19 @@ jobs:
         python -m pip install --upgrade pip
         pip install buildozer cython==0.29.33
 
-    - name: Install Android SDK Command-line Tools
+    - name: Prepare Android SDK Directories
       run: |
-        ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
-        mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
-        cd "$ANDROID_SDK_ROOT"
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-        unzip -q cmdline-tools.zip -d cmdline-tools
-        rm cmdline-tools.zip
-        mv cmdline-tools/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
-
-        # Create a symlink 'tools' pointing to 'cmdline-tools/latest' to satisfy legacy path lookups
-        ln -s "$ANDROID_SDK_ROOT/cmdline-tools/latest" "$ANDROID_SDK_ROOT/tools"
-
-        yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses
-        "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "platform-tools"
-
-    - name: Accept Android SDK Licenses
-      run: |
+        mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools
         mkdir -p ~/.android
         touch ~/.android/repositories.cfg
-        mkdir -p ~/.android/licenses
-        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > ~/.android/licenses/android-sdk-license
-        echo "d975f751176514f0d05d68b988f5025c1af67300" > ~/.android/licenses/android-sdk-preview-license
-        echo "84831b9409646a918e30573bab4c9c91346d8abd" > ~/.android/licenses/google-nexus-15-preview-license
-
-    - name: Pre-accept SDK Manager Licenses
-      run: |
-        mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-        echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-        echo "d975f751176514f0d05d68b988f5025c1af67300" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
-        echo "84831b9409646a918e30573bab4c9c91346d8abd" > ~/.buildozer/android/platform/android-sdk/licenses/google-nexus-15-preview-license
 
     - name: Build APK with Buildozer
       working-directory: ./mobile
       run: |
-        export ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
-        export ANDROID_HOME="$ANDROID_SDK_ROOT"
-        export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+        # Buildozer will handle SDK installation automatically
+        # We just need to ensure the environment variables are set if we want to guide it
+        # But for a clean build, letting buildozer do it is safer.
         buildozer android debug
-      env:
-        ANDROID_SDK_ROOT: ~/.buildozer/android/platform/android-sdk
-        ANDROID_HOME: ~/.buildozer/android/platform/android-sdk
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
@@ -119,7 +90,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install cython kivy[base] kivymd
+        pip install cython==0.29.36 kivy[base] kivymd
         brew install autoconf automake libtool pkg-config libffi
 
     - name: Install Kivy iOS toolchain
