@@ -54,11 +54,15 @@ See [MOBILE_DEPLOYMENT.md](MOBILE_DEPLOYMENT.md) for detailed build instructions
 The project is structured for modularity and robustness:
 
 *   **`main.py`**: Entry point and Flet UI initialization.
-*   **`downloader.py`**: Core logic wrapping `yt-dlp` and dispatching to specific extractors.
+*   **`downloader/`**: Core download logic package.
+    *   `core.py`: Main orchestration logic.
+    *   `info.py`: Metadata fetching.
+    *   `engines/`: Specific download engines (yt-dlp, generic).
+    *   `extractors/`: Specific extractors (Telegram, Generic).
 *   **`queue_manager.py`**: Thread-safe queue management with atomic operations.
 *   **`tasks.py`**: Background worker logic handling the download lifecycle.
 *   **`views/`**: Modular UI components (Download, Queue, History, etc.).
-*   **`generic_downloader.py`**: Custom robust downloader for non-video files and Telegram.
+*   **`components/`**: Reusable UI widgets.
 
 ## 🧪 Testing
 

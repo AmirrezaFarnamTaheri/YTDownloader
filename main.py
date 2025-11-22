@@ -6,7 +6,8 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import os
 
-from downloader import get_video_info
+# Updated imports
+from downloader.info import get_video_info
 from theme import Theme
 from app_layout import AppLayout
 
@@ -21,6 +22,7 @@ from views.settings_view import SettingsView
 # Refactored modules
 from app_state import state
 from tasks import process_queue
+from tasks_extended import fetch_info_task
 from clipboard_monitor import start_clipboard_monitor
 
 # Configure logging
@@ -34,39 +36,6 @@ logger = logging.getLogger(__name__)
 download_view = None
 queue_view = None
 page = None
-
-
-def fetch_info_task(url):
-    """Fetch video info in background with cookie support."""
-    try:
-        # Get selected browser cookies if available
-        cookies_from_browser = None
-        if download_view and hasattr(download_view, 'cookies_dd'):
-            cookies_value = download_view.cookies_dd.value
-
-            if cookies_value and cookies_value != "None":
-                cookies_from_browser = cookies_value
-
-        info = get_video_info(url, cookies_from_browser=cookies_from_browser)
-        if not info:
-            raise Exception("Failed to fetch info")
-        state.video_info = info
-        if download_view:
-            download_view.update_info(info)
-        if page:
-            page.show_snack_bar(
-                ft.SnackBar(content=ft.Text("Metadata fetched successfully"))
-            )
-    except Exception as e:
-        logger.error(f"Fetch error: {e}")
-        if page:
-            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error: {e}")))
-    finally:
-        if download_view:
-            download_view.fetch_btn.disabled = False
-        if page:
-            page.update()
-
 
 def main(pg: ft.Page):
     global page, download_view, queue_view
@@ -104,7 +73,7 @@ def main(pg: ft.Page):
         page.update()
 
         threading.Thread(
-            target=fetch_info_task, args=(url,), daemon=True
+            target=fetch_info_task, args=(url, download_view, page), daemon=True
         ).start()
 
     def on_add_to_queue(data):
@@ -122,13 +91,14 @@ def main(pg: ft.Page):
             status = f"Scheduled ({sched_dt.strftime('%H:%M')})"
             page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Download scheduled for {sched_dt.strftime('%Y-%m-%d %H:%M')}")))
 
+        # Safely handle potential missing state.video_info or mismatch
+        title = data["url"]
+        if state.video_info and data["url"] == download_view.url_input.value:
+            title = state.video_info.get("title", data["url"])
+
         item = {
             "url": data["url"],
-            "title": (
-                state.video_info.get("title", "Unknown")
-                if data["url"] == download_view.url_input.value and state.video_info
-                else data["url"]
-            ),
+            "title": title,
             "status": status,
             "scheduled_time": sched_dt,
             "video_format": data["video_format"],
