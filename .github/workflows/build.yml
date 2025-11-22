@@ -41,7 +41,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: StreamCatch-Windows
-        path: dist/StreamCatch.exe
+        path: dist/StreamCatch*/StreamCatch.exe
 
     - name: Upload Artifact (Linux)
       if: matrix.os == 'ubuntu-latest'

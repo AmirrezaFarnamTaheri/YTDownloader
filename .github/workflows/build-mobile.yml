@@ -46,6 +46,18 @@ jobs:
         python -m pip install --upgrade pip
         pip install buildozer cython==0.29.33
 
+    - name: Install Android SDK Command-line Tools
+      run: |
+        ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+        mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+        cd "$ANDROID_SDK_ROOT"
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+        unzip -q cmdline-tools.zip -d cmdline-tools
+        rm cmdline-tools.zip
+        mv cmdline-tools/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+        yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses
+        "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "platform-tools"
+
     - name: Accept Android SDK Licenses
       run: |
         mkdir -p ~/.android
@@ -65,6 +77,8 @@ jobs:
     - name: Build APK with Buildozer
       working-directory: ./mobile
       run: |
+        export ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+        export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
         buildozer android debug
       env:
         ANDROID_SDK_ROOT: ~/.buildozer/android/platform/android-sdk
@@ -83,6 +97,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Cache pip packages (iOS)
+      uses: actions/cache@v3
+      with:
+        path: ~/Library/Caches/pip
+        key: ios-pip-${{ runner.os }}-${{ hashFiles('mobile/exportOptions.plist') }}
+        restore-keys: |
+          ios-pip-${{ runner.os }}-
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -104,6 +126,8 @@ jobs:
       with:
         path: ~/.kivy-ios
         key: kivy-ios-toolchain-${{ runner.os }}
+        restore-keys: |
+          kivy-ios-toolchain-${{ runner.os }}
 
     - name: Build iOS dependencies
       run: |
