@@ -24,28 +24,27 @@ class TestFeatureVerification(unittest.TestCase):
 
     def setUp(self):
         self.state = AppState()
-        # Manually reset queue for each test
-        # Note: AppState now uses QueueManager, but tests seem to expect a list directly or we need to adapt.
-        # Assuming AppState has queue_manager which has _queue
-        self.state.queue_manager._queue = []
+        # Reset queue using the internal lock
+        if hasattr(self.state, 'queue_manager'):
+             with self.state.queue_manager._lock:
+                 self.state.queue_manager._queue = []
+
         self.page = MockPage()
 
     def test_keyboard_navigation_logic(self):
         """Verify that J/K keys change the selected index in the queue."""
-        # Add dummy items
-        self.state.download_queue.append(
-            {"url": "http://a.com", "status": "Queued", "control": MagicMock()}
-        )
-        self.state.download_queue.append(
-            {"url": "http://b.com", "status": "Queued", "control": MagicMock()}
-        )
-        self.state.download_queue.append(
-            {"url": "http://c.com", "status": "Queued", "control": MagicMock()}
-        )
+
+        item1 = {"url": "http://a.com", "status": "Queued", "control": MagicMock()}
+        item2 = {"url": "http://b.com", "status": "Queued", "control": MagicMock()}
+        item3 = {"url": "http://c.com", "status": "Queued", "control": MagicMock()}
+
+        self.state.queue_manager.add_item(item1)
+        self.state.queue_manager.add_item(item2)
+        self.state.queue_manager.add_item(item3)
 
         self.state.selected_queue_index = 0  # Start at top
 
-        # Simulate 'J' (Down)
+        # Simulate 'J' (Down) logic
         self.state.selected_queue_index += 1
         self.assertEqual(self.state.selected_queue_index, 1)
 
@@ -53,16 +52,17 @@ class TestFeatureVerification(unittest.TestCase):
         self.state.selected_queue_index += 1
         self.assertEqual(self.state.selected_queue_index, 2)
 
-        # Simulate 'J' (Loop around?) - Logic in main.py implements loop
+        # Simulate 'J' (Loop around?)
         self.state.selected_queue_index += 1
-        if self.state.selected_queue_index >= len(self.state.download_queue):
+        queue_len = len(self.state.queue_manager.get_all())
+        if self.state.selected_queue_index >= queue_len:
             self.state.selected_queue_index = 0
         self.assertEqual(self.state.selected_queue_index, 0)
 
         # Simulate 'K' (Up) - Loop back
         self.state.selected_queue_index -= 1
         if self.state.selected_queue_index < 0:
-            self.state.selected_queue_index = len(self.state.download_queue) - 1
+            self.state.selected_queue_index = queue_len - 1
         self.assertEqual(self.state.selected_queue_index, 2)
 
     @patch("downloader.yt_dlp.YoutubeDL")

@@ -55,6 +55,10 @@ jobs:
         unzip -q cmdline-tools.zip -d cmdline-tools
         rm cmdline-tools.zip
         mv cmdline-tools/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+
+        # Create a symlink 'tools' pointing to 'cmdline-tools/latest' to satisfy legacy path lookups
+        ln -s "$ANDROID_SDK_ROOT/cmdline-tools/latest" "$ANDROID_SDK_ROOT/tools"
+
         yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses
         "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "platform-tools"
 
@@ -78,10 +82,12 @@ jobs:
       working-directory: ./mobile
       run: |
         export ANDROID_SDK_ROOT="$HOME/.buildozer/android/platform/android-sdk"
+        export ANDROID_HOME="$ANDROID_SDK_ROOT"
         export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
         buildozer android debug
       env:
         ANDROID_SDK_ROOT: ~/.buildozer/android/platform/android-sdk
+        ANDROID_HOME: ~/.buildozer/android/platform/android-sdk
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
@@ -93,7 +99,6 @@ jobs:
   build-ios:
     name: Build iOS IPA
     runs-on: macos-latest
-    continue-on-error: true  # iOS builds require code signing setup
 
     steps:
     - uses: actions/checkout@v4
@@ -115,7 +120,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install cython kivy[base] kivymd
-        brew install autoconf automake libtool pkg-config
+        brew install autoconf automake libtool pkg-config libffi
 
     - name: Install Kivy iOS toolchain
       run: |
@@ -132,7 +137,6 @@ jobs:
     - name: Build iOS dependencies
       run: |
         toolchain build python3 kivy
-      continue-on-error: true
 
     - name: Create Xcode project
       working-directory: ./mobile

@@ -6,6 +6,7 @@
 ![Docker](https://img.shields.io/badge/docker-ready-blue)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-95%25-green)
+[![Download](https://img.shields.io/badge/download-latest_release-blueviolet?style=for-the-badge&logo=github)](https://github.com/AmirrezaFarnamTaheri/StreamCatch/releases)
 
 **StreamCatch** is a professional-grade, cross-platform media downloader designed for accuracy, precision, and speed. Built with Python and Flet, it combines a modern Material Design 3 interface with a robust backend capable of handling complex media extraction pipelines, making it the ultimate tool for archiving and downloading content.
 
@@ -54,8 +55,8 @@
 
 ### 📦 Binary Releases (Recommended)
 We provide standalone executable binaries for Windows, Linux, and macOS. No Python installation required.
-1. Go to the **[Releases](../../releases)** page.
-2. Download the version for your OS (`StreamCatch.exe` for Windows, `StreamCatch` for Linux/Mac).
+1. Go to the **[Releases](https://github.com/AmirrezaFarnamTaheri/StreamCatch/releases)** page.
+2. Download the version for your OS (`StreamCatch-Windows.exe` for Windows, `StreamCatch-Linux` for Linux, `StreamCatch-macOS` for macOS).
 3. Run the file.
 
 ### 🐳 Docker (Web Interface)
@@ -96,7 +97,7 @@ Access the UI at `http://localhost:8550`. Downloads are saved to `./downloads`.
   ```bash
   pyinstaller --noconfirm streamcatch.spec
   ```
-- Artifacts are written to `dist/StreamCatch` by default. The GitHub Actions workflow now builds Windows/macOS/Linux desktop binaries and archives Android/iOS mobile source bundles for downstream packaging.
+- Artifacts are written to `dist/StreamCatch` (or `dist/StreamCatch.exe` depending on platform) by default. The GitHub Actions workflow now builds Windows/macOS/Linux desktop binaries and archives Android/iOS mobile source bundles for downstream packaging.
 
 ## 📱 Mobile Support
 StreamCatch runs on iOS and Android via Flet. See [SETUP_MOBILE.md](SETUP_MOBILE.md) for details.
