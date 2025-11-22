@@ -2,37 +2,40 @@ import flet as ft
 
 
 class Theme:
-    # Soulful Palette (Deep Indigo / Cyber-Violet / Neon Accents)
+    # Soulful Palette V2 (Refined, Higher Contrast, Modern)
 
     # Primary: A vibrant, electric violet/indigo
-    PRIMARY = "#6366F1"  # Indigo 500
-    PRIMARY_DARK = "#4338CA"  # Indigo 700
+    PRIMARY = "#818CF8"  # Indigo 400 - lighter for better contrast on dark
+    PRIMARY_DARK = "#4F46E5"  # Indigo 600
 
     # Accent: A popping teal or pink for highlights
-    ACCENT = "#EC4899"  # Pink 500
-    ACCENT_SECONDARY = "#14B8A6"  # Teal 500
+    ACCENT = "#F472B6"  # Pink 400
+    ACCENT_SECONDARY = "#2DD4BF"  # Teal 400
 
     # Backgrounds: Deep, rich darks (not just slate)
-    BG_DARK = "#0B0F19"  # Very dark blue-grey/black
-    BG_CARD = "#111827"  # Gray 900 (slightly lighter)
-    BG_HOVER = "#1F2937"  # Gray 800
+    BG_DARK = "#0F172A"  # Slate 900
+    BG_CARD = "#1E293B"  # Slate 800
+    BG_HOVER = "#334155"  # Slate 700
+
+    # Inputs
+    BG_INPUT = "#0F172A" # Darker than card for depth
 
     # Glassmorphism hints
-    BG_GLASS = ft.Colors.with_opacity(0.8, "#111827")
+    BG_GLASS = ft.Colors.with_opacity(0.9, "#1E293B")
 
     # Text
-    TEXT_PRIMARY = "#F3F4F6"  # Gray 100
-    TEXT_SECONDARY = "#9CA3AF"  # Gray 400
-    TEXT_MUTED = "#6B7280"  # Gray 500
+    TEXT_PRIMARY = "#F8FAFC"  # Slate 50
+    TEXT_SECONDARY = "#94A3B8"  # Slate 400
+    TEXT_MUTED = "#64748B"  # Slate 500
 
     # Status Colors (Vibrant)
-    SUCCESS = "#10B981"  # Emerald 500
-    WARNING = "#F59E0B"  # Amber 500
-    ERROR = "#EF4444"  # Red 500
-    INFO = "#3B82F6"  # Blue 500
+    SUCCESS = "#34D399"  # Emerald 400
+    WARNING = "#FBBF24"  # Amber 400
+    ERROR = "#F87171"  # Red 400
+    INFO = "#60A5FA"  # Blue 400
 
     # Borders
-    BORDER = "#374151"  # Gray 700
+    BORDER = "#334155"  # Slate 700
 
     # Gradients
     GRADIENT_PRIMARY = ft.LinearGradient(
@@ -50,11 +53,12 @@ class Theme:
                 background=Theme.BG_DARK,
                 surface=Theme.BG_CARD,
                 error=Theme.ERROR,
-                on_primary=Theme.TEXT_PRIMARY,
-                on_secondary=Theme.TEXT_PRIMARY,
+                on_primary=Theme.BG_DARK, # Dark text on light primary
+                on_secondary=Theme.BG_DARK,
                 on_background=Theme.TEXT_PRIMARY,
                 on_surface=Theme.TEXT_PRIMARY,
-                surface_tint=Theme.PRIMARY_DARK,  # Adds a slight tint to surface in M3
+                surface_tint=Theme.PRIMARY,
+                outline=Theme.BORDER,
             ),
             visual_density=ft.VisualDensity.COMFORTABLE,
             page_transitions=ft.PageTransitionsTheme(
@@ -64,6 +68,5 @@ class Theme:
                 linux=ft.PageTransitionTheme.ZOOM,
                 windows=ft.PageTransitionTheme.ZOOM,
             ),
-            # Typography can be adjusted here if we imported a font
-            # font_family="Roboto",
+            # Use platform default font or Roboto if available
         )

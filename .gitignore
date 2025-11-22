@@ -12,7 +12,7 @@ venv/
 .coverage
 .pytest_cache/
 htmlcov/
-flet_server.log
+flet_output.log
 
 # SQLite database files
 *.db
@@ -31,3 +31,6 @@ mobile/StreamCatch-ios/
 *.ipa
 *.xcarchive
 ipa-output/
+
+# Verification artifacts
+verification_*.png

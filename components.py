@@ -35,21 +35,25 @@ class DownloadItemControl:
         self.on_retry = on_retry
         self.is_selected = is_selected
 
+        # Progress Bar
         self.progress_bar = ft.ProgressBar(
             value=0,
             height=6,
             border_radius=3,
             color=Theme.PRIMARY,
-            bgcolor=ft.Colors.with_opacity(0.2, Theme.PRIMARY),
+            bgcolor=Theme.BG_HOVER,
         )
 
+        # Text Elements
         self.status_text = ft.Text(
             item["status"],
-            size=12,
-            color=Theme.TEXT_SECONDARY,
-            weight=ft.FontWeight.W_500,
+            size=13,
+            color=Theme.INFO,
+            weight=ft.FontWeight.W_600,
         )
-        self.details_text = ft.Text("Waiting...", size=12, color=Theme.TEXT_MUTED)
+
+        self.details_text = ft.Text("", size=12, color=Theme.TEXT_MUTED)
+
         self.title_text = ft.Text(
             self.item.get("title", self.item["url"]),
             weight=ft.FontWeight.BOLD,
@@ -72,7 +76,7 @@ class DownloadItemControl:
             else ft.Colors.with_opacity(0.1, Theme.PRIMARY)
         )
 
-        # Platform specific icon
+        # Platform specific icon logic
         url = self.item.get("url", "").lower()
         icon_data = ft.Icons.INSERT_DRIVE_FILE
         icon_color = Theme.TEXT_SECONDARY
@@ -137,22 +141,13 @@ class DownloadItemControl:
             padding=15,
             bgcolor=bg_color,
             border_radius=16,
-            shadow=(
-                ft.BoxShadow(
-                    blur_radius=10,
-                    spread_radius=0,
-                    color=ft.Colors.with_opacity(0.1, ft.Colors.BLACK),
-                    offset=ft.Offset(0, 4),
-                )
-                if not self.is_selected
-                else None
+            shadow=ft.BoxShadow(
+                blur_radius=10,
+                spread_radius=0,
+                color=ft.Colors.with_opacity(0.1, ft.Colors.BLACK),
+                offset=ft.Offset(0, 4),
             ),
-            border=(
-                ft.border.all(1, Theme.BORDER)
-                if not self.is_selected
-                else ft.border.all(1, Theme.PRIMARY)
-            ),
-            animate=ft.Animation(200, ft.AnimationCurve.EASE_OUT),
+            border=ft.border.all(1, Theme.BORDER),
             margin=ft.margin.only(bottom=5),
         )
 
@@ -160,6 +155,7 @@ class DownloadItemControl:
         status = self.item.get("status", "Queued")
         actions = []
 
+        # Cancel Button
         if status in ["Downloading", "Processing", "Allocating"]:
             actions.append(
                 ft.IconButton(
@@ -174,6 +170,7 @@ class DownloadItemControl:
                     ),
                 )
             )
+        # Retry Button
         elif status in ["Error", "Cancelled"] and self.on_retry:
             actions.append(
                 ft.IconButton(
@@ -185,7 +182,8 @@ class DownloadItemControl:
                 )
             )
 
-        if status == "Queued" or status.startswith("Scheduled"):
+        # Reorder Buttons (Only for Queued/Scheduled)
+        if status == "Queued" or str(status).startswith("Scheduled"):
             actions.append(
                 ft.Column(
                     [
@@ -211,6 +209,7 @@ class DownloadItemControl:
                 )
             )
 
+        # Remove Button (If not active)
         if status not in ["Downloading", "Processing", "Allocating"]:
             actions.append(
                 ft.IconButton(
@@ -227,30 +226,42 @@ class DownloadItemControl:
             self.actions_row.update()
 
     def update_progress(self):
-        self.status_text.value = self.item["status"]
+        status = self.item["status"]
+        self.status_text.value = status
 
-        # Dynamic color for progress
-        if self.item["status"] == "Error" or self.item["status"] == "Cancelled":
+        # Dynamic colors
+        if status == "Error" or status == "Cancelled":
             self.progress_bar.color = Theme.ERROR
             self.status_text.color = Theme.ERROR
-        elif self.item["status"] == "Completed":
+            self.progress_bar.value = 0
+        elif status == "Completed":
             self.progress_bar.color = Theme.SUCCESS
             self.status_text.color = Theme.SUCCESS
+            self.progress_bar.value = 1
+        elif status.startswith("Scheduled"):
+            self.progress_bar.color = Theme.INFO
+            self.status_text.color = Theme.INFO
+            self.progress_bar.value = 0
         else:
             self.progress_bar.color = Theme.PRIMARY
-            self.status_text.color = Theme.TEXT_SECONDARY
+            self.status_text.color = Theme.INFO
 
-        if "speed" in self.item and self.item["status"] in [
-            "Downloading",
-            "Processing",
-        ]:
+        # Update Details Text
+        if "speed" in self.item and status in ["Downloading", "Processing"]:
             self.details_text.value = f"{self.item.get('size', '')} • {self.item.get('speed', '')} • ETA: {self.item.get('eta', '')}"
+        elif status.startswith("Scheduled"):
+             # If scheduled, maybe show the date?
+             # We'll leave it simple for now or parse scheduled_time
+             pass
         else:
             self.details_text.value = ""
 
+        # Force update of controls
         self.status_text.update()
         self.details_text.update()
         self.progress_bar.update()
+
+        # Title might update (e.g. resolving URL to Title)
         self.title_text.value = self.item.get("title", self.item["url"])
         self.title_text.update()
 
