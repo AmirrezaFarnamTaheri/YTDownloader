@@ -5,7 +5,20 @@ from pathlib import Path
 
 block_cipher = None
 
-project_dir = Path(__file__).parent
+def _project_dir() -> Path:
+    # When executed by PyInstaller, ``__file__`` is not always populated in the
+    # spec execution namespace. Fall back to the provided spec path (the first
+    # ``.spec`` argument) or the current working directory so the project root
+    # can still be resolved on all platforms.
+    spec_arg = next((Path(arg) for arg in sys.argv[1:] if arg.endswith('.spec')), None)
+    if '__file__' in globals():
+        return Path(__file__).resolve().parent
+    if spec_arg and spec_arg.exists():
+        return spec_arg.resolve().parent
+    return Path.cwd()
+
+
+project_dir = _project_dir()
 
 
 def _collect_datas():

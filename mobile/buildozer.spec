@@ -59,3 +59,10 @@ log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
+
+# (str) Explicit path to the Android sdkmanager binary. Newer commandline-tools
+# releases place sdkmanager under ``cmdline-tools/latest/bin`` instead of the
+# legacy ``tools/bin`` location expected by older Buildozer defaults. Setting
+# this ensures Buildozer can find and install SDK components in fresh
+# environments such as CI runners.
+sdkmanager_path = $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager
