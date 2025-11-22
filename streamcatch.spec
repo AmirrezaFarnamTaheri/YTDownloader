@@ -5,7 +5,7 @@ from pathlib import Path
 
 block_cipher = None
 
-project_dir = Path(spec).parent
+project_dir = Path(__file__).parent
 
 
 def _collect_datas():
