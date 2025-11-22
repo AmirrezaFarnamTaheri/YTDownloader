@@ -19,6 +19,7 @@
 ## 🌟 Key Features
 
 ### 🎨 Modern & Immersive UI
+- **Revolutionary Logo**: A brand new, modern, and fluid logo design representing speed and versatility.
 - **Navigation Rail**: Clean sidebar navigation for quick access to Queues, History, and Settings.
 - **Cinema Mode**: An immersive, distraction-free overlay for monitoring active downloads.
 - **Dashboard**: Real-time analytics and download statistics.
@@ -35,6 +36,7 @@
 - **Force Generic Mode**: Bypass extractors and download files directly when needed.
 
 ### 🛠 Advanced Tools
+- **Modular Architecture**: The codebase has been significantly refactored for better maintainability, separating core logic (Tasks, State) from UI, ensuring robust performance.
 - **Universal Site Support**:
   - **YouTube**: 4K Video, Audio, Playlists, Channels.
   - **Social Media**: **Twitter (X)**, **Instagram** (Reels/Posts), Twitch, TikTok.

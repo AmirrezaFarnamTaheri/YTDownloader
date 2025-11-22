@@ -40,6 +40,9 @@ StreamCatch is evolving into a comprehensive media management platform. We have 
 *   **Media Server Hooks**: Plex/Jellyfin notification triggers.
 
 ## ✅ Completed in v3.5 (Current)
+*   **Refactored Architecture**:
+    *   **Modular Codebase**: Separated State, Tasks, and UI logic for better maintainability.
+    *   **New Branding**: "Linear Velocity" logo design.
 *   **IDM-Like Features**:
     *   **Clipboard Monitor**: Auto-detect URLs.
     *   **Generic/Direct Download**: Robust file downloading support.

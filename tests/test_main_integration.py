@@ -2,8 +2,9 @@ import unittest
 from unittest.mock import MagicMock, patch
 import threading
 import time
-from main import AppState, main
+from app_state import AppState
 import main as app_main
+import tasks
 from queue_manager import QueueManager
 
 
@@ -13,8 +14,8 @@ class TestMainIntegration(unittest.TestCase):
         self.state = AppState()
         self.state.queue_manager = QueueManager()
 
-    @patch("main.download_video")
-    @patch("main.HistoryManager.add_entry")
+    @patch("tasks.download_video")
+    @patch("tasks.HistoryManager.add_entry")
     def test_download_task_success(self, mock_add_history, mock_download):
         # Simulate a successful download task
         item = {
@@ -44,26 +45,26 @@ class TestMainIntegration(unittest.TestCase):
         mock_download.side_effect = side_effect_download
 
         # Run task directly (no thread for test simplicity)
-        app_main.state = self.state  # Inject state
-        app_main.download_task(item)
+        tasks.state = self.state  # Inject state
+        tasks.download_task(item)
 
         self.assertEqual(item["status"], "Completed")
         self.assertEqual(item["final_filename"], "out.mp4")
         mock_add_history.assert_called()
 
-    @patch("main.download_video")
+    @patch("tasks.download_video")
     def test_download_task_failure(self, mock_download):
         # Simulate a failed download task
         item = {"url": "http://fail.com", "status": "Queued", "title": "Fail"}
         mock_download.side_effect = Exception("Network Error")
 
-        app_main.state = self.state
-        app_main.download_task(item)
+        tasks.state = self.state
+        tasks.download_task(item)
 
         self.assertEqual(item["status"], "Error")
 
-    @patch("main.pyperclip.paste")
-    @patch("main.validate_url")
+    @patch("clipboard_monitor.pyperclip.paste")
+    @patch("clipboard_monitor.validate_url")
     def test_background_clipboard_monitor(self, mock_validate, mock_paste):
         # Test clipboard monitor logic
         self.state.clipboard_monitor_active = True
@@ -77,6 +78,7 @@ class TestMainIntegration(unittest.TestCase):
         app_main.page = MagicMock()
 
         # Extract logic from background loop for testing
+        # Note: Logic is now in clipboard_monitor.py
         content = mock_paste()
         if content and content != self.state.last_clipboard_content:
             self.state.last_clipboard_content = content
@@ -85,7 +87,7 @@ class TestMainIntegration(unittest.TestCase):
 
         self.assertEqual(app_main.download_view.url_input.value, "http://new.com")
 
-    @patch("main.download_task")
+    @patch("tasks.download_task")
     def test_process_queue_scheduler(self, mock_download_task):
         # Test scheduling logic
         from datetime import datetime, timedelta
@@ -98,15 +100,15 @@ class TestMainIntegration(unittest.TestCase):
         }
         self.state.queue_manager.add_item(item)
 
-        app_main.state = self.state
-        app_main.process_queue()
+        tasks.state = self.state
+        tasks.process_queue()
 
         # Should still be scheduled
         self.assertTrue(item["status"].startswith("Scheduled"))
 
         # Move time to past
         item["scheduled_time"] = datetime.now() - timedelta(minutes=1)
-        app_main.process_queue()
+        tasks.process_queue()
 
         # Should be allocated or processed.
         # Since process_queue starts a thread for download_task, and claim_next_downloadable changes status to Allocating
