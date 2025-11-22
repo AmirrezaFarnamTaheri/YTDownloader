@@ -1,141 +1,81 @@
-# StreamCatch - Ultimate Media Downloader
+# StreamCatch 🎥
 
-![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
-![Python](https://img.shields.io/badge/python-3.8%2B-blue)
-![Status](https://img.shields.io/badge/status-stable-green)
-![Docker](https://img.shields.io/badge/docker-ready-blue)
-![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-95%25-green)
-[![Download](https://img.shields.io/badge/download-latest_release-blueviolet?style=for-the-badge&logo=github)](https://github.com/AmirrezaFarnamTaheri/StreamCatch/releases)
+**StreamCatch** (formerly YTDownloader) is a modern, robust, and feature-rich media downloader built with [Flet](https://flet.dev) (Flutter for Python) and [yt-dlp](https://github.com/yt-dlp/yt-dlp). It supports downloading videos and audio from thousands of websites, including YouTube, Telegram, Twitter/X, Instagram, and generic file hosts.
 
-**StreamCatch** is a professional-grade, cross-platform media downloader designed for accuracy, precision, and speed. Built with Python and Flet, it combines a modern Material Design 3 interface with a robust backend capable of handling complex media extraction pipelines, making it the ultimate tool for archiving and downloading content.
+![StreamCatch Banner](assets/logo.svg)
 
-## 👤 Credits
+## ✨ Features
 
-*   **Author**: Amirreza "Farnam" Taheri
-*   **Contact**: taherifarnam@gmail.com
-*   **Github**: [AmirrezaFarnamTaheri](https://github.com/AmirrezaFarnamTaheri)
-
-## 🌟 Key Features
-
-### 🎨 Modern & Immersive UI
-- **Revolutionary Logo**: A brand new, modern, and fluid logo design representing speed and versatility.
-- **Navigation Rail**: Clean sidebar navigation for quick access to Queues, History, and Settings.
-- **Cinema Mode**: An immersive, distraction-free overlay for monitoring active downloads.
-- **Dashboard**: Real-time analytics and download statistics.
-- **Card-Based Design**: Beautiful, responsive cards for download items with progress visualization.
-- **Platform Icons**: Quick indicators for YouTube, Telegram, Twitter, Instagram, and Generic Files.
-- **Responsive Layout**: Adapts to desktop and mobile screens.
-
-### ⚡ Performance & Robustness
-- **100% Accurate Backend**: Rigorously tested download pipelines ensure no false positives or negatives.
-- **Atomic Queue Management**: Thread-safe `QueueManager` prevents race conditions and ensures stability.
-- **Aria2c Integration**: Accelerate downloads with multi-connection support (up to 16x speeds).
-- **GPU Acceleration**: Hardware-accelerated encoding/decoding (NVENC/VAAPI/QSV) via FFmpeg.
-- **Smart Resume**: Robust error handling and resume capabilities.
-- **Force Generic Mode**: Bypass extractors and download files directly when needed.
-
-### 🛠 Advanced Tools
-- **Modular Architecture**: The codebase has been significantly refactored for better maintainability, separating core logic (Tasks, State) from UI, ensuring robust performance.
-- **Universal Site Support**:
-  - **YouTube**: 4K Video, Audio, Playlists, Channels.
-  - **Social Media**: **Twitter (X)**, **Instagram** (Reels/Posts), Twitch, TikTok.
-  - **Telegram**: Download videos and images from public channels using a custom scraping engine.
-  - **Generic Files**: Direct download support for any file type (PDF, ZIP, ISO, etc.) with **Force Generic** mode.
-- **Clipboard Monitor**: Automatically detects URLs copied to the clipboard and prepares them for download.
-- **Time Range**: Download specific clips (Start/End time) without downloading the full video.
-- **SponsorBlock**: Automatically skip sponsored segments, intros, and outros.
-- **Playlist Support**: Batch download entire playlists with regex filtering.
-- **Metadata & Thumbnails**: Embed high-quality metadata and thumbnails.
-
-### ☁️ Connectivity
-- **Cloud Upload**: Auto-upload finished downloads to Google Drive.
-- **RSS Feed Manager**: Subscribe to channels and auto-download new content.
-- **Discord RPC**: Show off your downloading status to friends.
+*   **Modern UI/UX**: Built with Material Design 3, responsive layout, and a soulful dark theme.
+*   **Robust Downloading**: Powered by `yt-dlp` for maximum compatibility.
+*   **Platform Agnostic**: Runs on **Windows**, **Linux**, **macOS**, **Android**, and **iOS**.
+*   **Advanced Queuing**:
+    *   Batch downloading
+    *   Priority reordering
+    *   Scheduling (download later)
+    *   Concurrency management
+*   **Special Integrations**:
+    *   **Telegram Scraper**: Download directly from public `t.me` links.
+    *   **Generic Downloader**: Fallback for direct file links with multi-threaded downloading.
+*   **Performance**:
+    *   GPU Acceleration (CUDA/Vulkan) support.
+    *   Aria2c external downloader integration for speed.
+*   **RSS Feeds**: Monitor channels and download latest videos.
+*   **Clipboard Monitor**: Automatically detect copied links.
+*   **SponsorBlock**: Skip non-content segments automatically.
 
 ## 🚀 Installation
 
-### 📦 Binary Releases (Recommended)
-We provide standalone executable binaries for Windows, Linux, and macOS. No Python installation required.
-1. Go to the **[Releases](https://github.com/AmirrezaFarnamTaheri/StreamCatch/releases)** page.
-2. Download the version for your OS (`StreamCatch-Windows.exe` for Windows, `StreamCatch-Linux` for Linux, `StreamCatch-macOS` for macOS).
-3. Run the file.
+### Desktop (Windows/Linux/macOS)
 
-### 🐳 Docker (Web Interface)
-Run StreamCatch as a self-hosted web service:
-```bash
-docker-compose up -d
-```
-Access the UI at `http://localhost:8550`. Downloads are saved to `./downloads`.
-
-### 💻 Source (Developers)
-
-#### Prerequisites
-- Python 3.8+
-- FFmpeg (required for post-processing)
-
-#### Setup
-1.  **Clone the repository**:
+1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/AmirrezaFarnamTaheri/StreamCatch.git
-    cd StreamCatch
+    git clone https://github.com/yourusername/streamcatch.git
+    cd streamcatch
     ```
-2.  **Install dependencies**:
+
+2.  **Install dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
-3.  **Run the application**:
+    *Note: You also need `ffmpeg` installed and in your system PATH.*
+
+3.  **Run the application:**
     ```bash
     python main.py
     ```
 
-#### One-Click Scripts
-- **Windows**: `install-and-run.bat`
-- **Linux/macOS**: `install-and-run.sh`
+### Mobile (Android/iOS)
 
-### 🏗️ Building Release Binaries
-- Ensure dependencies are installed: `pip install -r requirements.txt`
-- Package the desktop app with PyInstaller (includes locales and assets):
-  ```bash
-  pyinstaller --noconfirm streamcatch.spec
-  ```
-- Artifacts are written to `dist/StreamCatch` (or `dist/StreamCatch.exe` depending on platform) by default. The GitHub Actions workflow now builds Windows/macOS/Linux desktop binaries and archives Android/iOS mobile source bundles for downstream packaging.
+See [MOBILE_DEPLOYMENT.md](MOBILE_DEPLOYMENT.md) for detailed build instructions using `flet build`.
 
-## 📱 Mobile Support
-StreamCatch runs on iOS and Android via Flet. See [SETUP_MOBILE.md](SETUP_MOBILE.md) for details.
+## 🛠️ Architecture
 
-## 📖 User Guide
+The project is structured for modularity and robustness:
 
-### Managing the Queue
-- **Add**: Paste a URL and click "Fetch Info", then "Add to Queue".
-- **Clipboard Monitor**: Toggle the switch at the top right to auto-capture copied URLs.
-- **Batch Import**: Import a list of URLs from a text file.
-- **Schedule**: Set a specific time for downloads to start.
-- **Reorder**: Use Up/Down arrows to manage priority.
+*   **`main.py`**: Entry point and Flet UI initialization.
+*   **`downloader.py`**: Core logic wrapping `yt-dlp` and dispatching to specific extractors.
+*   **`queue_manager.py`**: Thread-safe queue management with atomic operations.
+*   **`tasks.py`**: Background worker logic handling the download lifecycle.
+*   **`views/`**: Modular UI components (Download, Queue, History, etc.).
+*   **`generic_downloader.py`**: Custom robust downloader for non-video files and Telegram.
 
-### Download Options
-- **Video/Audio Quality**: Select specific formats.
-- **Force Generic/Direct**: Check this box to bypass video extraction and download the URL directly as a file.
-- **Subtitles**: Select language to embed.
+## 🧪 Testing
 
-### Dashboard
-- View total download count and statistics.
-- Monitor recent activity.
+Run the test suite to ensure robustness:
 
-### Configuration
-Settings are persisted in `~/.streamcatch/config.json`. You can configure:
-- Proxy settings
-- Download rate limits
-- Output templates (e.g., `%(title)s.%(ext)s`)
-- GPU acceleration preference
-
-## 🤝 Contributing
-We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
-
-### Running Tests
 ```bash
-pytest
+# Run all unit tests
+python -m unittest discover tests
+
+# Run specific tests
+python -m unittest tests/test_pipeline_integration.py
 ```
 
+## 🤝 Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
 ## 📄 License
-GNU General Public License v3.0. See `LICENSE` for details.
+
+Distributed under the MIT License. See `LICENSE` for more information.

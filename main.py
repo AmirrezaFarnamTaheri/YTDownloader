@@ -81,6 +81,16 @@ def main(pg: ft.Page):
     # Apply Theme
     page.theme = Theme.get_theme()
 
+    # --- Pickers ---
+    file_picker = ft.FilePicker()
+    time_picker = ft.TimePicker(
+        confirm_text="Schedule",
+        error_invalid_text="Time invalid",
+        help_text="Select time for download to start",
+    )
+    page.overlay.append(file_picker)
+    page.overlay.append(time_picker)
+
     # --- Helpers ---
 
     def on_fetch_info(url):
@@ -104,18 +114,19 @@ def main(pg: ft.Page):
 
         if state.scheduled_time:
             now = datetime.now()
+            # Combine current date with scheduled time
             sched_dt = datetime.combine(now.date(), state.scheduled_time)
+            # If time is in the past for today, schedule for tomorrow
             if sched_dt < now:
                 sched_dt += timedelta(days=1)
             status = f"Scheduled ({sched_dt.strftime('%H:%M')})"
+            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Download scheduled for {sched_dt.strftime('%Y-%m-%d %H:%M')}")))
 
         item = {
             "url": data["url"],
             "title": (
                 state.video_info.get("title", "Unknown")
-
-                if data["url"] == download_view.url_input.value
-                and state.video_info
+                if data["url"] == download_view.url_input.value and state.video_info
                 else data["url"]
             ),
             "status": status,
@@ -135,7 +146,8 @@ def main(pg: ft.Page):
         state.queue_manager.add_item(item)
         state.scheduled_time = None
         queue_view.rebuild()
-        page.show_snack_bar(ft.SnackBar(content=ft.Text("Added to queue")))
+        if status == "Queued":
+            page.show_snack_bar(ft.SnackBar(content=ft.Text("Added to queue")))
         process_queue()
 
     def on_cancel_item(item):
@@ -167,12 +179,64 @@ def main(pg: ft.Page):
         queue_view.rebuild()
         process_queue()
 
+    def on_batch_file_result(e: ft.FilePickerResultEvent):
+        if not e.files:
+            return
+
+        path = e.files[0].path
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                urls = [line.strip() for line in f if line.strip()]
+
+            count = 0
+            for url in urls:
+                if not url:
+                    continue
+                # Add basic item
+                item = {
+                    "url": url,
+                    "title": url,
+                    "status": "Queued",
+                    "scheduled_time": None,
+                    "video_format": "best",
+                    "output_path": str(Path.home() / "Downloads"),
+                    "playlist": False,
+                    "sponsorblock": False,
+                    "use_aria2c": state.config.get("use_aria2c", False),
+                    "gpu_accel": state.config.get("gpu_accel", "None"),
+                    "output_template": "%(title)s.%(ext)s",
+                    "start_time": None,
+                    "end_time": None,
+                    "force_generic": False,
+                    "cookies_from_browser": None,
+                }
+                state.queue_manager.add_item(item)
+                count += 1
+
+            queue_view.rebuild()
+            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
+            process_queue()
+
+        except Exception as ex:
+            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Failed to import: {ex}")))
+
     def on_batch_import():
-        # Placeholder for batch import logic
-        pass
+        file_picker.pick_files(
+            allow_multiple=False,
+            allowed_extensions=["txt", "csv"]
+        )
+
+    def on_time_picked(e):
+        if e.value:
+            state.scheduled_time = e.value
+            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Next download will be scheduled at {e.value.strftime('%H:%M')}")))
 
     def on_schedule(e):
-        pass
+        time_picker.pick_time()
+
+    # Wire up pickers
+    file_picker.on_result = on_batch_file_result
+    time_picker.on_change = on_time_picked
 
     def on_toggle_clipboard(active):
         state.clipboard_monitor_active = active

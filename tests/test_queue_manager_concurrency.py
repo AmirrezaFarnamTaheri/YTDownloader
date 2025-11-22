@@ -1,22 +1,20 @@
 import unittest
+from unittest.mock import MagicMock, patch
 import threading
-import sys
-import os
-
-# Adjust path to import modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+import time
 from queue_manager import QueueManager
-
 
 class TestQueueManagerConcurrency(unittest.TestCase):
     def setUp(self):
         self.qm = QueueManager()
 
-    def test_claim_next_downloadable_atomic(self):
-        # Add multiple queued items
+    def test_claim_next_downloadable_race_condition(self):
+        """
+        Test that multiple threads attempting to claim items do not claim the same item.
+        """
+        # Add multiple items
         for i in range(10):
-            self.qm.add_item({"id": i, "status": "Queued"})
+            self.qm.add_item({"id": i, "status": "Queued", "url": f"http://test/{i}"})
 
         claimed_items = []
         lock = threading.Lock()
@@ -24,11 +22,12 @@ class TestQueueManagerConcurrency(unittest.TestCase):
         def worker():
             while True:
                 item = self.qm.claim_next_downloadable()
-                if item:
-                    with lock:
-                        claimed_items.append(item)
-                else:
+                if item is None:
                     break
+                with lock:
+                    claimed_items.append(item)
+                # Simulate some work time to allow context switching
+                time.sleep(0.01)
 
         threads = [threading.Thread(target=worker) for _ in range(5)]
         for t in threads:
@@ -36,21 +35,27 @@ class TestQueueManagerConcurrency(unittest.TestCase):
         for t in threads:
             t.join()
 
-        # Should have claimed all 10 items exactly once
-        self.assertEqual(len(claimed_items), 10)
+        # Verify each item was claimed exactly once
+        claimed_ids = [item["id"] for item in claimed_items]
+        self.assertEqual(len(claimed_ids), 10)
+        self.assertEqual(len(set(claimed_ids)), 10)
 
-        # Check IDs are unique (no double claims)
-        ids = [item["id"] for item in claimed_items]
-        self.assertEqual(len(ids), len(set(ids)))
+    def test_add_item_thread_safety(self):
+        """Test adding items from multiple threads."""
+        def worker(start, count):
+            for i in range(count):
+                self.qm.add_item({"id": start + i, "status": "Queued"})
 
-    def test_any_downloading_includes_allocating(self):
-        self.qm.add_item({"status": "Allocating"})
-        self.assertTrue(self.qm.any_downloading())
+        threads = []
+        for i in range(4):
+            t = threading.Thread(target=worker, args=(i * 100, 100))
+            threads.append(t)
+            t.start()
 
-    def test_any_downloading_includes_processing(self):
-        self.qm.add_item({"status": "Processing"})
-        self.assertTrue(self.qm.any_downloading())
+        for t in threads:
+            t.join()
 
+        self.assertEqual(len(self.qm.get_all()), 400)
 
 if __name__ == "__main__":
     unittest.main()

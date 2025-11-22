@@ -3,6 +3,7 @@ from theme import Theme
 from .base_view import BaseView
 from ui_utils import format_file_size, open_folder
 import logging
+import os
 
 
 class DownloadView(BaseView):
@@ -12,9 +13,11 @@ class DownloadView(BaseView):
         super().__init__("New Download", ft.Icons.DOWNLOAD)
         self.on_fetch_info = on_fetch_info
         self.on_add_to_queue = on_add_to_queue
+        self.on_batch_import = on_batch_import
+        self.on_schedule = on_schedule
         self.state = state
 
-        # Header Actions
+        # --- Header Actions ---
         self.open_folder_btn = ft.IconButton(
             ft.Icons.FOLDER_OPEN,
             tooltip="Open Downloads Folder",
@@ -22,49 +25,51 @@ class DownloadView(BaseView):
             icon_color=Theme.PRIMARY,
         )
 
-        # Safe check for header attribute if BaseView changed (tests failed because of this mismatch potentially)
-        # But BaseView was updated to have self.header.
-        # Just in case, let's access controls via self.header.controls
-        self.header.controls.append(ft.Container(expand=True))  # Spacer
-        self.header.controls.append(self.open_folder_btn)
-
-        # Platform Icons
-        self.platform_icons = ft.Row(
-            [
-                ft.Icon(
-                    ft.Icons.ONDEMAND_VIDEO, color=ft.Colors.RED_400, tooltip="YouTube"
-                ),
-                ft.Icon(
-                    ft.Icons.TELEGRAM, color=ft.Colors.BLUE_400, tooltip="Telegram"
-                ),
-                ft.Icon(
-                    ft.Icons.ALTERNATE_EMAIL,
-                    color=ft.Colors.LIGHT_BLUE_400,
-                    tooltip="Twitter/X",
-                ),
-                ft.Icon(
-                    ft.Icons.CAMERA_ALT, color=ft.Colors.PINK_400, tooltip="Instagram"
-                ),
-                ft.Icon(
-                    ft.Icons.LINK, color=ft.Colors.GREY_400, tooltip="Generic Files"
-                ),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            spacing=20,
+        self.batch_btn = ft.IconButton(
+            ft.Icons.FILE_UPLOAD,
+            tooltip="Batch Import URLs",
+            on_click=lambda e: self.on_batch_import(),
+            icon_color=Theme.ACCENT,
         )
 
-        # Inputs
+        self.schedule_btn = ft.IconButton(
+            ft.Icons.SCHEDULE,
+            tooltip="Schedule Download",
+            on_click=lambda e: self.on_schedule(e),
+            icon_color=Theme.ACCENT,
+        )
+
+        self.header.controls.extend([
+            ft.Container(expand=True),
+            self.schedule_btn,
+            self.batch_btn,
+            self.open_folder_btn
+        ])
+
+        # --- Input Area ---
         self.url_input = ft.TextField(
-            label="URL",
-            hint_text="Paste link here...",
+            label="Video URL",
+            hint_text="Paste YouTube, Telegram, Twitter link here...",
             expand=True,
             border_color=Theme.BORDER,
             focused_border_color=Theme.PRIMARY,
             prefix_icon=ft.Icons.LINK,
             text_size=16,
-            bgcolor=Theme.BG_CARD,
-            border_radius=10,
+            bgcolor=Theme.BG_INPUT,
+            border_radius=12,
             on_submit=lambda e: on_fetch_info(self.url_input.value),
+        )
+
+        self.fetch_btn = ft.IconButton(
+            ft.Icons.SEARCH,
+            on_click=lambda e: on_fetch_info(self.url_input.value),
+            tooltip="Fetch Metadata",
+            icon_color=Theme.PRIMARY,
+            style=ft.ButtonStyle(
+                bgcolor=Theme.BG_HOVER,
+                shape=ft.RoundedRectangleBorder(radius=12),
+                padding=10,
+            ),
         )
 
         # Browser Cookie Selection
@@ -81,43 +86,47 @@ class DownloadView(BaseView):
                 ft.dropdown.Option("safari"),
             ],
             value="None",
-            width=150,
+            width=180,
             border_color=Theme.BORDER,
-            border_radius=8,
-            bgcolor=Theme.BG_CARD,
+            border_radius=12,
+            bgcolor=Theme.BG_INPUT,
             tooltip="Use cookies from browser to bypass login/age restrictions",
+            text_size=14,
+            dense=True,
         )
 
-        self.fetch_btn = ft.IconButton(
-            ft.Icons.SEARCH,
-            on_click=lambda e: on_fetch_info(self.url_input.value),
-            tooltip="Fetch Info",
-            icon_color=Theme.PRIMARY,
-            icon_size=30,
-        )
-
-        # Preview Area
+        # --- Preview Area ---
         self.thumbnail_img = ft.Image(
             src="",
             width=320,
             height=180,
             fit=ft.ImageFit.COVER,
-            border_radius=10,
+            border_radius=12,
             visible=False,
+            opacity=0,
+            animate_opacity=300,
         )
-        self.title_text = ft.Text(
-            "", size=18, weight=ft.FontWeight.BOLD, color=Theme.TEXT_PRIMARY
-        )
-        self.duration_text = ft.Text("", color=Theme.TEXT_SECONDARY)
 
-        # Options
+        self.title_text = ft.Text(
+            "Ready to download",
+            size=20,
+            weight=ft.FontWeight.BOLD,
+            color=Theme.TEXT_PRIMARY,
+            max_lines=2,
+            overflow=ft.TextOverflow.ELLIPSIS,
+        )
+
+        self.duration_text = ft.Text("Paste a URL to begin", color=Theme.TEXT_SECONDARY)
+
+        # --- Options Area ---
         self.video_format_dd = ft.Dropdown(
             label="Video Quality",
             options=[],
             expand=True,
             border_color=Theme.BORDER,
             border_radius=8,
-            bgcolor=Theme.BG_CARD,
+            bgcolor=Theme.BG_INPUT,
+            dense=True,
         )
         self.audio_format_dd = ft.Dropdown(
             label="Audio Format",
@@ -125,15 +134,16 @@ class DownloadView(BaseView):
             expand=True,
             border_color=Theme.BORDER,
             border_radius=8,
-            bgcolor=Theme.BG_CARD,
+            bgcolor=Theme.BG_INPUT,
+            dense=True,
         )
 
         self.playlist_cb = ft.Checkbox(label="Playlist", fill_color=Theme.PRIMARY)
-        self.sponsorblock_cb = ft.Checkbox(
-            label="SponsorBlock", fill_color=Theme.PRIMARY
-        )
+        self.sponsorblock_cb = ft.Checkbox(label="SponsorBlock", fill_color=Theme.PRIMARY)
         self.force_generic_cb = ft.Checkbox(
-            label="Force Generic", fill_color=Theme.WARNING, tooltip="Bypass extraction"
+            label="Force Generic",
+            fill_color=Theme.WARNING,
+            tooltip="Bypass yt-dlp extraction"
         )
 
         self.subtitle_dd = ft.Dropdown(
@@ -142,131 +152,142 @@ class DownloadView(BaseView):
                 ft.dropdown.Option("None"),
                 ft.dropdown.Option("en"),
                 ft.dropdown.Option("es"),
+                ft.dropdown.Option("jp"),
             ],
             value="None",
             width=150,
             border_color=Theme.BORDER,
             border_radius=8,
-            bgcolor=Theme.BG_CARD,
+            bgcolor=Theme.BG_INPUT,
+            dense=True,
         )
 
         self.time_start = ft.TextField(
-            label="Start",
+            label="Start Time",
             width=120,
             border_color=Theme.BORDER,
             border_radius=8,
-            bgcolor=Theme.BG_CARD,
-            hint_text="HH:MM:SS",
+            bgcolor=Theme.BG_INPUT,
+            hint_text="00:00:00",
+            dense=True,
         )
         self.time_end = ft.TextField(
-            label="End",
+            label="End Time",
             width=120,
             border_color=Theme.BORDER,
             border_radius=8,
-            bgcolor=Theme.BG_CARD,
-            hint_text="HH:MM:SS",
+            bgcolor=Theme.BG_INPUT,
+            hint_text="00:00:00",
+            dense=True,
+        )
+
+        # Advanced Options Expansion
+        self.advanced_options = ft.ExpansionTile(
+            title=ft.Text("Advanced Options", color=Theme.TEXT_SECONDARY),
+            icon_color=Theme.PRIMARY,
+            controls=[
+                ft.Container(
+                    padding=10,
+                    content=ft.Column([
+                        ft.Row([self.subtitle_dd, self.time_start, self.time_end], wrap=True),
+                        ft.Row([self.playlist_cb, self.sponsorblock_cb, self.force_generic_cb], wrap=True),
+                    ])
+                )
+            ]
         )
 
         self.download_btn = ft.ElevatedButton(
             "Add to Queue",
-            icon=ft.Icons.ADD,
+            icon=ft.Icons.ADD_CIRCLE,
             bgcolor=Theme.PRIMARY,
-            color=ft.Colors.WHITE,
+            color=Theme.BG_DARK,
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=12),
                 padding=20,
                 elevation=5,
             ),
             on_click=lambda e: self._on_add_click(e),
+            width=200,
         )
 
         self.build_layout()
 
     def build_layout(self):
-        input_row = ft.Row(
-            [self.url_input, self.cookies_dd, self.fetch_btn],
-            alignment=ft.MainAxisAlignment.CENTER,
-        )
-
-        preview_col = ft.Column(
+        # Platform Icons Row
+        platform_icons = ft.Row(
             [
-                ft.Container(
-                    content=ft.Stack(
-                        [
-                            ft.Container(
-                                bgcolor=ft.Colors.BLACK54,
-                                width=320,
-                                height=180,
-                                border_radius=10,
-                            ),
-                            self.thumbnail_img,
-                        ]
-                    ),
-                    border_radius=12,
-                    border=ft.border.all(1, Theme.BORDER),
-                    shadow=ft.BoxShadow(blur_radius=10, color=ft.Colors.BLACK),
-                ),
-                self.title_text,
-                self.duration_text,
+                ft.Icon(ft.Icons.ONDEMAND_VIDEO, color=ft.Colors.RED_400, tooltip="YouTube"),
+                ft.Icon(ft.Icons.TELEGRAM, color=ft.Colors.BLUE_400, tooltip="Telegram"),
+                ft.Icon(ft.Icons.ALTERNATE_EMAIL, color=ft.Colors.LIGHT_BLUE_400, tooltip="Twitter/X"),
+                ft.Icon(ft.Icons.CAMERA_ALT, color=ft.Colors.PINK_400, tooltip="Instagram"),
+                ft.Icon(ft.Icons.LINK, color=Theme.TEXT_MUTED, tooltip="Generic Files"),
             ],
-            alignment=ft.MainAxisAlignment.START,
+            alignment=ft.MainAxisAlignment.CENTER,
+            spacing=20,
+            opacity=0.7,
         )
 
-        options_col = ft.Container(
+        # Input Section Card
+        input_section = ft.Container(
             padding=20,
             bgcolor=Theme.BG_CARD,
+            border_radius=16,
+            border=ft.border.all(1, Theme.BORDER),
+            content=ft.Column([
+                platform_icons,
+                ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
+                ft.Row([self.url_input, self.fetch_btn], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Row([self.cookies_dd], alignment=ft.MainAxisAlignment.END),
+            ])
+        )
+
+        # Preview & Options Section
+        # We use a responsive row or just a column since standard layout is vertical scrolling
+        preview_card = ft.Container(
+            padding=0,
+            bgcolor=ft.Colors.BLACK,
             border_radius=12,
-            content=ft.Column(
-                [
-                    ft.Text(
-                        "Options",
-                        size=16,
-                        weight=ft.FontWeight.W_600,
-                        color=Theme.TEXT_PRIMARY,
-                    ),
-                    ft.Row([self.video_format_dd, self.audio_format_dd]),
-                    ft.Divider(height=10, color=Theme.BORDER),
-                    ft.Row(
-                        [self.playlist_cb, self.sponsorblock_cb, self.force_generic_cb],
-                        wrap=True,
-                    ),
-                    ft.Row(
-                        [self.subtitle_dd, self.time_start, self.time_end], wrap=True
-                    ),
-                ]
-            ),
+            content=self.thumbnail_img,
+            alignment=ft.alignment.center,
+            shadow=ft.BoxShadow(blur_radius=15, color=ft.Colors.BLACK54),
         )
 
-        main_content = ft.Row(
+        details_col = ft.Column(
             [
-                preview_col,
-                ft.Container(width=20),
-                ft.Column(
-                    [
-                        options_col,
-                        ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
-                        ft.Row([self.download_btn], alignment=ft.MainAxisAlignment.END),
-                    ],
-                    expand=True,
-                ),
+                self.title_text,
+                self.duration_text,
+                ft.Divider(height=20, color=Theme.BORDER),
+                ft.Text("Quality Selection", weight=ft.FontWeight.W_600, color=Theme.TEXT_PRIMARY),
+                ft.Row([self.video_format_dd, self.audio_format_dd]),
+                self.advanced_options,
+                ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
+                ft.Row([self.download_btn], alignment=ft.MainAxisAlignment.END),
             ],
-            alignment=ft.MainAxisAlignment.START,
-            vertical_alignment=ft.CrossAxisAlignment.START,
+            expand=True,
         )
 
-        self.add_control(self.platform_icons)
-        self.add_control(ft.Divider(color=ft.Colors.TRANSPARENT, height=10))
-        self.add_control(input_row)
-        self.add_control(ft.Divider(height=20, color=Theme.BORDER))
+        main_content = ft.ResponsiveRow(
+            [
+                ft.Column([preview_card], col={"sm": 12, "md": 5}),
+                ft.Column([details_col], col={"sm": 12, "md": 7}),
+            ],
+            spacing=30,
+        )
+
+        self.add_control(input_section)
+        self.add_control(ft.Divider(height=30, color=ft.Colors.TRANSPARENT))
         self.add_control(ft.Container(content=main_content, padding=10))
 
     def update_info(self, info):
         if not info:
             return
+
         self.thumbnail_img.src = info.get("thumbnail") or ""
         self.thumbnail_img.visible = True
+        self.thumbnail_img.opacity = 1
+
         self.title_text.value = info.get("title", "N/A")
-        self.duration_text.value = info.get("duration", "")
+        self.duration_text.value = f"Duration: {info.get('duration', 'N/A')}"
 
         # Video Options
         video_opts = []

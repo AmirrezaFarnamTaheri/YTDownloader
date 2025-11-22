@@ -1,41 +1,35 @@
-# Mobile YTDownloader
+# ⚠️ DEPRECATED: Kivy Mobile App
 
-This directory contains the mobile version of the YTDownloader application, built using [Kivy](https://kivy.org/) and [KivyMD](https://kivymd.readthedocs.io/).
+**Note:** This Kivy-based mobile implementation is deprecated and no longer actively maintained. The project has moved to a unified **Flet-based** architecture that supports Windows, Linux, macOS, Android, and iOS from a single codebase (`main.py`).
 
-## Prerequisites
+## How to Build Mobile App (Flet)
 
+To build the modern mobile application using Flet:
+
+1.  **Install Flet:**
+    ```bash
+    pip install flet
+    ```
+
+2.  **Build for Android:**
+    ```bash
+    flet build apk
+    ```
+
+3.  **Build for iOS:**
+    ```bash
+    flet build ipa
+    ```
+
+(See project root `README.md` or `WIKI.md` for detailed build instructions).
+
+---
+
+## Legacy Kivy Instructions (Archived)
+
+*The files in this directory (`main.py`, `buildozer.spec`) correspond to the old Kivy implementation.*
+
+### Prerequisites
 *   Python 3.8+
-*   Kivy
-*   KivyMD
-*   Buildozer (for building APKs)
-
-## Installation
-
-1.  Install dependencies:
-    ```bash
-    pip install kivy kivymd
-    ```
-
-2.  Run the app locally:
-    ```bash
-    python main.py
-    ```
-
-## Building for Android (APK)
-
-To build the Android APK, you need [Buildozer](https://github.com/kivy/buildozer) installed on a Linux machine (or WSL).
-
-1.  Install Buildozer:
-    ```bash
-    pip install buildozer
-    sudo apt update
-    sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
-    ```
-
-2.  Build the APK:
-    ```bash
-    cd mobile
-    buildozer android debug
-    ```
-
-The generated APK will be in the `mobile/bin/` directory.
+*   Kivy, KivyMD
+*   Buildozer
