@@ -14,15 +14,11 @@ class TestDownloaderRobustness(unittest.TestCase):
             'formats': [
                 {'format_id': '1', 'vcodec': 'h264', 'acodec': 'aac'},
             ]
-            ],
         }
 
         info = get_video_info("http://test.com")
         self.assertIsNotNone(info)
         self.assertEqual(info['title'], 'Test Video')
-
-    @patch('yt_dlp.YoutubeDL')
-        self.assertEqual(info["title"], "Test Video")
 
     @patch("yt_dlp.YoutubeDL")
     def test_download_video_with_ranges(self, mock_ydl_class):
@@ -43,9 +39,7 @@ class TestDownloaderRobustness(unittest.TestCase):
         self.assertIn('download_ranges', call_args)
         self.assertTrue(callable(call_args['download_ranges']))
         self.assertTrue(call_args['force_keyframes_at_cuts'])
-        self.assertIn("download_ranges", call_args)
-        self.assertTrue(callable(call_args["download_ranges"]))
-        self.assertTrue(call_args["force_keyframes_at_cuts"])
+
     def test_filesize_none_handling(self):
         # This logic is inside get_video_info, already tested above implicitly
         pass
