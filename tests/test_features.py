@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import flet as ft
-from main import AppState
+from app_state import AppState
 from components import DownloadItemControl
 
 

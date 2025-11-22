@@ -7,7 +7,7 @@ from views.history_view import HistoryView
 from views.dashboard_view import DashboardView
 from views.rss_view import RSSView
 from views.settings_view import SettingsView
-from main import AppState
+from app_state import AppState
 
 
 class TestViews(unittest.TestCase):
@@ -15,6 +15,9 @@ class TestViews(unittest.TestCase):
     def setUp(self):
         self.page = MagicMock()
         self.state = AppState()
+        # Clear queue in case it persists between tests (Singleton)
+        with self.state.queue_manager._lock:
+            self.state.queue_manager._queue = []
 
     def test_download_view_init(self):
         on_fetch = MagicMock()
@@ -72,6 +75,10 @@ class TestViews(unittest.TestCase):
         self.state.queue_manager.add_item(
             {"url": "http://done.com", "status": "Completed", "title": "Done"}
         )
+        # Rebuild to reflect the added item
+        view.rebuild()
+        self.assertEqual(len(view.queue_list.controls), 2)
+
         view.clear_finished(None)
         on_remove.assert_called()
 

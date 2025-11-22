@@ -2,22 +2,13 @@ import flet as ft
 import logging
 import threading
 import time
-import os
-from typing import Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime, timedelta
-import pyperclip
+import os
 
-from downloader import get_video_info, download_video
-from config_manager import ConfigManager
-from ui_utils import format_file_size, validate_url, is_ffmpeg_available
-from history_manager import HistoryManager
-from cloud_manager import CloudManager
-from social_manager import SocialManager
-from queue_manager import QueueManager
+from downloader import get_video_info
 from theme import Theme
 from app_layout import AppLayout
-from utils import CancelToken
 
 # Import Views
 from views.download_view import DownloadView
@@ -27,156 +18,22 @@ from views.dashboard_view import DashboardView
 from views.rss_view import RSSView
 from views.settings_view import SettingsView
 
+# Refactored modules
+from app_state import state
+from tasks import process_queue
+from clipboard_monitor import start_clipboard_monitor
+
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
-
-# --- State Management ---
-class AppState:
-    def __init__(self):
-        self.config = ConfigManager.load_config()
-        self.queue_manager = QueueManager()
-        self.current_download_item: Optional[Dict[str, Any]] = None
-        self.cancel_token: Optional[CancelToken] = None
-        self.is_paused = False
-        self.video_info: Optional[Dict[str, Any]] = None
-        self.ffmpeg_available = is_ffmpeg_available()
-        HistoryManager.init_db()
-
-        # Feature flags / States
-        self.cinema_mode = False
-        self.cloud_manager = CloudManager()
-        self.social_manager = SocialManager()
-        self.scheduled_time: Optional[datetime.time] = None
-        self.clipboard_monitor_active = False
-        self.last_clipboard_content = ""
-
-        # Try connecting to social
-        threading.Thread(target=self.social_manager.connect, daemon=True).start()
-
-
-state = AppState()
-
-# Global variables for access (refactor later if possible)
+# Global variables for access
 download_view = None
 queue_view = None
 page = None
-
-# Lock to prevent concurrent process_queue calls
-_process_queue_lock = threading.Lock()
-
-
-def process_queue():
-    """
-    Process the queue to start the next download.
-    Uses a lock to prevent race conditions from concurrent calls.
-    """
-    # Acquire lock to prevent concurrent processing
-    if not _process_queue_lock.acquire(blocking=False):
-        # Another thread is already processing, skip
-        return
-
-    try:
-        # Check for scheduled items
-        items = state.queue_manager.get_all()
-        now = datetime.now()
-        for item in items:
-            if item.get("scheduled_time") and str(item["status"]).startswith("Scheduled"):
-                if now >= item["scheduled_time"]:
-                    item["status"] = "Queued"
-                    item["scheduled_time"] = None
-
-        if state.queue_manager.any_downloading():
-            return
-
-        # ATOMIC CLAIM
-        item = state.queue_manager.claim_next_downloadable()
-        if item:
-            threading.Thread(target=download_task, args=(item,), daemon=True).start()
-    finally:
-        _process_queue_lock.release()
-
-
-def download_task(item):
-    item["status"] = "Downloading"
-    state.current_download_item = item
-    state.cancel_token = CancelToken()
-
-    if "control" in item:
-        item["control"].update_progress()
-
-    try:
-
-        def progress_hook(d, _):
-            if d["status"] == "downloading":
-                total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
-                downloaded = d.get("downloaded_bytes", 0)
-                if total > 0:
-                    pct = downloaded / total
-                    if "control" in item:
-                        item["control"].progress_bar.value = pct
-
-                item["speed"] = format_file_size(d.get("speed", 0)) + "/s"
-                item["size"] = format_file_size(total)
-                item["eta"] = f"{d.get('eta', 0)}s"
-
-                if "control" in item:
-                    item["control"].update_progress()
-
-            elif d["status"] == "finished":
-                item["status"] = "Processing"
-                if "control" in item:
-                    item["control"].progress_bar.value = 1.0
-                    item["control"].update_progress()
-                item["final_filename"] = d.get("filename")
-
-        # Extract cookies if passed
-        cookies = item.get("cookies_from_browser")
-
-        download_video(
-            item["url"],
-            progress_hook,
-            item,
-            video_format=item.get("video_format", "best"),
-            output_path=item.get("output_path"),
-            cancel_token=state.cancel_token,
-            sponsorblock_remove=item.get("sponsorblock", False),
-            playlist=item.get("playlist", False),
-            use_aria2c=item.get("use_aria2c", False),
-            gpu_accel=item.get("gpu_accel"),
-            output_template=item.get("output_template"),
-            start_time=item.get("start_time"),
-            end_time=item.get("end_time"),
-            force_generic=item.get("force_generic", False),
-            cookies_from_browser=cookies,
-        )
-
-        item["status"] = "Completed"
-        HistoryManager.add_entry(
-            url=item["url"],
-            title=item.get("title", "Unknown"),
-            output_path=item.get("output_path"),
-            format_str=item.get("video_format"),
-            status="Completed",
-            file_size=item.get("size", "N/A"),
-            file_path=item.get("final_filename"),
-        )
-
-    except Exception as e:
-        if "cancelled" in str(e).lower():
-            item["status"] = "Cancelled"
-        else:
-            item["status"] = "Error"
-            logger.error(f"Download failed: {e}")
-    finally:
-        if "control" in item:
-            item["control"].update_progress()
-        state.current_download_item = None
-        state.cancel_token = None
-        process_queue()
 
 
 def fetch_info_task(url):
@@ -186,6 +43,7 @@ def fetch_info_task(url):
         cookies_from_browser = None
         if download_view and hasattr(download_view, 'cookies_dd'):
             cookies_value = download_view.cookies_dd.value
+
             if cookies_value and cookies_value != "None":
                 cookies_from_browser = cookies_value
 
@@ -227,12 +85,17 @@ def main(pg: ft.Page):
 
     def on_fetch_info(url):
         if not url:
-            page.show_snack_bar(ft.SnackBar(content=ft.Text("Please enter a URL")))
+            page.show_snack_bar(
+                ft.SnackBar(content=ft.Text("Please enter a URL"))
+            )
             return
 
         download_view.fetch_btn.disabled = True
         page.update()
-        threading.Thread(target=fetch_info_task, args=(url,), daemon=True).start()
+
+        threading.Thread(
+            target=fetch_info_task, args=(url,), daemon=True
+        ).start()
 
     def on_add_to_queue(data):
         # Process data and add to queue
@@ -250,7 +113,9 @@ def main(pg: ft.Page):
             "url": data["url"],
             "title": (
                 state.video_info.get("title", "Unknown")
-                if data["url"] == download_view.url_input.value and state.video_info
+
+                if data["url"] == download_view.url_input.value
+                and state.video_info
                 else data["url"]
             ),
             "status": status,
@@ -299,10 +164,6 @@ def main(pg: ft.Page):
         item["speed"] = ""
         item["eta"] = ""
         item["size"] = ""
-        # Re-add to queue manager if it was removed?
-        # Or just change status?
-        # The item is still in queue_manager (unless removed via finished).
-        # If it's in error state, it's still in the list.
         queue_view.rebuild()
         process_queue()
 
@@ -311,23 +172,21 @@ def main(pg: ft.Page):
         pass
 
     def on_schedule(e):
-        # This would open a time picker
-        # For now we can simulate it or use a simple input dialog
-        # Since Flet's TimePicker is available in newer versions, we can use it if available,
-        # or just a simple prompt.
-        # Let's assume a simple prompt for now or skip implementation details as user didn't specify exact UI.
         pass
 
     def on_toggle_clipboard(active):
         state.clipboard_monitor_active = active
-        msg = "Clipboard Monitor Enabled" if active else "Clipboard Monitor Disabled"
+        msg = (
+            "Clipboard Monitor Enabled"
+            if active
+            else "Clipboard Monitor Disabled"
+        )
         page.show_snack_bar(ft.SnackBar(content=ft.Text(msg)))
 
     # --- Views Initialization ---
     download_view = DownloadView(
         on_fetch_info, on_add_to_queue, on_batch_import, on_schedule, state
     )
-    # Pass on_retry_item to QueueView
     queue_view = QueueView(
         state.queue_manager, on_cancel_item, on_remove_item, on_reorder_item
     )
@@ -373,7 +232,7 @@ def main(pg: ft.Page):
     shutdown_flag = threading.Event()
 
     def background_loop():
-        """Background loop for queue processing and clipboard monitoring."""
+        """Background loop for queue processing."""
         while not shutdown_flag.is_set():
             time.sleep(2)
             try:
@@ -381,24 +240,8 @@ def main(pg: ft.Page):
             except Exception as e:
                 logger.error(f"Error in process_queue: {e}", exc_info=True)
 
-            if state.clipboard_monitor_active:
-                try:
-                    content = pyperclip.paste()
-                    if content and content != state.last_clipboard_content:
-                        state.last_clipboard_content = content
-                        if validate_url(content) and download_view:
-                            # Only auto-paste if field is empty AND not focused
-                            if not download_view.url_input.value:
-                                download_view.url_input.value = content
-                                if page:
-                                    page.update()
-                                    page.show_snack_bar(
-                                        ft.SnackBar(
-                                            content=ft.Text(f"URL detected: {content}")
-                                        )
-                                    )
-                except Exception as e:
-                    logger.error(f"Error in clipboard monitor: {e}", exc_info=True)
+    # Start Clipboard Monitor (it runs its own loop)
+    start_clipboard_monitor(page, download_view)
 
     # Store shutdown flag in page for cleanup
     page.on_disconnect = lambda _: shutdown_flag.set()

@@ -3,7 +3,10 @@ from unittest.mock import MagicMock, patch, ANY
 import threading
 import time
 from datetime import datetime, timedelta
-from main import AppState, CancelToken, process_queue, download_task, fetch_info_task
+from main import fetch_info_task
+from tasks import process_queue, download_task
+from app_state import AppState
+from utils import CancelToken
 
 
 class TestMainLogic(unittest.TestCase):
@@ -17,12 +20,15 @@ class TestMainLogic(unittest.TestCase):
         self.mock_state.queue_manager.claim_next_downloadable.return_value = None
         self.mock_state.current_download_item = None
 
-        # Patch the global state in main
-        self.patcher = patch("main.state", self.mock_state)
-        self.patcher.start()
+        # Patch the global state in tasks and main
+        self.patcher_main = patch("main.state", self.mock_state)
+        self.patcher_tasks = patch("tasks.state", self.mock_state)
+        self.patcher_main.start()
+        self.patcher_tasks.start()
 
     def tearDown(self):
-        self.patcher.stop()
+        self.patcher_main.stop()
+        self.patcher_tasks.stop()
 
     # --- CancelToken Tests ---
     def test_cancel_token(self):
@@ -60,7 +66,7 @@ class TestMainLogic(unittest.TestCase):
 
     # --- Process Queue Tests ---
 
-    @patch("main.download_task")
+    @patch("tasks.download_task")
     @patch("threading.Thread")
     def test_process_queue_starts_download(self, MockThread, mock_download_task):
         item = {"url": "http://test", "status": "Queued"}
@@ -99,9 +105,9 @@ class TestMainLogic(unittest.TestCase):
 
     # --- Download Task Tests ---
 
-    @patch("main.download_video")
-    @patch("main.HistoryManager")
-    @patch("main.process_queue")
+    @patch("tasks.download_video")
+    @patch("tasks.HistoryManager")
+    @patch("tasks.process_queue")
     def test_download_task_success(
         self, mock_process_queue, MockHistory, mock_download_video
     ):
@@ -120,8 +126,8 @@ class TestMainLogic(unittest.TestCase):
         mock_process_queue.assert_called_once()
         self.mock_state.current_download_item = None
 
-    @patch("main.download_video")
-    @patch("main.process_queue")
+    @patch("tasks.download_video")
+    @patch("tasks.process_queue")
     def test_download_task_cancelled(self, mock_process_queue, mock_download_video):
         item = {"url": "http://test", "status": "Queued"}
         mock_download_video.side_effect = Exception("Download cancelled by user")
@@ -130,8 +136,8 @@ class TestMainLogic(unittest.TestCase):
 
         self.assertEqual(item["status"], "Cancelled")
 
-    @patch("main.download_video")
-    @patch("main.process_queue")
+    @patch("tasks.download_video")
+    @patch("tasks.process_queue")
     def test_download_task_error(self, mock_process_queue, mock_download_video):
         item = {"url": "http://test", "status": "Queued"}
         mock_download_video.side_effect = Exception("Network Error")
@@ -140,7 +146,7 @@ class TestMainLogic(unittest.TestCase):
 
         self.assertEqual(item["status"], "Error")
 
-    @patch("main.download_video")
+    @patch("tasks.download_video")
     def test_download_task_progress_hook(self, mock_download_video):
         item = {"url": "http://test", "control": MagicMock()}
 
