@@ -107,7 +107,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/Library/Caches/pip
-        key: ios-pip-${{ runner.os }}-${{ hashFiles('mobile/exportOptions.plist') }}
+        key: ios-pip-${{ runner.os }}-${{ hashFiles('mobile/buildozer.spec') }}
         restore-keys: |
           ios-pip-${{ runner.os }}-
 
