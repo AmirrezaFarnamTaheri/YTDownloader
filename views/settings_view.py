@@ -6,7 +6,7 @@ from config_manager import ConfigManager
 
 class SettingsView(BaseView):
     def __init__(self, config):
-        super().__init__("Settings", ft.icons.SETTINGS)
+        super().__init__("Settings", ft.Icons.SETTINGS)
         self.config = config
 
         self.proxy_input = ft.TextField(
@@ -69,14 +69,14 @@ class SettingsView(BaseView):
             "Save Configuration",
             on_click=self.save_settings,
             bgcolor=Theme.PRIMARY,
-            color=ft.colors.WHITE,
+            color=ft.Colors.WHITE,
             style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=8)),
         )
 
         self.add_control(self.proxy_input)
         self.add_control(self.rate_limit_input)
         self.add_control(self.output_template_input)
-        self.add_control(ft.Divider(height=20, color=ft.colors.TRANSPARENT))
+        self.add_control(ft.Divider(height=20, color=ft.Colors.TRANSPARENT))
         self.add_control(
             ft.Text(
                 "Performance",
@@ -87,7 +87,7 @@ class SettingsView(BaseView):
         )
         self.add_control(self.use_aria2c_cb)
         self.add_control(self.gpu_accel_dd)
-        self.add_control(ft.Divider(height=20, color=ft.colors.TRANSPARENT))
+        self.add_control(ft.Divider(height=20, color=ft.Colors.TRANSPARENT))
         self.add_control(
             ft.Text(
                 "Appearance",
@@ -120,6 +120,4 @@ class SettingsView(BaseView):
         self.config["theme_mode"] = self.theme_mode_dd.value
         ConfigManager.save_config(self.config)
         if self.page:
-            self.page.show_snack_bar(
-                ft.SnackBar(content=ft.Text("Settings saved successfully!"))
-            )
+            self.page.open(ft.SnackBar(content=ft.Text("Settings saved successfully!")))

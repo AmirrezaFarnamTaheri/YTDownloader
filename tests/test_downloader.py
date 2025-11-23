@@ -221,7 +221,7 @@ class TestDownloadVideo(unittest.TestCase):
 
         # Get the ydl_opts passed to download
         args, kwargs = mock_download.call_args
-        ydl_opts = args[4] # options is 5th arg
+        ydl_opts = args[4]  # options is 5th arg
         self.assertTrue(ydl_opts["writesubtitles"])
         self.assertEqual(ydl_opts["subtitleslangs"], ["en"])
         self.assertEqual(ydl_opts["subtitlesformat"], "vtt")
@@ -335,9 +335,7 @@ class TestDownloadVideo(unittest.TestCase):
     @patch("downloader.core.YTDLPWrapper.download")
     def test_download_video_cancelled_by_user(self, mock_download, mock_mkdir):
         """Test graceful handling of user cancellation."""
-        mock_download.side_effect = yt_dlp.utils.DownloadError(
-            "Cancelled by user"
-        )
+        mock_download.side_effect = yt_dlp.utils.DownloadError("Cancelled by user")
         progress_hook = MagicMock()
         download_item = {}
 

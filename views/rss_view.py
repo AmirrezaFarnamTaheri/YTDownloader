@@ -8,7 +8,7 @@ import threading
 
 class RSSView(BaseView):
     def __init__(self, config):
-        super().__init__("RSS Feeds", ft.icons.RSS_FEED)
+        super().__init__("RSS Feeds", ft.Icons.RSS_FEED)
         self.config = config
         self.rss_input = ft.TextField(
             label="Feed URL",
@@ -23,8 +23,8 @@ class RSSView(BaseView):
             selected_index=0,
             animation_duration=300,
             tabs=[
-                ft.Tab(text="Feeds", icon=ft.icons.LIST),
-                ft.Tab(text="Latest Items", icon=ft.icons.NEW_RELEASES),
+                ft.Tab(text="Feeds", icon=ft.Icons.LIST),
+                ft.Tab(text="Latest Items", icon=ft.Icons.NEW_RELEASES),
             ],
             expand=True,
             on_change=self.on_tab_change,
@@ -40,7 +40,7 @@ class RSSView(BaseView):
                     [
                         self.rss_input,
                         ft.IconButton(
-                            ft.icons.ADD_CIRCLE,
+                            ft.Icons.ADD_CIRCLE,
                             on_click=self.add_rss,
                             icon_size=40,
                             icon_color=Theme.PRIMARY,
@@ -64,7 +64,7 @@ class RSSView(BaseView):
                             color=Theme.TEXT_SECONDARY,
                         ),
                         ft.IconButton(
-                            ft.icons.REFRESH,
+                            ft.Icons.REFRESH,
                             on_click=self.refresh_feeds,
                             icon_color=Theme.PRIMARY,
                             tooltip="Refresh",
@@ -105,7 +105,7 @@ class RSSView(BaseView):
                 ft.Container(
                     content=ft.Column(
                         [
-                            ft.Icon(ft.icons.RSS_FEED, size=64, color=Theme.TEXT_MUTED),
+                            ft.Icon(ft.Icons.RSS_FEED, size=64, color=Theme.TEXT_MUTED),
                             ft.Text("No feeds added yet", color=Theme.TEXT_MUTED),
                         ],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -123,7 +123,7 @@ class RSSView(BaseView):
                     border_radius=8,
                     content=ft.Row(
                         [
-                            ft.Icon(ft.icons.RSS_FEED, color=Theme.WARNING),
+                            ft.Icon(ft.Icons.RSS_FEED, color=Theme.WARNING),
                             ft.Text(
                                 feed,
                                 color=Theme.TEXT_PRIMARY,
@@ -131,7 +131,7 @@ class RSSView(BaseView):
                                 overflow=ft.TextOverflow.ELLIPSIS,
                             ),
                             ft.IconButton(
-                                ft.icons.DELETE,
+                                ft.Icons.DELETE,
                                 on_click=lambda e, f=feed: self.remove_rss(f),
                                 icon_color=Theme.ERROR,
                                 tooltip="Remove",
@@ -206,7 +206,7 @@ class RSSView(BaseView):
                     border_radius=8,
                     content=ft.Row(
                         [
-                            ft.Icon(ft.icons.VIDEO_LIBRARY, color=Theme.ACCENT),
+                            ft.Icon(ft.Icons.VIDEO_LIBRARY, color=Theme.ACCENT),
                             ft.Column(
                                 [
                                     ft.Text(
@@ -224,7 +224,7 @@ class RSSView(BaseView):
                                 expand=True,
                             ),
                             ft.IconButton(
-                                ft.icons.COPY,
+                                ft.Icons.COPY,
                                 icon_color=Theme.TEXT_SECONDARY,
                                 tooltip="Copy Link",
                                 on_click=lambda e, l=item[

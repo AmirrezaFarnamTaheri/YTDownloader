@@ -71,4 +71,6 @@ class CancelToken:
                         # Auto-resume after timeout
                         with self._lock:
                             self._is_paused = False
-                        raise Exception(f"Download paused for too long ({elapsed:.0f}s), auto-cancelled.")
+                        raise Exception(
+                            f"Download paused for too long ({elapsed:.0f}s), auto-cancelled."
+                        )

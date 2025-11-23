@@ -6,6 +6,7 @@ from urllib.parse import unquote, urlparse
 
 logger = logging.getLogger(__name__)
 
+
 class GenericExtractor:
     @staticmethod
     def extract(url: str) -> Optional[Dict[str, Any]]:
@@ -38,9 +39,24 @@ class GenericExtractor:
             if "text/html" in content_type:
                 # Check if URL path has a non-html extension
                 path = urlparse(url).path
-                ext = path.split('.')[-1].lower() if '.' in path else ''
+                ext = path.split(".")[-1].lower() if "." in path else ""
                 # If has video/audio/archive extension, trust the URL over Content-Type
-                if ext not in ('mp4', 'webm', 'mkv', 'avi', 'mov', 'mp3', 'wav', 'flac', 'm4a', 'zip', 'rar', '7z', 'tar', 'gz'):
+                if ext not in (
+                    "mp4",
+                    "webm",
+                    "mkv",
+                    "avi",
+                    "mov",
+                    "mp3",
+                    "wav",
+                    "flac",
+                    "m4a",
+                    "zip",
+                    "rar",
+                    "7z",
+                    "tar",
+                    "gz",
+                ):
                     return None
 
             # Determine filename

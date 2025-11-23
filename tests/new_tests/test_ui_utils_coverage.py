@@ -4,6 +4,7 @@ import ui_utils
 import os
 import platform
 
+
 class TestUIUtilsCoverage(unittest.TestCase):
 
     def test_format_file_size_extended(self):
@@ -15,18 +16,22 @@ class TestUIUtilsCoverage(unittest.TestCase):
         self.assertEqual(ui_utils.format_file_size(1024), "1.00 KB")
         # Very large
         self.assertEqual(ui_utils.format_file_size(1024**5), "1.00 PB")
-        self.assertEqual(ui_utils.format_file_size(1024**6), "1024.00 PB") # Loop finishes at PB
+        self.assertEqual(
+            ui_utils.format_file_size(1024**6), "1024.00 PB"
+        )  # Loop finishes at PB
 
     def test_validate_url_extended(self):
         self.assertFalse(ui_utils.validate_url(None))
         self.assertFalse(ui_utils.validate_url(123))
         self.assertFalse(ui_utils.validate_url("   "))
-        self.assertFalse(ui_utils.validate_url("ftp://example.com")) # Only http/s
-        self.assertFalse(ui_utils.validate_url("http://")) # Too short
+        self.assertFalse(ui_utils.validate_url("ftp://example.com"))  # Only http/s
+        self.assertFalse(ui_utils.validate_url("http://"))  # Too short
 
         # Regex check
         self.assertTrue(ui_utils.validate_url("http://example.com"))
-        self.assertFalse(ui_utils.validate_url("http://ex ample.com")) # Space not allowed
+        self.assertFalse(
+            ui_utils.validate_url("http://ex ample.com")
+        )  # Space not allowed
 
     def test_validate_proxy_extended(self):
         self.assertTrue(ui_utils.validate_proxy(None))
@@ -37,7 +42,7 @@ class TestUIUtilsCoverage(unittest.TestCase):
 
         # Auth case
         self.assertTrue(ui_utils.validate_proxy("http://user:pass@host:8080"))
-        self.assertFalse(ui_utils.validate_proxy("http://user:pass@host")) # No port
+        self.assertFalse(ui_utils.validate_proxy("http://user:pass@host"))  # No port
 
         # Port range
         self.assertFalse(ui_utils.validate_proxy("http://host:0"))
@@ -53,7 +58,7 @@ class TestUIUtilsCoverage(unittest.TestCase):
         self.assertTrue(ui_utils.validate_rate_limit("50K"))
         self.assertTrue(ui_utils.validate_rate_limit("1.5M"))
 
-        self.assertFalse(ui_utils.validate_rate_limit("0K")) # Zero value
+        self.assertFalse(ui_utils.validate_rate_limit("0K"))  # Zero value
         self.assertFalse(ui_utils.validate_rate_limit("invalid"))
         self.assertFalse(ui_utils.validate_rate_limit("100KK"))
 

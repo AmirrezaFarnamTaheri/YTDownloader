@@ -1,6 +1,7 @@
 import flet as ft
 from theme import Theme
 
+
 class EmptyState(ft.Container):
     def __init__(self, icon: str, message: str):
         super().__init__()

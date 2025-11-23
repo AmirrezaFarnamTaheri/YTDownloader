@@ -6,7 +6,7 @@ from components import DownloadItemControl
 
 class QueueView(BaseView):
     def __init__(self, queue_manager, on_cancel, on_remove, on_reorder):
-        super().__init__("Queue", ft.icons.QUEUE_MUSIC)
+        super().__init__("Queue", ft.Icons.QUEUE_MUSIC)
         self.queue_manager = queue_manager
         self.on_cancel = on_cancel
         self.on_remove = on_remove
@@ -17,7 +17,7 @@ class QueueView(BaseView):
 
         self.clear_btn = ft.OutlinedButton(
             "Clear Finished",
-            icon=ft.icons.CLEAR_ALL,
+            icon=ft.Icons.CLEAR_ALL,
             on_click=self.clear_finished,
             style=ft.ButtonStyle(color=Theme.TEXT_SECONDARY),
         )

@@ -45,9 +45,7 @@ class AppState:
         self.last_clipboard_content = ""
 
         # Try connecting to social
-        threading.Thread(
-            target=self.social_manager.connect, daemon=True
-        ).start()
+        threading.Thread(target=self.social_manager.connect, daemon=True).start()
 
         self._initialized = True
 

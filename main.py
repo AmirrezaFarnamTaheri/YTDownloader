@@ -27,8 +27,7 @@ from clipboard_monitor import start_clipboard_monitor
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -36,6 +35,7 @@ logger = logging.getLogger(__name__)
 download_view = None
 queue_view = None
 page = None
+
 
 def main(pg: ft.Page):
     global page, download_view, queue_view
@@ -64,9 +64,7 @@ def main(pg: ft.Page):
 
     def on_fetch_info(url):
         if not url:
-            page.show_snack_bar(
-                ft.SnackBar(content=ft.Text("Please enter a URL"))
-            )
+            page.open(ft.SnackBar(content=ft.Text("Please enter a URL")))
             return
 
         download_view.fetch_btn.disabled = True
@@ -89,7 +87,13 @@ def main(pg: ft.Page):
             if sched_dt < now:
                 sched_dt += timedelta(days=1)
             status = f"Scheduled ({sched_dt.strftime('%H:%M')})"
-            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Download scheduled for {sched_dt.strftime('%Y-%m-%d %H:%M')}")))
+            page.open(
+                ft.SnackBar(
+                    content=ft.Text(
+                        f"Download scheduled for {sched_dt.strftime('%Y-%m-%d %H:%M')}"
+                    )
+                )
+            )
 
         # Safely handle potential missing state.video_info or mismatch
         title = data["url"]
@@ -117,7 +121,7 @@ def main(pg: ft.Page):
         state.scheduled_time = None
         queue_view.rebuild()
         if status == "Queued":
-            page.show_snack_bar(ft.SnackBar(content=ft.Text("Added to queue")))
+            page.open(ft.SnackBar(content=ft.Text("Added to queue")))
         process_queue()
 
     def on_cancel_item(item):
@@ -184,22 +188,25 @@ def main(pg: ft.Page):
                 count += 1
 
             queue_view.rebuild()
-            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
+            page.open(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
             process_queue()
 
         except Exception as ex:
-            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Failed to import: {ex}")))
+            page.open(ft.SnackBar(content=ft.Text(f"Failed to import: {ex}")))
 
     def on_batch_import():
-        file_picker.pick_files(
-            allow_multiple=False,
-            allowed_extensions=["txt", "csv"]
-        )
+        file_picker.pick_files(allow_multiple=False, allowed_extensions=["txt", "csv"])
 
     def on_time_picked(e):
         if e.value:
             state.scheduled_time = e.value
-            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Next download will be scheduled at {e.value.strftime('%H:%M')}")))
+            page.open(
+                ft.SnackBar(
+                    content=ft.Text(
+                        f"Next download will be scheduled at {e.value.strftime('%H:%M')}"
+                    )
+                )
+            )
 
     def on_schedule(e):
         page.open(time_picker)
@@ -210,12 +217,8 @@ def main(pg: ft.Page):
 
     def on_toggle_clipboard(active):
         state.clipboard_monitor_active = active
-        msg = (
-            "Clipboard Monitor Enabled"
-            if active
-            else "Clipboard Monitor Disabled"
-        )
-        page.show_snack_bar(ft.SnackBar(content=ft.Text(msg)))
+        msg = "Clipboard Monitor Enabled" if active else "Clipboard Monitor Disabled"
+        page.open(ft.SnackBar(content=ft.Text(msg)))
 
     # --- Views Initialization ---
     download_view = DownloadView(

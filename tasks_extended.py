@@ -5,12 +5,13 @@ from app_state import state
 
 logger = logging.getLogger(__name__)
 
+
 def fetch_info_task(url, download_view, page):
     """Fetch video info in background with cookie support."""
     try:
         # Get selected browser cookies if available
         cookies_from_browser = None
-        if download_view and hasattr(download_view, 'cookies_dd'):
+        if download_view and hasattr(download_view, "cookies_dd"):
             cookies_value = download_view.cookies_dd.value
 
             if cookies_value and cookies_value != "None":
@@ -27,14 +28,14 @@ def fetch_info_task(url, download_view, page):
         # Flet is usually thread-safe for page.update() but it's good practice to verify
         if page:
             import flet as ft
-            page.show_snack_bar(
-                ft.SnackBar(content=ft.Text("Metadata fetched successfully"))
-            )
+
+            page.open(ft.SnackBar(content=ft.Text("Metadata fetched successfully")))
     except Exception as e:
         logger.error(f"Fetch error: {e}")
         if page:
             import flet as ft
-            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error: {e}")))
+
+            page.open(ft.SnackBar(content=ft.Text(f"Error: {e}")))
     finally:
         if download_view:
             download_view.fetch_btn.disabled = False

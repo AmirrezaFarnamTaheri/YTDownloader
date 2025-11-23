@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 def download_generic(
     url: str,
     output_path: str,
@@ -41,7 +42,9 @@ def download_generic(
     while retry_count <= max_retries:
         try:
             # Start stream with timeout (connection timeout: 15s, read timeout: 300s for large files)
-            with requests.get(url, stream=True, headers=headers, timeout=(15, 300)) as r:
+            with requests.get(
+                url, stream=True, headers=headers, timeout=(15, 300)
+            ) as r:
                 r.raise_for_status()
 
                 # Handle resume response
@@ -54,7 +57,9 @@ def download_generic(
                     # Full content (either new download or server doesn't support resume)
                     total_size = int(r.headers.get("content-length", 0))
                     if downloaded > 0:
-                        logger.warning("Server doesn't support resume, starting from beginning")
+                        logger.warning(
+                            "Server doesn't support resume, starting from beginning"
+                        )
                         downloaded = 0
                 else:
                     total_size = int(r.headers.get("content-length", 0))
@@ -113,16 +118,15 @@ def download_generic(
             last_error = e
             retry_count += 1
             if retry_count <= max_retries:
-                wait_time = 2 ** retry_count  # Exponential backoff: 2, 4, 8 seconds
-                logger.warning(f"Download failed (attempt {retry_count}/{max_retries}): {e}. Retrying in {wait_time}s...")
+                wait_time = 2**retry_count  # Exponential backoff: 2, 4, 8 seconds
+                logger.warning(
+                    f"Download failed (attempt {retry_count}/{max_retries}): {e}. Retrying in {wait_time}s..."
+                )
                 time.sleep(wait_time)
                 # Update headers for resume on retry
                 if os.path.exists(final_path):
                     downloaded = os.path.getsize(final_path)
                     headers["Range"] = f"bytes={downloaded}-"
-            else:
-                logger.error(f"Generic download failed after {max_retries} retries: {e}")
-                raise
         except Exception as e:
             # Non-retryable errors (like cancellation)
             logger.error(f"Generic download error: {e}")

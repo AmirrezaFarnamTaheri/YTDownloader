@@ -146,4 +146,4 @@ class TestUIExtended(unittest.TestCase):
             self.assertEqual(self.mock_config["proxy"], "http://proxy")
             self.assertEqual(self.mock_config["theme_mode"], "Light")
             mock_save.assert_called()
-            self.mock_page.show_snack_bar.assert_called()
+            self.mock_page.open.assert_called()

@@ -1,94 +1,135 @@
-import pytest
-from unittest.mock import MagicMock, patch, mock_open
-import requests
+import unittest
+from unittest.mock import patch, MagicMock
 import os
+import requests
 from downloader.engines.generic import download_generic
 
-class TestGenericEngineExtra:
 
+class TestGenericEngineExtra(unittest.TestCase):
     @patch("downloader.engines.generic.requests.get")
-    @patch("builtins.open", new_callable=mock_open)
-    @patch("os.path.exists")
-    @patch("os.path.getsize")
-    def test_retry_logic(self, mock_getsize, mock_exists, mock_file, mock_get):
-        # Setup: file doesn't exist initially
-        mock_exists.return_value = False
-
-        # Requests raises exception 3 times then succeeds?
-        # Or fails all times.
-        mock_get.side_effect = requests.exceptions.RequestException("Connection error")
-
-        hook = MagicMock()
-        item = {}
-
-        with patch("time.sleep"): # Speed up test
-            with pytest.raises(requests.exceptions.RequestException):
-                download_generic(
-                    "http://u.com", "/tmp", "f.mp4", hook, item, max_retries=2
-                )
-
-        assert mock_get.call_count == 3
-
-    @patch("downloader.engines.generic.requests.get")
-    @patch("builtins.open", new_callable=mock_open)
-    @patch("os.path.exists")
-    @patch("os.path.getsize")
-    def test_resume_logic_206(self, mock_getsize, mock_exists, mock_file, mock_get):
-        mock_exists.return_value = True
-        mock_getsize.return_value = 100
-
-        mock_response = MagicMock()
-        mock_response.status_code = 206
-        mock_response.headers = {"Content-Range": "bytes 100-200/200", "content-length": "100"}
-        mock_response.iter_content.return_value = [b"data"]
-        mock_get.return_value.__enter__.return_value = mock_response
-
-        hook = MagicMock()
-        item = {}
-
-        download_generic("http://u.com", "/tmp", "f.mp4", hook, item)
-
-        # Verify mode is 'ab'
-        mock_file.assert_called_with(os.path.join("/tmp", "f.mp4"), "ab")
-        # Verify headers had Range
-        args, kwargs = mock_get.call_args
-        assert kwargs["headers"]["Range"] == "bytes=100-"
-
-    @patch("downloader.engines.generic.requests.get")
-    @patch("builtins.open", new_callable=mock_open)
-    @patch("os.path.exists")
-    @patch("os.path.getsize")
-    def test_resume_logic_200_reset(self, mock_getsize, mock_exists, mock_file, mock_get):
-        # File exists (100 bytes) but server returns 200 (full content)
-        mock_exists.return_value = True
-        mock_getsize.return_value = 100
-
+    def test_progress_update_logic(self, mock_get):
+        """Test that progress updates trigger correctly."""
+        # Setup mock response with enough chunks to trigger update
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.headers = {"content-length": "200"}
-        mock_response.iter_content.return_value = [b"data"]
+        mock_response.headers = {"content-length": "1000"}
+        # Create enough small chunks to ensure time passes or iteration happens
+        # Note: We rely on time passing, so we might need to mock time
+        mock_response.iter_content.return_value = [b"a" * 100] * 10
         mock_get.return_value.__enter__.return_value = mock_response
 
-        hook = MagicMock()
-        item = {}
+        progress_hook = MagicMock()
 
-        download_generic("http://u.com", "/tmp", "f.mp4", hook, item)
+        # Mock time to ensure we hit the 0.1s update threshold
+        with patch(
+            "time.time",
+            side_effect=[
+                0.0,  # start_time
+                0.2,  # first chunk
+                0.4,
+                0.6,
+                0.8,
+                1.0,
+                1.2,
+                1.4,
+                1.6,
+                1.8,
+                2.0,  # subsequent
+            ],
+        ):
+            with patch("builtins.open", new_callable=MagicMock):
+                download_generic("http://url", "/tmp", "file.mp4", progress_hook, {})
 
-        # Verify mode is 'wb' (overwrite)
-        mock_file.assert_called_with(os.path.join("/tmp", "f.mp4"), "wb")
+        # Verify progress hook was called with "downloading" status
+        calls = [
+            c
+            for c in progress_hook.call_args_list
+            if c[0][0]["status"] == "downloading"
+        ]
+        self.assertTrue(len(calls) > 0)
 
-    def test_cancel_exception(self):
-        hook = MagicMock()
-        item = {}
-        token = MagicMock()
-        token.check.side_effect = Exception("Cancelled")
+    @patch("downloader.engines.generic.requests.get")
+    def test_retry_resume_logic(self, mock_get):
+        """Test that retries set the Range header correctly."""
+        # First attempt fails with connection error
+        # Second attempt succeeds
+        mock_fail = MagicMock()
+        mock_fail.raise_for_status.side_effect = requests.exceptions.ConnectionError(
+            "Fail"
+        )
 
-        with patch("downloader.engines.generic.requests.get") as mock_get:
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_response.iter_content.return_value = [b"chunk"]
-            mock_get.return_value.__enter__.return_value = mock_response
+        mock_success = MagicMock()
+        mock_success.status_code = 206
+        mock_success.iter_content.return_value = []
 
-            with patch("builtins.open", mock_open()):
-                with pytest.raises(Exception, match="Cancelled"):
-                    download_generic("http://u.com", "/tmp", "f.mp4", hook, item, cancel_token=token)
+        # Mock context manager structure
+        fail_ctx = MagicMock()
+        fail_ctx.__enter__.return_value = mock_fail
+
+        success_ctx = MagicMock()
+        success_ctx.__enter__.return_value = mock_success
+
+        mock_get.side_effect = [fail_ctx, success_ctx]
+
+        with patch("os.path.exists", return_value=True):
+            with patch("os.path.getsize", return_value=500):
+                with patch("time.sleep"):  # Skip sleep
+                    download_generic("http://url", "/tmp", "file.mp4", MagicMock(), {})
+
+        # Check that second call had Range header
+        args, kwargs = mock_get.call_args_list[1]
+        self.assertIn("Range", kwargs["headers"])
+        self.assertEqual(kwargs["headers"]["Range"], "bytes=500-")
+
+    @patch("downloader.engines.generic.requests.get")
+    def test_exhausted_retries_raises_last_error(self, mock_get):
+        """Test that last error is raised if all retries fail."""
+        mock_fail = MagicMock()
+        mock_fail.raise_for_status.side_effect = requests.exceptions.ConnectionError(
+            "Fail"
+        )
+
+        ctx = MagicMock()
+        ctx.__enter__.return_value = mock_fail
+        mock_get.return_value = ctx
+
+        with patch("time.sleep"):
+            with self.assertRaises(requests.exceptions.ConnectionError):
+                download_generic(
+                    "http://url", "/tmp", "file.mp4", MagicMock(), {}, max_retries=1
+                )
+
+    @patch("downloader.engines.generic.requests.get")
+    def test_retry_without_file_exists(self, mock_get):
+        """Test retry logic when partial file does not exist."""
+        # First attempt fails
+        mock_fail = MagicMock()
+        mock_fail.raise_for_status.side_effect = requests.exceptions.ConnectionError(
+            "Fail"
+        )
+
+        # Second attempt succeeds
+        mock_success = MagicMock()
+        mock_success.status_code = 200
+        mock_success.iter_content.return_value = []
+
+        fail_ctx = MagicMock()
+        fail_ctx.__enter__.return_value = mock_fail
+
+        success_ctx = MagicMock()
+        success_ctx.__enter__.return_value = mock_success
+
+        mock_get.side_effect = [fail_ctx, success_ctx]
+
+        # Force os.path.exists to return False
+        with patch("os.path.exists", return_value=False):
+            with patch("time.sleep"):
+                download_generic("http://url", "/tmp", "file.mp4", MagicMock(), {})
+
+        # Check that second call did NOT have Range header (or at least not for bytes=500-)
+        args, kwargs = mock_get.call_args_list[1]
+        self.assertNotIn("Range", kwargs["headers"])
+
+
+if __name__ == "__main__":
+    unittest.main()

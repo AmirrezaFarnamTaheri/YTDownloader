@@ -18,10 +18,10 @@ class Theme:
     BG_HOVER = "#334155"  # Slate 700
 
     # Inputs
-    BG_INPUT = "#0F172A" # Darker than card for depth
+    BG_INPUT = "#0F172A"  # Darker than card for depth
 
     # Glassmorphism hints
-    BG_GLASS = ft.colors.with_opacity(0.9, "#1E293B")
+    BG_GLASS = ft.Colors.with_opacity(0.9, "#1E293B")
 
     # Text
     TEXT_PRIMARY = "#F8FAFC"  # Slate 50
@@ -53,7 +53,7 @@ class Theme:
                 background=Theme.BG_DARK,
                 surface=Theme.BG_CARD,
                 error=Theme.ERROR,
-                on_primary=Theme.BG_DARK, # Dark text on light primary
+                on_primary=Theme.BG_DARK,  # Dark text on light primary
                 on_secondary=Theme.BG_DARK,
                 on_background=Theme.TEXT_PRIMARY,
                 on_surface=Theme.TEXT_PRIMARY,

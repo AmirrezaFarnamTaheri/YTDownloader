@@ -4,6 +4,7 @@ import threading
 import time
 from queue_manager import QueueManager
 
+
 class TestQueueManagerConcurrency(unittest.TestCase):
     def setUp(self):
         self.qm = QueueManager()
@@ -42,6 +43,7 @@ class TestQueueManagerConcurrency(unittest.TestCase):
 
     def test_add_item_thread_safety(self):
         """Test adding items from multiple threads."""
+
         def worker(start, count):
             for i in range(count):
                 self.qm.add_item({"id": start + i, "status": "Queued"})
@@ -56,6 +58,7 @@ class TestQueueManagerConcurrency(unittest.TestCase):
             t.join()
 
         self.assertEqual(len(self.qm.get_all()), 400)
+
 
 if __name__ == "__main__":
     unittest.main()

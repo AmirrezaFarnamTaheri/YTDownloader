@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 def download_video(
     url: str,
     progress_hook: Callable,
@@ -140,13 +141,16 @@ def download_video(
     if start_time and end_time:
         try:
             from yt_dlp.utils import parse_duration
+
             start_sec = parse_duration(start_time)
             end_sec = parse_duration(end_time)
 
             if start_sec is None or end_sec is None:
                 raise ValueError("Could not parse time format")
             if start_sec >= end_sec:
-                raise ValueError(f"Start time ({start_time}) must be before end time ({end_time})")
+                raise ValueError(
+                    f"Start time ({start_time}) must be before end time ({end_time})"
+                )
             if start_sec < 0 or end_sec < 0:
                 raise ValueError(f"Time values must be non-negative")
 
@@ -211,7 +215,8 @@ def download_video(
         rate_limit_clean = rate_limit.strip()
         if rate_limit_clean:
             import re
-            if not re.match(r'^\d+(\.\d+)?[KMGT]?$', rate_limit_clean, re.IGNORECASE):
+
+            if not re.match(r"^\d+(\.\d+)?[KMGT]?$", rate_limit_clean, re.IGNORECASE):
                 raise ValueError(f"Invalid rate limit format: {rate_limit}")
             ydl_opts["ratelimit"] = rate_limit_clean
 
@@ -223,10 +228,5 @@ def download_video(
 
     # Execute Download
     YTDLPWrapper.download(
-        url,
-        output_path,
-        progress_hook,
-        download_item,
-        ydl_opts,
-        cancel_token
+        url, output_path, progress_hook, download_item, ydl_opts, cancel_token
     )

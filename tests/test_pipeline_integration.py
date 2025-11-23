@@ -6,6 +6,7 @@ from tasks import process_queue, download_task
 from app_state import state
 from queue_manager import QueueManager
 
+
 class TestPipelineIntegration(unittest.TestCase):
     def setUp(self):
         # Reset state
@@ -81,7 +82,7 @@ class TestPipelineIntegration(unittest.TestCase):
         item = {
             "url": "http://future.com",
             "status": f"Scheduled ({future_time.strftime('%H:%M')})",
-            "scheduled_time": future_time
+            "scheduled_time": future_time,
         }
         state.queue_manager.add_item(item)
 
@@ -110,7 +111,7 @@ class TestPipelineIntegration(unittest.TestCase):
         item = {
             "url": "http://now.com",
             "status": f"Scheduled ({past_time.strftime('%H:%M')})",
-            "scheduled_time": past_time
+            "scheduled_time": past_time,
         }
         state.queue_manager.add_item(item)
 
@@ -119,6 +120,7 @@ class TestPipelineIntegration(unittest.TestCase):
 
         # Should be processed
         mock_download.assert_called()
+
 
 from datetime import datetime, timedelta
 

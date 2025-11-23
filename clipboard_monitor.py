@@ -43,7 +43,7 @@ def _clipboard_loop(page, download_view):
                             if page:
                                 import flet as ft
 
-                                page.show_snack_bar(
+                                page.open(
                                     ft.SnackBar(
                                         content=ft.Text(f"URL detected: {content}")
                                     )

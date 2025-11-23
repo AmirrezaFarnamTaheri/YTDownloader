@@ -7,6 +7,7 @@ from downloader.extractors.generic import GenericExtractor
 
 logger = logging.getLogger(__name__)
 
+
 def get_video_info(
     url: str,
     cookies_from_browser: Optional[str] = None,
