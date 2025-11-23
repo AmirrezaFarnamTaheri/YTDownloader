@@ -29,27 +29,27 @@ class AppLayout:
             bgcolor=Theme.BG_CARD,
             destinations=[
                 ft.NavigationRailDestination(
-                    icon=ft.Icons.DOWNLOAD,
-                    selected_icon=ft.Icons.DOWNLOAD_DONE,
+                    icon=ft.icons.DOWNLOAD,
+                    selected_icon=ft.icons.DOWNLOAD_DONE,
                     label="Download",
                 ),
                 ft.NavigationRailDestination(
-                    icon=ft.Icons.QUEUE_MUSIC,
-                    selected_icon=ft.Icons.QUEUE_MUSIC_ROUNDED,
+                    icon=ft.icons.QUEUE_MUSIC,
+                    selected_icon=ft.icons.QUEUE_MUSIC_ROUNDED,
                     label="Queue",
                 ),
                 ft.NavigationRailDestination(
-                    icon=ft.Icons.HISTORY,
-                    selected_icon=ft.Icons.HISTORY_TOGGLE_OFF,
+                    icon=ft.icons.HISTORY,
+                    selected_icon=ft.icons.HISTORY_TOGGLE_OFF,
                     label="History",
                 ),
                 ft.NavigationRailDestination(
-                    icon=ft.Icons.DASHBOARD,
-                    selected_icon=ft.Icons.DASHBOARD_CUSTOMIZE,
+                    icon=ft.icons.DASHBOARD,
+                    selected_icon=ft.icons.DASHBOARD_CUSTOMIZE,
                     label="Dashboard",
                 ),
-                ft.NavigationRailDestination(icon=ft.Icons.RSS_FEED, label="RSS"),
-                ft.NavigationRailDestination(icon=ft.Icons.SETTINGS, label="Settings"),
+                ft.NavigationRailDestination(icon=ft.icons.RSS_FEED, label="RSS"),
+                ft.NavigationRailDestination(icon=ft.icons.SETTINGS, label="Settings"),
             ],
             on_change=lambda e: self.navigate_callback(e.control.selected_index),
         )
@@ -64,7 +64,7 @@ class AppLayout:
 
         # About / Help Button
         self.about_btn = ft.IconButton(
-            ft.Icons.HELP_OUTLINE,
+            ft.icons.HELP_OUTLINE,
             tooltip="About & Help",
             icon_color=Theme.TEXT_SECONDARY,
             on_click=self.show_about_dialog,

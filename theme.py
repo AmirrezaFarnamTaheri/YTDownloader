@@ -21,7 +21,7 @@ class Theme:
     BG_INPUT = "#0F172A" # Darker than card for depth
 
     # Glassmorphism hints
-    BG_GLASS = ft.Colors.with_opacity(0.9, "#1E293B")
+    BG_GLASS = ft.colors.with_opacity(0.9, "#1E293B")
 
     # Text
     TEXT_PRIMARY = "#F8FAFC"  # Slate 50

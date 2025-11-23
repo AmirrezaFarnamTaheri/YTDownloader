@@ -1,3 +1,7 @@
 [run]
 omit =
-    headless_tk.py
+    mobile/*
+    verify_*.py
+    installers/*
+    scripts/*
+    tests/*

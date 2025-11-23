@@ -6,10 +6,10 @@ from history_manager import HistoryManager
 
 class DashboardView(BaseView):
     def __init__(self):
-        super().__init__("Dashboard", ft.Icons.DASHBOARD)
+        super().__init__("Dashboard", ft.icons.DASHBOARD)
         self.stats_row = ft.Row(wrap=True, spacing=20)
         self.add_control(self.stats_row)
-        self.add_control(ft.Divider(color=ft.Colors.TRANSPARENT, height=20))
+        self.add_control(ft.Divider(color=ft.colors.TRANSPARENT, height=20))
         self.add_control(
             ft.Text(
                 "Recent Activity",
@@ -31,7 +31,7 @@ class DashboardView(BaseView):
         card = self._create_stat_card(
             "Total Downloads",
             str(total_downloads),
-            ft.Icons.DOWNLOAD_DONE,
+            ft.icons.DOWNLOAD_DONE,
             Theme.PRIMARY,
         )
         self.stats_row.controls.append(card)

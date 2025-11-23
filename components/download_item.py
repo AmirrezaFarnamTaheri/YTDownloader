@@ -57,31 +57,31 @@ class DownloadItemControl:
         bg_color = (
             Theme.BG_CARD
             if not self.is_selected
-            else ft.Colors.with_opacity(0.1, Theme.PRIMARY)
+            else ft.colors.with_opacity(0.1, Theme.PRIMARY)
         )
 
         # Platform specific icon logic
         url = self.item.get("url", "").lower()
-        icon_data = ft.Icons.INSERT_DRIVE_FILE
+        icon_data = ft.icons.INSERT_DRIVE_FILE
         icon_color = Theme.TEXT_SECONDARY
 
         if "youtube" in url or "youtu.be" in url:
-            icon_data = ft.Icons.ONDEMAND_VIDEO
-            icon_color = ft.Colors.RED_400
+            icon_data = ft.icons.ONDEMAND_VIDEO
+            icon_color = ft.colors.RED_400
         elif "t.me" in url or "telegram" in url:
-            icon_data = ft.Icons.TELEGRAM
-            icon_color = ft.Colors.BLUE_400
+            icon_data = ft.icons.TELEGRAM
+            icon_color = ft.colors.BLUE_400
         elif "twitter" in url or "x.com" in url:
-            icon_data = ft.Icons.ALTERNATE_EMAIL
-            icon_color = ft.Colors.WHITE
+            icon_data = ft.icons.ALTERNATE_EMAIL
+            icon_color = ft.colors.WHITE
         elif "instagram" in url:
-            icon_data = ft.Icons.CAMERA_ALT
-            icon_color = ft.Colors.PINK_400
+            icon_data = ft.icons.CAMERA_ALT
+            icon_color = ft.colors.PINK_400
 
         if self.item.get("is_audio"):
-            icon_data = ft.Icons.AUDIO_FILE
+            icon_data = ft.icons.AUDIO_FILE
         elif self.item.get("is_playlist"):
-            icon_data = ft.Icons.PLAYLIST_PLAY
+            icon_data = ft.icons.PLAYLIST_PLAY
 
         return ft.Container(
             content=ft.Row(
@@ -92,7 +92,7 @@ class DownloadItemControl:
                         width=56,
                         height=56,
                         bgcolor=(
-                            ft.Colors.with_opacity(0.1, icon_color)
+                            ft.colors.with_opacity(0.1, icon_color)
                             if icon_color != Theme.TEXT_SECONDARY
                             else Theme.BG_DARK
                         ),
@@ -128,7 +128,7 @@ class DownloadItemControl:
             shadow=ft.BoxShadow(
                 blur_radius=10,
                 spread_radius=0,
-                color=ft.Colors.with_opacity(0.1, ft.Colors.BLACK),
+                color=ft.colors.with_opacity(0.1, ft.colors.BLACK),
                 offset=ft.Offset(0, 4),
             ),
             border=ft.border.all(1, Theme.BORDER),
@@ -143,13 +143,13 @@ class DownloadItemControl:
         if status in ["Downloading", "Processing", "Allocating"]:
             actions.append(
                 ft.IconButton(
-                    ft.Icons.CLOSE,
+                    ft.icons.CLOSE,
                     on_click=lambda e: self.on_cancel(self.item),
                     icon_size=20,
                     tooltip="Cancel",
                     icon_color=Theme.ERROR,
                     style=ft.ButtonStyle(
-                        bgcolor=ft.Colors.with_opacity(0.1, Theme.ERROR),
+                        bgcolor=ft.colors.with_opacity(0.1, Theme.ERROR),
                         shape=ft.CircleBorder(),
                     ),
                 )
@@ -158,7 +158,7 @@ class DownloadItemControl:
         elif status in ["Error", "Cancelled"] and self.on_retry:
             actions.append(
                 ft.IconButton(
-                    ft.Icons.REFRESH,
+                    ft.icons.REFRESH,
                     on_click=lambda e: self.on_retry(self.item),
                     icon_size=20,
                     tooltip="Retry",
@@ -172,7 +172,7 @@ class DownloadItemControl:
                 ft.Column(
                     [
                         ft.IconButton(
-                            ft.Icons.KEYBOARD_ARROW_UP,
+                            ft.icons.KEYBOARD_ARROW_UP,
                             on_click=lambda e: self.on_reorder(self.item, -1),
                             icon_size=18,
                             tooltip="Move Up",
@@ -180,7 +180,7 @@ class DownloadItemControl:
                             icon_color=Theme.TEXT_SECONDARY,
                         ),
                         ft.IconButton(
-                            ft.Icons.KEYBOARD_ARROW_DOWN,
+                            ft.icons.KEYBOARD_ARROW_DOWN,
                             on_click=lambda e: self.on_reorder(self.item, 1),
                             icon_size=18,
                             tooltip="Move Down",
@@ -197,7 +197,7 @@ class DownloadItemControl:
         if status not in ["Downloading", "Processing", "Allocating"]:
             actions.append(
                 ft.IconButton(
-                    ft.Icons.DELETE_OUTLINE,
+                    ft.icons.DELETE_OUTLINE,
                     on_click=lambda e: self.on_remove(self.item),
                     icon_size=20,
                     tooltip="Remove",

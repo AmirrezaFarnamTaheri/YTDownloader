@@ -283,7 +283,7 @@ def main(pg: ft.Page):
     threading.Thread(target=background_loop, daemon=True).start()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     if os.environ.get("FLET_WEB"):
         ft.app(target=main, view=ft.WEB_BROWSER, port=8550)
     else:
