@@ -1,106 +1,155 @@
 # StreamCatch Wiki
 
-## 📚 User Guide
-
-### 1. Getting Started
-- **Installation**: Download the installer for your OS from the Releases page. Run it to install StreamCatch.
-- **First Launch**: Open StreamCatch. You'll see the main Dashboard.
-- **System Requirements**:
-  - Windows 10/11 or modern Linux distribution (Debian/Ubuntu recommended).
-  - Internet connection for downloading media.
-  - ~200MB free disk space for the application.
-  - FFmpeg installed (bundled with Windows installer, usually required on Linux).
-
-### 2. Downloading Media
-- **Standard Download**: Paste a URL (YouTube, Twitter, etc.) into the "Video URL" box. Click **Fetch Info**.
-    - Select your desired Quality (e.g., 1080p, 720p) and Format (MP4, MP3, etc.).
-    - Click **Add to Queue**.
-- **Batch Import**: Click the 📁 (Folder) icon in the header. Select a `.txt` file containing URLs (one per line).
-- **Scheduling**: Click the ⏰ (Clock) icon to set a time. The next download added will be scheduled for that time.
-- **Force Generic Download**: Toggle this switch if a specific site is failing with the standard engine. It attempts a direct file download.
-
-### 3. Queue Management
-- **Monitoring**: Watch progress bars, speed, and ETA in the Queue tab.
-- **Reordering**: Use the Up/Down arrows to prioritize specific downloads (only available for Queued items).
-- **Control**: Cancel active downloads or Retry failed/cancelled ones.
-- **Clear Queue**: Remove completed items to declutter the view.
-
-### 4. Advanced Features
-- **Browser Cookies**: Select your browser (Chrome, Firefox, etc.) to use its cookies. This helps download age-gated or premium content that you have access to in your browser.
-- **SponsorBlock**: Automatically skip/remove sponsored segments in YouTube videos.
-- **RSS Feeds**: Add RSS URLs to the RSS tab to auto-download new videos from channels.
-- **Clipboard Monitor**: Enable in the sidebar. The app will verify any copied URL and prompt to download it (requires `pyperclip`).
-- **Proxy Support**: Configure HTTP/SOCKS proxies in Settings for privacy or bypassing restrictions.
-
-### 5. Troubleshooting
-| Issue | Possible Cause | Solution |
-|-------|----------------|----------|
-| **Download Fails Immediately** | Invalid URL or Geoblocking | Check URL in browser. Use VPN/Proxy. Try "Force Generic". |
-| **"ffmpeg not found"** | Missing dependency | Linux: `sudo apt install ffmpeg`. Windows: Reinstall StreamCatch. |
-| **Slow Downloads** | Rate Limit or throttling | Check Settings > Rate Limit. Use "Browser Cookies" feature. |
-| **"Sign in to confirm..."** | Age-gated content | Use "Browser Cookies" (e.g., Chrome) in Download tab. |
-| **App Crashes** | Database corruption or Bug | Check `ytdownloader.log`. Backup/Delete `~/.streamcatch/history.db`. |
-
-### 6. Localization
-StreamCatch supports multiple languages.
-- **Current Languages**: English (default).
-- **Adding a Language**:
-    1. Create a new JSON file in `locales/` (e.g., `es.json`).
-    2. Copy keys from `en.json`.
-    3. Translate values.
-    4. Submit a Pull Request!
+Welcome to the **StreamCatch** documentation. StreamCatch is a modern, high-performance media downloader built with Python and Flet. It combines the power of `yt-dlp` with a beautiful, responsive "Soulful V2" user interface.
 
 ---
 
-## 🔧 Technical Documentation
+## 📚 User Guide
 
-### Architecture
-StreamCatch uses a modular architecture:
-- **Frontend**: Flet (Python wrapper for Flutter) providing a responsive, cross-platform UI.
-- **Backend**: Python 3.12+ handling logic, file I/O, and networking.
-- **Core Engine**: `yt-dlp` (custom build recommended) for media extraction, with a custom generic fallback.
+### 1. Getting Started
+- **Installation**: Download the latest installer for your OS from the [Releases Page](https://github.com/your-repo/releases).
+    - **Windows**: Run the `.exe` installer.
+    - **Linux**: Install the `.deb` package (`sudo dpkg -i streamcatch.deb`).
+- **First Launch**: Open StreamCatch. You will be greeted by the Dashboard, showing recent activity and stats.
+- **System Requirements**:
+  - **OS**: Windows 10/11 or modern Linux distribution (Debian/Ubuntu/Fedora).
+  - **Runtime**: Python 3.12+ (bundled in installer).
+  - **Dependencies**: `FFmpeg` (essential for merging video/audio).
+    - *Windows*: Included in the installer.
+    - *Linux*: Install via `sudo apt install ffmpeg`.
 
-### Key Modules
-1.  **`main.py`**: Application entry point. Initializes `AppState`, `QueueManager`, and the Flet UI. Handles the main event loop.
-2.  **`downloader` Package**:
-    -   `core.py`: The orchestration logic. Decides which engine/extractor to use based on URL and settings.
-    -   `engines/ytdlp.py`: robust wrapper for `yt-dlp`. Handles options injection (cookies, progress hooks).
-    -   `engines/generic.py`: Custom HTTP downloader using `requests` with streaming. Supports resume (Range headers) and retries.
-    -   `extractors/telegram.py`: Scrapes `t.me` public pages for video links.
-3.  **`queue_manager.py`**: Thread-safe manager using `threading.Lock()` to ensure data integrity during concurrent operations. Implements the producer-consumer pattern for the download queue.
-4.  **`app_state.py`**: Singleton state management using a global `AppState` object.
-5.  **`config_manager.py`**: Handles loading/saving `config.json` with atomic writes to prevent corruption.
-6.  **`history_manager.py`**: SQLite-based history tracking. Thread-safe with retry logic for database locks.
+### 2. Downloading Media
+StreamCatch offers multiple ways to capture content:
 
-### Robustness Strategies
-1.  **Race Condition Prevention**: All shared resources (Queue, History, Config) are protected by locks or atomic operations.
-2.  **Fallback Logic**:
-    -   *Strategy 1*: `TelegramExtractor` (priority for `t.me` URLs).
-    -   *Strategy 2*: `yt-dlp` (Video Platforms - primary engine).
-    -   *Strategy 3*: `GenericExtractor` (HEAD request to check for direct file).
-    -   *Strategy 4*: `Generic Engine` (Fallback if yt-dlp fails).
-3.  **Error Handling**: comprehensive try/except blocks. Network operations have timeouts and retry logic with exponential backoff.
-4.  **Input Validation**: rigorous validation of URLs, file paths, and configuration values to prevent injection or crashes.
+#### A. Standard Download
+1.  **Paste URL**: Copy a link from YouTube, Twitter, Instagram, TikTok, or Telegram. Paste it into the "Video URL" field on the **Download** tab.
+2.  **Fetch Info**: Click the 🔍 (Search) button. StreamCatch will retrieve metadata (Title, Duration, Formats).
+3.  **Customize**:
+    -   **Video Quality**: Choose from available resolutions (e.g., 1080p, 4k, 720p) or "Best".
+    -   **Audio Format**: Extract audio only (MP3, M4A) if desired.
+    -   **Subtitles**: Select a language (e.g., `en`, `es`) to embed subtitles.
+    -   **Time Range**: Specify Start/End times (e.g., `00:01:30` to `00:02:00`) to download a clip.
+4.  **Queue It**: Click **Add to Queue**. The download starts automatically in the background.
 
-### Configuration & Data
-- **Config File**: Located at `~/.streamcatch/config.json`. Stores user preferences.
-- **Database**: `~/.streamcatch/history.db`. Stores download history.
-- **Logs**: `ytdownloader.log` (in run directory). Useful for debugging.
+#### B. Batch Import
+Have a list of links?
+1.  Create a `.txt` file with one URL per line.
+2.  Click the 📁 (File Upload) icon in the Download tab header.
+3.  Select your file. StreamCatch will queue all valid links instantly.
 
-### Development Environment Setup
-1.  **Prerequisites**: Python 3.12+, git, ffmpeg.
-2.  **Clone**: `git clone <repo_url>`
-3.  **Virtual Env**: `python -m venv venv && source venv/bin/activate` (or `venv\Scripts\activate` on Windows).
-4.  **Install**: `pip install -r requirements.txt`.
-5.  **Run**: `python main.py`.
-6.  **Test**: `python -m pytest` (ensures 100% coverage).
-7.  **Lint**: `pylint .`
+#### C. Scheduling
+Plan downloads for later (e.g., off-peak hours):
+1.  Click the ⏰ (Clock) icon.
+2.  Pick a time.
+3.  The *next* item you add to the queue will be scheduled for that time.
 
-### Build & Deployment
-- **Windows**: Uses Inno Setup (`installers/setup.iss`) to create a professional `.exe` installer.
-- **Linux**: Uses PyInstaller and `dpkg-deb` to create a `.deb` package.
-- **CI/CD**: GitHub Actions workflows (`build-windows.yml`, `build-linux.yml`) automatically build and release on tags.
+#### D. Advanced Options
+-   **Force Generic**: Toggle this if a specialized extractor fails. It attempts to download the file directly via HTTP.
+-   **SponsorBlock**: Automatically skip non-content segments (Sponsors, Intros) on supported platforms.
+-   **Proxy**: Configure a proxy in **Settings** to bypass geoblocking.
 
-### Extending StreamCatch
-- **Adding a new View**: Create a class in `views/` inheriting from `BaseView`. Add it to `main.py`.
-- **Adding a new Downloader**: Implement a new Engine in `downloader/engines/` and register it in `downloader/core.py`.
+### 3. Queue Management
+Navigate to the **Queue** tab to manage active tasks:
+-   **Real-time Stats**: View download speed, ETA, and file size.
+-   **Prioritize**: Use the ⬆️/⬇️ arrows to move pending items up or down the list.
+-   **Control**: Cancel active downloads or remove completed ones.
+-   **Retry**: Failed downloads can be retried with a single click.
+
+### 4. Browser Cookies (Bypassing Restrictions)
+Some content (Age-gated, Premium) requires authentication. StreamCatch can borrow cookies from your browser:
+1.  In the **Download** tab, look for the "Browser Cookies" dropdown.
+2.  Select your browser (e.g., Chrome, Firefox).
+3.  StreamCatch will extract cookies safely to authenticate the request.
+    *   *Note: You must be logged in to the site in that browser.*
+
+---
+
+## 🔧 Technical Architecture
+
+StreamCatch is designed for **Robustness**, **modularity**, and **Speed**.
+
+### 🏗️ Core Stack
+-   **Language**: Python 3.12 (Typing, Async/Await patterns).
+-   **UI Framework**: [Flet](https://flet.dev) (Flutter for Python). Provides a native-feel, 60FPS UI.
+-   **Engine**: `yt-dlp` (Media Extraction) + `requests` (Generic Fallback) + `aria2c` (External Accelerator support).
+-   **Data**: `SQLite` (WAL mode enabled) for high-concurrency history management.
+
+### 🧩 Module Breakdown
+
+| Module | Responsibility | Key Features |
+| :--- | :--- | :--- |
+| `main.py` | Entry Point | App lifecycle, Flet page initialization, Global Exception Handling. |
+| `downloader.core` | Logic Hub | Orchestrates extraction strategy. Decides between `yt-dlp`, `Telegram`, or `Generic`. |
+| `queue_manager.py` | Concurrency | Thread-safe Producer-Consumer queue using `threading.Lock`. Handles status updates atomically. |
+| `history_manager.py` | Persistence | SQLite interface with automatic migrations and "Locked" retry logic. |
+| `clipboard_monitor` | Background | Watches system clipboard for URLs (Cross-platform via `pyperclip`). |
+| `views/` | UI Components | Modular screens (`DownloadView`, `QueueView`, etc.) inheriting from `BaseView`. |
+
+### 🛡️ Robustness & Error Handling
+1.  **Atomic Operations**: File writes (`config_manager.py`) use temp files + atomic rename to prevent corruption during crashes.
+2.  **Network Resilience**: All HTTP requests use timeouts and exponential backoff retries.
+3.  **Fallback Chain**:
+    -   `TelegramExtractor` (Specific) -> `yt-dlp` (General Video) -> `GenericExtractor` (Direct File).
+4.  **Thread Safety**: The UI runs on the main thread; downloads run in a background thread pool. Communication is handled via callbacks and thread-safe data structures.
+
+### 🚀 Performance Optimization
+-   **Lazy Loading**: UI views are initialized only when accessed.
+-   **WAL Mode**: SQLite Write-Ahead Logging enables concurrent reads/writes.
+-   **Aria2c**: Optional integration for multi-connection downloading (accelerates large files).
+
+---
+
+## 🤝 Contributing & Development
+
+We welcome contributions!
+
+### Setup
+```bash
+# 1. Clone
+git clone https://github.com/your-repo/streamcatch.git
+cd streamcatch
+
+# 2. Environment
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+
+# 3. Install
+pip install -r requirements.txt
+
+# 4. Run
+python main.py
+```
+
+### Testing
+StreamCatch maintains **100% Code Coverage**.
+```bash
+# Run all tests
+python -m pytest
+
+# Check coverage
+python -m pytest --cov=.
+```
+
+### Code Style
+-   **Formatter**: `black`
+-   **Linter**: `pylint`
+-   **Type Checker**: `mypy`
+
+### Building Installers
+-   **Windows**: Run `scripts/build_installer.py` (Requires Inno Setup).
+-   **Linux**: Run `scripts/build_linux.sh` (Requires `dpkg-deb`).
+
+---
+
+## ❓ Troubleshooting
+
+| Problem | Solution |
+| :--- | :--- |
+| **"ffmpeg not found"** | Install FFmpeg and ensure it's in your system PATH. |
+| **Download Stuck at 0%** | Check your internet connection. Try enabling "Force Generic" or changing the Proxy. |
+| **"Sign In Required"** | Select your browser in the "Browser Cookies" dropdown to authenticate. |
+| **UI Glitches** | Resize the window. If persistent, clear `~/.streamcatch/config.json`. |
+
+---
+
+*StreamCatch © 2025. Built with ❤️ and Python.*

@@ -4,13 +4,16 @@ import requests
 import os
 from downloader.engines.generic import download_generic
 
+
 class TestGenericDownloaderCoverage(unittest.TestCase):
 
     @patch("requests.get")
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.path.getsize")
     @patch("os.path.exists")
-    def test_download_generic_success(self, mock_exists, mock_getsize, mock_file, mock_get):
+    def test_download_generic_success(
+        self, mock_exists, mock_getsize, mock_file, mock_get
+    ):
         # Setup clean download
         mock_exists.return_value = False
 
@@ -39,13 +42,18 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.path.getsize")
     @patch("os.path.exists")
-    def test_download_generic_resume_success(self, mock_exists, mock_getsize, mock_file, mock_get):
+    def test_download_generic_resume_success(
+        self, mock_exists, mock_getsize, mock_file, mock_get
+    ):
         mock_exists.return_value = True
         mock_getsize.return_value = 500
 
         mock_response = MagicMock()
-        mock_response.status_code = 206 # Partial
-        mock_response.headers = {"content-length": "500", "Content-Range": "bytes 500-1000/1000"}
+        mock_response.status_code = 206  # Partial
+        mock_response.headers = {
+            "content-length": "500",
+            "Content-Range": "bytes 500-1000/1000",
+        }
         mock_response.iter_content.return_value = [b"chunk3"]
 
         mock_get.return_value.__enter__.return_value = mock_response
@@ -57,18 +65,20 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
 
         # Verify request headers contained Range
         args, kwargs = mock_get.call_args
-        self.assertEqual(kwargs['headers']['Range'], 'bytes=500-')
+        self.assertEqual(kwargs["headers"]["Range"], "bytes=500-")
 
     @patch("requests.get")
     @patch("builtins.open", new_callable=mock_open)
     @patch("os.path.getsize")
     @patch("os.path.exists")
-    def test_download_generic_resume_fail_restart(self, mock_exists, mock_getsize, mock_file, mock_get):
+    def test_download_generic_resume_fail_restart(
+        self, mock_exists, mock_getsize, mock_file, mock_get
+    ):
         mock_exists.return_value = True
         mock_getsize.return_value = 500
 
         mock_response = MagicMock()
-        mock_response.status_code = 200 # Full content, resume refused
+        mock_response.status_code = 200  # Full content, resume refused
         mock_response.headers = {"content-length": "1000"}
         mock_response.iter_content.return_value = [b"chunk1"]
 
@@ -85,7 +95,9 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     def test_download_generic_retry(self, mock_sleep, mock_file, mock_get):
         # Fail twice, succeed third time
         mock_fail = MagicMock()
-        mock_fail.raise_for_status.side_effect = requests.exceptions.ConnectionError("fail")
+        mock_fail.raise_for_status.side_effect = requests.exceptions.ConnectionError(
+            "fail"
+        )
 
         mock_success = MagicMock()
         mock_success.status_code = 200
@@ -93,9 +105,9 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
         mock_success.iter_content.return_value = [b"data"]
 
         mock_get.return_value.__enter__.side_effect = [
-            requests.exceptions.ConnectionError("conn err"), # Raise during enter
+            requests.exceptions.ConnectionError("conn err"),  # Raise during enter
             requests.exceptions.ConnectionError("conn err"),
-            mock_success
+            mock_success,
         ]
 
         download_generic("http://url", "/tmp", "file.mp4", MagicMock(), {})
@@ -109,9 +121,11 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
         mock_get.side_effect = requests.exceptions.ConnectionError("fail")
 
         with self.assertRaises(requests.exceptions.ConnectionError):
-             download_generic("http://url", "/tmp", "file.mp4", MagicMock(), {}, max_retries=2)
+            download_generic(
+                "http://url", "/tmp", "file.mp4", MagicMock(), {}, max_retries=2
+            )
 
-        self.assertEqual(mock_get.call_count, 3) # initial + 2 retries
+        self.assertEqual(mock_get.call_count, 3)  # initial + 2 retries
 
     @patch("requests.get")
     @patch("builtins.open", new_callable=mock_open)
@@ -125,6 +139,8 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
         token.check.side_effect = Exception("Cancelled")
 
         with self.assertRaises(Exception) as cm:
-            download_generic("http://url", "/tmp", "file.mp4", MagicMock(), {}, cancel_token=token)
+            download_generic(
+                "http://url", "/tmp", "file.mp4", MagicMock(), {}, cancel_token=token
+            )
 
         self.assertEqual(str(cm.exception), "Cancelled")

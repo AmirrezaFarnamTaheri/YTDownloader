@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch, ANY
 import sqlite3
 from history_manager import HistoryManager, DB_FILE
 
+
 class TestHistoryManagerCoverage(unittest.TestCase):
 
     @patch("history_manager.HistoryManager._get_connection")
@@ -20,12 +21,12 @@ class TestHistoryManagerCoverage(unittest.TestCase):
         mock_cursor.execute.side_effect = [
             sqlite3.OperationalError("database is locked"),
             sqlite3.OperationalError("database is locked"),
-            None, # CREATE TABLE
-            None, # PRAGMA table_info - wait, PRAGMA is an execute call!
-            None, # ALTER TABLE (if file_path missing) OR just next calls
-            None, # CREATE INDEX 1
-            None, # CREATE INDEX 2
-            None, # CREATE INDEX 3
+            None,  # CREATE TABLE
+            None,  # PRAGMA table_info - wait, PRAGMA is an execute call!
+            None,  # ALTER TABLE (if file_path missing) OR just next calls
+            None,  # CREATE INDEX 1
+            None,  # CREATE INDEX 2
+            None,  # CREATE INDEX 3
         ]
 
         # We need to handle fetchall returning something that says file_path is missing to trigger ALTER TABLE
@@ -45,11 +46,11 @@ class TestHistoryManagerCoverage(unittest.TestCase):
         mock_cursor.execute.side_effect = [
             sqlite3.OperationalError("database is locked"),
             sqlite3.OperationalError("database is locked"),
-            None, # CREATE TABLE
-            None, # PRAGMA
-            None, # CREATE INDEX 1
-            None, # CREATE INDEX 2
-            None, # CREATE INDEX 3
+            None,  # CREATE TABLE
+            None,  # PRAGMA
+            None,  # CREATE INDEX 1
+            None,  # CREATE INDEX 2
+            None,  # CREATE INDEX 3
         ]
 
         # Configure the successful connection
@@ -100,23 +101,23 @@ class TestHistoryManagerCoverage(unittest.TestCase):
 
     @patch("history_manager.HistoryManager._get_connection")
     def test_add_entry_locked_retry(self, mock_get_conn):
-         mock_conn = MagicMock()
-         mock_cursor = MagicMock()
-         mock_conn.cursor.return_value = mock_cursor
-         mock_conn.__enter__.return_value = mock_conn
-         mock_get_conn.return_value = mock_conn
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
+        mock_conn.__enter__.return_value = mock_conn
+        mock_get_conn.return_value = mock_conn
 
-         # Fail twice, then succeed
-         mock_cursor.execute.side_effect = [
-             sqlite3.OperationalError("database is locked"),
-             sqlite3.OperationalError("database is locked"),
-             None
-         ]
+        # Fail twice, then succeed
+        mock_cursor.execute.side_effect = [
+            sqlite3.OperationalError("database is locked"),
+            sqlite3.OperationalError("database is locked"),
+            None,
+        ]
 
-         with patch("history_manager.HistoryManager.DB_RETRY_DELAY", 0.01):
-             HistoryManager.add_entry("url", "title", "path", "fmt", "done", "10MB")
+        with patch("history_manager.HistoryManager.DB_RETRY_DELAY", 0.01):
+            HistoryManager.add_entry("url", "title", "path", "fmt", "done", "10MB")
 
-         self.assertEqual(mock_cursor.execute.call_count, 3)
+        self.assertEqual(mock_cursor.execute.call_count, 3)
 
     @patch("history_manager.HistoryManager._get_connection")
     def test_get_history_error(self, mock_get_conn):
@@ -150,7 +151,7 @@ class TestHistoryManagerCoverage(unittest.TestCase):
         # Columns returned by PRAGMA table_info are: (cid, name, type, notnull, dflt_value, pk)
         mock_cursor.fetchall.return_value = [
             (0, "id", "INTEGER", 0, None, 1),
-            (1, "url", "TEXT", 1, None, 0)
+            (1, "url", "TEXT", 1, None, 0),
         ]
 
         HistoryManager.init_db()
@@ -168,7 +169,9 @@ class TestHistoryManagerCoverage(unittest.TestCase):
         mock_conn = MagicMock()
         mock_get_conn.return_value.__enter__.return_value = mock_conn
 
-        HistoryManager.add_entry("http://url", "Title", "/path", "mp4", "Completed", "10MB")
+        HistoryManager.add_entry(
+            "http://url", "Title", "/path", "mp4", "Completed", "10MB"
+        )
         mock_conn.commit.assert_called()
 
     @patch("history_manager.HistoryManager._get_connection")
@@ -183,7 +186,7 @@ class TestHistoryManagerCoverage(unittest.TestCase):
 
         # Row factory simulation
         mock_cursor.fetchall.return_value = [
-            {"id": 1, "url": "test"} # Mocking dict-like rows
+            {"id": 1, "url": "test"}  # Mocking dict-like rows
         ]
 
         entries = HistoryManager.get_history(limit=10)

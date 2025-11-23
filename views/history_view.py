@@ -8,7 +8,7 @@ import logging
 
 class HistoryView(BaseView):
     def __init__(self):
-        super().__init__("History", ft.icons.HISTORY)
+        super().__init__("History", ft.Icons.HISTORY)
 
         self.history_list = ft.ListView(expand=True, spacing=10)
         self.add_control(
@@ -17,7 +17,7 @@ class HistoryView(BaseView):
                     ft.Container(expand=True),
                     ft.OutlinedButton(
                         "Clear All",
-                        icon=ft.icons.DELETE_SWEEP,
+                        icon=ft.Icons.DELETE_SWEEP,
                         on_click=self.clear_history,
                     ),
                 ]
@@ -39,7 +39,7 @@ class HistoryView(BaseView):
             border_radius=8,
             content=ft.Row(
                 [
-                    ft.Icon(ft.icons.CHECK_CIRCLE, color=Theme.SUCCESS),
+                    ft.Icon(ft.Icons.CHECK_CIRCLE, color=Theme.SUCCESS),
                     ft.Column(
                         [
                             ft.Text(
@@ -58,7 +58,7 @@ class HistoryView(BaseView):
                     ),
                     ft.Container(expand=True),
                     ft.IconButton(
-                        ft.icons.FOLDER_OPEN,
+                        ft.Icons.FOLDER_OPEN,
                         tooltip="Open Folder",
                         icon_color=Theme.PRIMARY,
                         on_click=lambda e, p=item.get(
@@ -66,7 +66,7 @@ class HistoryView(BaseView):
                         ): self.open_folder_safe(p),
                     ),
                     ft.IconButton(
-                        ft.icons.COPY,
+                        ft.Icons.COPY,
                         tooltip="Copy URL",
                         icon_color=Theme.TEXT_SECONDARY,
                         on_click=lambda e, u=item["url"]: self.page.set_clipboard(u),

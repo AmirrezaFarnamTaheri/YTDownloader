@@ -87,7 +87,9 @@ class QueueManager:
         """
         with self._lock:
             if len(self._queue) >= self.MAX_QUEUE_SIZE:
-                raise ValueError(f"Queue is full (max {self.MAX_QUEUE_SIZE} items). Please clear some items first.")
+                raise ValueError(
+                    f"Queue is full (max {self.MAX_QUEUE_SIZE} items). Please clear some items first."
+                )
             self._queue.append(item)
         self._notify_listeners_safe()
 

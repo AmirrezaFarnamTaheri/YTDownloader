@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 from queue_manager import QueueManager
 
+
 class TestQueueManagerCoverage(unittest.TestCase):
     def setUp(self):
         self.qm = QueueManager()
@@ -29,7 +30,7 @@ class TestQueueManagerCoverage(unittest.TestCase):
 
     def test_remove_item_not_found(self):
         item = {"status": "Queued"}
-        self.qm.remove_item(item) # Should not crash
+        self.qm.remove_item(item)  # Should not crash
 
     def test_swap_items_out_of_bounds(self):
         self.qm.add_item({"status": "A"})

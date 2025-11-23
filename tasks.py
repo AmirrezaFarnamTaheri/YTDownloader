@@ -30,9 +30,9 @@ def process_queue():
         now = datetime.now()
         for item in items:
 
-            if item.get("scheduled_time") and str(
-                item["status"]
-            ).startswith("Scheduled"):
+            if item.get("scheduled_time") and str(item["status"]).startswith(
+                "Scheduled"
+            ):
                 if now >= item["scheduled_time"]:
                     item["status"] = "Queued"
                     item["scheduled_time"] = None
@@ -43,9 +43,7 @@ def process_queue():
         # ATOMIC CLAIM
         item = state.queue_manager.claim_next_downloadable()
         if item:
-            threading.Thread(
-                target=download_task, args=(item,), daemon=True
-            ).start()
+            threading.Thread(target=download_task, args=(item,), daemon=True).start()
     finally:
         _process_queue_lock.release()
 
@@ -59,22 +57,17 @@ def download_task(item):
         item["control"].update_progress()
 
     try:
+
         def progress_hook(d, _):
             if d["status"] == "downloading":
-                total = (
-                    d.get("total_bytes")
-                    or d.get("total_bytes_estimate")
-                    or 0
-                )
+                total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
                 downloaded = d.get("downloaded_bytes", 0)
                 if total > 0:
                     pct = downloaded / total
                     if "control" in item:
                         item["control"].progress_bar.value = pct
 
-                item["speed"] = (
-                    format_file_size(d.get("speed", 0)) + "/s"
-                )
+                item["speed"] = format_file_size(d.get("speed", 0)) + "/s"
                 item["size"] = format_file_size(total)
                 item["eta"] = f"{d.get('eta', 0)}s"
 

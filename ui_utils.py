@@ -61,8 +61,9 @@ def validate_url(url: str) -> bool:
 
     # Basic URL structure validation
     import re
+
     # Pattern: scheme://domain.tld/path (simplified)
-    pattern = r'^https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+$'
+    pattern = r"^https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+$"
     return bool(re.match(pattern, url))
 
 
@@ -132,14 +133,15 @@ def validate_rate_limit(rate_limit: str) -> bool:
         return True
 
     import re
+
     # Pattern: number with optional decimal, followed by optional SINGLE unit
-    pattern = r'^\d+(\.\d+)?[KMGT]?$'
+    pattern = r"^\d+(\.\d+)?[KMGT]?$"
     if not re.match(pattern, rate_limit, re.IGNORECASE):
         return False
 
     # Additional check: if value is 0, it's pointless but technically valid
     # Extract numeric part
-    numeric_part = re.match(r'^\d+(\.\d+)?', rate_limit)
+    numeric_part = re.match(r"^\d+(\.\d+)?", rate_limit)
     if numeric_part:
         value = float(numeric_part.group(0))
         if value <= 0:

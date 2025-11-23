@@ -6,12 +6,13 @@ from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
+
 class TelegramExtractor:
     @staticmethod
     def is_telegram_url(url: str) -> bool:
         """Check if URL is a Telegram link with proper domain matching."""
         # Match exact domains to avoid false positives like "at.me/" or "not.me/"
-        pattern = r'(^|[:/])t\.me/|telegram\.me/'
+        pattern = r"(^|[:/])t\.me/|telegram\.me/"
         return bool(re.search(pattern, url.lower()))
 
     @staticmethod

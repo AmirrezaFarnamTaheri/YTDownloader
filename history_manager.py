@@ -56,7 +56,11 @@ class HistoryManager:
         if output_path and len(output_path) > 1024:
             raise ValueError("Output path too long (max 1024 characters)")
         # Prevent null bytes (SQL injection vector)
-        if '\x00' in url or (title and '\x00' in title) or (output_path and '\x00' in output_path):
+        if (
+            "\x00" in url
+            or (title and "\x00" in title)
+            or (output_path and "\x00" in output_path)
+        ):
             raise ValueError("Null bytes not allowed in inputs")
 
     @staticmethod
@@ -111,10 +115,14 @@ class HistoryManager:
                     last_error = e
                     retry_count += 1
                     if retry_count < HistoryManager.MAX_DB_RETRIES:
-                        logger.warning(f"Database locked, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})...")
+                        logger.warning(
+                            f"Database locked, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})..."
+                        )
                         time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
                     else:
-                        logger.error(f"Failed to init history DB after {retry_count} retries: {e}")
+                        logger.error(
+                            f"Failed to init history DB after {retry_count} retries: {e}"
+                        )
                         raise
                 else:
                     logger.error(f"Failed to init history DB: {e}")
@@ -187,10 +195,14 @@ class HistoryManager:
                     last_error = e
                     retry_count += 1
                     if retry_count < HistoryManager.MAX_DB_RETRIES:
-                        logger.warning(f"Database locked, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})...")
+                        logger.warning(
+                            f"Database locked, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})..."
+                        )
                         time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
                     else:
-                        logger.error(f"Failed to add history entry after {retry_count} retries: {e}")
+                        logger.error(
+                            f"Failed to add history entry after {retry_count} retries: {e}"
+                        )
                         raise
                 else:
                     logger.error(f"Failed to add history entry: {e}")

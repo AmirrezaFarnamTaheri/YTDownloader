@@ -1,6 +1,7 @@
 from playwright.sync_api import sync_playwright, expect
 import time
 
+
 def verify_frontend():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -22,7 +23,9 @@ def verify_frontend():
             print("Screenshot saved to verification_main.png")
 
             # Verify some elements exist
-            expect(page.get_by_text("StreamCatch - Ultimate Downloader")).to_be_visible()
+            expect(
+                page.get_by_text("StreamCatch - Ultimate Downloader")
+            ).to_be_visible()
             expect(page.get_by_label("Video URL")).to_be_visible()
 
         except Exception as e:
@@ -30,6 +33,7 @@ def verify_frontend():
             page.screenshot(path="verification_error.png")
         finally:
             browser.close()
+
 
 if __name__ == "__main__":
     verify_frontend()

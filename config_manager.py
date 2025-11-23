@@ -16,8 +16,13 @@ class ConfigManager:
 
     # Configuration schema for validation
     VALID_KEYS = {
-        "proxy", "rate_limit", "output_template", "use_aria2c",
-        "gpu_accel", "theme_mode", "language"
+        "proxy",
+        "rate_limit",
+        "output_template",
+        "use_aria2c",
+        "gpu_accel",
+        "theme_mode",
+        "language",
     }
 
     @staticmethod
@@ -43,10 +48,19 @@ class ConfigManager:
         if "use_aria2c" in config and not isinstance(config["use_aria2c"], bool):
             raise ValueError("use_aria2c must be a boolean")
 
-        if "gpu_accel" in config and config["gpu_accel"] not in ("None", "Auto", "cuda", "vulkan"):
+        if "gpu_accel" in config and config["gpu_accel"] not in (
+            "None",
+            "Auto",
+            "cuda",
+            "vulkan",
+        ):
             raise ValueError(f"Invalid gpu_accel value: {config['gpu_accel']}")
 
-        if "theme_mode" in config and config["theme_mode"] not in ("Dark", "Light", "System"):
+        if "theme_mode" in config and config["theme_mode"] not in (
+            "Dark",
+            "Light",
+            "System",
+        ):
             raise ValueError(f"Invalid theme_mode value: {config['theme_mode']}")
 
     @staticmethod
@@ -115,9 +129,7 @@ class ConfigManager:
             # Atomic write: write to temp file, then rename
             # This prevents corruption if program crashes during write
             fd, temp_path = tempfile.mkstemp(
-                dir=CONFIG_FILE.parent,
-                prefix=".config_tmp_",
-                suffix=".json"
+                dir=CONFIG_FILE.parent, prefix=".config_tmp_", suffix=".json"
             )
 
             try:
@@ -128,7 +140,7 @@ class ConfigManager:
 
                 # Atomic rename (POSIX systems)
                 # On Windows, need to remove target first
-                if os.name == 'nt' and CONFIG_FILE.exists():
+                if os.name == "nt" and CONFIG_FILE.exists():
                     CONFIG_FILE.unlink()
 
                 Path(temp_path).rename(CONFIG_FILE)

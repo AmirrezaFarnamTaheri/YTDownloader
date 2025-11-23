@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class YTDLPWrapper:
     @staticmethod
     def download(

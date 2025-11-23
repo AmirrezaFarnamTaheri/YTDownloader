@@ -12,7 +12,7 @@ class DownloadView(BaseView):
     def __init__(
         self, on_fetch_info, on_add_to_queue, on_batch_import, on_schedule, state
     ):
-        super().__init__("New Download", ft.icons.DOWNLOAD)
+        super().__init__("New Download", ft.Icons.DOWNLOAD)
         self.on_fetch_info = on_fetch_info
         self.on_add_to_queue = on_add_to_queue
         self.on_batch_import = on_batch_import
@@ -21,32 +21,34 @@ class DownloadView(BaseView):
 
         # --- Header Actions ---
         self.open_folder_btn = ft.IconButton(
-            ft.icons.FOLDER_OPEN,
+            ft.Icons.FOLDER_OPEN,
             tooltip="Open Downloads Folder",
             on_click=self.open_download_folder,
             icon_color=Theme.PRIMARY,
         )
 
         self.batch_btn = ft.IconButton(
-            ft.icons.FILE_UPLOAD,
+            ft.Icons.FILE_UPLOAD,
             tooltip="Batch Import URLs",
             on_click=lambda e: self.on_batch_import(),
             icon_color=Theme.ACCENT,
         )
 
         self.schedule_btn = ft.IconButton(
-            ft.icons.SCHEDULE,
+            ft.Icons.SCHEDULE,
             tooltip="Schedule Download",
             on_click=lambda e: self.on_schedule(e),
             icon_color=Theme.ACCENT,
         )
 
-        self.header.controls.extend([
-            ft.Container(expand=True),
-            self.schedule_btn,
-            self.batch_btn,
-            self.open_folder_btn
-        ])
+        self.header.controls.extend(
+            [
+                ft.Container(expand=True),
+                self.schedule_btn,
+                self.batch_btn,
+                self.open_folder_btn,
+            ]
+        )
 
         # --- Input Components ---
         self.url_input = ft.TextField(
@@ -55,7 +57,7 @@ class DownloadView(BaseView):
             expand=True,
             border_color=Theme.BORDER,
             focused_border_color=Theme.PRIMARY,
-            prefix_icon=ft.icons.LINK,
+            prefix_icon=ft.Icons.LINK,
             text_size=16,
             bgcolor=Theme.BG_INPUT,
             border_radius=12,
@@ -63,7 +65,7 @@ class DownloadView(BaseView):
         )
 
         self.fetch_btn = ft.IconButton(
-            ft.icons.SEARCH,
+            ft.Icons.SEARCH,
             on_click=lambda e: on_fetch_info(self.url_input.value),
             tooltip="Fetch Metadata",
             icon_color=Theme.PRIMARY,
@@ -140,11 +142,13 @@ class DownloadView(BaseView):
         )
 
         self.playlist_cb = ft.Checkbox(label="Playlist", fill_color=Theme.PRIMARY)
-        self.sponsorblock_cb = ft.Checkbox(label="SponsorBlock", fill_color=Theme.PRIMARY)
+        self.sponsorblock_cb = ft.Checkbox(
+            label="SponsorBlock", fill_color=Theme.PRIMARY
+        )
         self.force_generic_cb = ft.Checkbox(
             label="Force Generic",
             fill_color=Theme.WARNING,
-            tooltip="Bypass yt-dlp extraction"
+            tooltip="Bypass yt-dlp extraction",
         )
 
         self.subtitle_dd = ft.Dropdown(
@@ -189,17 +193,29 @@ class DownloadView(BaseView):
             controls=[
                 ft.Container(
                     padding=10,
-                    content=ft.Column([
-                        ft.Row([self.subtitle_dd, self.time_start, self.time_end], wrap=True),
-                        ft.Row([self.playlist_cb, self.sponsorblock_cb, self.force_generic_cb], wrap=True),
-                    ])
+                    content=ft.Column(
+                        [
+                            ft.Row(
+                                [self.subtitle_dd, self.time_start, self.time_end],
+                                wrap=True,
+                            ),
+                            ft.Row(
+                                [
+                                    self.playlist_cb,
+                                    self.sponsorblock_cb,
+                                    self.force_generic_cb,
+                                ],
+                                wrap=True,
+                            ),
+                        ]
+                    ),
                 )
-            ]
+            ],
         )
 
         self.download_btn = ft.ElevatedButton(
             "Add to Queue",
-            icon=ft.icons.ADD_CIRCLE,
+            icon=ft.Icons.ADD_CIRCLE,
             bgcolor=Theme.PRIMARY,
             color=Theme.BG_DARK,
             style=ft.ButtonStyle(
@@ -215,10 +231,7 @@ class DownloadView(BaseView):
 
     def build_layout(self):
         input_card = DownloadInputCard(
-            self.on_fetch_info,
-            self.url_input,
-            self.fetch_btn,
-            self.cookies_dd
+            self.on_fetch_info, self.url_input, self.fetch_btn, self.cookies_dd
         )
 
         preview_card = DownloadPreviewCard(self.thumbnail_img)
@@ -228,10 +241,14 @@ class DownloadView(BaseView):
                 self.title_text,
                 self.duration_text,
                 ft.Divider(height=20, color=Theme.BORDER),
-                ft.Text("Quality Selection", weight=ft.FontWeight.W_600, color=Theme.TEXT_PRIMARY),
+                ft.Text(
+                    "Quality Selection",
+                    weight=ft.FontWeight.W_600,
+                    color=Theme.TEXT_PRIMARY,
+                ),
                 ft.Row([self.video_format_dd, self.audio_format_dd]),
                 self.advanced_options,
-                ft.Divider(height=20, color=ft.colors.TRANSPARENT),
+                ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
                 ft.Row([self.download_btn], alignment=ft.MainAxisAlignment.END),
             ],
             expand=True,
@@ -246,7 +263,7 @@ class DownloadView(BaseView):
         )
 
         self.add_control(input_card)
-        self.add_control(ft.Divider(height=30, color=ft.colors.TRANSPARENT))
+        self.add_control(ft.Divider(height=30, color=ft.Colors.TRANSPARENT))
         self.add_control(ft.Container(content=main_content, padding=10))
 
     def update_info(self, info):
@@ -311,6 +328,6 @@ class DownloadView(BaseView):
             open_folder(path)
         except Exception as ex:
             if self.page:
-                self.page.show_snack_bar(
+                self.page.open(
                     ft.SnackBar(content=ft.Text(f"Failed to open folder: {ex}"))
                 )

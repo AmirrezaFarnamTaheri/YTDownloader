@@ -189,7 +189,7 @@ class TestMainLogic(unittest.TestCase):
 
         self.assertEqual(self.mock_state.video_info["title"], "Test Video")
         mock_view.update_info.assert_called()
-        mock_page.show_snack_bar.assert_called()
+        mock_page.open.assert_called()
 
     @patch("tasks_extended.get_video_info")
     def test_fetch_info_task_failure(self, mock_get_info):
@@ -200,5 +200,5 @@ class TestMainLogic(unittest.TestCase):
         fetch_info_task("http://video", mock_view, mock_page)
 
         # Should raise exception and log error
-        mock_page.show_snack_bar.assert_called()  # With Error
+        mock_page.open.assert_called()  # With Error
         # mock_download_view.fetch_btn.disabled = False  # Reset button (checked via mock call if needed)

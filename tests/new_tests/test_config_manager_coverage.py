@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from config_manager import ConfigManager, CONFIG_FILE
 
+
 class TestConfigManagerCoverage(unittest.TestCase):
 
     @patch("config_manager.CONFIG_FILE")
@@ -30,10 +31,12 @@ class TestConfigManagerCoverage(unittest.TestCase):
         mock_path.exists.return_value = True
 
         # Return valid JSON but invalid logical data
-        with patch("builtins.open", mock_open(read_data='{"use_aria2c": "not_boolean"}')):
-             with patch("json.load", return_value={"use_aria2c": "not_boolean"}):
-                 result = ConfigManager.load_config()
-                 self.assertEqual(result, {})
+        with patch(
+            "builtins.open", mock_open(read_data='{"use_aria2c": "not_boolean"}')
+        ):
+            with patch("json.load", return_value={"use_aria2c": "not_boolean"}):
+                result = ConfigManager.load_config()
+                self.assertEqual(result, {})
 
     @patch("config_manager.CONFIG_FILE")
     def test_load_config_io_error(self, mock_path):
@@ -61,7 +64,9 @@ class TestConfigManagerCoverage(unittest.TestCase):
     @patch("tempfile.mkstemp")
     @patch("os.fdopen")
     @patch("os.fsync")
-    def test_save_config_exception_cleanup(self, mock_fsync, mock_fdopen, mock_mkstemp, mock_path):
+    def test_save_config_exception_cleanup(
+        self, mock_fsync, mock_fdopen, mock_mkstemp, mock_path
+    ):
         # Setup to raise exception during write
         mock_mkstemp.return_value = (1, "/tmp/temp_file")
         mock_fdopen.side_effect = Exception("Write failed")
@@ -78,7 +83,9 @@ class TestConfigManagerCoverage(unittest.TestCase):
     @patch("tempfile.mkstemp")
     @patch("os.fdopen")
     @patch("os.fsync")
-    def test_save_config_windows_unlink(self, mock_fsync, mock_fdopen, mock_mkstemp, mock_path):
+    def test_save_config_windows_unlink(
+        self, mock_fsync, mock_fdopen, mock_mkstemp, mock_path
+    ):
         mock_mkstemp.return_value = (1, "/tmp/temp_file")
         mock_fdopen.return_value.__enter__.return_value = MagicMock()
 
@@ -94,7 +101,7 @@ class TestConfigManagerCoverage(unittest.TestCase):
 
     @patch("config_manager.CONFIG_FILE")
     def test_save_config_io_error_initial(self, mock_path):
-         # Simulate IOError during directory creation
-         mock_path.parent.mkdir.side_effect = IOError("Permissions")
-         with self.assertRaises(IOError):
-             ConfigManager.save_config({})
+        # Simulate IOError during directory creation
+        mock_path.parent.mkdir.side_effect = IOError("Permissions")
+        with self.assertRaises(IOError):
+            ConfigManager.save_config({})

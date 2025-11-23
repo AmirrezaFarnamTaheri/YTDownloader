@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch, ANY
 from downloader.engines.ytdlp import YTDLPWrapper
 import yt_dlp
 
+
 class TestYTDLPWrapperCoverage(unittest.TestCase):
 
     @patch("yt_dlp.YoutubeDL")
@@ -14,7 +15,9 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
         download_item = {}
         options = {}
 
-        YTDLPWrapper.download("http://url", "/tmp", progress_hook, download_item, options)
+        YTDLPWrapper.download(
+            "http://url", "/tmp", progress_hook, download_item, options
+        )
 
         mock_instance.download.assert_called_with(["http://url"])
 
@@ -34,10 +37,12 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
         cancel_token = MagicMock()
         options = {}
 
-        YTDLPWrapper.download("http://url", "/tmp", MagicMock(), {}, options, cancel_token)
+        YTDLPWrapper.download(
+            "http://url", "/tmp", MagicMock(), {}, options, cancel_token
+        )
 
         # Verify cancel hook added
-        self.assertEqual(len(options["progress_hooks"]), 2) # Hook + Token Check
+        self.assertEqual(len(options["progress_hooks"]), 2)  # Hook + Token Check
 
         # Execute token check
         options["progress_hooks"][0]({})
@@ -47,7 +52,9 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
     def test_download_cancelled_exception(self, mock_ydl):
         mock_instance = MagicMock()
         mock_ydl.return_value.__enter__.return_value = mock_instance
-        mock_instance.download.side_effect = yt_dlp.utils.DownloadError("cancelled by user")
+        mock_instance.download.side_effect = yt_dlp.utils.DownloadError(
+            "cancelled by user"
+        )
 
         # Should not raise
         YTDLPWrapper.download("http://url", "/tmp", MagicMock(), {}, {})
@@ -62,7 +69,7 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
 
         mock_extract.return_value = {
             "title": "video",
-            "video_streams": [{"url": "http://direct", "ext": "mp4"}]
+            "video_streams": [{"url": "http://direct", "ext": "mp4"}],
         }
 
         YTDLPWrapper.download("http://url", "/tmp", MagicMock(), {}, {})
@@ -76,7 +83,7 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
         mock_ydl.return_value.__enter__.return_value = mock_instance
         mock_instance.download.side_effect = yt_dlp.utils.DownloadError("Some error")
 
-        mock_extract.return_value = None # No info
+        mock_extract.return_value = None  # No info
 
         with self.assertRaises(yt_dlp.utils.DownloadError):
             YTDLPWrapper.download("http://url", "/tmp", MagicMock(), {}, {})
@@ -88,4 +95,4 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
         mock_instance.download.side_effect = Exception("Boom")
 
         with self.assertRaises(Exception):
-             YTDLPWrapper.download("http://url", "/tmp", MagicMock(), {}, {})
+            YTDLPWrapper.download("http://url", "/tmp", MagicMock(), {}, {})

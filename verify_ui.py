@@ -1,6 +1,7 @@
 import time
 from playwright.sync_api import sync_playwright
 
+
 def verify_streamcatch():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -18,7 +19,7 @@ def verify_streamcatch():
 
         # Allow Flet to load
         page.wait_for_load_state("networkidle")
-        time.sleep(3) # Extra buffer for Flet rendering
+        time.sleep(3)  # Extra buffer for Flet rendering
 
         # Take a screenshot of the main download view
         page.screenshot(path="verification_main.png")
@@ -38,6 +39,7 @@ def verify_streamcatch():
         # We expect to see the platform icons
 
         browser.close()
+
 
 if __name__ == "__main__":
     verify_streamcatch()

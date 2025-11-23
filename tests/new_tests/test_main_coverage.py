@@ -4,6 +4,7 @@ import main
 import flet as ft
 from datetime import datetime, time
 
+
 class TestMainCoverage:
     @pytest.fixture
     def mock_page(self):
@@ -14,20 +15,31 @@ class TestMainCoverage:
     @pytest.fixture
     def mock_dependencies(self):
         # Patch objects IN main.py namespace because they are imported with 'from ... import ...'
-        with patch("main.state") as mock_state, \
-             patch("main.AppLayout") as MockLayout, \
-             patch("main.start_clipboard_monitor"), \
-             patch("main.process_queue"), \
-             patch("main.threading.Thread"), \
-             patch("main.fetch_info_task"), \
-             patch("main.DownloadView"), \
-             patch("main.QueueView"), \
-             patch("main.HistoryView"), \
-             patch("main.DashboardView"), \
-             patch("main.RSSView"), \
-             patch("main.SettingsView"), \
-             patch("main.ft.FilePicker"), \
-             patch("main.ft.TimePicker"):
+        with patch("main.state") as mock_state, patch(
+            "main.AppLayout"
+        ) as MockLayout, patch("main.start_clipboard_monitor"), patch(
+            "main.process_queue"
+        ), patch(
+            "main.threading.Thread"
+        ), patch(
+            "main.fetch_info_task"
+        ), patch(
+            "main.DownloadView"
+        ), patch(
+            "main.QueueView"
+        ), patch(
+            "main.HistoryView"
+        ), patch(
+            "main.DashboardView"
+        ), patch(
+            "main.RSSView"
+        ), patch(
+            "main.SettingsView"
+        ), patch(
+            "main.ft.FilePicker"
+        ), patch(
+            "main.ft.TimePicker"
+        ):
 
             # Setup State
             state = mock_state
@@ -43,7 +55,7 @@ class TestMainCoverage:
 
         assert mock_page.title == "StreamCatch - Ultimate Downloader"
         assert mock_page.add.called
-        assert len(mock_page.overlay) == 2 # Pickers
+        assert len(mock_page.overlay) == 2  # Pickers
 
     def test_on_fetch_info(self, mock_page, mock_dependencies):
         main.main(mock_page)
@@ -54,7 +66,7 @@ class TestMainCoverage:
 
         # Test empty URL
         on_fetch_info("")
-        mock_page.show_snack_bar.assert_called()
+        mock_page.open.assert_called()
 
         # Test valid URL
         on_fetch_info("http://test.com")
@@ -74,7 +86,7 @@ class TestMainCoverage:
             "output_template": "%(title)s",
             "start_time": None,
             "end_time": None,
-            "force_generic": False
+            "force_generic": False,
         }
 
         # Test basic add
@@ -117,21 +129,21 @@ class TestMainCoverage:
 
     def test_batch_import(self, mock_page, mock_dependencies):
         with patch("builtins.open", new_callable=MagicMock) as mock_open:
-             mock_file = MagicMock()
-             mock_file.__iter__.return_value = ["http://u1.com", "http://u2.com"]
-             mock_open.return_value.__enter__.return_value = mock_file
+            mock_file = MagicMock()
+            mock_file.__iter__.return_value = ["http://u1.com", "http://u2.com"]
+            mock_open.return_value.__enter__.return_value = mock_file
 
-             main.main(mock_page)
+            main.main(mock_page)
 
-             mock_picker = main.ft.FilePicker.return_value
-             on_result = mock_picker.on_result
+            mock_picker = main.ft.FilePicker.return_value
+            on_result = mock_picker.on_result
 
-             event = MagicMock()
-             event.files = [MagicMock(path="test.txt")]
+            event = MagicMock()
+            event.files = [MagicMock(path="test.txt")]
 
-             on_result(event)
+            on_result(event)
 
-             assert main.state.queue_manager.add_item.call_count == 2
+            assert main.state.queue_manager.add_item.call_count == 2
 
     def test_scheduling(self, mock_page, mock_dependencies):
         main.main(mock_page)
@@ -178,7 +190,7 @@ class TestMainCoverage:
         on_toggle = args[2]
 
         on_toggle(True)
-        mock_page.show_snack_bar.assert_called()
+        mock_page.open.assert_called()
         assert main.state.clipboard_monitor_active is True
 
         on_toggle(False)
@@ -214,7 +226,7 @@ class TestMainCoverage:
             call_args = thread_mock.call_args
             target = call_args[1].get("target") if call_args else None
             if not target and call_args:
-                 target = call_args[0][0]
+                target = call_args[0][0]
 
             assert target is not None
 
@@ -222,4 +234,4 @@ class TestMainCoverage:
             main.process_queue.side_effect = Exception("Loop Error")
 
             with patch("time.sleep"):
-                target() # Run loop logic
+                target()  # Run loop logic

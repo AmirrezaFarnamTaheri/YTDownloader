@@ -17,7 +17,7 @@ class MockPage:
     def update(self):
         pass
 
-    def show_snack_bar(self, bar):
+    def open(self, bar):
         self.snack_bar = bar
 
 
@@ -26,9 +26,9 @@ class TestFeatureVerification(unittest.TestCase):
     def setUp(self):
         self.state = AppState()
         # Reset queue using the internal lock
-        if hasattr(self.state, 'queue_manager'):
-             with self.state.queue_manager._lock:
-                 self.state.queue_manager._queue = []
+        if hasattr(self.state, "queue_manager"):
+            with self.state.queue_manager._lock:
+                self.state.queue_manager._queue = []
 
         self.page = MockPage()
 

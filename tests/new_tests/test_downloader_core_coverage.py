@@ -6,6 +6,7 @@ from downloader.extractors.telegram import TelegramExtractor
 from downloader.extractors.generic import GenericExtractor
 from utils import CancelToken
 
+
 class TestDownloaderCoreCoverage:
 
     @pytest.fixture
@@ -15,11 +16,13 @@ class TestDownloaderCoreCoverage:
     @patch("pathlib.Path.mkdir")
     @patch("downloader.core.GenericExtractor.extract")
     @patch("downloader.core.download_generic")
-    def test_force_generic_success(self, mock_download, mock_extract, mock_mkdir, mock_hooks):
+    def test_force_generic_success(
+        self, mock_download, mock_extract, mock_mkdir, mock_hooks
+    ):
         hook, item = mock_hooks
         mock_extract.return_value = {
             "video_streams": [{"url": "http://test.com/v.mp4", "ext": "mp4"}],
-            "title": "TestVideo"
+            "title": "TestVideo",
         }
 
         download_video(
@@ -34,13 +37,13 @@ class TestDownloaderCoreCoverage:
     @patch("pathlib.Path.mkdir")
     @patch("downloader.core.GenericExtractor.extract")
     @patch("downloader.core.YTDLPWrapper.download")
-    def test_force_generic_failure_fallback(self, mock_ytdlp, mock_extract, mock_mkdir, mock_hooks):
+    def test_force_generic_failure_fallback(
+        self, mock_ytdlp, mock_extract, mock_mkdir, mock_hooks
+    ):
         hook, item = mock_hooks
-        mock_extract.return_value = None # Fail extraction
+        mock_extract.return_value = None  # Fail extraction
 
-        download_video(
-            "http://test.com", hook, item, force_generic=True
-        )
+        download_video("http://test.com", hook, item, force_generic=True)
 
         # Should fall back to yt-dlp
         mock_ytdlp.assert_called_once()
@@ -48,12 +51,14 @@ class TestDownloaderCoreCoverage:
     @patch("pathlib.Path.mkdir")
     @patch("downloader.core.TelegramExtractor.extract")
     @patch("downloader.core.download_generic")
-    def test_telegram_download(self, mock_download, mock_extract, mock_mkdir, mock_hooks):
+    def test_telegram_download(
+        self, mock_download, mock_extract, mock_mkdir, mock_hooks
+    ):
         hook, item = mock_hooks
         item["is_telegram"] = True
         mock_extract.return_value = {
-             "video_streams": [{"url": "http://t.me/v.mp4", "ext": "mp4"}],
-            "title": "TelVideo"
+            "video_streams": [{"url": "http://t.me/v.mp4", "ext": "mp4"}],
+            "title": "TelVideo",
         }
 
         download_video("http://t.me/post/1", hook, item)
@@ -75,7 +80,9 @@ class TestDownloaderCoreCoverage:
         hook, item = mock_hooks
 
         download_video(
-            "http://yt.com", hook, item,
+            "http://yt.com",
+            hook,
+            item,
             playlist=True,
             subtitle_lang="en",
             split_chapters=True,
@@ -90,7 +97,7 @@ class TestDownloaderCoreCoverage:
             proxy="http://proxy:8080",
             rate_limit="1M",
             cookies_from_browser="chrome",
-            cookies_from_browser_profile="Profile 1"
+            cookies_from_browser_profile="Profile 1",
         )
 
         mock_ytdlp.assert_called_once()
@@ -116,9 +123,7 @@ class TestDownloaderCoreCoverage:
         hook, item = mock_hooks
 
         download_video(
-            "http://yt.com", hook, item,
-            start_time="00:00:10",
-            end_time="00:00:20"
+            "http://yt.com", hook, item, start_time="00:00:10", end_time="00:00:20"
         )
 
         mock_ytdlp.assert_called_once()
@@ -130,10 +135,10 @@ class TestDownloaderCoreCoverage:
         hook, item = mock_hooks
 
         with pytest.raises(ValueError, match="Start time.*must be before end time"):
-             download_video("u", hook, item, start_time="00:00:20", end_time="00:00:10")
+            download_video("u", hook, item, start_time="00:00:20", end_time="00:00:10")
 
         with pytest.raises(ValueError, match="Invalid time range format"):
-             download_video("u", hook, item, start_time="invalid", end_time="00:00:10")
+            download_video("u", hook, item, start_time="invalid", end_time="00:00:10")
 
     @patch("pathlib.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper.download")
@@ -147,4 +152,4 @@ class TestDownloaderCoreCoverage:
     def test_rate_limit_invalid(self, mock_mkdir, mock_hooks):
         hook, item = mock_hooks
         with pytest.raises(ValueError, match="Invalid rate limit"):
-             download_video("u", hook, item, rate_limit="invalid")
+            download_video("u", hook, item, rate_limit="invalid")

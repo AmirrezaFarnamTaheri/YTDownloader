@@ -4,6 +4,7 @@ import json
 from sync_manager import SyncManager
 from pathlib import Path
 
+
 class TestSyncManagerCoverage(unittest.TestCase):
 
     @patch("sync_manager.ConfigManager.load_config")
@@ -42,12 +43,19 @@ class TestSyncManagerCoverage(unittest.TestCase):
     def test_import_data_success(self, mock_add_entry, mock_save_config, mock_exists):
         mock_exists.return_value = True
 
-        json_data = json.dumps({
-            "config": {"theme": "Dark"},
-            "history": [
-                {"url": "http://test", "title": "Test", "output_path": "/tmp", "format_str": "mp4"}
-            ]
-        })
+        json_data = json.dumps(
+            {
+                "config": {"theme": "Dark"},
+                "history": [
+                    {
+                        "url": "http://test",
+                        "title": "Test",
+                        "output_path": "/tmp",
+                        "format_str": "mp4",
+                    }
+                ],
+            }
+        )
 
         with patch("builtins.open", mock_open(read_data=json_data)):
             SyncManager.import_data("dummy.json")

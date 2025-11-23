@@ -4,12 +4,13 @@ import flet as ft
 from components.empty_state import EmptyState
 from theme import Theme
 
+
 class TestEmptyStateCoverage(unittest.TestCase):
     def test_empty_state_init(self):
         # Mock flet to prevent UI errors during initialization if needed
         # But EmptyState is a simple container, should be fine.
 
-        icon_name = ft.icons.DOWNLOAD
+        icon_name = ft.Icons.DOWNLOAD
         message = "Nothing here"
 
         es = EmptyState(icon=icon_name, message=message)
