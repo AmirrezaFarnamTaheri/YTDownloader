@@ -1,0 +1,39 @@
+name: Build Windows Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller streamcatch.spec
+
+    - name: Build Installer with Inno Setup
+      uses: Minionguyjosh/inno-setup-action@v1.2.2
+      with:
+        path: installers/setup.iss
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: StreamCatch_Setup
+        path: installers/output/*.exe

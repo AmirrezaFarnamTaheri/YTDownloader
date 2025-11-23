@@ -202,7 +202,7 @@ def main(pg: ft.Page):
             page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Next download will be scheduled at {e.value.strftime('%H:%M')}")))
 
     def on_schedule(e):
-        time_picker.pick_time()
+        page.open(time_picker)
 
     # Wire up pickers
     file_picker.on_result = on_batch_file_result
