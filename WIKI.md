@@ -33,10 +33,22 @@
 - **Proxy Support**: Configure HTTP/SOCKS proxies in Settings for privacy or bypassing restrictions.
 
 ### 5. Troubleshooting
-- **Download Fails Immediately**: Check your internet connection. Ensure the URL is accessible in a browser. Try "Force Generic" mode.
-- **"ffmpeg not found"**: On Linux, install via `sudo apt install ffmpeg`. On Windows, ensure the installer completed successfully.
-- **Slow Downloads**: Check if "Rate Limit" is enabled in Settings. Some sites throttle non-browser traffic; try using Browser Cookies.
-- **App Crashes**: Check the logs (see Technical Documentation).
+| Issue | Possible Cause | Solution |
+|-------|----------------|----------|
+| **Download Fails Immediately** | Invalid URL or Geoblocking | Check URL in browser. Use VPN/Proxy. Try "Force Generic". |
+| **"ffmpeg not found"** | Missing dependency | Linux: `sudo apt install ffmpeg`. Windows: Reinstall StreamCatch. |
+| **Slow Downloads** | Rate Limit or throttling | Check Settings > Rate Limit. Use "Browser Cookies" feature. |
+| **"Sign in to confirm..."** | Age-gated content | Use "Browser Cookies" (e.g., Chrome) in Download tab. |
+| **App Crashes** | Database corruption or Bug | Check `ytdownloader.log`. Backup/Delete `~/.streamcatch/history.db`. |
+
+### 6. Localization
+StreamCatch supports multiple languages.
+- **Current Languages**: English (default).
+- **Adding a Language**:
+    1. Create a new JSON file in `locales/` (e.g., `es.json`).
+    2. Copy keys from `en.json`.
+    3. Translate values.
+    4. Submit a Pull Request!
 
 ---
 

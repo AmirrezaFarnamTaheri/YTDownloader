@@ -9,7 +9,7 @@ class TestEmptyStateCoverage(unittest.TestCase):
         # Mock flet to prevent UI errors during initialization if needed
         # But EmptyState is a simple container, should be fine.
 
-        icon_name = ft.Icons.DOWNLOAD
+        icon_name = ft.icons.DOWNLOAD
         message = "Nothing here"
 
         es = EmptyState(icon=icon_name, message=message)

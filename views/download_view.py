@@ -12,7 +12,7 @@ class DownloadView(BaseView):
     def __init__(
         self, on_fetch_info, on_add_to_queue, on_batch_import, on_schedule, state
     ):
-        super().__init__("New Download", ft.Icons.DOWNLOAD)
+        super().__init__("New Download", ft.icons.DOWNLOAD)
         self.on_fetch_info = on_fetch_info
         self.on_add_to_queue = on_add_to_queue
         self.on_batch_import = on_batch_import
@@ -21,21 +21,21 @@ class DownloadView(BaseView):
 
         # --- Header Actions ---
         self.open_folder_btn = ft.IconButton(
-            ft.Icons.FOLDER_OPEN,
+            ft.icons.FOLDER_OPEN,
             tooltip="Open Downloads Folder",
             on_click=self.open_download_folder,
             icon_color=Theme.PRIMARY,
         )
 
         self.batch_btn = ft.IconButton(
-            ft.Icons.FILE_UPLOAD,
+            ft.icons.FILE_UPLOAD,
             tooltip="Batch Import URLs",
             on_click=lambda e: self.on_batch_import(),
             icon_color=Theme.ACCENT,
         )
 
         self.schedule_btn = ft.IconButton(
-            ft.Icons.SCHEDULE,
+            ft.icons.SCHEDULE,
             tooltip="Schedule Download",
             on_click=lambda e: self.on_schedule(e),
             icon_color=Theme.ACCENT,
@@ -55,7 +55,7 @@ class DownloadView(BaseView):
             expand=True,
             border_color=Theme.BORDER,
             focused_border_color=Theme.PRIMARY,
-            prefix_icon=ft.Icons.LINK,
+            prefix_icon=ft.icons.LINK,
             text_size=16,
             bgcolor=Theme.BG_INPUT,
             border_radius=12,
@@ -63,7 +63,7 @@ class DownloadView(BaseView):
         )
 
         self.fetch_btn = ft.IconButton(
-            ft.Icons.SEARCH,
+            ft.icons.SEARCH,
             on_click=lambda e: on_fetch_info(self.url_input.value),
             tooltip="Fetch Metadata",
             icon_color=Theme.PRIMARY,
@@ -199,7 +199,7 @@ class DownloadView(BaseView):
 
         self.download_btn = ft.ElevatedButton(
             "Add to Queue",
-            icon=ft.Icons.ADD_CIRCLE,
+            icon=ft.icons.ADD_CIRCLE,
             bgcolor=Theme.PRIMARY,
             color=Theme.BG_DARK,
             style=ft.ButtonStyle(
@@ -231,7 +231,7 @@ class DownloadView(BaseView):
                 ft.Text("Quality Selection", weight=ft.FontWeight.W_600, color=Theme.TEXT_PRIMARY),
                 ft.Row([self.video_format_dd, self.audio_format_dd]),
                 self.advanced_options,
-                ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
+                ft.Divider(height=20, color=ft.colors.TRANSPARENT),
                 ft.Row([self.download_btn], alignment=ft.MainAxisAlignment.END),
             ],
             expand=True,
@@ -246,7 +246,7 @@ class DownloadView(BaseView):
         )
 
         self.add_control(input_card)
-        self.add_control(ft.Divider(height=30, color=ft.Colors.TRANSPARENT))
+        self.add_control(ft.Divider(height=30, color=ft.colors.TRANSPARENT))
         self.add_control(ft.Container(content=main_content, padding=10))
 
     def update_info(self, info):

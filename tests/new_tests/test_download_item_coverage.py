@@ -28,11 +28,11 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
 
     def test_icon_logic(self):
         cases = [
-            ("https://youtube.com/v/123", ft.Icons.ONDEMAND_VIDEO),
-            ("https://t.me/channel/123", ft.Icons.TELEGRAM),
-            ("https://x.com/user/status/123", ft.Icons.ALTERNATE_EMAIL),
-            ("https://instagram.com/p/123", ft.Icons.CAMERA_ALT),
-            ("http://other.com", ft.Icons.INSERT_DRIVE_FILE)
+            ("https://youtube.com/v/123", ft.icons.ONDEMAND_VIDEO),
+            ("https://t.me/channel/123", ft.icons.TELEGRAM),
+            ("https://x.com/user/status/123", ft.icons.ALTERNATE_EMAIL),
+            ("https://instagram.com/p/123", ft.icons.CAMERA_ALT),
+            ("http://other.com", ft.icons.INSERT_DRIVE_FILE)
         ]
 
         for url, expected_icon in cases:
@@ -50,12 +50,12 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
         item = {"url": "http://test", "status": "Queued", "is_audio": True}
         control = DownloadItemControl(item, MagicMock(), MagicMock(), MagicMock())
         icon_container = control.view.content.controls[0]
-        self.assertEqual(icon_container.content.name, ft.Icons.AUDIO_FILE)
+        self.assertEqual(icon_container.content.name, ft.icons.AUDIO_FILE)
 
         item = {"url": "http://test", "status": "Queued", "is_playlist": True}
         control = DownloadItemControl(item, MagicMock(), MagicMock(), MagicMock())
         icon_container = control.view.content.controls[0]
-        self.assertEqual(icon_container.content.name, ft.Icons.PLAYLIST_PLAY)
+        self.assertEqual(icon_container.content.name, ft.icons.PLAYLIST_PLAY)
 
     def test_update_actions_logic(self):
         # Downloading state -> Cancel button
@@ -63,14 +63,14 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
         control = DownloadItemControl(item, MagicMock(), MagicMock(), MagicMock())
         actions = control.actions_row.controls
         # Should have Cancel
-        self.assertTrue(any(isinstance(c, ft.IconButton) and c.icon == ft.Icons.CLOSE for c in actions))
+        self.assertTrue(any(isinstance(c, ft.IconButton) and c.icon == ft.icons.CLOSE for c in actions))
 
         # Error state -> Retry and Remove
         item = {"url": "http://test", "status": "Error"}
         control = DownloadItemControl(item, MagicMock(), MagicMock(), MagicMock(), on_retry=MagicMock())
         actions = control.actions_row.controls
-        self.assertTrue(any(isinstance(c, ft.IconButton) and c.icon == ft.Icons.REFRESH for c in actions))
-        self.assertTrue(any(isinstance(c, ft.IconButton) and c.icon == ft.Icons.DELETE_OUTLINE for c in actions))
+        self.assertTrue(any(isinstance(c, ft.IconButton) and c.icon == ft.icons.REFRESH for c in actions))
+        self.assertTrue(any(isinstance(c, ft.IconButton) and c.icon == ft.icons.DELETE_OUTLINE for c in actions))
 
         # Queued state -> Reorder and Remove
         item = {"url": "http://test", "status": "Queued"}
@@ -78,7 +78,7 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
         actions = control.actions_row.controls
         # Reorder is a Column
         self.assertTrue(any(isinstance(c, ft.Column) for c in actions))
-        self.assertTrue(any(isinstance(c, ft.IconButton) and c.icon == ft.Icons.DELETE_OUTLINE for c in actions))
+        self.assertTrue(any(isinstance(c, ft.IconButton) and c.icon == ft.icons.DELETE_OUTLINE for c in actions))
 
     def test_update_progress_logic(self):
         item = {"url": "http://test", "status": "Queued"}
@@ -124,19 +124,19 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
         control = DownloadItemControl(item, mock_cancel, mock_remove, mock_reorder, mock_retry)
 
         # Find cancel button
-        cancel_btn = next(c for c in control.actions_row.controls if c.icon == ft.Icons.CLOSE)
+        cancel_btn = next(c for c in control.actions_row.controls if c.icon == ft.icons.CLOSE)
         cancel_btn.on_click(None)
         mock_cancel.assert_called_with(item)
 
         # Switch to Error for Retry
         item["status"] = "Error"
         control._update_actions()
-        retry_btn = next(c for c in control.actions_row.controls if c.icon == ft.Icons.REFRESH)
+        retry_btn = next(c for c in control.actions_row.controls if c.icon == ft.icons.REFRESH)
         retry_btn.on_click(None)
         mock_retry.assert_called_with(item)
 
         # Remove
-        remove_btn = next(c for c in control.actions_row.controls if c.icon == ft.Icons.DELETE_OUTLINE)
+        remove_btn = next(c for c in control.actions_row.controls if c.icon == ft.icons.DELETE_OUTLINE)
         remove_btn.on_click(None)
         mock_remove.assert_called_with(item)
 

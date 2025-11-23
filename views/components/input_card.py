@@ -19,11 +19,11 @@ class DownloadInputCard(ft.Container):
     def _build_content(self):
         platform_icons = ft.Row(
             [
-                ft.Icon(ft.Icons.ONDEMAND_VIDEO, color=ft.Colors.RED_400, tooltip="YouTube"),
-                ft.Icon(ft.Icons.TELEGRAM, color=ft.Colors.BLUE_400, tooltip="Telegram"),
-                ft.Icon(ft.Icons.ALTERNATE_EMAIL, color=ft.Colors.LIGHT_BLUE_400, tooltip="Twitter/X"),
-                ft.Icon(ft.Icons.CAMERA_ALT, color=ft.Colors.PINK_400, tooltip="Instagram"),
-                ft.Icon(ft.Icons.LINK, color=Theme.TEXT_MUTED, tooltip="Generic Files"),
+                ft.Icon(ft.icons.ONDEMAND_VIDEO, color=ft.colors.RED_400, tooltip="YouTube"),
+                ft.Icon(ft.icons.TELEGRAM, color=ft.colors.BLUE_400, tooltip="Telegram"),
+                ft.Icon(ft.icons.ALTERNATE_EMAIL, color=ft.colors.LIGHT_BLUE_400, tooltip="Twitter/X"),
+                ft.Icon(ft.icons.CAMERA_ALT, color=ft.colors.PINK_400, tooltip="Instagram"),
+                ft.Icon(ft.icons.LINK, color=Theme.TEXT_MUTED, tooltip="Generic Files"),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             spacing=20,
@@ -32,7 +32,7 @@ class DownloadInputCard(ft.Container):
 
         return ft.Column([
             platform_icons,
-            ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
+            ft.Divider(height=20, color=ft.colors.TRANSPARENT),
             ft.Row([self.url_input, self.fetch_btn], alignment=ft.MainAxisAlignment.CENTER),
             ft.Row([self.cookies_dd], alignment=ft.MainAxisAlignment.END),
         ])

@@ -57,6 +57,7 @@ MDScreen:
             text: "Ready"
             halign: "center"
             theme_text_color: "Secondary"
+'''
 
 class YTDownloaderApp(MDApp):
     def build(self):
