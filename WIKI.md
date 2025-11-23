@@ -5,51 +5,84 @@
 ### 1. Getting Started
 - **Installation**: Download the installer for your OS from the Releases page. Run it to install StreamCatch.
 - **First Launch**: Open StreamCatch. You'll see the main Dashboard.
+- **System Requirements**:
+  - Windows 10/11 or modern Linux distribution (Debian/Ubuntu recommended).
+  - Internet connection for downloading media.
+  - ~200MB free disk space for the application.
+  - FFmpeg installed (bundled with Windows installer, usually required on Linux).
 
 ### 2. Downloading Media
 - **Standard Download**: Paste a URL (YouTube, Twitter, etc.) into the "Video URL" box. Click **Fetch Info**.
-    - Select your desired Quality and Format.
+    - Select your desired Quality (e.g., 1080p, 720p) and Format (MP4, MP3, etc.).
     - Click **Add to Queue**.
 - **Batch Import**: Click the 📁 (Folder) icon in the header. Select a `.txt` file containing URLs (one per line).
 - **Scheduling**: Click the ⏰ (Clock) icon to set a time. The next download added will be scheduled for that time.
+- **Force Generic Download**: Toggle this switch if a specific site is failing with the standard engine. It attempts a direct file download.
 
 ### 3. Queue Management
 - **Monitoring**: Watch progress bars, speed, and ETA in the Queue tab.
-- **Reordering**: Use the Up/Down arrows to prioritize specific downloads.
-- **Control**: Cancel or Retry failed downloads.
+- **Reordering**: Use the Up/Down arrows to prioritize specific downloads (only available for Queued items).
+- **Control**: Cancel active downloads or Retry failed/cancelled ones.
+- **Clear Queue**: Remove completed items to declutter the view.
 
 ### 4. Advanced Features
-- **Browser Cookies**: Select your browser (Chrome, Firefox, etc.) to use its cookies. This helps download age-gated or premium content.
+- **Browser Cookies**: Select your browser (Chrome, Firefox, etc.) to use its cookies. This helps download age-gated or premium content that you have access to in your browser.
 - **SponsorBlock**: Automatically skip/remove sponsored segments in YouTube videos.
 - **RSS Feeds**: Add RSS URLs to the RSS tab to auto-download new videos from channels.
-- **Clipboard Monitor**: Enable in the sidebar. The app will verify any copied URL and prompt to download it.
+- **Clipboard Monitor**: Enable in the sidebar. The app will verify any copied URL and prompt to download it (requires `pyperclip`).
+- **Proxy Support**: Configure HTTP/SOCKS proxies in Settings for privacy or bypassing restrictions.
+
+### 5. Troubleshooting
+- **Download Fails Immediately**: Check your internet connection. Ensure the URL is accessible in a browser. Try "Force Generic" mode.
+- **"ffmpeg not found"**: On Linux, install via `sudo apt install ffmpeg`. On Windows, ensure the installer completed successfully.
+- **Slow Downloads**: Check if "Rate Limit" is enabled in Settings. Some sites throttle non-browser traffic; try using Browser Cookies.
+- **App Crashes**: Check the logs (see Technical Documentation).
+
+---
 
 ## 🔧 Technical Documentation
 
 ### Architecture
 StreamCatch uses a modular architecture:
-- **Frontend**: Flet (Python wrapper for Flutter).
-- **Backend**: Python 3.12+.
-- **Core Engine**: `yt-dlp` (custom build recommended).
+- **Frontend**: Flet (Python wrapper for Flutter) providing a responsive, cross-platform UI.
+- **Backend**: Python 3.12+ handling logic, file I/O, and networking.
+- **Core Engine**: `yt-dlp` (custom build recommended) for media extraction, with a custom generic fallback.
 
 ### Key Modules
-1.  **`main.py`**: Application entry point. Handles UI threading and global state.
+1.  **`main.py`**: Application entry point. Initializes `AppState`, `QueueManager`, and the Flet UI. Handles the main event loop.
 2.  **`downloader` Package**:
-    -   `core.py`: The brain. Decides which engine to use.
-    -   `engines/ytdlp.py`: Wrapper for yt-dlp.
-    -   `engines/generic.py`: Custom HTTP downloader for direct files.
-    -   `extractors/telegram.py`: Scrapes `t.me` public pages.
-3.  **`queue_manager.py`**: Thread-safe manager using `threading.Lock()` to ensure data integrity during concurrent operations.
-4.  **`app_state.py`**: Singleton state management (cleaner than global variables).
+    -   `core.py`: The orchestration logic. Decides which engine/extractor to use based on URL and settings.
+    -   `engines/ytdlp.py`: robust wrapper for `yt-dlp`. Handles options injection (cookies, progress hooks).
+    -   `engines/generic.py`: Custom HTTP downloader using `requests` with streaming. Supports resume (Range headers) and retries.
+    -   `extractors/telegram.py`: Scrapes `t.me` public pages for video links.
+3.  **`queue_manager.py`**: Thread-safe manager using `threading.Lock()` to ensure data integrity during concurrent operations. Implements the producer-consumer pattern for the download queue.
+4.  **`app_state.py`**: Singleton state management using a global `AppState` object.
+5.  **`config_manager.py`**: Handles loading/saving `config.json` with atomic writes to prevent corruption.
+6.  **`history_manager.py`**: SQLite-based history tracking. Thread-safe with retry logic for database locks.
 
 ### Robustness Strategies
-1.  **Race Condition Prevention**: All shared resources (Queue, History) are protected by locks.
+1.  **Race Condition Prevention**: All shared resources (Queue, History, Config) are protected by locks or atomic operations.
 2.  **Fallback Logic**:
-    -   *Strategy 1*: `yt-dlp` (Video Platforms).
-    -   *Strategy 2*: `TelegramExtractor` (if URL matches `t.me`).
+    -   *Strategy 1*: `TelegramExtractor` (priority for `t.me` URLs).
+    -   *Strategy 2*: `yt-dlp` (Video Platforms - primary engine).
     -   *Strategy 3*: `GenericExtractor` (HEAD request to check for direct file).
-    -   *Strategy 4*: `Force Generic` mode (User override).
-3.  **Error Handling**: Every network call is wrapped in try/except blocks with logging.
+    -   *Strategy 4*: `Generic Engine` (Fallback if yt-dlp fails).
+3.  **Error Handling**: comprehensive try/except blocks. Network operations have timeouts and retry logic with exponential backoff.
+4.  **Input Validation**: rigorous validation of URLs, file paths, and configuration values to prevent injection or crashes.
+
+### Configuration & Data
+- **Config File**: Located at `~/.streamcatch/config.json`. Stores user preferences.
+- **Database**: `~/.streamcatch/history.db`. Stores download history.
+- **Logs**: `ytdownloader.log` (in run directory). Useful for debugging.
+
+### Development Environment Setup
+1.  **Prerequisites**: Python 3.12+, git, ffmpeg.
+2.  **Clone**: `git clone <repo_url>`
+3.  **Virtual Env**: `python -m venv venv && source venv/bin/activate` (or `venv\Scripts\activate` on Windows).
+4.  **Install**: `pip install -r requirements.txt`.
+5.  **Run**: `python main.py`.
+6.  **Test**: `python -m pytest` (ensures 100% coverage).
+7.  **Lint**: `pylint .`
 
 ### Build & Deployment
 - **Windows**: Uses Inno Setup (`installers/setup.iss`) to create a professional `.exe` installer.

@@ -16,6 +16,9 @@ def start_clipboard_monitor(page, download_view):
 
 
 def _clipboard_loop(page, download_view):
+    """
+    Background loop that checks the clipboard for URLs.
+    """
     while True:
         # Check if main thread is alive, if not, stop (rudimentary check)
         if not threading.main_thread().is_alive():
@@ -24,24 +27,28 @@ def _clipboard_loop(page, download_view):
         time.sleep(2)
         if state.clipboard_monitor_active:
             try:
-                content = pyperclip.paste()
+                # pyperclip.paste() might fail in headless envs without xclip/xsel
+                try:
+                    content = pyperclip.paste()
+                except pyperclip.PyperclipException:
+                    # If clipboard is unavailable, just ignore and continue
+                    continue
+
                 if content and content != state.last_clipboard_content:
                     state.last_clipboard_content = content
                     if validate_url(content) and download_view:
-                        # Only auto-paste if field is empty AND not focused
-                        # Note: Checking focus is hard in Flet without events,
-                        # so we stick to "if field is empty"
+                        # Only auto-paste if field is empty
                         if not download_view.url_input.value:
                             download_view.url_input.value = content
                             if page:
                                 import flet as ft
+
                                 page.show_snack_bar(
                                     ft.SnackBar(
-                                        content=ft.Text(
-                                            f"URL detected: {content}"
-                                        )
+                                        content=ft.Text(f"URL detected: {content}")
                                     )
                                 )
                                 page.update()
             except Exception as e:
+                # Catch-all to prevent thread death
                 logger.error(f"Error in clipboard monitor: {e}", exc_info=True)
