@@ -63,7 +63,7 @@ def download_video(
             title = info["title"]
             filename = f"{title}.{ext}" if not title.endswith(f".{ext}") else title
 
-            logger.info(f"Downloading Generic file (Forced): {filename}")
+            logger.info("Downloading Generic file (Forced): %s", filename)
             download_generic(
                 direct_url,
                 output_path,
@@ -73,8 +73,7 @@ def download_video(
                 cancel_token,
             )
             return
-        else:
-            logger.warning("Force Generic failed. Falling back to yt-dlp...")
+        logger.warning("Force Generic failed. Falling back to yt-dlp...")
 
     # Telegram Handling
     if is_telegram:
@@ -85,7 +84,7 @@ def download_video(
             title = info["title"]
             filename = f"{title}.{ext}"
 
-            logger.info(f"Downloading Telegram media: {filename}")
+            logger.info("Downloading Telegram media: %s", filename)
             download_generic(
                 direct_url,
                 output_path,
@@ -95,8 +94,8 @@ def download_video(
                 cancel_token,
             )
             return
-        else:
-            raise Exception("Could not extract Telegram media")
+
+        raise Exception("Could not extract Telegram media")
 
     # Build yt-dlp Options
     if output_template:
