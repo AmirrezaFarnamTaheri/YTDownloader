@@ -24,9 +24,12 @@
 *   **Clipboard Monitor**: Automatically detect copied links.
 *   **SponsorBlock**: Skip non-content segments automatically.
 
-## 🚀 Installation
+## 🚀 Installation & Building
 
-### Desktop (Windows/Linux/macOS)
+### Pre-built Installers
+Check the **Releases** page for the latest installers for Windows (`.exe`) and Linux (`.deb`).
+
+### Building from Source
 
 1.  **Clone the repository:**
     ```bash
@@ -40,10 +43,18 @@
     ```
     *Note: You also need `ffmpeg` installed and in your system PATH.*
 
-3.  **Run the application:**
+3.  **Run Development Version:**
     ```bash
     python main.py
     ```
+
+4.  **Build Installer (Windows/Linux):**
+    To create a standalone executable or installer:
+    ```bash
+    python scripts/build_installer.py
+    ```
+    - On **Windows**, this requires Inno Setup to generate the `.exe` installer (otherwise it just creates the standalone binary).
+    - On **Linux**, this uses PyInstaller to create a binary in `dist/`.
 
 ### Mobile (Android/iOS)
 
@@ -69,11 +80,8 @@ The project is structured for modularity and robustness:
 Run the test suite to ensure robustness:
 
 ```bash
-# Run all unit tests
-python -m unittest discover tests
-
-# Run specific tests
-python -m unittest tests/test_pipeline_integration.py
+# Run all unit tests with coverage
+pytest --cov=.
 ```
 
 ## 🤝 Contributing

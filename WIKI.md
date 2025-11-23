@@ -1,33 +1,61 @@
 # StreamCatch Wiki
 
-## User Guide
+## 📚 User Guide
 
-### Basics
-- **Download**: Paste a URL into the input box and click "Fetch Info". Review options and click "Add to Queue".
-- **Queue**: Monitor progress. You can pause (cancel) or remove items. Use the arrows to reorder priority.
-- **History**: View past downloads and open their folder.
+### 1. Getting Started
+- **Installation**: Download the installer for your OS from the Releases page. Run it to install StreamCatch.
+- **First Launch**: Open StreamCatch. You'll see the main Dashboard.
 
-### Advanced Features
-- **Batch Import**: Click the upload icon in the header to import a `.txt` file containing a list of URLs (one per line).
-- **Scheduling**: Click the clock icon to set a start time for the next added download.
-- **Cookies**: Use the "Browser Cookies" dropdown to bypass age restrictions or access premium content (requires the browser to be installed and logged in).
-- **SponsorBlock**: Check the box to automatically remove sponsored segments from YouTube videos.
+### 2. Downloading Media
+- **Standard Download**: Paste a URL (YouTube, Twitter, etc.) into the "Video URL" box. Click **Fetch Info**.
+    - Select your desired Quality and Format.
+    - Click **Add to Queue**.
+- **Batch Import**: Click the 📁 (Folder) icon in the header. Select a `.txt` file containing URLs (one per line).
+- **Scheduling**: Click the ⏰ (Clock) icon to set a time. The next download added will be scheduled for that time.
 
-## Technical Details
+### 3. Queue Management
+- **Monitoring**: Watch progress bars, speed, and ETA in the Queue tab.
+- **Reordering**: Use the Up/Down arrows to prioritize specific downloads.
+- **Control**: Cancel or Retry failed downloads.
 
-### Robustness & Reliability
-StreamCatch is designed to be "theoretically robust", meaning it handles edge cases gracefully:
-1.  **Atomic Queue Operations**: The `QueueManager` uses locks to prevent race conditions when multiple threads access the queue.
-2.  **Fallback Pipeline**:
-    -   Tries `yt-dlp` (standard).
-    -   If `yt-dlp` fails, tries `GenericExtractor` (for direct files).
-    -   Specific logic for Telegram (`t.me`) links.
-3.  **State Recovery**: If the app crashes, the history DB is safe (WAL mode).
+### 4. Advanced Features
+- **Browser Cookies**: Select your browser (Chrome, Firefox, etc.) to use its cookies. This helps download age-gated or premium content.
+- **SponsorBlock**: Automatically skip/remove sponsored segments in YouTube videos.
+- **RSS Feeds**: Add RSS URLs to the RSS tab to auto-download new videos from channels.
+- **Clipboard Monitor**: Enable in the sidebar. The app will verify any copied URL and prompt to download it.
 
-### Mobile Architecture
-The mobile app (`mobile/`) is now deprecated in favor of the Flet unified codebase. `main.py` adapts its layout using `ResponsiveRow` and flexible containers to render correctly on mobile screens.
+## 🔧 Technical Documentation
 
-### Build Process
-We use `pyinstaller` for Desktop and `flet build` for Mobile.
-- **Desktop**: `pyinstaller streamcatch.spec`
-- **Android**: `flet build apk`
+### Architecture
+StreamCatch uses a modular architecture:
+- **Frontend**: Flet (Python wrapper for Flutter).
+- **Backend**: Python 3.12+.
+- **Core Engine**: `yt-dlp` (custom build recommended).
+
+### Key Modules
+1.  **`main.py`**: Application entry point. Handles UI threading and global state.
+2.  **`downloader` Package**:
+    -   `core.py`: The brain. Decides which engine to use.
+    -   `engines/ytdlp.py`: Wrapper for yt-dlp.
+    -   `engines/generic.py`: Custom HTTP downloader for direct files.
+    -   `extractors/telegram.py`: Scrapes `t.me` public pages.
+3.  **`queue_manager.py`**: Thread-safe manager using `threading.Lock()` to ensure data integrity during concurrent operations.
+4.  **`app_state.py`**: Singleton state management (cleaner than global variables).
+
+### Robustness Strategies
+1.  **Race Condition Prevention**: All shared resources (Queue, History) are protected by locks.
+2.  **Fallback Logic**:
+    -   *Strategy 1*: `yt-dlp` (Video Platforms).
+    -   *Strategy 2*: `TelegramExtractor` (if URL matches `t.me`).
+    -   *Strategy 3*: `GenericExtractor` (HEAD request to check for direct file).
+    -   *Strategy 4*: `Force Generic` mode (User override).
+3.  **Error Handling**: Every network call is wrapped in try/except blocks with logging.
+
+### Build & Deployment
+- **Windows**: Uses Inno Setup (`installers/setup.iss`) to create a professional `.exe` installer.
+- **Linux**: Uses PyInstaller and `dpkg-deb` to create a `.deb` package.
+- **CI/CD**: GitHub Actions workflows (`build-windows.yml`, `build-linux.yml`) automatically build and release on tags.
+
+### Extending StreamCatch
+- **Adding a new View**: Create a class in `views/` inheriting from `BaseView`. Add it to `main.py`.
+- **Adding a new Downloader**: Implement a new Engine in `downloader/engines/` and register it in `downloader/core.py`.
