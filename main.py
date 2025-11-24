@@ -265,12 +265,9 @@ def main(pg: ft.Page):
 
     # --- Background Logic ---
 
-    # Shutdown flag for graceful termination
-    shutdown_flag = threading.Event()
-
     def background_loop():
         """Background loop for queue processing."""
-        while not shutdown_flag.is_set():
+        while not state.shutdown_flag.is_set():
             time.sleep(2)
             try:
                 process_queue()
@@ -281,7 +278,7 @@ def main(pg: ft.Page):
     start_clipboard_monitor(page, download_view)
 
     # Store shutdown flag in page for cleanup
-    page.on_disconnect = lambda _: shutdown_flag.set()
+    page.on_disconnect = lambda _: state.shutdown_flag.set()
 
     threading.Thread(target=background_loop, daemon=True).start()
 

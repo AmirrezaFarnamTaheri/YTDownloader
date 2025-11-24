@@ -90,4 +90,4 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ## 📄 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the GNU Affero General Public License v3.0 (AGPLv3). See `LICENSE` for more information.
