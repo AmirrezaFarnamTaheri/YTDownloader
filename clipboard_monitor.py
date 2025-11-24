@@ -19,11 +19,7 @@ def _clipboard_loop(page, download_view):
     """
     Background loop that checks the clipboard for URLs.
     """
-    while True:
-        # Check if main thread is alive, if not, stop (rudimentary check)
-        if not threading.main_thread().is_alive():
-            break
-
+    while not state.shutdown_flag.is_set():
         time.sleep(2)
         if state.clipboard_monitor_active:
             try:

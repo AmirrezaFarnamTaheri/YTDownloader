@@ -1,7 +1,7 @@
 import threading
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, time
 
 from config_manager import ConfigManager
 from queue_manager import QueueManager
@@ -40,9 +40,10 @@ class AppState:
         self.cinema_mode = False
         self.cloud_manager = CloudManager()
         self.social_manager = SocialManager()
-        self.scheduled_time: Optional[datetime.time] = None
+        self.scheduled_time: Optional[time] = None
         self.clipboard_monitor_active = False
         self.last_clipboard_content = ""
+        self.shutdown_flag = threading.Event()
 
         # Try connecting to social
         threading.Thread(target=self.social_manager.connect, daemon=True).start()

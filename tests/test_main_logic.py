@@ -87,6 +87,9 @@ class TestMainLogic(unittest.TestCase):
             "status": "Scheduled (future)",
             "scheduled_time": future_time,
         }
+        # Mock _queue and _lock for direct access
+        self.mock_state.queue_manager._queue = [item]
+        self.mock_state.queue_manager._lock = threading.Lock()
         self.mock_state.queue_manager.get_all.return_value = [item]
 
         process_queue()

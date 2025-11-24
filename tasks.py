@@ -25,17 +25,16 @@ def process_queue():
         return
 
     try:
-        # Check for scheduled items
-        items = state.queue_manager.get_all()
+        # Check for scheduled items and update them atomically
         now = datetime.now()
-        for item in items:
-
-            if item.get("scheduled_time") and str(item["status"]).startswith(
-                "Scheduled"
-            ):
-                if now >= item["scheduled_time"]:
-                    item["status"] = "Queued"
-                    item["scheduled_time"] = None
+        with state.queue_manager._lock:
+            for item in state.queue_manager._queue:
+                if item.get("scheduled_time") and str(item["status"]).startswith(
+                    "Scheduled"
+                ):
+                    if now >= item["scheduled_time"]:
+                        item["status"] = "Queued"
+                        item["scheduled_time"] = None
 
         if state.queue_manager.any_downloading():
             return
@@ -102,16 +101,22 @@ def download_task(item):
             cookies_from_browser=cookies,
         )
 
+        # Add to history first, then mark as completed
+        try:
+            HistoryManager.add_entry(
+                url=item["url"],
+                title=item.get("title", "Unknown"),
+                output_path=item.get("output_path"),
+                format_str=item.get("video_format"),
+                status="Completed",
+                file_size=item.get("size", "N/A"),
+                file_path=item.get("final_filename"),
+            )
+        except Exception as history_error:
+            logger.error(f"Failed to add entry to history: {history_error}")
+            # Continue anyway - download succeeded even if history failed
+
         item["status"] = "Completed"
-        HistoryManager.add_entry(
-            url=item["url"],
-            title=item.get("title", "Unknown"),
-            output_path=item.get("output_path"),
-            format_str=item.get("video_format"),
-            status="Completed",
-            file_size=item.get("size", "N/A"),
-            file_path=item.get("final_filename"),
-        )
 
     except Exception as e:
         if "cancelled" in str(e).lower():
