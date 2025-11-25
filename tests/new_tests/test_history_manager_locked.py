@@ -1,8 +1,8 @@
-
 import sqlite3
 import pytest
 from unittest.mock import patch, MagicMock
 from history_manager import HistoryManager
+
 
 def test_init_db_locked_failure():
     """Test that init_db raises after max retries when database is locked."""
@@ -20,6 +20,7 @@ def test_init_db_locked_failure():
             assert mock_conn.call_count == HistoryManager.MAX_DB_RETRIES
         finally:
             HistoryManager.DB_RETRY_DELAY = original_delay
+
 
 def test_add_entry_locked_failure():
     """Test that add_entry raises after max retries when database is locked."""

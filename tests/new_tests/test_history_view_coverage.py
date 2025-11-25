@@ -1,8 +1,8 @@
-
 import flet as ft
 import pytest
 from unittest.mock import MagicMock, patch
 from views.history_view import HistoryView
+
 
 def test_history_view_open_folder_error():
     """Test exception handling in open_folder_safe."""
@@ -16,6 +16,7 @@ def test_history_view_open_folder_error():
             with patch("views.history_view.logging.error") as mock_log_fn:
                 view.open_folder_safe("/invalid/path")
                 mock_log_fn.assert_called_with("Failed to open folder: Folder error")
+
 
 def test_history_view_copy_url():
     """Test copy url button lambda."""
@@ -39,6 +40,7 @@ def test_history_view_copy_url():
     # Execute the handler
     copy_btn.on_click(None)
     view.page.set_clipboard.assert_called_with("http://test.com")
+
 
 def test_history_view_open_folder_click():
     """Test open folder button lambda."""

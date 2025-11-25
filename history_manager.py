@@ -18,21 +18,50 @@ class HistoryManager:
     DB_RETRY_DELAY = 0.5  # seconds
 
     @staticmethod
+    def _resolve_db_file() -> Path:
+        """Return the configured DB path, supporting test overrides."""
+        return getattr(HistoryManager, "DB_FILE", DB_FILE)
+
+    class _ConnectionWrapper:
+        """Ensures sqlite connections are closed even when __exit__ doesn't."""
+
+        def __init__(self, conn):
+            self._conn = conn
+
+        def __enter__(self):
+            return (
+                self._conn.__enter__()
+                if hasattr(self._conn, "__enter__")
+                else self._conn
+            )
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            try:
+                if hasattr(self._conn, "__exit__"):
+                    self._conn.__exit__(exc_type, exc_val, exc_tb)
+            finally:
+                try:
+                    self._conn.close()
+                except Exception as exc:  # pragma: no cover - defensive
+                    logger.warning("Failed to close history DB connection: %s", exc)
+
+    @staticmethod
     def _get_connection(timeout: float = 10.0):
         """
-        Get database connection with timeout.
+        Get database connection with timeout and ensure it closes cleanly.
 
         Args:
             timeout: Maximum time to wait for database lock (seconds)
 
         Returns:
-            sqlite3.Connection
+            Context manager that yields a sqlite3.Connection
         """
-        DB_FILE.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(DB_FILE, timeout=timeout)
+        db_file = HistoryManager._resolve_db_file()
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(db_file, timeout=timeout)
         # Enable WAL mode for better concurrency
         conn.execute("PRAGMA journal_mode=WAL")
-        return conn
+        return HistoryManager._ConnectionWrapper(conn)
 
     @staticmethod
     def _validate_input(url: str, title: str, output_path: str) -> None:

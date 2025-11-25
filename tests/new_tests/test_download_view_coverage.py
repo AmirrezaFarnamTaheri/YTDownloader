@@ -1,9 +1,9 @@
-
 import flet as ft
 import pytest
 from unittest.mock import MagicMock, patch
 from views.download_view import DownloadView
 from theme import Theme
+
 
 def test_download_view_advanced_interactions():
     """Test interactions with advanced options."""
@@ -36,6 +36,7 @@ def test_download_view_advanced_interactions():
     assert call_args["start_time"] == "00:01:00"
     assert call_args["cookies_from_browser"] == "firefox"
 
+
 def test_download_view_open_download_folder_error():
     """Test error handling when opening download folder."""
     mock_fetch = MagicMock()
@@ -47,7 +48,9 @@ def test_download_view_open_download_folder_error():
     view = DownloadView(mock_fetch, mock_add, mock_batch, mock_schedule, mock_state)
     view.page = MagicMock()
 
-    with patch("views.download_view.open_folder", side_effect=Exception("Folder Error")):
+    with patch(
+        "views.download_view.open_folder", side_effect=Exception("Folder Error")
+    ):
         view.open_download_folder(None)
 
         # Should verify Snackbar is shown
@@ -55,6 +58,7 @@ def test_download_view_open_download_folder_error():
         args = view.page.open.call_args[0][0]
         assert isinstance(args, ft.SnackBar)
         assert "Folder Error" in args.content.value
+
 
 def test_download_view_update_info_empty():
     """Test update_info with empty data."""
@@ -78,6 +82,7 @@ def test_download_view_update_info_empty():
     view.update_info({})
     view.update.assert_not_called()
 
+
 def test_download_view_update_info_full():
     """Test update_info with complex data."""
     mock_fetch = MagicMock()
@@ -94,12 +99,22 @@ def test_download_view_update_info_full():
         "duration": "10:00",
         "thumbnail": "http://img.com",
         "video_streams": [
-            {"format_id": "137", "resolution": "1080p", "ext": "mp4", "filesize": 1024*1024*10},
-            {"format_id": "22", "resolution": "720p", "ext": "mp4", "filesize": 1024*1024*5},
+            {
+                "format_id": "137",
+                "resolution": "1080p",
+                "ext": "mp4",
+                "filesize": 1024 * 1024 * 10,
+            },
+            {
+                "format_id": "22",
+                "resolution": "720p",
+                "ext": "mp4",
+                "filesize": 1024 * 1024 * 5,
+            },
         ],
         "audio_streams": [
             {"format_id": "140", "abr": "128", "ext": "m4a"},
-        ]
+        ],
     }
 
     view.update_info(info)

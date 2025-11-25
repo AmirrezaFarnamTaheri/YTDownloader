@@ -1,6 +1,7 @@
 import logging
-import time
 import os
+import time
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -10,13 +11,23 @@ class SocialManager:
     Manages Social integrations (Discord RPC).
     """
 
-    def __init__(self, client_id: str = "123456789012345678"):  # Placeholder ID
-        self.client_id = client_id
+    DEFAULT_CLIENT_ID = "123456789012345678"  # Fallback placeholder
+
+    def __init__(self, client_id: Optional[str] = None):
+        # Prefer environment variable, but fall back to legacy placeholder for compatibility/tests
+        self.client_id = (
+            client_id or os.environ.get("DISCORD_CLIENT_ID") or self.DEFAULT_CLIENT_ID
+        )
         self.rpc = None
         self.connected = False
 
     def connect(self):
         if self.connected:
+            return
+        if not self.client_id:
+            logger.info(
+                "Discord Rich Presence disabled (no DISCORD_CLIENT_ID provided)."
+            )
             return
         try:
             from pypresence import Presence
@@ -33,9 +44,15 @@ class SocialManager:
     def update_status(self, state: str, details: str = None):
         """Updates the Rich Presence status."""
         if not self.connected:
-            # Try to connect once?
-            # self.connect()
-            return
+            if self.rpc:
+                logger.debug(
+                    "Discord RPC is present but not connected; skipping update."
+                )
+                return
+            # Try to connect on first update to keep caller simple
+            self.connect()
+            if not self.connected:
+                return
 
         try:
             self.rpc.update(
@@ -53,6 +70,6 @@ class SocialManager:
         if self.rpc:
             try:
                 self.rpc.close()
-            except:
-                pass
+            except Exception as exc:
+                logger.debug("Failed to close Discord RPC cleanly: %s", exc)
         self.connected = False

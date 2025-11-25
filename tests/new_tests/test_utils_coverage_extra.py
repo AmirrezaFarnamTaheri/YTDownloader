@@ -1,8 +1,8 @@
-
 import pytest
 import time
 from unittest.mock import patch
 from utils import CancelToken
+
 
 def test_cancel_token_pause_timeout():
     """Test that check raises exception after pause timeout."""
@@ -12,6 +12,7 @@ def test_cancel_token_pause_timeout():
     with pytest.raises(Exception) as exc_info:
         token.check()
     assert "Download paused for too long" in str(exc_info.value)
+
 
 def test_cancel_token_check_cancelled_during_pause():
     """Test that check notices cancellation while paused."""

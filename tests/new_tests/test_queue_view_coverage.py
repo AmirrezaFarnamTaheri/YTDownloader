@@ -1,8 +1,8 @@
-
 import flet as ft
 import pytest
 from unittest.mock import MagicMock, patch
 from views.queue_view import QueueView
+
 
 def test_queue_view_clear_finished():
     """Test clearing finished items."""

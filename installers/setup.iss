@@ -2,7 +2,14 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "StreamCatch"
-#define MyAppVersion "2.0"
+#ifndef MyAppVersion
+  #define EnvVersion GetEnv("APP_VERSION")
+  #if EnvVersion != ""
+    #define MyAppVersion EnvVersion
+  #else
+    #define MyAppVersion "0.0.0"
+  #endif
+#endif
 #define MyAppPublisher "StreamCatch Team"
 #define MyAppURL "https://github.com/user/streamcatch"
 #define MyAppExeName "StreamCatch.exe"
@@ -10,7 +17,7 @@
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{D1A3B4C5-D6E7-F8G9-H0I1-J2K3L4M5N6O7}
+AppId={{D1A3B4C5-D6E7-F8G9-H0I1-J2K3L4M5N6O7}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}

@@ -27,7 +27,10 @@
 ## 🚀 Installation & Building
 
 ### Pre-built Installers
-Check the **Releases** page for the latest installers for Windows (`.exe`) and Linux (`.deb`).
+Grab the latest release artifacts:
+- Windows installer: `StreamCatch-Windows-Installer.exe`
+- Linux package: `StreamCatch-Linux-amd64.deb`
+- macOS image: `StreamCatch-macOS.dmg`
 
 ### Building from Source
 
@@ -48,17 +51,21 @@ Check the **Releases** page for the latest installers for Windows (`.exe`) and L
     python main.py
     ```
 
-4.  **Build Installer (Windows/Linux):**
-    To create a standalone executable or installer:
+4.  **Build Installers (desktop):**
+    To create platform binaries locally:
     ```bash
     python scripts/build_installer.py
     ```
-    - On **Windows**, this requires Inno Setup to generate the `.exe` installer (otherwise it just creates the standalone binary).
-    - On **Linux**, this uses PyInstaller to create a binary in `dist/`.
+    - On **Windows**, install Inno Setup (`iscc`) to produce the `.exe` installer; otherwise only the PyInstaller binary is created.
+    - On **Linux**, PyInstaller writes the binary to `dist/`; use the GitHub Action or `dpkg-deb` steps from `.github/workflows/build.yml` to create a `.deb`.
+    - On **macOS**, PyInstaller generates `dist/StreamCatch.app`; you can wrap it into a `.dmg` using `hdiutil create ...` (see the workflow for the exact command).
 
 ### Mobile (Android/iOS)
 
 See [MOBILE_DEPLOYMENT.md](MOBILE_DEPLOYMENT.md) for detailed build instructions using `flet build`.
+
+### Optional: Discord Rich Presence
+Set `DISCORD_CLIENT_ID` in your environment to enable Discord Rich Presence updates. Without it, social integration stays disabled gracefully.
 
 ## 🛠️ Architecture
 

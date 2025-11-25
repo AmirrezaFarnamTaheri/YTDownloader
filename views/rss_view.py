@@ -1,9 +1,13 @@
 import flet as ft
+import logging
 from theme import Theme
 from .base_view import BaseView
 from config_manager import ConfigManager
 from rss_manager import RSSManager
 import threading
+
+
+logger = logging.getLogger(__name__)
 
 
 class RSSView(BaseView):
@@ -174,14 +178,16 @@ class RSSView(BaseView):
     def _fetch_feeds_task(self):
         feeds = self.config.get("rss_feeds", [])
         all_items = []
+        failed_feeds = []
 
         for url in feeds:
             try:
                 items = RSSManager.parse_feed(url)
                 # Limit to top 3 per feed to avoid spam
                 all_items.extend(items[:3])
-            except:
-                pass
+            except Exception as exc:
+                logger.warning("Failed to fetch RSS feed %s: %s", url, exc)
+                failed_feeds.append(url)
 
         # Sort by date desc (basic string sort for ISO format often works, but proper parsing is better)
         # RSSManager returns 'published' as string.
@@ -195,6 +201,17 @@ class RSSView(BaseView):
                     content=ft.Text("No recent items found", color=Theme.TEXT_MUTED),
                     alignment=ft.alignment.center,
                     padding=20,
+                )
+            )
+
+        if failed_feeds and not all_items:
+            self.items_list_view.controls.append(
+                ft.Container(
+                    content=ft.Text(
+                        f"Failed to load {len(failed_feeds)} feed(s). Check URLs and network.",
+                        color=Theme.WARNING,
+                    ),
+                    padding=8,
                 )
             )
 

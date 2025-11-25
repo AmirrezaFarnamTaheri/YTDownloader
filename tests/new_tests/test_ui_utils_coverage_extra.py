@@ -1,8 +1,8 @@
-
 import pytest
 from unittest.mock import patch, MagicMock
 from ui_utils import open_folder, validate_rate_limit
 import os
+
 
 def test_open_folder_exceptions():
     """Test exception handling in open_folder."""
@@ -10,15 +10,18 @@ def test_open_folder_exceptions():
     with patch("os.path.expanduser", side_effect=Exception("Path error")):
         assert open_folder("~/Documents") is False
 
+
 def test_open_folder_empty():
     """Test empty path."""
     assert open_folder("") is False
     assert open_folder(None) is False
 
+
 def test_open_folder_not_exist():
     """Test non-existent path."""
     with patch("os.path.exists", return_value=False):
         assert open_folder("/non/existent") is False
+
 
 def test_open_folder_platforms():
     """Test platform specific calls."""
@@ -41,6 +44,7 @@ def test_open_folder_platforms():
             with patch("subprocess.Popen") as mock_popen:
                 open_folder("/tmp")
                 mock_popen.assert_called_with(["xdg-open", "/tmp"])
+
 
 def test_validate_rate_limit_zero():
     """Test rate limit 0."""

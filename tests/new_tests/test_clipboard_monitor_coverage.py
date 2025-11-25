@@ -13,9 +13,7 @@ class TestClipboardMonitor(unittest.TestCase):
     @patch("clipboard_monitor.pyperclip.paste")
     @patch("clipboard_monitor.validate_url")
     @patch("time.sleep")
-    def test_clipboard_loop_detects_url(
-        self, mock_sleep, mock_validate, mock_paste
-    ):
+    def test_clipboard_loop_detects_url(self, mock_sleep, mock_validate, mock_paste):
         # Setup
         state.shutdown_flag.clear()
         mock_paste.return_value = "https://example.com"
@@ -29,9 +27,11 @@ class TestClipboardMonitor(unittest.TestCase):
         # Mock shutdown_flag to run once then exit
         call_count = [0]
         original_is_set = state.shutdown_flag.is_set
+
         def is_set_side_effect():
             call_count[0] += 1
             return call_count[0] > 1
+
         state.shutdown_flag.is_set = is_set_side_effect
 
         try:
@@ -64,9 +64,11 @@ class TestClipboardMonitor(unittest.TestCase):
         # Mock shutdown_flag to run once then exit
         call_count = [0]
         original_is_set = state.shutdown_flag.is_set
+
         def is_set_side_effect():
             call_count[0] += 1
             return call_count[0] > 1
+
         state.shutdown_flag.is_set = is_set_side_effect
 
         try:
@@ -81,9 +83,7 @@ class TestClipboardMonitor(unittest.TestCase):
 
     @patch("clipboard_monitor.pyperclip.paste")
     @patch("time.sleep")
-    def test_clipboard_loop_handles_exception(
-        self, mock_sleep, mock_paste
-    ):
+    def test_clipboard_loop_handles_exception(self, mock_sleep, mock_paste):
         # Setup
         state.shutdown_flag.clear()
         mock_paste.side_effect = Exception("Clipboard error")
@@ -93,9 +93,11 @@ class TestClipboardMonitor(unittest.TestCase):
         # Mock shutdown_flag to run once then exit
         call_count = [0]
         original_is_set = state.shutdown_flag.is_set
+
         def is_set_side_effect():
             call_count[0] += 1
             return call_count[0] > 1
+
         state.shutdown_flag.is_set = is_set_side_effect
 
         try:
@@ -106,9 +108,7 @@ class TestClipboardMonitor(unittest.TestCase):
 
     @patch("clipboard_monitor.pyperclip.paste")
     @patch("time.sleep")
-    def test_clipboard_loop_handles_pyperclip_exception(
-        self, mock_sleep, mock_paste
-    ):
+    def test_clipboard_loop_handles_pyperclip_exception(self, mock_sleep, mock_paste):
         # Setup
         state.shutdown_flag.clear()
         mock_paste.side_effect = pyperclip.PyperclipException("No xclip")
@@ -118,9 +118,11 @@ class TestClipboardMonitor(unittest.TestCase):
         # Mock shutdown_flag to run once then exit
         call_count = [0]
         original_is_set = state.shutdown_flag.is_set
+
         def is_set_side_effect():
             call_count[0] += 1
             return call_count[0] > 1
+
         state.shutdown_flag.is_set = is_set_side_effect
 
         try:

@@ -1,8 +1,8 @@
-
 import flet as ft
 import pytest
 from unittest.mock import MagicMock, patch
 from views.rss_view import RSSView
+
 
 def test_rss_view_tab_change():
     """Test tab switching logic."""
@@ -25,6 +25,7 @@ def test_rss_view_tab_change():
     assert view.feeds_content.visible is True
     assert view.items_content.visible is False
 
+
 def test_rss_view_add_rss_empty():
     """Test adding empty RSS url."""
     config = {"rss_feeds": []}
@@ -37,6 +38,7 @@ def test_rss_view_add_rss_empty():
     view.load_feeds_list.assert_not_called()
     assert len(config["rss_feeds"]) == 0
 
+
 def test_rss_view_fetch_task_exception():
     """Test feed fetching with one bad feed."""
     view = RSSView({"rss_feeds": ["http://good.com", "http://bad.com"]})
@@ -46,10 +48,13 @@ def test_rss_view_fetch_task_exception():
     view.page = MagicMock()
 
     with patch("rss_manager.RSSManager.parse_feed") as mock_parse:
+
         def side_effect(url):
             if "bad" in url:
                 raise Exception("Network Error")
-            return [{"title": "Video 1", "link": "http://v1", "published": "2023-01-01"}]
+            return [
+                {"title": "Video 1", "link": "http://v1", "published": "2023-01-01"}
+            ]
 
         mock_parse.side_effect = side_effect
 
@@ -58,7 +63,11 @@ def test_rss_view_fetch_task_exception():
 
         # Should have added one item
         assert len(view.items_list_view.controls) == 1
-        assert "Video 1" in view.items_list_view.controls[0].content.controls[1].controls[0].value
+        assert (
+            "Video 1"
+            in view.items_list_view.controls[0].content.controls[1].controls[0].value
+        )
+
 
 def test_rss_view_fetch_task_empty():
     """Test fetch task with no items."""
@@ -71,13 +80,17 @@ def test_rss_view_fetch_task_empty():
         assert len(view.items_list_view.controls) == 1
         assert "No recent items found" in view.items_list_view.controls[0].content.value
 
+
 def test_rss_view_item_copy():
     """Test copy button on rss item."""
     view = RSSView({"rss_feeds": ["http://test.com"]})
     view.update = MagicMock()
     view.page = MagicMock()
 
-    with patch("rss_manager.RSSManager.parse_feed", return_value=[{"title": "T", "link": "L", "published": "D"}]):
+    with patch(
+        "rss_manager.RSSManager.parse_feed",
+        return_value=[{"title": "T", "link": "L", "published": "D"}],
+    ):
         view._fetch_feeds_task()
 
         # Get the item control

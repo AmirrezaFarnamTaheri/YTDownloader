@@ -23,6 +23,19 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Derive build version
+      shell: bash
+      run: |
+        if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+          echo "APP_VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_ENV"
+        elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+          echo "APP_VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+        elif [[ -n "${{ github.event.inputs.tag_name }}" ]]; then
+          echo "APP_VERSION=${{ github.event.inputs.tag_name }}" >> "$GITHUB_ENV"
+        else
+          echo "APP_VERSION=dev-${{ github.run_number }}" >> "$GITHUB_ENV"
+        fi
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -33,34 +46,95 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Install PyInstaller
+    - name: Install platform dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: |
-        pip install pyinstaller>=6.0.0
+        sudo apt-get update
+        sudo apt-get install -y libgtk-3-dev fakeroot
 
     - name: Build with PyInstaller
       run: |
         pyinstaller streamcatch.spec
 
-    - name: Upload Artifact (Windows)
+    - name: Install Inno Setup
+      if: matrix.os == 'windows-latest'
+      uses: Minionguyjosh/inno-setup-action@v1.2.2
+
+    - name: Build Windows installer
+      if: matrix.os == 'windows-latest'
+      env:
+        APP_VERSION: ${{ env.APP_VERSION }}
+      run: |
+        iscc installers/setup.iss
+
+    - name: Build Linux deb
+      if: matrix.os == 'ubuntu-latest'
+      env:
+        APP_VERSION: ${{ env.APP_VERSION }}
+      run: |
+        mkdir -p deb_dist/streamcatch/usr/local/bin
+        mkdir -p deb_dist/streamcatch/usr/share/applications
+        mkdir -p deb_dist/streamcatch/usr/share/icons/hicolor/scalable/apps
+        cp dist/StreamCatch deb_dist/streamcatch/usr/local/bin/streamcatch
+        cat > deb_dist/streamcatch/usr/share/applications/streamcatch.desktop <<'EOD'
+        [Desktop Entry]
+        Version=1.0
+        Type=Application
+        Name=StreamCatch
+        Comment=Ultimate Video Downloader
+        Exec=/usr/local/bin/streamcatch
+        Icon=streamcatch
+        Terminal=false
+        Categories=Network;FileTransfer;
+        EOD
+        if [ -f assets/logo.svg ]; then
+          cp assets/logo.svg deb_dist/streamcatch/usr/share/icons/hicolor/scalable/apps/streamcatch.svg
+        fi
+        mkdir -p deb_dist/streamcatch/DEBIAN
+        cat > deb_dist/streamcatch/DEBIAN/control <<EOD
+        Package: streamcatch
+        Version: ${APP_VERSION}
+        Architecture: amd64
+        Maintainer: StreamCatch Team
+        Description: Ultimate Video Downloader
+         StreamCatch is a powerful GUI video downloader supporting YouTube, Telegram, and more.
+        EOD
+        dpkg-deb --build deb_dist/streamcatch
+        mv deb_dist/streamcatch.deb streamcatch_${APP_VERSION}_amd64.deb
+
+    - name: Build macOS DMG
+      if: matrix.os == 'macos-latest'
+      env:
+        APP_VERSION: ${{ env.APP_VERSION }}
+      run: |
+        APP_PATH="dist/StreamCatch.app"
+        if [ ! -d "$APP_PATH" ]; then
+          echo "PyInstaller did not generate $APP_PATH"
+          ls -la dist || true
+          exit 1
+        fi
+        hdiutil create -volname "StreamCatch" -srcfolder "$APP_PATH" -ov -format UDZO "StreamCatch-${APP_VERSION}-macOS.dmg"
+
+    - name: Upload Artifact (Windows installer)
       if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: StreamCatch-Windows
-        path: dist/StreamCatch.exe
+        name: StreamCatch-Windows-Installer
+        path: installers/output/StreamCatch_Setup_v*.exe
 
-    - name: Upload Artifact (Linux)
+    - name: Upload Artifact (Linux deb)
       if: matrix.os == 'ubuntu-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: StreamCatch-Linux
-        path: dist/StreamCatch
+        name: StreamCatch-Linux-Deb
+        path: streamcatch_*_amd64.deb
 
-    - name: Upload Artifact (macOS)
+    - name: Upload Artifact (macOS dmg)
       if: matrix.os == 'macos-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: StreamCatch-macOS
-        path: dist/StreamCatch
+        name: StreamCatch-macOS-Dmg
+        path: StreamCatch-*-macOS.dmg
 
   release:
     needs: build
@@ -69,29 +143,42 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Derive build version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "APP_VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_ENV"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "APP_VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+          elif [[ -n "${{ github.event.inputs.tag_name }}" ]]; then
+            echo "APP_VERSION=${{ github.event.inputs.tag_name }}" >> "$GITHUB_ENV"
+          else
+            echo "APP_VERSION=dev-${{ github.run_number }}" >> "$GITHUB_ENV"
+          fi
+
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
-          name: StreamCatch-Windows
+          name: StreamCatch-Windows-Installer
           path: ./windows
 
       - name: Download Linux Artifact
         uses: actions/download-artifact@v4
         with:
-          name: StreamCatch-Linux
+          name: StreamCatch-Linux-Deb
           path: ./linux
 
       - name: Download macOS Artifact
         uses: actions/download-artifact@v4
         with:
-          name: StreamCatch-macOS
+          name: StreamCatch-macOS-Dmg
           path: ./macos
 
       - name: Rename artifacts for release
         run: |
-          mv windows/StreamCatch.exe StreamCatch-Windows.exe
-          mv linux/StreamCatch StreamCatch-Linux
-          mv macos/StreamCatch StreamCatch-macOS
+          mv windows/StreamCatch_Setup_v*.exe StreamCatch-Windows-Installer.exe
+          mv linux/streamcatch_*_amd64.deb StreamCatch-Linux-amd64.deb
+          mv macos/StreamCatch-*-macOS.dmg StreamCatch-macOS.dmg
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -99,8 +186,8 @@ jobs:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           draft: ${{ github.event_name == 'workflow_dispatch' }}
           files: |
-            StreamCatch-Windows.exe
-            StreamCatch-Linux
-            StreamCatch-macOS
+            StreamCatch-Windows-Installer.exe
+            StreamCatch-Linux-amd64.deb
+            StreamCatch-macOS.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
