@@ -17,12 +17,14 @@ jobs:
       shell: bash
       run: |
         if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-          echo "APP_VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_ENV"
+          VERSION="${GITHUB_REF#refs/tags/v}"
         elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-          echo "APP_VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+          VERSION="${GITHUB_REF#refs/tags/}"
         else
-          echo "APP_VERSION=dev-${{ github.run_number }}" >> "$GITHUB_ENV"
+          VERSION="dev-${{ github.run_number }}"
         fi
+        VERSION="${VERSION// /}"
+        echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
 
     - name: Set up Python
       uses: actions/setup-python@v4
