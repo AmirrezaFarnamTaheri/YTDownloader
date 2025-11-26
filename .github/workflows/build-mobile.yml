@@ -14,6 +14,19 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Derive build version
+      shell: bash
+      run: |
+        if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+          VERSION="${GITHUB_REF#refs/tags/v}"
+        elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+          VERSION="${GITHUB_REF#refs/tags/}"
+        else
+          VERSION="dev-${{ github.run_number }}"
+        fi
+        VERSION="${VERSION// /}"
+        echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
+
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
       with:
@@ -32,7 +45,11 @@ jobs:
     - name: Build Android APK
       continue-on-error: true
       run: |
-        flet build apk --project "StreamCatch" --org "com.streamcatch" --product "StreamCatch"
+        flet build apk \
+          --project "StreamCatch" \
+          --org "com.streamcatch" \
+          --product "StreamCatch" \
+          --build-version "${{ env.APP_VERSION }}"
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
@@ -47,6 +64,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Derive build version
+      shell: bash
+      run: |
+        if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+          VERSION="${GITHUB_REF#refs/tags/v}"
+        elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+          VERSION="${GITHUB_REF#refs/tags/}"
+        else
+          VERSION="dev-${{ github.run_number }}"
+        fi
+        VERSION="${VERSION// /}"
+        echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
 
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
@@ -66,7 +96,11 @@ jobs:
     - name: Build iOS IPA
       continue-on-error: true
       run: |
-        flet build ipa --project "StreamCatch" --org "com.streamcatch" --product "StreamCatch"
+        flet build ipa \
+          --project "StreamCatch" \
+          --org "com.streamcatch" \
+          --product "StreamCatch" \
+          --build-version "${{ env.APP_VERSION }}"
 
     - name: Upload IPA Artifact
       uses: actions/upload-artifact@v4

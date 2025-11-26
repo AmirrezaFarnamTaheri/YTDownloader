@@ -27,14 +27,16 @@ jobs:
       shell: bash
       run: |
         if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-          echo "APP_VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_ENV"
+          VERSION="${GITHUB_REF#refs/tags/v}"
         elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-          echo "APP_VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+          VERSION="${GITHUB_REF#refs/tags/}"
         elif [[ -n "${{ github.event.inputs.tag_name }}" ]]; then
-          echo "APP_VERSION=${{ github.event.inputs.tag_name }}" >> "$GITHUB_ENV"
+          VERSION="${{ github.event.inputs.tag_name }}"
         else
-          echo "APP_VERSION=dev-${{ github.run_number }}" >> "$GITHUB_ENV"
+          VERSION="dev-${{ github.run_number }}"
         fi
+        VERSION="${VERSION// /}"
+        echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -178,14 +180,16 @@ jobs:
         shell: bash
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            echo "APP_VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_ENV"
+            VERSION="${GITHUB_REF#refs/tags/v}"
           elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "APP_VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+            VERSION="${GITHUB_REF#refs/tags/}"
           elif [[ -n "${{ github.event.inputs.tag_name }}" ]]; then
-            echo "APP_VERSION=${{ github.event.inputs.tag_name }}" >> "$GITHUB_ENV"
+            VERSION="${{ github.event.inputs.tag_name }}"
           else
-            echo "APP_VERSION=dev-${{ github.run_number }}" >> "$GITHUB_ENV"
+            VERSION="dev-${{ github.run_number }}"
           fi
+          VERSION="${VERSION// /}"
+          echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4

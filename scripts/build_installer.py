@@ -35,6 +35,10 @@ def build_installer():
         str(root / "main.py"),
     ]
 
+    # Add --no-lto on Windows to prevent memory issues
+    if os.name == "nt":
+        cmd.append("--no-lto")
+
     subprocess.check_call(cmd)
 
     # 2. Optionally build Windows installer via Inno Setup
