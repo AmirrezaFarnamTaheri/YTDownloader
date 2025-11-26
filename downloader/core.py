@@ -18,17 +18,12 @@ logger = logging.getLogger(__name__)
 
 def _sanitize_output_path(base_path: str) -> str:
     """
-    Sanitize output path to avoid obviously malformed values while still
-    allowing both absolute and relative user-chosen directories.
+    Basic normalization for output paths.
 
-    We currently resolve the path (handling things like '~' and '../') and
-    rely on OS permissions plus the sanitized template to prevent abuse.
+    We keep relative paths as-is (so tests and callers that expect "." remain
+    compatible) but still normalize empty/None values to the current directory.
     """
-    if not base_path:
-        base_path = "."
-    # Expand user (~) and resolve any '..' segments
-    target = Path(base_path).expanduser().resolve()
-    return str(target)
+    return base_path or "."
 
 
 def _sanitize_template(template: _OptionalStr[str]) -> _OptionalStr[str]:

@@ -32,7 +32,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Module-level handles primarily for tests and integrations
+download_view = None
+queue_view = None
+page = None
+
+
 def main(pg: ft.Page):
+    global page, download_view, queue_view
     page = pg
     page.title = "StreamCatch - Ultimate Downloader"
     page.theme_mode = ft.ThemeMode.DARK
