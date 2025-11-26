@@ -38,12 +38,15 @@ jobs:
       run: |
         pyinstaller streamcatch.spec
 
+    - name: Setup Inno Setup
+      run: |
+        choco install innosetup -y
+
     - name: Build Installer with Inno Setup
-      uses: Minionguyjosh/inno-setup-action@v1.2.2
-      with:
-        path: installers/setup.iss
-      env:
-        APP_VERSION: ${{ env.APP_VERSION }}
+      shell: powershell
+      run: |
+        $env:APP_VERSION = "${{ env.APP_VERSION }}"
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installers/setup.iss
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4

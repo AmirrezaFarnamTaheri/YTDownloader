@@ -52,11 +52,24 @@ jobs:
         mkdir -p ~/.android
         touch ~/.android/repositories.cfg
 
+    - name: Download and Install Android Command Line Tools
+      run: |
+        cd ~/.buildozer/android/platform/android-sdk/cmdline-tools
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip commandlinetools-linux-11076708_latest.zip
+        mv cmdline-tools latest
+        rm commandlinetools-linux-11076708_latest.zip
+
+        # Accept licenses
+        yes | ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+        # Install required SDK components
+        ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0"
+
     - name: Build APK with Buildozer
       working-directory: ./mobile
       run: |
-        # Force accept SDK license
-        yes | buildozer android debug
+        buildozer android debug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
@@ -99,17 +112,25 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/.kivy-ios
-        key: kivy-ios-toolchain-${{ runner.os }}
+        key: kivy-ios-toolchain-${{ runner.os }}-v2
         restore-keys: |
-          kivy-ios-toolchain-${{ runner.os }}
+          kivy-ios-toolchain-${{ runner.os }}-v2
 
     - name: Build iOS dependencies
       run: |
-        toolchain build python3 kivy
+        # Build python3 first as it's required for all other recipes
+        toolchain build python3
+        # Build kivy after python3
+        toolchain build kivy
 
     - name: Create Xcode project
       working-directory: ./mobile
       run: |
+        # Ensure the toolchain has built python3
+        if [ ! -d "$HOME/.kivy-ios/dist/lib/python3.11" ] && [ ! -d "$HOME/.kivy-ios/dist/lib/python3.10" ]; then
+          echo "Error: Python3 not found in kivy-ios distribution"
+          exit 1
+        fi
         toolchain create StreamCatch .
 
     - name: Set up Xcode
