@@ -43,7 +43,7 @@ jobs:
         pip install flet
 
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: pip install -r requirements-mobile.txt
 
     - name: Build Android APK
       continue-on-error: true
@@ -97,7 +97,7 @@ jobs:
         pip install flet
 
     - name: Install dependencies
-      run: pip install -r requirements.txt
+      run: pip install -r requirements-mobile.txt
 
     - name: Build iOS IPA
       continue-on-error: true
