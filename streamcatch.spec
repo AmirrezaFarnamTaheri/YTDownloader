@@ -70,3 +70,19 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
+# macOS app bundle
+app = BUNDLE(
+    exe,
+    name='StreamCatch.app',
+    icon=None,
+    bundle_identifier='com.streamcatch.app',
+    info_plist={
+        'CFBundleName': 'StreamCatch',
+        'CFBundleDisplayName': 'StreamCatch',
+        'CFBundleShortVersionString': '1.0.0',
+        'CFBundleVersion': '1.0.0',
+        'NSHighResolutionCapable': True,
+        'LSMinimumSystemVersion': '10.13.0',
+    },
+)
