@@ -1,0 +1,271 @@
+name: Build Mobile Apps (Flet)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      build_android:
+        description: 'Build Android APK'
+        type: boolean
+        default: true
+      build_ios:
+        description: 'Build iOS IPA'
+        type: boolean
+        default: true
+
+env:
+  FLET_VERSION: "0.28.3"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ===========================================================================
+  # Android APK Build
+  # ===========================================================================
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.build_android != 'false' }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements-mobile.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install Flet
+      run: |
+        python -m pip install --upgrade pip
+        pip install flet>=${{ env.FLET_VERSION }}
+
+    - name: Prepare mobile requirements
+      run: |
+        # Use mobile-specific requirements (no pyinstaller, no dev tools)
+        if [ -f requirements-mobile.txt ]; then
+          cp requirements-mobile.txt requirements.txt
+          echo "Using requirements-mobile.txt for build"
+        else
+          # Fallback: filter out incompatible packages
+          echo "Filtering incompatible packages from requirements.txt"
+          grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort)" requirements.txt > requirements-filtered.txt
+          mv requirements-filtered.txt requirements.txt
+        fi
+        
+        echo "=== Final requirements.txt ==="
+        cat requirements.txt
+
+    - name: Build APK with Flet
+      run: |
+        flet build apk --verbose
+
+    - name: Find and verify APK
+      id: find_apk
+      run: |
+        APK_PATH=$(find build -name "*.apk" -type f 2>/dev/null | head -1)
+        if [ -z "$APK_PATH" ]; then
+          echo "ERROR: No APK file found!"
+          find build -type f -name "*" 2>/dev/null || echo "Build directory not found"
+          exit 1
+        fi
+        echo "Found APK: $APK_PATH"
+        echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StreamCatch-Android-APK
+        path: ${{ steps.find_apk.outputs.apk_path }}
+        if-no-files-found: error
+        retention-days: 30
+
+  # ===========================================================================
+  # iOS IPA Build
+  # ===========================================================================
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+    if: ${{ github.event.inputs.build_ios != 'false' }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements-mobile.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install Flet
+      run: |
+        python -m pip install --upgrade pip
+        pip install flet>=${{ env.FLET_VERSION }}
+
+    - name: Prepare mobile requirements
+      run: |
+        # Use mobile-specific requirements (no pyinstaller, no dev tools)
+        if [ -f requirements-mobile.txt ]; then
+          cp requirements-mobile.txt requirements.txt
+          echo "Using requirements-mobile.txt for build"
+        else
+          # Fallback: filter out incompatible packages
+          echo "Filtering incompatible packages from requirements.txt"
+          grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort)" requirements.txt > requirements-filtered.txt
+          mv requirements-filtered.txt requirements.txt
+        fi
+        
+        echo "=== Final requirements.txt ==="
+        cat requirements.txt
+
+    - name: Set up Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+
+    - name: Build iOS Archive with Flet
+      run: |
+        # Build xcarchive (no code signing required for archive)
+        flet build ipa --verbose
+      continue-on-error: true
+
+    - name: Find iOS artifacts
+      id: find_ios
+      run: |
+        # Check for IPA first
+        IPA_PATH=$(find build -name "*.ipa" -type f 2>/dev/null | head -1)
+        if [ -n "$IPA_PATH" ]; then
+          echo "Found IPA: $IPA_PATH"
+          echo "ipa_path=$IPA_PATH" >> $GITHUB_OUTPUT
+          echo "artifact_type=ipa" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        # Check for xcarchive
+        ARCHIVE_PATH=$(find build -name "*.xcarchive" -type d 2>/dev/null | head -1)
+        if [ -n "$ARCHIVE_PATH" ]; then
+          echo "Found xcarchive: $ARCHIVE_PATH"
+          # Compress xcarchive for upload
+          zip -r ios-archive.zip "$ARCHIVE_PATH"
+          echo "archive_path=ios-archive.zip" >> $GITHUB_OUTPUT
+          echo "artifact_type=xcarchive" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        echo "WARNING: No iOS artifacts found"
+        echo "artifact_type=none" >> $GITHUB_OUTPUT
+
+    - name: Upload IPA Artifact
+      if: steps.find_ios.outputs.artifact_type == 'ipa'
+      uses: actions/upload-artifact@v4
+      with:
+        name: StreamCatch-iOS-IPA
+        path: ${{ steps.find_ios.outputs.ipa_path }}
+        if-no-files-found: warn
+        retention-days: 30
+
+    - name: Upload xcarchive Artifact
+      if: steps.find_ios.outputs.artifact_type == 'xcarchive'
+      uses: actions/upload-artifact@v4
+      with:
+        name: StreamCatch-iOS-xcarchive
+        path: ${{ steps.find_ios.outputs.archive_path }}
+        if-no-files-found: warn
+        retention-days: 30
+
+  # ===========================================================================
+  # Create Release
+  # ===========================================================================
+  release:
+    name: Create Release
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download Android APK
+      uses: actions/download-artifact@v4
+      with:
+        name: StreamCatch-Android-APK
+        path: ./android
+      continue-on-error: true
+
+    - name: Download iOS IPA
+      uses: actions/download-artifact@v4
+      with:
+        name: StreamCatch-iOS-IPA
+        path: ./ios
+      continue-on-error: true
+
+    - name: Download iOS xcarchive
+      uses: actions/download-artifact@v4
+      with:
+        name: StreamCatch-iOS-xcarchive
+        path: ./ios-archive
+      continue-on-error: true
+
+    - name: Prepare release files
+      run: |
+        mkdir -p release
+        
+        # Android APK
+        if [ -f android/*.apk ]; then
+          mv android/*.apk release/StreamCatch-Android.apk
+          echo "✅ Android APK ready"
+        else
+          echo "⚠️ No Android APK found"
+        fi
+        
+        # iOS IPA
+        if [ -f ios/*.ipa ]; then
+          mv ios/*.ipa release/StreamCatch-iOS.ipa
+          echo "✅ iOS IPA ready"
+        elif [ -f ios-archive/*.zip ]; then
+          mv ios-archive/*.zip release/StreamCatch-iOS-xcarchive.zip
+          echo "✅ iOS xcarchive ready (requires manual signing)"
+        else
+          echo "⚠️ No iOS artifacts found"
+        fi
+        
+        ls -la release/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: release/*
+        generate_release_notes: true
+        body: |
+          ## Mobile Apps
+          
+          ### Android
+          - Download `StreamCatch-Android.apk` and install on your device
+          - Enable "Install from unknown sources" if prompted
+          
+          ### iOS
+          - If `.ipa` is available: Install via Xcode, Apple Configurator, or TestFlight
+          - If `.xcarchive.zip` is provided: Open in Xcode to sign and export
+          
+          ⚠️ **Note**: iOS builds require code signing. Without provisioning profiles, 
+          only the xcarchive is generated.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,24 +1,29 @@
-# Core Dependencies
-yt-dlp>=2023.11.16        # YouTube video downloader library
-Pillow>=10.0.0            # Image processing for thumbnails
-requests>=2.31.0          # HTTP library for fetching resources
-flet>=0.28.3              # Modern UI framework
-# flet-desktop>=0.28.3      # Flet desktop runtime
-# flet-runtime>=0.28.3      # Flet runtime
+# =============================================================================
+# StreamCatch - Core Dependencies
+# =============================================================================
+# This file contains runtime dependencies only.
+# For development tools (pyinstaller, testing, linting), see requirements-dev.txt
+# =============================================================================
 
-beautifulsoup4>=4.12.0    # Screen scraping for Telegram/Generic sites
+# Core Downloading
+yt-dlp>=2023.11.16              # YouTube/video downloader library
 
-# Development & Testing
-pytest>=7.4.0             # Testing framework
-pytest-cov>=4.1.0         # Code coverage support
-pyinstaller>=6.0.0        # Create standalone executables
+# UI Framework
+flet>=0.28.3                    # Modern UI framework (Flutter for Python)
 
-# Optional Quality Tools
-black>=23.0.0             # Code formatting (optional)
-mypy>=1.0.0               # Type checking (optional)
-pylint>=3.0.0             # Code linting (optional)
+# Image & Media
+Pillow>=10.0.0                  # Image processing for thumbnails
 
-# Cloud & Social
-PyDrive2>=1.16.0          # Google Drive API wrapper
-pypresence>=4.2.0         # Discord Rich Presence
-pyperclip>=1.8.2
+# Networking
+requests>=2.31.0                # HTTP library for fetching resources
+urllib3>=2.0.0                  # HTTP client (used by requests)
+certifi>=2023.0.0               # SSL certificates
+
+# Web Scraping
+beautifulsoup4>=4.12.0          # HTML parsing for Telegram/Generic extractors
+lxml>=4.9.0                     # Fast XML/HTML parser
+
+# Cloud & Social (Optional but included)
+PyDrive2>=1.16.0                # Google Drive API wrapper
+pypresence>=4.2.0               # Discord Rich Presence
+pyperclip>=1.8.2                # Clipboard access

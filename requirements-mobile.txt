@@ -1,23 +1,34 @@
-# Core Dependencies
-yt-dlp>=2023.11.16        # YouTube video downloader library
-Pillow>=10.0.0            # Image processing for thumbnails
-requests>=2.31.0          # HTTP library for fetching resources
-flet>=0.28.3              # Modern UI framework
-# flet-desktop>=0.28.3      # Flet desktop runtime
-# flet-runtime>=0.28.3      # Flet runtime
+# =============================================================================
+# StreamCatch - Mobile Build Dependencies
+# =============================================================================
+# Used by: flet build apk / flet build ipa
+# 
+# IMPORTANT: Only include packages that have mobile-compatible wheels!
+# Packages like pyinstaller, pytest, black, etc. will FAIL on mobile builds.
+# =============================================================================
 
-beautifulsoup4>=4.12.0    # Screen scraping for Telegram/Generic sites
+# Core Downloading
+yt-dlp>=2023.11.16              # YouTube/video downloader library
 
-# Development & Testing
-pytest>=7.4.0             # Testing framework
-pytest-cov>=4.1.0         # Code coverage support
+# UI Framework
+flet>=0.28.3                    # Modern UI framework
 
-# Optional Quality Tools
-black>=23.0.0             # Code formatting (optional)
-mypy>=1.0.0               # Type checking (optional)
-pylint>=3.0.0             # Code linting (optional)
+# Image & Media
+Pillow>=10.0.0                  # Image processing for thumbnails
 
-# Cloud & Social
-PyDrive2>=1.16.0          # Google Drive API wrapper
-pypresence>=4.2.0         # Discord Rich Presence
-pyperclip>=1.8.2
+# Networking
+requests>=2.31.0                # HTTP library
+urllib3>=2.0.0                  # HTTP client
+certifi>=2023.0.0               # SSL certificates
+
+# Web Scraping
+beautifulsoup4>=4.12.0          # HTML parsing
+
+# =============================================================================
+# EXCLUDED from mobile builds (no mobile wheels available):
+# - pyinstaller (desktop-only build tool)
+# - pytest, pytest-cov (testing tools)
+# - black, mypy, pylint (dev tools)
+# - PyDrive2 (requires OAuth flow not suitable for mobile)
+# - pypresence (Discord - desktop only)
+# =============================================================================
