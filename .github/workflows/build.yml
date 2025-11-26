@@ -53,27 +53,32 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libgtk-3-dev fakeroot
 
-    - name: Build binaries
+    - name: Build Windows binary (Nuitka)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
       run: |
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          python -m nuitka --standalone --onefile ^
-            --include-data-dir=assets=assets ^
-            --include-data-dir=locales=locales ^
-            --windows-console-mode=disable ^
-            --output-dir=dist ^
-            --output-filename=StreamCatch.exe ^
-            main.py
-        elif [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-          python -m nuitka --standalone --onefile \
-            --include-data-dir=assets=assets \
-            --include-data-dir=locales=locales \
-            --output-dir=dist \
-            --output-filename=StreamCatch \
-            main.py
-        else
-          # macOS: keep using existing spec (PyInstaller/flet pack)
-          pyinstaller streamcatch.spec
-        fi
+        python -m nuitka --standalone --onefile `
+          --include-data-dir=assets=assets `
+          --include-data-dir=locales=locales `
+          --windows-console-mode=disable `
+          --output-dir=dist `
+          --output-filename=StreamCatch.exe `
+          main.py
+
+    - name: Build Linux binary (Nuitka)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        python -m nuitka --standalone --onefile \
+          --include-data-dir=assets=assets \
+          --include-data-dir=locales=locales \
+          --output-dir=dist \
+          --output-filename=StreamCatch \
+          main.py
+
+    - name: Build macOS app (PyInstaller/Flet)
+      if: matrix.os == 'macos-latest'
+      run: |
+        pyinstaller streamcatch.spec
 
     - name: Install Inno Setup
       if: matrix.os == 'windows-latest'

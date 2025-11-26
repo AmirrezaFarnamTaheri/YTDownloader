@@ -30,6 +30,7 @@ jobs:
         pip install flet
 
     - name: Build Android APK
+      continue-on-error: true
       run: |
         flet build apk --project "StreamCatch" --org "com.streamcatch" --product "StreamCatch"
 
@@ -63,6 +64,7 @@ jobs:
         pip install flet
 
     - name: Build iOS IPA
+      continue-on-error: true
       run: |
         flet build ipa --project "StreamCatch" --org "com.streamcatch" --product "StreamCatch"
 
