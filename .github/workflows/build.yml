@@ -73,6 +73,8 @@ jobs:
       env:
         APP_VERSION: ${{ env.APP_VERSION }}
       run: |
+        # Strip 'v' prefix from version for deb package
+        DEB_VERSION="${APP_VERSION#v}"
         mkdir -p deb_dist/streamcatch/usr/local/bin
         mkdir -p deb_dist/streamcatch/usr/share/applications
         mkdir -p deb_dist/streamcatch/usr/share/icons/hicolor/scalable/apps
@@ -94,14 +96,14 @@ jobs:
         mkdir -p deb_dist/streamcatch/DEBIAN
         cat > deb_dist/streamcatch/DEBIAN/control <<EOD
         Package: streamcatch
-        Version: ${APP_VERSION}
+        Version: ${DEB_VERSION}
         Architecture: amd64
         Maintainer: StreamCatch Team
         Description: Ultimate Video Downloader
          StreamCatch is a powerful GUI video downloader supporting YouTube, Telegram, and more.
         EOD
         dpkg-deb --build deb_dist/streamcatch
-        mv deb_dist/streamcatch.deb streamcatch_${APP_VERSION}_amd64.deb
+        mv deb_dist/streamcatch.deb streamcatch_${DEB_VERSION}_amd64.deb
 
     - name: Build macOS DMG
       if: matrix.os == 'macos-latest'
