@@ -4,6 +4,31 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# Compatibility shim: ensure pydrive2 exposes auth/drive as attributes on its
+# top-level package if available. Some tests patch "pydrive2.auth" directly,
+# which expects this attribute-style access to work.
+try:  # pragma: no cover - environment dependent
+    import pydrive2 as _pyd2  # type: ignore
+
+    try:
+        from pydrive2 import auth as _pyd2_auth  # type: ignore
+
+        if not hasattr(_pyd2, "auth"):
+            _pyd2.auth = _pyd2_auth  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+    try:
+        from pydrive2 import drive as _pyd2_drive  # type: ignore
+
+        if not hasattr(_pyd2, "drive"):
+            _pyd2.drive = _pyd2_drive  # type: ignore[attr-defined]
+    except Exception:
+        pass
+except Exception:
+    # If pydrive2 isn't installed, normal import paths and error handling apply.
+    pass
+
 
 class CloudManager:
     """

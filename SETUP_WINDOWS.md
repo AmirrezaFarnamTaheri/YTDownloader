@@ -4,28 +4,30 @@ Complete setup and installation guide for Windows users.
 
 ## Quick Start (Easiest Method)
 
-### Option 1: Using the Batch Script (Recommended for most users)
+### Option 1: Use the Windows Installer (Recommended)
 
-1. **Download the repository** or clone it to your computer
-2. **Right-click** on `install-and-run.bat` in the StreamCatch folder
-3. **Click** "Run as administrator" (optional but recommended)
-4. **Wait** for the installation to complete
-5. **StreamCatch will launch automatically!**
+1. Download the latest **`StreamCatch_Setup_vX.Y.Z.exe`** from the GitHub Releases page.
+2. Double‑click the installer.
+3. Follow the wizard to install StreamCatch (it will create Start Menu and optional Desktop shortcuts).
+4. Launch **StreamCatch** from the Start Menu like any other app.
 
-### Option 2: Using PowerShell Script (Advanced users)
+The installer ships a compiled native executable (built with Nuitka); you do **not** need to install Python.
 
-1. **Open PowerShell** as Administrator
-2. **Navigate** to the StreamCatch folder:
+### Option 2: Build the Installer Yourself (Developers)
+
+1. Install **Python 3.8+** and [Inno Setup 6](https://jrsoftware.org/isinfo.php) (for `iscc`).
+2. From the project root, create a virtual environment and install dependencies:
    ```powershell
-   cd "C:\path\to\StreamCatch"
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+   pip install nuitka zstandard
    ```
-3. **Run the setup script**:
+3. Build the binary and installer:
    ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-   .\install-and-run.ps1
+   python scripts/build_installer.py
    ```
-4. **Wait** for installation to complete
-5. **StreamCatch will launch automatically!**
+4. The compiled exe will be in `dist\StreamCatch.exe`, and the installer in `installers\output\` (if `iscc` is available).
 
 ## What These Scripts Do
 
@@ -207,15 +209,10 @@ After the setup script completes, you can launch StreamCatch in several ways:
 - Search for "StreamCatch" in Windows Start Menu
 - Click the result to launch
 
-**Method 3: Command Prompt**
+**Method 3: Command Prompt (Developer mode)**
 ```cmd
 cd C:\path\to\StreamCatch
 venv\Scripts\python.exe main.py
-```
-
-**Method 4: Run the batch script again**
-```cmd
-install-and-run.bat
 ```
 
 ---

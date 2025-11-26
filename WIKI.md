@@ -92,6 +92,7 @@ StreamCatch is designed for **Robustness**, **modularity**, and **Speed**.
 3.  **Fallback Chain**:
     -   `TelegramExtractor` (Specific) -> `yt-dlp` (General Video) -> `GenericExtractor` (Direct File).
 4.  **Thread Safety**: The UI runs on the main thread; downloads run in a background thread pool. Communication is handled via callbacks and thread-safe data structures.
+5.  **Global Crash Guard**: Any uncaught exception is handled by a global hook in `main.py`, which logs details to `~/.streamcatch/crash.log` (and shows a native alert on Windows).
 
 ### 🚀 Performance Optimization
 -   **Lazy Loading**: UI views are initialized only when accessed.
@@ -150,6 +151,7 @@ python -m pytest --cov=.
 | **Download Stuck at 0%** | Check your internet connection. Try enabling "Force Generic" or changing the Proxy. |
 | **"Sign In Required"** | Select your browser in the "Browser Cookies" dropdown to authenticate. |
 | **UI Glitches** | Resize the window. If persistent, clear `~/.streamcatch/config.json`. |
+| **App closes unexpectedly** | Open `~/.streamcatch/crash.log` and include the latest crash entry when filing an issue. |
 
 ---
 

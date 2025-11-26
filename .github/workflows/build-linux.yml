@@ -35,10 +35,16 @@ jobs:
         sudo apt-get install -y libgtk-3-dev fakeroot
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install nuitka zstandard
 
-    - name: Build with PyInstaller
+    - name: Build binary with Nuitka
       run: |
-        pyinstaller streamcatch.spec
+        python -m nuitka --standalone --onefile \
+          --include-data-dir=assets=assets \
+          --include-data-dir=locales=locales \
+          --output-dir=dist \
+          --output-filename=StreamCatch \
+          main.py
 
     - name: Create Deb Package Structure
       env:

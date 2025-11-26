@@ -28,9 +28,14 @@ def process_queue():
         # Check for scheduled items and update them atomically via QueueManager API
         now = datetime.now()
         queue_mgr = state.queue_manager
-        # Prefer the dedicated API when available (real QueueManager),
+        # Prefer the dedicated API for real QueueManager instances,
         # but fall back to legacy direct access for mocked instances in tests.
-        if hasattr(queue_mgr, "update_scheduled_items"):
+        try:
+            from queue_manager import QueueManager  # local import to avoid cycles
+        except Exception:
+            QueueManager = None  # type: ignore
+
+        if QueueManager is not None and isinstance(queue_mgr, QueueManager):
             queue_mgr.update_scheduled_items(now)
         else:
             lock = getattr(queue_mgr, "_lock", None)

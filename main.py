@@ -5,6 +5,8 @@ import time
 from pathlib import Path
 from datetime import datetime, timedelta
 import os
+import sys
+import traceback
 
 # Updated imports
 from downloader.info import get_video_info
@@ -290,8 +292,60 @@ def main(pg: ft.Page):
     threading.Thread(target=background_loop, daemon=True).start()
 
 
+def global_crash_handler(exctype, value, tb):
+    """
+    Global hook to catch ANY unhandled exception and prevent silent exit.
+    Writes a crash log to ~/.streamcatch/crash.log and, on Windows,
+    shows a native MessageBox.
+    """
+    # Build crash report
+    error_trace = "".join(traceback.format_exception(exctype, value, tb))
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    crash_report = (
+        f"STREAMCATCH CRASH REPORT [{timestamp}]\n"
+        f"{'-'*50}\n"
+        f"Type: {exctype.__name__}\n"
+        f"Message: {value}\n\n"
+        f"Traceback:\n{error_trace}\n"
+        f"{'-'*50}\n\n"
+    )
+
+    # Persist to disk
+    log_path = Path.home() / ".streamcatch" / "crash.log"
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(crash_report)
+    except Exception:
+        # Best-effort logging; ignore filesystem errors
+        pass
+
+    # Surface to user
+    try:
+        msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
+        if os.name == "nt":
+            import ctypes
+
+            ctypes.windll.user32.MessageBoxW(
+                0, msg, "StreamCatch Crashed", 0x10  # MB_ICONERROR
+            )
+        else:
+            # For Linux/macOS, at least print to stderr
+            print(crash_report, file=sys.stderr)
+    except Exception:
+        pass
+
+    sys.exit(1)
+
+
 if __name__ == "__main__":  # pragma: no cover
+    # Install global crash handler for any uncaught exceptions
+    sys.excepthook = global_crash_handler
+
     if os.environ.get("FLET_WEB"):
         ft.app(target=main, view=ft.WEB_BROWSER, port=8550)
     else:
-        ft.app(target=main)
+        try:
+            ft.app(target=main)
+        except Exception as e:  # Fallback if Flet fails to start
+            global_crash_handler(type(e), e, e.__traceback__)

@@ -96,6 +96,13 @@ The test suite includes extensive coverage for:
 - **Downloader core** behaviors (Telegram, force-generic, yt-dlp options, GPU, rate limits).
 - **Security safeguards** around history storage and basic path/template validation.
 
+## 📝 Crash Reports
+
+If StreamCatch encounters an unexpected error, it writes a detailed crash report to:
+- **Windows/Linux/macOS**: `~/.streamcatch/crash.log`
+
+On Windows, a native error dialog is also shown. When reporting issues, please attach the relevant section of `crash.log` (redact any sensitive paths or URLs).
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
