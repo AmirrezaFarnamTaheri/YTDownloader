@@ -9,6 +9,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Constants to avoid magic numbers and make tuning easier
+CHUNK_SIZE_BYTES = 32 * 1024  # 32KB chunks
+REQUEST_TIMEOUT = (15, 300)  # (connect timeout, read timeout) in seconds
+
 
 def download_generic(
     url: str,
@@ -41,9 +45,9 @@ def download_generic(
 
     while retry_count <= max_retries:
         try:
-            # Start stream with timeout (connection timeout: 15s, read timeout: 300s for large files)
+            # Start stream with timeout suitable for large files
             with requests.get(
-                url, stream=True, headers=headers, timeout=(15, 300)
+                url, stream=True, headers=headers, timeout=REQUEST_TIMEOUT
             ) as r:
                 r.raise_for_status()
 
@@ -70,7 +74,7 @@ def download_generic(
                 # Open file in append mode if resuming, otherwise write mode
                 mode = "ab" if r.status_code == 206 else "wb"
                 with open(final_path, mode) as f:
-                    for chunk in r.iter_content(chunk_size=32 * 1024):  # 32KB chunks
+                    for chunk in r.iter_content(chunk_size=CHUNK_SIZE_BYTES):
                         if cancel_token:
                             cancel_token.check()
 

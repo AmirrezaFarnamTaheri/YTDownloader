@@ -16,11 +16,20 @@ logger = logging.getLogger(__name__)
 
 class AppState:
     _instance = None
+    _instance_lock = threading.Lock()
 
     def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(AppState, cls).__new__(cls)
-            cls._instance._initialized = False
+        """
+        Thread-safe singleton constructor.
+
+        Using a dedicated lock here prevents a race where multiple threads
+        could see `_instance is None` simultaneously and create more than
+        one instance.
+        """
+        with cls._instance_lock:
+            if cls._instance is None:
+                cls._instance = super(AppState, cls).__new__(cls)
+                cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):

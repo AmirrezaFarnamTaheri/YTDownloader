@@ -44,9 +44,10 @@ Plan downloads for later (e.g., off-peak hours):
 3.  The *next* item you add to the queue will be scheduled for that time.
 
 #### D. Advanced Options
--   **Force Generic**: Toggle this if a specialized extractor fails. It attempts to download the file directly via HTTP.
+-   **Force Generic**: Toggle this if a specialized extractor fails. It attempts to download the file directly via HTTP using the Generic extractor.
 -   **SponsorBlock**: Automatically skip non-content segments (Sponsors, Intros) on supported platforms.
 -   **Proxy**: Configure a proxy in **Settings** to bypass geoblocking.
+-   **Rate Limit**: In **Settings**, you can set a limit like `500K`, `2M`, `1G` or with `/s` suffix (e.g. `500K/s`) to throttle download speed.
 
 ### 3. Queue Management
 Navigate to the **Queue** tab to manage active tasks:
@@ -59,8 +60,8 @@ Navigate to the **Queue** tab to manage active tasks:
 Some content (Age-gated, Premium) requires authentication. StreamCatch can borrow cookies from your browser:
 1.  In the **Download** tab, look for the "Browser Cookies" dropdown.
 2.  Select your browser (e.g., Chrome, Firefox).
-3.  StreamCatch will extract cookies safely to authenticate the request.
-    *   *Note: You must be logged in to the site in that browser.*
+3.  StreamCatch will extract cookies from your local browser profile to authenticate the request.
+    *   *Note: You must be logged in to the site in that browser, and you should only use this on devices and profiles you trust.*
 
 ---
 

@@ -122,8 +122,12 @@ def validate_proxy(proxy: str) -> bool:
 
 def validate_rate_limit(rate_limit: str) -> bool:
     """
-    Validate rate limit format (e.g., 50K, 4.2M, 1G).
-    Accepts: digits optionally followed by decimal and one unit (K, M, G, T).
+    Validate rate limit format (e.g., 50K, 4.2M, 1G, 500K/s).
+
+    Accepts:
+        - digits optionally followed by a decimal part
+        - optional single unit (K, M, G, T)
+        - optional "/s" suffix, which some backends (like yt-dlp) also accept.
     """
     if not rate_limit or not isinstance(rate_limit, str):
         return True  # Empty is valid (no limit)
@@ -134,8 +138,8 @@ def validate_rate_limit(rate_limit: str) -> bool:
 
     import re
 
-    # Pattern: number with optional decimal, followed by optional SINGLE unit
-    pattern = r"^\d+(\.\d+)?[KMGT]?$"
+    # Pattern: number with optional decimal, optional SINGLE unit, optional "/s"
+    pattern = r"^\d+(\.\d+)?[KMGT]?(?:/s)?$"
     if not re.match(pattern, rate_limit, re.IGNORECASE):
         return False
 

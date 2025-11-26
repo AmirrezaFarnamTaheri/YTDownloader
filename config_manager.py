@@ -23,6 +23,8 @@ class ConfigManager:
         "gpu_accel",
         "theme_mode",
         "language",
+        # Feature-specific keys
+        "rss_feeds",
     }
 
     @staticmethod

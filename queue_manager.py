@@ -119,6 +119,34 @@ class QueueManager:
     # NOTE: find_next_downloadable was removed as it's deprecated and could cause race conditions.
     # Always use claim_next_downloadable() for atomic claim operations.
 
+    def update_scheduled_items(self, now) -> int:
+        """
+        Update all items whose scheduled time has been reached.
+
+        This transitions items from "Scheduled (HH:MM)" → "Queued" when their
+        scheduled_time is in the past, while keeping all mutations localized
+        inside QueueManager to avoid external locking on its internals.
+
+        Args:
+            now: Current datetime (typically `datetime.now()`).
+
+        Returns:
+            int: Number of items that were updated.
+        """
+        updated = 0
+        with self._lock:
+            for item in self._queue:
+                if item.get("scheduled_time") and str(item.get("status", "")).startswith(
+                    "Scheduled"
+                ):
+                    if now >= item["scheduled_time"]:
+                        item["status"] = "Queued"
+                        item["scheduled_time"] = None
+                        updated += 1
+        if updated:
+            self._notify_listeners_safe()
+        return updated
+
     def claim_next_downloadable(self) -> Optional[Dict[str, Any]]:
         """
         Atomically find the next 'Queued' item and mark it as 'Allocated' (or 'Downloading').

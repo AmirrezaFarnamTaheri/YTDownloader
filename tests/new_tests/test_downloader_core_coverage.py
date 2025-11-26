@@ -153,3 +153,10 @@ class TestDownloaderCoreCoverage:
         hook, item = mock_hooks
         with pytest.raises(ValueError, match="Invalid rate limit"):
             download_video("u", hook, item, rate_limit="invalid")
+
+    @patch("pathlib.Path.mkdir")
+    def test_output_template_traversal_rejected(self, mock_mkdir, mock_hooks):
+        hook, item = mock_hooks
+        # '..' in template should be rejected by sanitizer
+        with pytest.raises(ValueError):
+            download_video("u", hook, item, output_template="../%(title)s.%(ext)s")

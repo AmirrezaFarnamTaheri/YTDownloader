@@ -91,6 +91,11 @@ Run the test suite to ensure robustness:
 pytest --cov=.
 ```
 
+The test suite includes extensive coverage for:
+- **Thread-safety** of the queue manager and `AppState` singleton.
+- **Downloader core** behaviors (Telegram, force-generic, yt-dlp options, GPU, rate limits).
+- **Security safeguards** around history storage and basic path/template validation.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

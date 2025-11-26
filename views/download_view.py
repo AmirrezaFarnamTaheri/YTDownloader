@@ -93,7 +93,10 @@ class DownloadView(BaseView):
             border_color=Theme.BORDER,
             border_radius=12,
             bgcolor=Theme.BG_INPUT,
-            tooltip="Use cookies from browser to bypass login/age restrictions",
+            tooltip=(
+                "Use cookies from a local browser profile to bypass login/age checks. "
+                "Only enable this on your own device and with browsers you trust."
+            ),
             text_size=14,
             dense=True,
         )

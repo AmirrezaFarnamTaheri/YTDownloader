@@ -25,16 +25,9 @@ def process_queue():
         return
 
     try:
-        # Check for scheduled items and update them atomically
+        # Check for scheduled items and update them atomically via QueueManager API
         now = datetime.now()
-        with state.queue_manager._lock:
-            for item in state.queue_manager._queue:
-                if item.get("scheduled_time") and str(item["status"]).startswith(
-                    "Scheduled"
-                ):
-                    if now >= item["scheduled_time"]:
-                        item["status"] = "Queued"
-                        item["scheduled_time"] = None
+        state.queue_manager.update_scheduled_items(now)
 
         if state.queue_manager.any_downloading():
             return

@@ -10,6 +10,7 @@ import os
 from downloader.info import get_video_info
 from theme import Theme
 from app_layout import AppLayout
+from ui_utils import validate_url
 
 # Import Views
 from views.download_view import DownloadView
@@ -31,14 +32,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Global variables for access
-download_view = None
-queue_view = None
-page = None
-
-
 def main(pg: ft.Page):
-    global page, download_view, queue_view
     page = pg
     page.title = "StreamCatch - Ultimate Downloader"
     page.theme_mode = ft.ThemeMode.DARK
@@ -66,6 +60,9 @@ def main(pg: ft.Page):
         if not url:
             page.open(ft.SnackBar(content=ft.Text("Please enter a URL")))
             return
+        if not validate_url(url):
+            page.open(ft.SnackBar(content=ft.Text("Please enter a valid http/https URL")))
+            return
 
         download_view.fetch_btn.disabled = True
         page.update()
@@ -76,6 +73,9 @@ def main(pg: ft.Page):
 
     def on_add_to_queue(data):
         # Process data and add to queue
+        if not validate_url(data.get("url", "")):
+            page.open(ft.SnackBar(content=ft.Text("Please enter a valid http/https URL")))
+            return
         status = "Queued"
         sched_dt = None
 

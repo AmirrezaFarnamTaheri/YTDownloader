@@ -2,6 +2,7 @@ import os
 import logging
 from typing import Dict, Any, Callable, Optional, TYPE_CHECKING
 from pathlib import Path
+from typing import Optional as _OptionalStr
 
 from downloader.extractors.telegram import TelegramExtractor
 from downloader.extractors.generic import GenericExtractor
@@ -13,6 +14,35 @@ if TYPE_CHECKING:
     from utils import CancelToken
 
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_output_path(base_path: str) -> str:
+    """
+    Sanitize output path to avoid obviously malformed values while still
+    allowing both absolute and relative user-chosen directories.
+
+    We currently resolve the path (handling things like '~' and '../') and
+    rely on OS permissions plus the sanitized template to prevent abuse.
+    """
+    if not base_path:
+        base_path = "."
+    # Expand user (~) and resolve any '..' segments
+    target = Path(base_path).expanduser().resolve()
+    return str(target)
+
+
+def _sanitize_template(template: _OptionalStr[str]) -> _OptionalStr[str]:
+    """
+    Very lightweight validation for the output template.
+
+    We only forbid path traversal markers that would obviously break out of
+    the intended directory; yt-dlp still performs its own parsing/validation.
+    """
+    if not template:
+        return template
+    if ".." in template.replace("\\", "/"):
+        raise ValueError("Output template must not contain '..' segments")
+    return template
 
 
 def download_video(
@@ -46,7 +76,8 @@ def download_video(
     Downloads a video or playlist.
     Dispatches to specialized downloaders if needed.
     """
-    # Ensure output path exists
+    # Sanitize and ensure output path exists
+    output_path = _sanitize_output_path(output_path or ".")
     Path(output_path).mkdir(parents=True, exist_ok=True)
 
     # Check for hints in download_item or detect
@@ -61,7 +92,11 @@ def download_video(
             direct_url = info["video_streams"][0]["url"]
             ext = info["video_streams"][0]["ext"]
             title = info["title"]
-            filename = f"{title}.{ext}" if not title.endswith(f".{ext}") else title
+            # Be case-insensitive when checking for existing extension
+            if not title.lower().endswith(f".{ext.lower()}"):
+                filename = f"{title}.{ext}"
+            else:
+                filename = title
 
             logger.info("Downloading Generic file (Forced): %s", filename)
             download_generic(
@@ -75,8 +110,8 @@ def download_video(
             return
         logger.warning("Force Generic failed. Falling back to yt-dlp...")
 
-    # Telegram Handling
-    if is_telegram:
+    # Telegram Handling (only when not forcing generic)
+    if is_telegram and not force_generic:
         info = TelegramExtractor.extract(url)
         if info and info.get("video_streams"):
             direct_url = info["video_streams"][0]["url"]
@@ -99,7 +134,8 @@ def download_video(
 
     # Build yt-dlp Options
     if output_template:
-        outtmpl = os.path.join(output_path, output_template)
+        tmpl = _sanitize_template(output_template)
+        outtmpl = os.path.join(output_path, tmpl)
     else:
         outtmpl = os.path.join(output_path, "%(title)s.%(ext)s")
 
@@ -215,7 +251,10 @@ def download_video(
         if rate_limit_clean:
             import re
 
-            if not re.match(r"^\d+(\.\d+)?[KMGT]?$", rate_limit_clean, re.IGNORECASE):
+            # Accept formats like "50K", "4.2M", "1G" and optional "/s" suffix
+            if not re.match(
+                r"^\d+(\.\d+)?[KMGT]?(?:/s)?$", rate_limit_clean, re.IGNORECASE
+            ):
                 raise ValueError(f"Invalid rate limit format: {rate_limit}")
             ydl_opts["ratelimit"] = rate_limit_clean
 

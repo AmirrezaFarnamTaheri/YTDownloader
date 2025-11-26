@@ -27,16 +27,15 @@ class YTDLPWrapper:
         Handles fallback to Generic Downloader if yt-dlp fails.
         """
 
-        # Add cancel token check to progress hooks
-        if cancel_token:
-            if "progress_hooks" not in options:
-                options["progress_hooks"] = []
-            options["progress_hooks"].append(lambda d: cancel_token.check(d))
+        # Ensure progress_hooks list exists once
+        hooks = options.setdefault("progress_hooks", [])
 
-        # Basic progress hook wrapper
-        if "progress_hooks" not in options:
-            options["progress_hooks"] = []
-        options["progress_hooks"].append(lambda d: progress_hook(d, download_item))
+        # Add cancel token check to progress hooks (if provided)
+        if cancel_token:
+            hooks.append(lambda d: cancel_token.check(d))
+
+        # Basic progress hook wrapper for UI updates
+        hooks.append(lambda d: progress_hook(d, download_item))
 
         try:
             logger.info(f"Starting yt-dlp download: {url}")

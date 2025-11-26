@@ -17,6 +17,6 @@ Our [README.md](README.md) file provides a comprehensive overview of the project
 
 ## Community
 
-If you have a question or just want to chat with other YTDownloader users, you can join our [community forum](https-your-community-forum-url).
+If you have a question or just want to chat with other YTDownloader users, you can join our [community forum](https://github.com/your-username/ytdownloader/discussions).
 
 We'll do our best to help you as quickly as possible!
