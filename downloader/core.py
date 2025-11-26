@@ -26,17 +26,41 @@ def _sanitize_output_path(base_path: str) -> str:
     return base_path or "."
 
 
-def _sanitize_template(template: _OptionalStr[str]) -> _OptionalStr[str]:
+def _sanitize_template(template: _OptionalStr[str], output_path: str = ".") -> _OptionalStr[str]:
     """
-    Very lightweight validation for the output template.
+    Robust validation for the output template to prevent path traversal.
 
-    We only forbid path traversal markers that would obviously break out of
-    the intended directory; yt-dlp still performs its own parsing/validation.
+    Args:
+        template: Output template from user
+        output_path: Base output directory
+
+    Returns:
+        Sanitized template
+
+    Raises:
+        ValueError: If template contains path traversal or absolute paths
     """
     if not template:
         return template
+
+    # Check for path traversal
     if ".." in template.replace("\\", "/"):
         raise ValueError("Output template must not contain '..' segments")
+
+    # Check for absolute paths
+    import os
+    if os.path.isabs(template):
+        raise ValueError("Output template must not be an absolute path")
+
+    # Check for leading slashes
+    if template.startswith("/") or template.startswith("\\"):
+        raise ValueError("Output template must not start with path separator")
+
+    # Verify the final path would be within output_path
+    test_path = os.path.abspath(os.path.join(output_path, template.replace("%(title)s", "test")))
+    if not test_path.startswith(os.path.abspath(output_path)):
+        raise ValueError("Output template would escape output directory")
+
     return template
 
 
@@ -177,12 +201,21 @@ def download_video(
 
             if start_sec is None or end_sec is None:
                 raise ValueError("Could not parse time format")
+
+            # Validate parsed times
             if start_sec >= end_sec:
                 raise ValueError(
                     f"Start time ({start_time}) must be before end time ({end_time})"
                 )
             if start_sec < 0 or end_sec < 0:
                 raise ValueError(f"Time values must be non-negative")
+
+            # Sanity check: end time shouldn't be absurdly long
+            max_duration = 24 * 3600  # 24 hours
+            if end_sec > max_duration:
+                logger.warning(
+                    f"End time {end_sec}s seems very long (>{max_duration/3600}h)"
+                )
 
             ydl_opts["download_ranges"] = lambda info, ydl: [
                 {"start_time": start_sec, "end_time": end_sec}
@@ -237,8 +270,35 @@ def download_video(
 
     if proxy:
         proxy = proxy.strip()
-        if not proxy.startswith(("http://", "https://", "socks4://", "socks5://")):
-            logger.warning(f"Proxy may be invalid: {proxy}")
+
+        # Strict proxy validation to prevent command injection
+        import re
+
+        # Valid proxy format: scheme://[user:pass@]host:port
+        proxy_pattern = r'^(https?|socks[45])://([^:@]+:[^:@]+@)?[\w\.\-]+:\d+$'
+
+        if not re.match(proxy_pattern, proxy, re.IGNORECASE):
+            raise ValueError(
+                f"Invalid proxy format: {proxy}. "
+                "Expected: scheme://[user:pass@]host:port "
+                "(e.g., http://proxy.example.com:8080)"
+            )
+
+        # Check for command injection attempts
+        dangerous_chars = [';', '&', '|', '`', '$', '(', ')', '<', '>', '\n', '\r']
+        for char in dangerous_chars:
+            if char in proxy:
+                raise ValueError(f"Dangerous character '{char}' not allowed in proxy")
+
+        # Extract and validate port
+        port = proxy.split(':')[-1]
+        try:
+            port_num = int(port)
+            if not (1 <= port_num <= 65535):
+                raise ValueError(f"Invalid port number: {port_num}")
+        except ValueError:
+            raise ValueError(f"Invalid port in proxy: {port}")
+
         ydl_opts["proxy"] = proxy
 
     if rate_limit:

@@ -3,6 +3,7 @@ import logging
 import os
 import platform
 import subprocess
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -155,10 +156,27 @@ def validate_rate_limit(rate_limit: str) -> bool:
 
 
 def is_ffmpeg_available() -> bool:
-    """Check if ffmpeg is available in the system path."""
+    """Check if ffmpeg is available in the system path with timeout."""
     import shutil
 
-    return shutil.which("ffmpeg") is not None
+    result = [None]
+
+    def check():
+        try:
+            result[0] = shutil.which("ffmpeg") is not None
+        except Exception as e:
+            logger.warning(f"FFmpeg check failed: {e}")
+            result[0] = False
+
+    thread = threading.Thread(target=check, daemon=True)
+    thread.start()
+    thread.join(timeout=2.0)  # 2 second timeout
+
+    if thread.is_alive():
+        logger.warning("FFmpeg check timed out")
+        return False
+
+    return result[0] or False
 
 
 def open_folder(path: str):

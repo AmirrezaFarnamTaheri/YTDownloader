@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 import os
 import sys
 import traceback
+import signal
+from contextlib import contextmanager
 
 # Updated imports
 from downloader.info import get_video_info
@@ -38,6 +40,26 @@ logger = logging.getLogger(__name__)
 download_view = None
 queue_view = None
 page = None
+active_threads = []  # Track all created threads
+
+
+@contextmanager
+def startup_timeout(seconds=10):
+    """Context manager for timeout on startup operations."""
+    def timeout_handler(signum, frame):
+        raise TimeoutError(f"Operation timed out after {seconds} seconds")
+
+    if os.name != 'nt':  # signal.alarm not available on Windows
+        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(seconds)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
+    else:
+        # Windows: no timeout, just yield
+        yield
 
 
 def main(pg: ft.Page):
@@ -286,10 +308,23 @@ def main(pg: ft.Page):
     # Start Clipboard Monitor (it runs its own loop)
     start_clipboard_monitor(page, download_view)
 
-    # Store shutdown flag in page for cleanup
-    page.on_disconnect = lambda _: state.shutdown_flag.set()
+    def cleanup_on_disconnect(e):
+        """Cleanup function when page disconnects."""
+        logger.info("Page disconnected, cleaning up...")
+        state.cleanup()
 
-    threading.Thread(target=background_loop, daemon=True).start()
+        # Wait for threads to finish (with timeout)
+        for thread in active_threads:
+            if thread.is_alive():
+                thread.join(timeout=2.0)
+
+        logger.info("Cleanup complete")
+
+    page.on_disconnect = cleanup_on_disconnect
+
+    bg_thread = threading.Thread(target=background_loop, daemon=True, name="BackgroundLoop")
+    active_threads.append(bg_thread)
+    bg_thread.start()
 
 
 def global_crash_handler(exctype, value, tb):
@@ -316,12 +351,25 @@ def global_crash_handler(exctype, value, tb):
         log_path.parent.mkdir(parents=True, exist_ok=True)
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(crash_report)
+
+        # ALSO write to current directory for visibility
+        local_crash = Path("streamcatch_crash.log")
+        with open(local_crash, "w", encoding="utf-8") as f:
+            f.write(crash_report)
+
     except Exception:
         # Best-effort logging; ignore filesystem errors
         pass
 
     # Surface to user
     try:
+        # Always write to stderr first
+        print("\n" + "="*60, file=sys.stderr)
+        print("CRITICAL ERROR - STREAMCATCH CRASHED", file=sys.stderr)
+        print("="*60, file=sys.stderr)
+        print(crash_report, file=sys.stderr)
+        print("="*60 + "\n", file=sys.stderr)
+
         msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
         if os.name == "nt":
             import ctypes
@@ -339,8 +387,41 @@ def global_crash_handler(exctype, value, tb):
 
 
 if __name__ == "__main__":  # pragma: no cover
+    # Check for console mode flag
+    console_mode = '--console' in sys.argv or '--debug' in sys.argv
+    if console_mode:
+        print("Console mode enabled - all output will be visible")
+
     # Install global crash handler for any uncaught exceptions
     sys.excepthook = global_crash_handler
+
+    # Startup diagnostics
+    print("="*60)
+    print("StreamCatch Starting...")
+    print(f"Python: {sys.version}")
+    print(f"Working Directory: {os.getcwd()}")
+    print(f"Executable: {sys.executable}")
+    print(f"Frozen: {getattr(sys, 'frozen', False)}")
+    print(f"Arguments: {sys.argv}")
+    print("="*60 + "\n")
+
+    try:
+        # Wrap startup in timeout
+        with startup_timeout(30):
+            # Pre-initialize critical components with error handling
+            try:
+                logger.info("Initializing AppState...")
+                _ = state  # Force singleton initialization
+                logger.info("AppState initialized successfully")
+            except Exception as e:
+                print(f"ERROR: Failed to initialize AppState: {e}", file=sys.stderr)
+                traceback.print_exc()
+                sys.exit(1)
+
+            logger.info("Starting Flet application...")
+    except TimeoutError as e:
+        print(f"FATAL: Startup timeout - {e}", file=sys.stderr)
+        sys.exit(1)
 
     if os.environ.get("FLET_WEB"):
         ft.app(target=main, view=ft.WEB_BROWSER, port=8550)

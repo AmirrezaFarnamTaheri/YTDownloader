@@ -1,6 +1,7 @@
 import threading
 import logging
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 
 from downloader import download_video
 from ui_utils import format_file_size
@@ -11,7 +12,8 @@ from utils import CancelToken
 logger = logging.getLogger(__name__)
 
 # Lock to prevent concurrent process_queue calls
-_process_queue_lock = threading.Lock()
+_process_queue_lock = threading.RLock()  # RLock to allow recursive calls safely
+_active_downloads = threading.Semaphore(3)  # Limit concurrent downloads
 
 
 def process_queue():
@@ -19,46 +21,69 @@ def process_queue():
     Process the queue to start the next download.
     Uses a lock to prevent race conditions from concurrent calls.
     """
-    # Acquire lock to prevent concurrent processing
-    if not _process_queue_lock.acquire(blocking=False):
-        # Another thread is already processing, skip
+    # Non-blocking acquire to prevent pileup
+    acquired = _process_queue_lock.acquire(blocking=False)
+    if not acquired:
+        logger.debug("process_queue already running, skipping")
         return
 
     try:
-        # Check for scheduled items and update them atomically via QueueManager API
-        now = datetime.now()
-        queue_mgr = state.queue_manager
-        # Prefer the dedicated API for real QueueManager instances,
-        # but fall back to legacy direct access for mocked instances in tests.
-        try:
-            from queue_manager import QueueManager  # local import to avoid cycles
-        except Exception:
-            QueueManager = None  # type: ignore
+        _process_queue_impl()
+    finally:
+        _process_queue_lock.release()
 
-        if QueueManager is not None and isinstance(queue_mgr, QueueManager):
-            queue_mgr.update_scheduled_items(now)
-        else:
-            lock = getattr(queue_mgr, "_lock", None)
-            q = getattr(queue_mgr, "_queue", None)
-            if lock is not None and q is not None:
-                with lock:
-                    for item in q:
-                        if item.get("scheduled_time") and str(
-                            item.get("status", "")
-                        ).startswith("Scheduled"):
-                            if now >= item["scheduled_time"]:
+def _process_queue_impl():
+    """Internal implementation separated from lock management."""
+    # Check for scheduled items and update them atomically via QueueManager API
+    now = datetime.now()
+    queue_mgr = state.queue_manager
+    # Prefer the dedicated API for real QueueManager instances,
+    # but fall back to legacy direct access for mocked instances in tests.
+    try:
+        from queue_manager import QueueManager  # local import to avoid cycles
+    except Exception:
+        QueueManager = None  # type: ignore
+
+    if QueueManager is not None and isinstance(queue_mgr, QueueManager):
+        queue_mgr.update_scheduled_items(now)
+    else:
+        # Legacy path for tests
+        lock = getattr(queue_mgr, "_lock", None)
+        q = getattr(queue_mgr, "_queue", None)
+        if lock is not None and q is not None:
+            with lock:
+                for item in q:
+                    if item.get("scheduled_time") and str(
+                        item.get("status", "")
+                    ).startswith("Scheduled"):
+                        # Add 1 second tolerance to avoid missing by milliseconds
+                        scheduled = item["scheduled_time"]
+                        if isinstance(scheduled, datetime):
+                            # Allow up to 1 second early
+                            if now >= (scheduled - timedelta(seconds=1)):
                                 item["status"] = "Queued"
                                 item["scheduled_time"] = None
 
-        if state.queue_manager.any_downloading():
-            return
+    if state.queue_manager.any_downloading():
+        logger.debug("Downloads already in progress, not starting new")
+        return
 
-        # ATOMIC CLAIM
-        item = state.queue_manager.claim_next_downloadable()
-        if item:
-            threading.Thread(target=download_task, args=(item,), daemon=True).start()
-    finally:
-        _process_queue_lock.release()
+    # ATOMIC CLAIM
+    item = state.queue_manager.claim_next_downloadable()
+    if item:
+        # Check if we can start another download
+        if _active_downloads.acquire(blocking=False):
+            logger.info(f"Starting download: {item.get('title', item['url'])}")
+            thread = threading.Thread(
+                target=download_task,
+                args=(item,),
+                daemon=True,
+                name=f"Download-{item.get('title', 'Unknown')[:20]}"
+            )
+            thread.start()
+        else:
+            logger.info("Max concurrent downloads reached, item will retry")
+            item['status'] = 'Queued'  # Reset for next attempt
 
 
 def download_task(item):
@@ -66,17 +91,54 @@ def download_task(item):
     state.current_download_item = item
     state.cancel_token = CancelToken()
 
+    # Set thread name for debugging
+    thread = threading.current_thread()
+    old_name = thread.name
+    thread.name = f"DL-{item.get('title', 'Unknown')[:15]}"
+
+    # Ensure we release the semaphore
+    try:
+        return _download_task_impl(item)
+    finally:
+        thread.name = old_name
+        _active_downloads.release()
+        logger.debug(f"Download slot released, {_active_downloads._value} available")
+
+def _download_task_impl(item):
+    """Internal download implementation."""
+
     if "control" in item:
         item["control"].update_progress()
 
     try:
 
         def progress_hook(d, _):
+            # Throttle progress updates to reduce UI spam
+            # BUT always process 'finished' or other terminal states
+            is_terminal = d.get("status") in ["finished", "error"]
+
+            if not is_terminal:
+                current_time = time.time()
+                last_update = item.get('_last_progress_update', 0)
+
+                # Update at most every 0.5 seconds
+                if current_time - last_update < 0.5:
+                    return
+
+                item['_last_progress_update'] = current_time
+
             if d["status"] == "downloading":
                 total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
                 downloaded = d.get("downloaded_bytes", 0)
                 if total > 0:
                     pct = downloaded / total
+
+                    # Only update if change is significant (> 1%)
+                    last_pct = item.get('_last_pct', 0)
+                    if abs(pct - last_pct) < 0.01:
+                        return
+                    item['_last_pct'] = pct
+
                     if "control" in item:
                         item["control"].progress_bar.value = pct
 
@@ -143,4 +205,8 @@ def download_task(item):
             item["control"].update_progress()
         state.current_download_item = None
         state.cancel_token = None
-        process_queue()
+
+        # Don't call process_queue recursively - use a delayed trigger instead
+        timer = threading.Timer(1.0, process_queue)
+        timer.daemon = True
+        timer.start()

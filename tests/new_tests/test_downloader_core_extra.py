@@ -16,13 +16,12 @@ class TestDownloaderCoreExtra(unittest.TestCase):
 
     @patch("downloader.core.YTDLPWrapper.download")
     def test_proxy_warning(self, mock_download):
-        """Test warning for possibly invalid proxy format."""
-        with self.assertLogs("downloader.core", level="WARNING") as cm:
+        """Test invalid proxy format raises ValueError."""
+        with self.assertRaises(ValueError):
             download_video("http://url", MagicMock(), {}, proxy="invalid_proxy_format")
-            self.assertTrue(any("Proxy may be invalid" in m for m in cm.output))
 
-        # Verify it still proceeds to download
-        mock_download.assert_called_once()
+        # Verify it does NOT proceed to download
+        mock_download.assert_not_called()
 
 
 if __name__ == "__main__":

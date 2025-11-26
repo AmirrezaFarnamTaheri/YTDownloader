@@ -111,9 +111,14 @@ class TestMainLogic(unittest.TestCase):
     @patch("tasks.download_video")
     @patch("tasks.HistoryManager")
     @patch("tasks.process_queue")
+    @patch("threading.Timer")
     def test_download_task_success(
-        self, mock_process_queue, MockHistory, mock_download_video
+        self, mock_timer, mock_process_queue, MockHistory, mock_download_video
     ):
+        # Mock Timer to call function immediately
+        mock_timer_instance = MagicMock()
+        mock_timer.return_value = mock_timer_instance
+
         item = {
             "url": "http://test",
             "status": "Queued",
@@ -126,12 +131,17 @@ class TestMainLogic(unittest.TestCase):
         self.assertEqual(item["status"], "Completed")
         mock_download_video.assert_called_once()
         MockHistory.add_entry.assert_called_once()
-        mock_process_queue.assert_called_once()
+
+        # Timer should be created and started
+        mock_timer.assert_called_with(1.0, mock_process_queue)
+        mock_timer_instance.start.assert_called_once()
+
         self.mock_state.current_download_item = None
 
     @patch("tasks.download_video")
     @patch("tasks.process_queue")
-    def test_download_task_cancelled(self, mock_process_queue, mock_download_video):
+    @patch("threading.Timer")
+    def test_download_task_cancelled(self, mock_timer, mock_process_queue, mock_download_video):
         item = {"url": "http://test", "status": "Queued"}
         mock_download_video.side_effect = Exception("Download cancelled by user")
 
@@ -139,15 +149,22 @@ class TestMainLogic(unittest.TestCase):
 
         self.assertEqual(item["status"], "Cancelled")
 
+        # Timer should be created
+        mock_timer.assert_called_with(1.0, mock_process_queue)
+
     @patch("tasks.download_video")
     @patch("tasks.process_queue")
-    def test_download_task_error(self, mock_process_queue, mock_download_video):
+    @patch("threading.Timer")
+    def test_download_task_error(self, mock_timer, mock_process_queue, mock_download_video):
         item = {"url": "http://test", "status": "Queued"}
         mock_download_video.side_effect = Exception("Network Error")
 
         download_task(item)
 
         self.assertEqual(item["status"], "Error")
+
+        # Timer should be created
+        mock_timer.assert_called_with(1.0, mock_process_queue)
 
     @patch("tasks.download_video")
     def test_download_task_progress_hook(self, mock_download_video):

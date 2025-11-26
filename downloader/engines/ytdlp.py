@@ -57,8 +57,11 @@ class YTDLPWrapper:
                 ext = info["video_streams"][0]["ext"]
                 title = info["title"]
 
-                # If title has no extension, add it
-                if not title.lower().endswith(f".{ext.lower()}"):
+                # Normalize extension handling
+                title_lower = title.lower()
+                ext_lower = ext.lower()
+
+                if not title_lower.endswith(f".{ext_lower}"):
                     filename = f"{title}.{ext}"
                 else:
                     filename = title

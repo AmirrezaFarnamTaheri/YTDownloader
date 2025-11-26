@@ -1,11 +1,32 @@
 import yt_dlp
 import logging
 from typing import Optional, Dict, Any, List
+import signal
+import os
+from contextlib import contextmanager
 
 from downloader.extractors.telegram import TelegramExtractor
 from downloader.extractors.generic import GenericExtractor
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def extraction_timeout(seconds=30):
+    """Context manager for timeout on info extraction."""
+    def timeout_handler(signum, frame):
+        raise TimeoutError(f"Info extraction timed out after {seconds}s")
+
+    if os.name != 'nt':
+        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(seconds)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
+    else:
+        yield  # No timeout on Windows
 
 
 def get_video_info(
@@ -41,8 +62,11 @@ def get_video_info(
             )
 
         logger.info(f"Fetching video info for: {url}")
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=False)
+
+        # Wrap extraction in timeout
+        with extraction_timeout(45):
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=False)
 
             # Check if yt-dlp fell back to generic and didn't find much
             extractor = info_dict.get("extractor_key", "")

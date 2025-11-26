@@ -1,6 +1,7 @@
 import threading
 from typing import List, Dict, Any, Optional, Callable
 import logging
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,8 @@ class QueueManager:
             try:
                 listener()
             except Exception as e:
-                logger.error(f"Error in queue listener: {e}")
+                logger.debug(f"Error in queue listener (non-critical): {e}")
+                # Don't propagate listener errors
 
     def add_item(self, item: Dict[str, Any]):
         """
@@ -85,6 +87,9 @@ class QueueManager:
         Raises:
             ValueError: If queue is at maximum capacity.
         """
+        if not item or not isinstance(item, dict):
+            raise ValueError("Item must be a non-empty dictionary")
+
         with self._lock:
             if len(self._queue) >= self.MAX_QUEUE_SIZE:
                 raise ValueError(
@@ -151,11 +156,31 @@ class QueueManager:
         """
         Atomically find the next 'Queued' item and mark it as 'Allocated' (or 'Downloading').
         This prevents race conditions where multiple threads might pick the same item.
+
+        Also cleans up stale "Allocating" items that have been stuck for too long.
         """
         with self._lock:
+            # First, check for stale "Allocating" items (stuck for > 60 seconds)
+            stale_timeout = timedelta(seconds=60)
+            now = datetime.now()
+
+            for item in self._queue:
+                if item["status"] == "Allocating":
+                    allocated_time = item.get("_allocated_at")
+                    if allocated_time:
+                        if now - allocated_time > stale_timeout:
+                            logger.warning(
+                                f"Found stale 'Allocating' item, resetting to Queued: "
+                                f"{item.get('title', item['url'])}"
+                            )
+                            item["status"] = "Queued"
+                            item.pop("_allocated_at", None)
+
+            # Now find next queued item
             for item in self._queue:
                 if item["status"] == "Queued":
                     item["status"] = "Allocating"  # Temporary status
+                    item["_allocated_at"] = now
                     return item
         return None
 

@@ -26,34 +26,50 @@ class QueueView(BaseView):
             1, ft.Row([ft.Container(expand=True), self.clear_btn])
         )
         self.add_control(self.queue_list)
+        self._item_controls = {}  # Cache controls by item id
 
     def rebuild(self):
         self.queue_list.controls.clear()
         items = self.queue_manager.get_all()
+
+        # Track which items are still in queue
+        current_items = {id(item): item for item in items}
+
+        # Remove controls for items no longer in queue
+        to_remove = []
+        for item_id, control in self._item_controls.items():
+            if item_id not in current_items:
+                to_remove.append(item_id)
+                if hasattr(control, 'cleanup'):
+                    control.cleanup()
+
+        for item_id in to_remove:
+            del self._item_controls[item_id]
+
         for i, item in enumerate(items):
-            # We recreate controls to ensure state updates (like adding Retry button) are reflected
-            # if status changed. Since we don't have partial UI updates in DownloadItemControl yet.
-            # Actually, we should try to reuse if possible, but for now, let's recreate to support the new "Retry" button logic in constructor.
+            item_id = id(item)
 
-            # To support reuse, we'd need to update the control with new callbacks if they changed,
-            # or the control needs to know about on_retry.
+            # Reuse existing control if possible
+            if item_id in self._item_controls:
+                control = self._item_controls[item_id]
+                # Just update progress if status changed
+                if item["status"] != control.item.get("_last_status"):
+                    control.update_progress()
+                    item["_last_status"] = item["status"]
+            else:
+                # Create new control
+                control = DownloadItemControl(
+                    item,
+                    self.on_cancel,
+                    self.on_remove,
+                    self.on_reorder,
+                    on_retry=self.on_retry,
+                )
+                self._item_controls[item_id] = control
+                item["_last_status"] = item["status"]
 
-            # Let's create a new control for now to be safe with the new Retry feature.
-            # Or check if it exists and update it.
-
-            control = DownloadItemControl(
-                item,
-                self.on_cancel,
-                self.on_remove,
-                self.on_reorder,
-                on_retry=self.on_retry,
-            )
             item["control"] = control
             self.queue_list.controls.append(control.view)
-
-            # Restore progress if downloading
-            if item["status"] == "Downloading":
-                control.update_progress()
 
         self.update()
 
