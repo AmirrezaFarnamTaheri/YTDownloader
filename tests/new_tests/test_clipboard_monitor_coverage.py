@@ -132,6 +132,7 @@ class TestClipboardMonitor(unittest.TestCase):
             state.shutdown_flag.is_set = original_is_set
 
     @patch("threading.Thread")
-    def test_start_clipboard_monitor(self, mock_thread):
+    @patch("clipboard_monitor.pyperclip.paste")
+    def test_start_clipboard_monitor(self, mock_paste, mock_thread):
         start_clipboard_monitor(None, None)
         mock_thread.assert_called_once()

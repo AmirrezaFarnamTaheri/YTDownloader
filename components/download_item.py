@@ -1,6 +1,7 @@
 import flet as ft
 from typing import Dict, Any, Optional
 from theme import Theme
+import weakref
 
 
 class DownloadItemControl:
@@ -19,6 +20,13 @@ class DownloadItemControl:
         self.on_reorder = on_reorder
         self.on_retry = on_retry
         self.is_selected = is_selected
+
+        # Pre-bind callbacks to avoid creating new lambdas each time
+        self._cancel_handler = lambda e: self.on_cancel(self.item)
+        self._remove_handler = lambda e: self.on_remove(self.item)
+        self._retry_handler = lambda e: self.on_retry(self.item) if self.on_retry else None
+        self._reorder_up_handler = lambda e: self.on_reorder(self.item, -1)
+        self._reorder_down_handler = lambda e: self.on_reorder(self.item, 1)
 
         # Progress Bar
         self.progress_bar = ft.ProgressBar(
@@ -145,7 +153,7 @@ class DownloadItemControl:
             actions.append(
                 ft.IconButton(
                     ft.Icons.CLOSE,
-                    on_click=lambda e: self.on_cancel(self.item),
+                    on_click=self._cancel_handler,
                     icon_size=20,
                     tooltip="Cancel",
                     icon_color=Theme.ERROR,
@@ -160,7 +168,7 @@ class DownloadItemControl:
             actions.append(
                 ft.IconButton(
                     ft.Icons.REFRESH,
-                    on_click=lambda e: self.on_retry(self.item),
+                    on_click=self._retry_handler,
                     icon_size=20,
                     tooltip="Retry",
                     icon_color=Theme.WARNING,
@@ -174,7 +182,7 @@ class DownloadItemControl:
                     [
                         ft.IconButton(
                             ft.Icons.KEYBOARD_ARROW_UP,
-                            on_click=lambda e: self.on_reorder(self.item, -1),
+                            on_click=self._reorder_up_handler,
                             icon_size=18,
                             tooltip="Move Up",
                             style=ft.ButtonStyle(padding=0),
@@ -182,7 +190,7 @@ class DownloadItemControl:
                         ),
                         ft.IconButton(
                             ft.Icons.KEYBOARD_ARROW_DOWN,
-                            on_click=lambda e: self.on_reorder(self.item, 1),
+                            on_click=self._reorder_down_handler,
                             icon_size=18,
                             tooltip="Move Down",
                             style=ft.ButtonStyle(padding=0),
@@ -199,7 +207,7 @@ class DownloadItemControl:
             actions.append(
                 ft.IconButton(
                     ft.Icons.DELETE_OUTLINE,
-                    on_click=lambda e: self.on_remove(self.item),
+                    on_click=self._remove_handler,
                     icon_size=20,
                     tooltip="Remove",
                     icon_color=Theme.TEXT_SECONDARY,
@@ -209,6 +217,19 @@ class DownloadItemControl:
         self.actions_row.controls = actions
         if self.actions_row.page:
             self.actions_row.update()
+
+    def cleanup(self):
+        """Cleanup method to break circular references."""
+        self.on_cancel = None
+        self.on_remove = None
+        self.on_reorder = None
+        self.on_retry = None
+        self._cancel_handler = None
+        self._remove_handler = None
+        self._retry_handler = None
+        self._reorder_up_handler = None
+        self._reorder_down_handler = None
+        self.item = None
 
     def update_progress(self):
         status = self.item["status"]

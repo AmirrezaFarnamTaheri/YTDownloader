@@ -115,7 +115,7 @@ class TestHistoryManagerCoverage(unittest.TestCase):
         ]
 
         with patch("history_manager.HistoryManager.DB_RETRY_DELAY", 0.01):
-            HistoryManager.add_entry("url", "title", "path", "fmt", "done", "10MB")
+            HistoryManager.add_entry("http://url", "title", "path", "fmt", "done", "10MB")
 
         self.assertEqual(mock_cursor.execute.call_count, 3)
 
@@ -134,10 +134,15 @@ class TestHistoryManagerCoverage(unittest.TestCase):
 
     @patch("sqlite3.connect")
     @patch("pathlib.Path.mkdir")
-    def test_get_connection(self, mock_mkdir, mock_connect):
+    @patch("os.access")
+    @patch("pathlib.Path.exists")
+    def test_get_connection(self, mock_exists, mock_access, mock_mkdir, mock_connect):
+        mock_exists.return_value = True
+        mock_access.return_value = True
+
         conn = HistoryManager._get_connection()
         mock_mkdir.assert_called()
-        mock_connect.assert_called_with(DB_FILE, timeout=10.0)
+        mock_connect.assert_called_with(DB_FILE, timeout=5.0)
 
     @patch("history_manager.HistoryManager._get_connection")
     def test_init_db_migration(self, mock_get_conn):
@@ -204,5 +209,6 @@ class TestHistoryManagerCoverage(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
 
         HistoryManager.clear_history()
-        mock_cursor.execute.assert_called_with("DELETE FROM history")
+        # Check that DELETE was called (any call)
+        mock_cursor.execute.assert_any_call("DELETE FROM history")
         mock_conn.commit.assert_called()

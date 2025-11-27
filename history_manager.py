@@ -1,6 +1,7 @@
 import sqlite3
 import logging
 import time
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -14,8 +15,9 @@ class HistoryManager:
     """Manages download history using SQLite with validation and error handling."""
 
     # Maximum retries for database lock
-    MAX_DB_RETRIES = 5
+    MAX_DB_RETRIES = 3  # Reduced to fail faster
     DB_RETRY_DELAY = 0.5  # seconds
+    DB_INIT_TIMEOUT = 10.0  # Maximum time for any DB operation
 
     @staticmethod
     def _resolve_db_file() -> Path:
@@ -46,7 +48,7 @@ class HistoryManager:
                     logger.warning("Failed to close history DB connection: %s", exc)
 
     @staticmethod
-    def _get_connection(timeout: float = 10.0):
+    def _get_connection(timeout: float = 5.0):  # Reduced timeout
         """
         Get database connection with timeout and ensure it closes cleanly.
 
@@ -58,6 +60,11 @@ class HistoryManager:
         """
         db_file = HistoryManager._resolve_db_file()
         db_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Check if DB file is already locked by another process
+        if db_file.exists() and not os.access(db_file, os.W_OK):
+            raise sqlite3.OperationalError(f"Database file not writable: {db_file}")
+
         conn = sqlite3.connect(db_file, timeout=timeout)
         # Enable WAL mode for better concurrency
         conn.execute("PRAGMA journal_mode=WAL")
@@ -92,11 +99,17 @@ class HistoryManager:
         ):
             raise ValueError("Null bytes not allowed in inputs")
 
+        # Validate URL format
+        if not url.startswith(("http://", "https://", "ftp://", "ftps://")):
+            raise ValueError("URL must start with http://, https://, ftp://, or ftps://")
+
     @staticmethod
     def init_db():
         """Initialize the history database table and perform migrations."""
         retry_count = 0
         last_error = None
+
+        logger.info(f"Initializing history database at {HistoryManager._resolve_db_file()}")
 
         while retry_count < HistoryManager.MAX_DB_RETRIES:
             try:
@@ -262,6 +275,46 @@ class HistoryManager:
         return entries
 
     @staticmethod
+    def get_history_paginated(offset: int = 0, limit: int = 50) -> Dict[str, Any]:
+        """
+        Retrieve history entries with pagination.
+
+        Returns:
+            Dict with 'entries', 'total', 'offset', 'limit'
+        """
+        entries = []
+        total = 0
+
+        try:
+            with HistoryManager._get_connection() as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+
+                # Get total count
+                cursor.execute("SELECT COUNT(*) FROM history")
+                total = cursor.fetchone()[0]
+
+                # Get paginated results
+                cursor.execute(
+                    "SELECT * FROM history ORDER BY timestamp DESC LIMIT ? OFFSET ?",
+                    (limit, offset)
+                )
+                rows = cursor.fetchall()
+                for row in rows:
+                    entries.append(dict(row))
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve paginated history: {e}")
+
+        return {
+            'entries': entries,
+            'total': total,
+            'offset': offset,
+            'limit': limit,
+            'has_more': (offset + limit) < total
+        }
+
+    @staticmethod
     def clear_history():
         """Clear all history."""
         try:
@@ -269,6 +322,9 @@ class HistoryManager:
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM history")
                 conn.commit()
+
+                # Vacuum to reclaim space
+                cursor.execute("VACUUM")
             logger.info("History cleared.")
         except Exception as e:
             logger.error(f"Failed to clear history: {e}")

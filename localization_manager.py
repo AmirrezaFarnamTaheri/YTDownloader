@@ -2,6 +2,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ class LocalizationManager:
 
     _strings: Dict[str, str] = {}
     _current_lang: str = "en"
+    _lock = threading.RLock()
 
     @classmethod
     def load_language(cls, lang_code: str) -> None:
@@ -18,9 +20,10 @@ class LocalizationManager:
         try:
             path = Path(__file__).parent / "locales" / f"{lang_code}.json"
             if path.exists():
-                with open(path, "r", encoding="utf-8") as f:
-                    cls._strings = json.load(f)
-                    cls._current_lang = lang_code
+                with cls._lock:
+                    with open(path, "r", encoding="utf-8") as f:
+                        cls._strings = json.load(f)
+                        cls._current_lang = lang_code
             else:
                 logger.warning(
                     f"Language file {path} not found. Falling back to English."
@@ -34,7 +37,8 @@ class LocalizationManager:
     @classmethod
     def get(cls, key: str, *args) -> str:
         """Get a localized string."""
-        val = cls._strings.get(key, key)
+        with cls._lock:
+            val = cls._strings.get(key, key)
         if args:
             return val.format(*args)
         return val

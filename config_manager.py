@@ -73,6 +73,8 @@ class ConfigManager:
         Returns:
             Configuration dictionary (empty if file doesn't exist or is corrupted)
         """
+        logger.info(f"Loading configuration from {CONFIG_FILE}")
+
         logger.debug("Attempting to load configuration from %s", CONFIG_FILE)
         CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
@@ -86,7 +88,7 @@ class ConfigManager:
                     )
                     return data
             except json.JSONDecodeError as e:
-                logger.error(f"Configuration file corrupted (JSON decode error): {e}")
+                logger.warning(f"Configuration file corrupted, using defaults: {e}")
                 # Attempt to backup corrupted file
                 backup_path = CONFIG_FILE.with_suffix(".json.corrupt")
                 try:
@@ -96,12 +98,13 @@ class ConfigManager:
                     pass
                 return {}
             except ValueError as e:
-                logger.error(f"Configuration validation failed: {e}")
+                logger.warning(f"Configuration validation failed, using defaults: {e}")
                 return {}
             except IOError as e:
-                logger.warning(f"Failed to load config: {e}")
+                logger.info(f"No existing config file, will create on save: {e}")
                 return {}
 
+        logger.info("No configuration file found, using defaults")
         return {}
 
     @staticmethod
