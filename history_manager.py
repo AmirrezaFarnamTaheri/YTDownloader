@@ -99,6 +99,24 @@ class HistoryManager:
         ):
             raise ValueError("Null bytes not allowed in inputs")
 
+        # Additional SQL injection prevention
+        dangerous_patterns = [
+            "';", '";', "--", "/*", "*/",
+            "xp_", "sp_", "EXEC", "EXECUTE",
+            "DROP", "DELETE", "INSERT", "UPDATE",
+            "UNION", "SELECT"
+        ]
+
+        for pattern in dangerous_patterns:
+            if pattern.lower() in url.lower():
+                logger.warning(f"Potentially dangerous pattern in URL: {pattern}")
+                # Don't block - yt-dlp might need these in query strings
+                break
+            if title and pattern.lower() in title.lower():
+                raise ValueError(f"Dangerous pattern not allowed in title: {pattern}")
+            if output_path and pattern.lower() in output_path.lower():
+                raise ValueError(f"Dangerous pattern not allowed in path: {pattern}")
+
         # Validate URL format
         if not url.startswith(("http://", "https://", "ftp://", "ftps://")):
             raise ValueError("URL must start with http://, https://, ftp://, or ftps://")
