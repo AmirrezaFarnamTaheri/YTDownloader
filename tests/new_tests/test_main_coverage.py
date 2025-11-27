@@ -95,6 +95,10 @@ class TestMainCoverage:
         main.state.queue_manager.add_item.assert_called()
         main.process_queue.assert_called()
 
+        # Sleep to bypass rate limit
+        import time as pytime
+        pytime.sleep(0.6)
+
         # Test scheduled
         main.state.scheduled_time = time(12, 0)
         on_add_to_queue(data)

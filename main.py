@@ -107,6 +107,12 @@ def main(pg: ft.Page):
         if not validate_url(data.get("url", "")):
             page.open(ft.SnackBar(content=ft.Text("Please enter a valid http/https URL")))
             return
+
+        # Rate limiting
+        if not check_rate_limit():
+            page.open(ft.SnackBar(content=ft.Text("Please wait before adding another download")))
+            return
+
         status = "Queued"
         sched_dt = None
 
@@ -128,7 +134,10 @@ def main(pg: ft.Page):
 
         # Safely handle potential missing state.video_info or mismatch
         title = data["url"]
-        if state.video_info and data["url"] == download_view.url_input.value:
+        video_info = state.get_video_info(data["url"])
+        if video_info:
+            title = video_info.get("title", data["url"])
+        elif state.video_info and data["url"] == download_view.url_input.value:
             title = state.video_info.get("title", data["url"])
 
         item = {
@@ -193,6 +202,12 @@ def main(pg: ft.Page):
             with open(path, "r", encoding="utf-8") as f:
                 urls = [line.strip() for line in f if line.strip()]
 
+            # Limit batch import size
+            max_batch = 100
+            if len(urls) > max_batch:
+                page.open(ft.SnackBar(content=ft.Text(f"Batch import limited to {max_batch} URLs. Imported first {max_batch}.")))
+                urls = urls[:max_batch]
+
             count = 0
             for url in urls:
                 if not url:
@@ -245,6 +260,18 @@ def main(pg: ft.Page):
     # Wire up pickers
     file_picker.on_result = on_batch_file_result
     time_picker.on_change = on_time_picked
+
+    # Rate limiting for queue additions
+    last_add_time = [0.0]  # Mutable to allow modification in closure
+    add_rate_limit_seconds = 0.5  # Minimum 0.5s between adds
+
+    def check_rate_limit():
+        import time
+        now = time.time()
+        if now - last_add_time[0] < add_rate_limit_seconds:
+            return False
+        last_add_time[0] = now
+        return True
 
     def on_toggle_clipboard(active):
         state.clipboard_monitor_active = active
