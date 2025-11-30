@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict
+from typing import TYPE_CHECKING, Any, Callable, Dict, List
 from typing import Optional
 from typing import Optional as _OptionalStr
 
@@ -290,7 +290,7 @@ def download_video(
             logger.error(f"Failed to configure time range: {e}", exc_info=True)
             raise ValueError(f"Invalid time range format: {e}") from e
 
-    postprocessors = []
+    postprocessors: List[Dict[str, Any]] = []
 
     if add_metadata:
         logger.debug("Adding metadata postprocessor")
@@ -323,7 +323,7 @@ def download_video(
                     "music_offtopic",
                 ],
                 "when": "after_filter",
-            }
+            }  # type: ignore
         )
 
     if gpu_accel and gpu_accel.lower() != "none":

@@ -90,9 +90,9 @@ class CloudManager:
 
             # Try to load saved credentials
             if os.path.exists("mycreds.txt"):
-                gauth.LoadCredentialsFile("mycreds.txt")
+                gauth.LoadCredentialsFile("mycreds.txt") # type: ignore
 
-            if gauth.credentials is None:
+            if gauth.credentials is None: # type: ignore
                 # This might open a browser window which is not ideal for headless,
                 # but for desktop app it is expected.
                 # In robust backend, we handle this carefully.
@@ -103,22 +103,22 @@ class CloudManager:
                         "Cannot authenticate in headless mode without saved creds."
                     )
                 logger.info("Opening local webserver for Google authentication...")
-                gauth.LocalWebserverAuth()
-            elif gauth.access_token_expired:
+                gauth.LocalWebserverAuth() # type: ignore
+            elif gauth.access_token_expired: # type: ignore
                 logger.info("Refreshing Google Drive access token...")
-                gauth.Refresh()
+                gauth.Refresh() # type: ignore
             else:
-                gauth.Authorize()
+                gauth.Authorize() # type: ignore
 
-            gauth.SaveCredentialsFile("mycreds.txt")
+            gauth.SaveCredentialsFile("mycreds.txt") # type: ignore
 
-            drive = GoogleDrive(gauth)
+            drive = GoogleDrive(gauth) # type: ignore
 
             file_name = os.path.basename(file_path)
             logger.debug(f"Uploading file content: {file_name}")
-            file_drive = drive.CreateFile({"title": file_name})
-            file_drive.SetContentFile(file_path)
-            file_drive.Upload()
+            file_drive = drive.CreateFile({"title": file_name}) # type: ignore
+            file_drive.SetContentFile(file_path) # type: ignore
+            file_drive.Upload() # type: ignore
             logger.info(f"Successfully uploaded {file_name} to Google Drive.")
 
         except ImportError:
@@ -127,3 +127,58 @@ class CloudManager:
         except Exception as e:
             logger.error(f"Google Drive upload failed: {e}", exc_info=True)
             raise
+
+    # Missing methods expected by sync_manager
+    def is_authenticated(self) -> bool:
+         """Check if we have valid credentials."""
+         try:
+            from pydrive2.auth import GoogleAuth # type: ignore
+            if os.path.exists("mycreds.txt"):
+                 gauth = GoogleAuth()
+                 gauth.LoadCredentialsFile("mycreds.txt") # type: ignore
+                 return gauth.credentials is not None # type: ignore
+         except Exception:
+              pass
+         return False
+
+    def get_file_id(self, filename: str) -> Optional[str]:
+         """Find file ID by name."""
+         try:
+             from pydrive2.auth import GoogleAuth # type: ignore
+             from pydrive2.drive import GoogleDrive # type: ignore
+
+             if not self.is_authenticated():
+                  return None
+
+             gauth = GoogleAuth()
+             gauth.LoadCredentialsFile("mycreds.txt") # type: ignore
+             drive = GoogleDrive(gauth) # type: ignore
+
+             # Search
+             query = f"title = '{filename}' and trashed = false"
+             file_list = drive.ListFile({'q': query}).GetList() # type: ignore
+
+             if file_list:
+                  return file_list[0]['id'] # type: ignore
+         except Exception as e:
+              logger.error(f"Failed to get file ID: {e}")
+         return None
+
+    def read_file_content(self, file_id: str) -> Optional[str]:
+        """Read content of a file given its ID."""
+        try:
+             from pydrive2.auth import GoogleAuth # type: ignore
+             from pydrive2.drive import GoogleDrive # type: ignore
+
+             if not self.is_authenticated():
+                  return None
+
+             gauth = GoogleAuth()
+             gauth.LoadCredentialsFile("mycreds.txt") # type: ignore
+             drive = GoogleDrive(gauth) # type: ignore
+
+             f = drive.CreateFile({'id': file_id}) # type: ignore
+             return f.GetContentString() # type: ignore
+        except Exception as e:
+             logger.error(f"Failed to read file content: {e}")
+        return None

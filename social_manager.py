@@ -1,83 +1,66 @@
 import logging
-import os
-import time
-from typing import Optional
+import threading
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class SocialManager:
     """
-    Manages Social integrations (Discord RPC).
+    Manages social interactions (Discord Rich Presence, etc.).
+    Fails gracefully if libraries are missing or connection fails.
     """
 
-    DEFAULT_CLIENT_ID = "123456789012345678"  # Fallback placeholder
-
-    def __init__(self, client_id: Optional[str] = None):
-        logger.debug("Initializing SocialManager...")
-        # Prefer environment variable, but fall back to legacy placeholder for compatibility/tests
-        self.client_id = (
-            client_id or os.environ.get("DISCORD_CLIENT_ID") or self.DEFAULT_CLIENT_ID
-        )
+    def __init__(self):
         self.rpc = None
         self.connected = False
+        self._client_id = "123456789012345678"  # Dummy ID for now
+        self._lock = threading.Lock()
 
     def connect(self):
-        if self.connected:
-            logger.debug("Discord RPC already connected.")
-            return
-        if not self.client_id:
-            logger.info(
-                "Discord Rich Presence disabled (no DISCORD_CLIENT_ID provided)."
-            )
-            return
+        """Connect to Discord RPC."""
         try:
-            logger.debug(
-                f"Attempting to connect to Discord RPC with ID: {self.client_id}"
-            )
             from pypresence import Presence
 
-            self.rpc = Presence(self.client_id)
+            self.rpc = Presence(self._client_id)
             self.rpc.connect()
             self.connected = True
-            logger.info("Connected to Discord RPC.")
+            logger.info("Connected to Discord Rich Presence")
         except ImportError:
-            logger.warning("pypresence not installed. Social features disabled.")
+            logger.debug("pypresence not installed, social features disabled")
         except Exception as e:
-            logger.warning(f"Failed to connect to Discord RPC: {e}")
+            logger.debug(f"Failed to connect to Discord RPC: {e}")
+            self.connected = False
 
-    def update_status(self, state: str, details: str = None):
-        """Updates the Rich Presence status."""
-        if not self.connected:
-            if self.rpc:
-                logger.debug(
-                    "Discord RPC is present but not connected; skipping update."
+    def update_activity(
+        self,
+        state: str,
+        details: Optional[str] = None,
+        large_image: Optional[str] = None,
+        small_image: Optional[str] = None,
+    ):
+        """Update user activity."""
+        if not self.connected or not self.rpc:
+            return
+
+        with self._lock:
+            try:
+                self.rpc.update(
+                    state=state,
+                    details=details,
+                    large_image=large_image or "logo",
+                    small_image=small_image,
                 )
-                return
-            # Try to connect on first update to keep caller simple
-            self.connect()
-            if not self.connected:
-                return
-
-        try:
-            logger.debug(f"Updating Discord RPC - State: {state}, Details: {details}")
-            self.rpc.update(
-                state=state,
-                details=details,
-                large_image="logo",  # key in discord app assets
-                large_text="StreamCatch",
-                start=time.time(),
-            )
-        except Exception as e:
-            logger.error(f"Failed to update RPC: {e}", exc_info=True)
-            self.connected = False  # Assume disconnected
+            except Exception as e:
+                logger.debug(f"Failed to update activity: {e}")
+                self.connected = False
 
     def close(self):
-        logger.debug("Closing SocialManager...")
+        """Close connection."""
         if self.rpc:
             try:
                 self.rpc.close()
-                logger.info("Discord RPC closed.")
-            except Exception as exc:
-                logger.debug("Failed to close Discord RPC cleanly: %s", exc)
-        self.connected = False
+            except Exception:
+                pass
+            self.connected = False
+            logger.info("Social manager closed")

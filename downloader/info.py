@@ -2,7 +2,7 @@ import logging
 import os
 import signal
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import yt_dlp
 
@@ -52,7 +52,7 @@ def get_video_info(
         # If scraping fails, fall through to see if yt-dlp can handle it
 
     try:
-        ydl_opts = {
+        ydl_opts: Dict[str, Any] = {
             "quiet": True,
             "listsubtitles": True,
             "noplaylist": True,
@@ -61,16 +61,19 @@ def get_video_info(
 
         if cookies_from_browser:
             logger.debug(f"Using browser cookies from: {cookies_from_browser}")
-            ydl_opts["cookies_from_browser"] = (
+            # Tuple cast for mypy
+            cookies_tuple: Tuple[str, Optional[str]] = (
                 cookies_from_browser,
-                cookies_from_browser_profile if cookies_from_browser_profile else None,
+                cookies_from_browser_profile,
             )
+            ydl_opts["cookies_from_browser"] = cookies_tuple
 
         logger.info(f"Fetching video info for: {url}")
 
         # Wrap extraction in timeout
         with extraction_timeout(45):
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # Explicitly cast to Any or suppress error because YoutubeDL expects _Params but we pass Dict
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
                 info_dict = ydl.extract_info(url, download=False)
 
             # Check if yt-dlp fell back to generic and didn't find much
@@ -88,8 +91,9 @@ def get_video_info(
             subtitles: Dict[str, List[str]] = {}
 
             # Check manual subtitles
-            if "subtitles" in info_dict and info_dict["subtitles"]:
-                for lang, subs in info_dict["subtitles"].items():
+            raw_subs = info_dict.get("subtitles")
+            if raw_subs and hasattr(raw_subs, "items"):
+                for lang, subs in raw_subs.items():
                     if isinstance(subs, list):
                         formats_list = [
                             sub.get("ext", "vtt") if isinstance(sub, dict) else str(sub)
@@ -101,8 +105,9 @@ def get_video_info(
                         subtitles[lang] = formats_list
 
             # Check automatic captions
-            if "automatic_captions" in info_dict and info_dict["automatic_captions"]:
-                for lang, subs in info_dict["automatic_captions"].items():
+            raw_auto = info_dict.get("automatic_captions")
+            if raw_auto and hasattr(raw_auto, "items"):
+                for lang, subs in raw_auto.items():
                     if isinstance(subs, list):
                         formats_list = [
                             sub.get("ext", "vtt") if isinstance(sub, dict) else str(sub)
@@ -129,7 +134,9 @@ def get_video_info(
                     }
                 )
             else:
-                for f in formats:
+                # Handle possible None for formats
+                formats_iter = formats if formats is not None else []
+                for f in formats_iter:
                     if f.get("vcodec") != "none":
                         video_streams.append(
                             {

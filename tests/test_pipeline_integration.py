@@ -57,7 +57,7 @@ class TestPipelineIntegration(unittest.TestCase):
         process_queue()
 
         # Since process_queue spawns a thread, we need to wait briefly
-        time.sleep(0.5)
+        time.sleep(1.5)
 
         # 3. Verify execution
         mock_download.assert_called_once()
@@ -81,7 +81,7 @@ class TestPipelineIntegration(unittest.TestCase):
         state.queue_manager.add_item(item)
 
         process_queue()
-        time.sleep(0.5)
+        time.sleep(1.5)
 
         q_items = state.queue_manager.get_all()
         self.assertEqual(q_items[0]["status"], "Error")

@@ -10,6 +10,7 @@ class Page:
     theme: Any
     overlay: list[Any]
     on_disconnect: Any
+    on_close: Any
     def open(self, control: Any) -> None: ...
     def update(self) -> None: ...
     def add(self, *controls: Any) -> None: ...
@@ -19,7 +20,7 @@ class Page:
 class Control: ...
 
 class Container(Control):
-    def __init__(self, content: Any = None, expand: Any = None, bgcolor: Any = None, alignment: Any = None, padding: Any = None, border_radius: Any = None, width: Any = None, height: Any = None): ...
+    def __init__(self, content: Any = None, expand: Any = None, bgcolor: Any = None, alignment: Any = None, padding: Any = None, border_radius: Any = None, width: Any = None, height: Any = None, border: Any = None): ...
 
 class Column(Control):
     controls: list[Control]
@@ -70,8 +71,14 @@ class IconButton(Control):
 class Divider(Control):
     def __init__(self, height: Any = None, thickness: Any = None, color: Any = None): ...
 
+class Image(Control):
+    def __init__(self, src: Any = None, width: Any = None, height: Any = None, color: Any = None): ...
+
 class LinearGradient:
     def __init__(self, begin: Any = None, end: Any = None, colors: Any = None): ...
+
+class BorderSide:
+    def __init__(self, width: Any = None, color: Any = None): ...
 
 # Relaxed types
 Colors: Any
@@ -84,6 +91,9 @@ TextOverflow: Any
 NavigationRailLabelType: Any
 alignment: Any
 WEB_BROWSER: Any
+padding: Any
+border: Any
+LabelPosition: Any
 
 def app(target: Any = None, view: Any = None, port: Any = None): ...
 

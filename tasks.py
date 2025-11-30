@@ -3,7 +3,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-from app_state import state
+import app_state
 from downloader import download_video
 from history_manager import HistoryManager
 from ui_utils import format_file_size
@@ -22,7 +22,7 @@ def process_queue():
     Uses a lock to prevent race conditions from concurrent calls.
     """
     # Check shutdown flag first to prevent zombie threads from processing
-    if state.shutdown_flag.is_set():
+    if app_state.state.shutdown_flag.is_set():
         # logger.debug("process_queue skipped due to shutdown flag")
         return
 
@@ -44,7 +44,9 @@ def _process_queue_impl():
     """Internal implementation separated from lock management."""
     # Check for scheduled items and update them atomically via QueueManager API
     now = datetime.now()
-    queue_mgr = state.queue_manager
+    queue_mgr = app_state.state.queue_manager
+    logger.debug(f"Processing queue with QueueManager instance: {id(queue_mgr)}")
+
     # Prefer the dedicated API for real QueueManager instances,
     # but fall back to legacy direct access for mocked instances in tests.
     try:
@@ -76,7 +78,7 @@ def _process_queue_impl():
                                 item["scheduled_time"] = None
 
     # ATOMIC CLAIM
-    item = state.queue_manager.claim_next_downloadable()
+    item = app_state.state.queue_manager.claim_next_downloadable()
     if item:
         item_title = item.get("title", item.get("url", "Unknown"))
         logger.debug(f"Claimed item for processing: {item_title}")
@@ -99,13 +101,13 @@ def _process_queue_impl():
             )
             item["status"] = "Queued"  # Reset for next attempt
     else:
-        logger.debug("No downloadable items found in queue.")
+        logger.debug(f"No downloadable items found in queue. QM: {id(state.queue_manager)}")
 
 
 def download_task(item):
     item["status"] = "Downloading"
-    state.current_download_item = item
-    state.cancel_token = CancelToken()
+    app_state.state.current_download_item = item
+    app_state.state.cancel_token = CancelToken()
 
     # Set thread name for debugging
     thread = threading.current_thread()
@@ -195,7 +197,7 @@ def _download_task_impl(item):
             item,
             video_format=item.get("video_format", "best"),
             output_path=item.get("output_path"),
-            cancel_token=state.cancel_token,
+            cancel_token=app_state.state.cancel_token,
             sponsorblock_remove=item.get("sponsorblock", False),
             playlist=item.get("playlist", False),
             use_aria2c=item.get("use_aria2c", False),
@@ -242,8 +244,8 @@ def _download_task_impl(item):
     finally:
         if "control" in item:
             item["control"].update_progress()
-        state.current_download_item = None
-        state.cancel_token = None
+        app_state.state.current_download_item = None
+        app_state.state.cancel_token = None
 
         # Don't call process_queue recursively - use a delayed trigger instead
         timer = threading.Timer(1.0, process_queue)
