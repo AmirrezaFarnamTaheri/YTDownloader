@@ -26,7 +26,7 @@ class TestMainLogic(unittest.TestCase):
 
         # Patch the global state in tasks and main
         self.patcher_main = patch("tasks_extended.state", self.mock_state)
-        self.patcher_tasks = patch("tasks.state", self.mock_state)
+        self.patcher_tasks = patch("app_state.state", self.mock_state)
 
         # Patch the semaphore and lock in tasks to avoid interference
         self.patcher_sem = patch("tasks._active_downloads", threading.Semaphore(3))

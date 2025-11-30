@@ -4,8 +4,9 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import pyperclip
-from clipboard_monitor import start_clipboard_monitor, _clipboard_loop
+
 from app_state import state
+from clipboard_monitor import _clipboard_loop, start_clipboard_monitor
 
 
 class TestClipboardMonitorCoverage(unittest.TestCase):
@@ -41,7 +42,7 @@ class TestClipboardMonitorCoverage(unittest.TestCase):
         state.clipboard_monitor_active = True
 
         download_view = MagicMock()
-        download_view.url_input.value = "" # Empty
+        download_view.url_input.value = ""  # Empty
 
         page = MagicMock()
 
@@ -50,7 +51,9 @@ class TestClipboardMonitorCoverage(unittest.TestCase):
         # But loop calls sleep(2). We can patch time.sleep.
 
         with patch("time.sleep") as mock_sleep:
-            mock_sleep.side_effect = lambda x: state.shutdown_flag.set() # Stop after first sleep
+            mock_sleep.side_effect = (
+                lambda x: state.shutdown_flag.set()
+            )  # Stop after first sleep
 
             _clipboard_loop(page, download_view)
 

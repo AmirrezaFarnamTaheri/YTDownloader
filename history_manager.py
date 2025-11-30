@@ -200,7 +200,8 @@ class HistoryManager:
                         time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
                     else:
                         logger.error(
-                            f"Failed to init history DB after {retry_count} retries: {e}", exc_info=True
+                            f"Failed to init history DB after {retry_count} retries: {e}",
+                            exc_info=True,
                         )
                         raise
                 else:
@@ -281,7 +282,8 @@ class HistoryManager:
                         time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
                     else:
                         logger.error(
-                            f"Failed to add history entry after {retry_count} retries: {e}", exc_info=True
+                            f"Failed to add history entry after {retry_count} retries: {e}",
+                            exc_info=True,
                         )
                         raise
                 else:
@@ -345,7 +347,9 @@ class HistoryManager:
                 for row in rows:
                     entries.append(dict(row))
 
-            logger.debug(f"Paginated history: offset={offset}, limit={limit}, fetched={len(entries)}, total={total}")
+            logger.debug(
+                f"Paginated history: offset={offset}, limit={limit}, fetched={len(entries)}, total={total}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to retrieve paginated history: {e}", exc_info=True)

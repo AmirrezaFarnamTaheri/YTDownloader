@@ -211,7 +211,7 @@ def download_video(
         if tmpl:
             outtmpl = os.path.join(output_path, tmpl)
         else:
-             outtmpl = os.path.join(output_path, "%(title)s.%(ext)s")
+            outtmpl = os.path.join(output_path, "%(title)s.%(ext)s")
     else:
         # We don't sanitize %(title)s here because yt-dlp handles it,
         # but we do want to ensure we don't accidentally introduce paths.

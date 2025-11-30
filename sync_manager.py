@@ -8,6 +8,9 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from config_manager import ConfigManager
+from history_manager import HistoryManager
+
 # Avoid circular dependency by importing CloudManager from state directly or using typing
 # But state is imported from app_state which imports CloudManager.
 # The issue is `sync_manager` shouldn't import `state` if `app_state` imports `sync_manager`.
@@ -17,8 +20,6 @@ from typing import Any, Dict, List, Optional
 #
 # Best approach: Pass dependencies to `SyncManager` constructor and remove `from app_state import state`.
 
-from config_manager import ConfigManager
-from history_manager import HistoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,12 @@ class SyncManager:
 
     SYNC_FILE_NAME = "streamcatch_sync_data.json"
 
-    def __init__(self, cloud_manager: Any, config: Dict[str, Any], output_path: Optional[str] = None):
+    def __init__(
+        self,
+        cloud_manager: Any,
+        config: Dict[str, Any],
+        output_path: Optional[str] = None,
+    ):
         self.cloud = cloud_manager
         self.config = config
         self.local_sync_file = Path(tempfile.gettempdir()) / self.SYNC_FILE_NAME
@@ -139,9 +145,10 @@ class SyncManager:
             else:
                 # Keep the one with more info or completed status?
                 # For simplicity, keep the one that is 'Completed'
-                if entry.get("status") == "Completed" and merged_history_map[url].get(
-                    "status"
-                ) != "Completed":
+                if (
+                    entry.get("status") == "Completed"
+                    and merged_history_map[url].get("status") != "Completed"
+                ):
                     merged_history_map[url] = entry
 
         merged_history = list(merged_history_map.values())
@@ -198,7 +205,7 @@ class SyncManager:
         """Export data to a local JSON file."""
         target = output_path or self._output_path
         if not target:
-             raise ValueError("Output path not specified")
+            raise ValueError("Output path not specified")
 
         data = self._get_local_data()
         try:
@@ -208,9 +215,9 @@ class SyncManager:
                 json.dump(data, f, indent=2)
 
             # Atomic replace
-            if os.name == 'nt':
-                 if os.path.exists(target):
-                      os.remove(target)
+            if os.name == "nt":
+                if os.path.exists(target):
+                    os.remove(target)
             os.rename(temp_path, target)
             logger.info(f"Data exported to {target}")
         except Exception as e:
@@ -221,7 +228,7 @@ class SyncManager:
     def import_data(self, input_path: Optional[str] = None):
         """Import data from a local JSON file."""
         if not input_path:
-             raise ValueError("Input path not specified")
+            raise ValueError("Input path not specified")
 
         try:
             with open(input_path, "r", encoding="utf-8") as f:

@@ -35,7 +35,7 @@ def process_queue():
     try:
         _process_queue_impl()
     except Exception as e:
-        logger.error(f"Error in process_queue critical section: {e}", exc_info=True)
+        logger.error("Error in process_queue critical section: %s", e, exc_info=True)
     finally:
         _process_queue_lock.release()
 
@@ -73,7 +73,9 @@ def _process_queue_impl():
                         if isinstance(scheduled, datetime):
                             # Allow up to 1 second early
                             if now >= (scheduled - timedelta(seconds=1)):
-                                logger.info(f"Activating scheduled item: {item.get('url')}")
+                                logger.info(
+                                    f"Activating scheduled item: {item.get('url')}"
+                                )
                                 item["status"] = "Queued"
                                 item["scheduled_time"] = None
 
@@ -101,7 +103,9 @@ def _process_queue_impl():
             )
             item["status"] = "Queued"  # Reset for next attempt
     else:
-        logger.debug(f"No downloadable items found in queue. QM: {id(state.queue_manager)}")
+        logger.debug(
+            f"No downloadable items found in queue. QM: {id(app_state.state.queue_manager)}"
+        )
 
 
 def download_task(item):

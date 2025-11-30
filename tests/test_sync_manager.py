@@ -43,7 +43,9 @@ class TestSyncManager(unittest.TestCase):
     @patch("history_manager.HistoryManager.add_entry")
     @patch("history_manager.HistoryManager.get_history")
     def test_import_data(self, mock_get_history, mock_add_entry, mock_save_config):
-        mock_get_history.return_value = [] # No existing history, so all should be added
+        mock_get_history.return_value = (
+            []
+        )  # No existing history, so all should be added
 
         data = {
             "config": {"theme": "light"},

@@ -59,8 +59,8 @@ class TestMainIntegration(unittest.TestCase):
         item = {"url": "http://fail.com", "status": "Queued", "title": "Fail"}
         mock_download.side_effect = Exception("Network Error")
 
-        tasks.state = self.state
-        tasks.download_task(item)
+        with patch("app_state.state", self.state):
+            tasks.download_task(item)
 
         self.assertEqual(item["status"], "Error")
 
@@ -101,15 +101,15 @@ class TestMainIntegration(unittest.TestCase):
         }
         self.state.queue_manager.add_item(item)
 
-        tasks.state = self.state
-        tasks.process_queue()
+        with patch("app_state.state", self.state):
+            tasks.process_queue()
 
-        # Should still be scheduled
-        self.assertTrue(item["status"].startswith("Scheduled"))
+            # Should still be scheduled
+            self.assertTrue(item["status"].startswith("Scheduled"))
 
-        # Move time to past
-        item["scheduled_time"] = datetime.now() - timedelta(minutes=1)
-        tasks.process_queue()
+            # Move time to past
+            item["scheduled_time"] = datetime.now() - timedelta(minutes=1)
+            tasks.process_queue()
 
         # Should be allocated or processed.
         # Since process_queue starts a thread for download_task, and claim_next_downloadable changes status to Allocating

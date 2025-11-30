@@ -49,13 +49,13 @@ class Theme:
         BG = "#1E293B"  # Same as BG_CARD
 
     class Primary:
-        MAIN = "#818CF8" # Same as PRIMARY
+        MAIN = "#818CF8"  # Same as PRIMARY
 
     class Text:
         PRIMARY = "#F8FAFC"
 
     class Divider:
-        COLOR = "#334155" # Same as BORDER
+        COLOR = "#334155"  # Same as BORDER
 
     @staticmethod
     def get_theme():

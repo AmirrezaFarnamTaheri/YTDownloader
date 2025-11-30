@@ -92,7 +92,9 @@ class ConfigManager:
                     )
                     return data
             except json.JSONDecodeError as e:
-                logger.warning(f"Configuration file corrupted, using defaults: {e}", exc_info=True)
+                logger.warning(
+                    f"Configuration file corrupted, using defaults: {e}", exc_info=True
+                )
                 # Attempt to backup corrupted file
                 backup_path = CONFIG_FILE.with_suffix(".json.corrupt")
                 try:
@@ -102,7 +104,10 @@ class ConfigManager:
                     pass
                 return {}
             except ValueError as e:
-                logger.warning(f"Configuration validation failed, using defaults: {e}", exc_info=True)
+                logger.warning(
+                    f"Configuration validation failed, using defaults: {e}",
+                    exc_info=True,
+                )
                 return {}
             except IOError as e:
                 logger.info(f"No existing config file, will create on save: {e}")

@@ -14,7 +14,7 @@ class TestAppStateCoverage(unittest.TestCase):
 
     def tearDown(self):
         if AppState._instance:
-             AppState._instance.cleanup()
+            AppState._instance.cleanup()
         AppState._instance = None
 
     def test_singleton(self):
@@ -71,9 +71,9 @@ class TestAppStateCoverage(unittest.TestCase):
             self.assertTrue(app._initialized)
 
     def test_cleanup_failure(self):
-         app = AppState()
-         app.social_manager = MagicMock()
-         app.social_manager.close.side_effect = Exception("Close fail")
+        app = AppState()
+        app.social_manager = MagicMock()
+        app.social_manager.close.side_effect = Exception("Close fail")
 
-         # Should not raise
-         app.cleanup()
+        # Should not raise
+        app.cleanup()

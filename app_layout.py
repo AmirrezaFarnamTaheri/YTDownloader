@@ -1,8 +1,11 @@
 import logging
+
 import flet as ft
+
 from theme import Theme
 
 logger = logging.getLogger(__name__)
+
 
 class AppLayout:
     def __init__(
@@ -115,7 +118,11 @@ class AppLayout:
 
         # Main Layout
         self.view = ft.Row(
-            [self.sidebar, ft.VerticalDivider(width=1, color="transparent"), self.content_area],
+            [
+                self.sidebar,
+                ft.VerticalDivider(width=1, color="transparent"),
+                self.content_area,
+            ],
             expand=True,
             spacing=0,
         )
