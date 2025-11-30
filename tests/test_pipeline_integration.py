@@ -3,6 +3,7 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
+import tasks
 from app_state import state
 from queue_manager import QueueManager
 from tasks import download_task, process_queue
@@ -15,6 +16,11 @@ class TestPipelineIntegration(unittest.TestCase):
         state.current_download_item = None
         state.cancel_token = None
         state.config = {}
+
+        # Reset semaphore
+        tasks._active_downloads = threading.Semaphore(3)
+        # Ensure lock is released if stuck (though risky)
+        tasks._process_queue_lock = threading.RLock()
 
     @patch("tasks.download_video")
     @patch("history_manager.HistoryManager.add_entry")

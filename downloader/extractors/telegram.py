@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 logger = logging.getLogger(__name__)
 
@@ -49,16 +50,19 @@ class TelegramExtractor:
             ext = "mp4"
             is_video = False
 
-            if video_tag:
+            if isinstance(video_tag, Tag):
                 src = video_tag.get("src")
                 if src:
-                    media_url = src
+                    media_url = str(src)
                     is_video = True
                     ext = "mp4"
 
-            if not media_url and image_tag:
+            if not media_url and isinstance(image_tag, Tag):
                 # Extract background-image url
                 style = image_tag.get("style", "")
+                if isinstance(style, list):
+                    style = " ".join(style)
+
                 # style="background-image:url('https://...')"
                 match = re.search(r"url\('?(.*?)'?\)", style)
                 if match:
@@ -69,15 +73,19 @@ class TelegramExtractor:
             if not media_url:
                 # Fallback: Check Open Graph tags
                 og_video = soup.find("meta", property="og:video")
-                if og_video:
-                    media_url = og_video.get("content")
-                    is_video = True
+                if isinstance(og_video, Tag):
+                    content = og_video.get("content")
+                    if content:
+                        media_url = str(content)
+                        is_video = True
                 else:
                     og_image = soup.find("meta", property="og:image")
-                    if og_image:
-                        media_url = og_image.get("content")
-                        is_video = False
-                        ext = "jpg"
+                    if isinstance(og_image, Tag):
+                        content = og_image.get("content")
+                        if content:
+                            media_url = str(content)
+                            is_video = False
+                            ext = "jpg"
 
             if not media_url:
                 logger.warning("No media found on Telegram page.")

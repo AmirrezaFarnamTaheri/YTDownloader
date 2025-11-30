@@ -37,13 +37,33 @@ class RSSManager:
             logger.debug(f"Found {len(entries)} entries in feed")
 
             for entry in entries:
-                video = {}
+                video: Dict[str, str] = {}
                 try:
-                    video["title"] = entry.find("atom:title", ns).text
-                    video["link"] = entry.find("atom:link", ns).attrib["href"]
-                    video["published"] = entry.find("atom:published", ns).text
-                    video["video_id"] = entry.find("yt:videoId", ns).text
-                    videos.append(video)
+                    title_elem = entry.find("atom:title", ns)
+                    link_elem = entry.find("atom:link", ns)
+                    pub_elem = entry.find("atom:published", ns)
+                    vid_elem = entry.find("yt:videoId", ns)
+
+                    if (
+                        title_elem is not None
+                        and title_elem.text
+                        and link_elem is not None
+                        and pub_elem is not None
+                        and pub_elem.text
+                        and vid_elem is not None
+                        and vid_elem.text
+                    ):
+                        video["title"] = title_elem.text
+                        # attrib is a dict, but mypy might worry. link_elem is not None here.
+                        # .attrib is usually present on Element.
+                        href = link_elem.attrib.get("href")
+                        if href:
+                            video["link"] = href
+                        else:
+                            continue
+                        video["published"] = pub_elem.text
+                        video["video_id"] = vid_elem.text
+                        videos.append(video)
                 except AttributeError as e:
                     logger.warning(f"Skipping malformed RSS entry in {url}: {e}")
                     continue

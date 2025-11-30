@@ -2,6 +2,7 @@ import os
 import sqlite3
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from history_manager import DB_FILE, HistoryManager
 
@@ -22,7 +23,7 @@ class TestHistoryManager(unittest.TestCase):
         if Path("test_history.db").exists():
             os.remove("test_history.db")
 
-    @unittest.mock.patch("history_manager.DB_FILE", Path("test_history.db"))
+    @mock.patch("history_manager.DB_FILE", Path("test_history.db"))
     def test_init_db(self):
         HistoryManager.init_db()
         self.assertTrue(Path("test_history.db").exists())
@@ -36,7 +37,7 @@ class TestHistoryManager(unittest.TestCase):
         self.assertIn("file_path", columns)
         conn.close()
 
-    @unittest.mock.patch("history_manager.DB_FILE", Path("test_history.db"))
+    @mock.patch("history_manager.DB_FILE", Path("test_history.db"))
     def test_add_and_get_history(self):
         HistoryManager.init_db()
         HistoryManager.add_entry(
@@ -54,7 +55,7 @@ class TestHistoryManager(unittest.TestCase):
         self.assertEqual(history[0]["title"], "Test Title")
         self.assertEqual(history[0]["file_path"], "/tmp/file.mp4")
 
-    @unittest.mock.patch("history_manager.DB_FILE", Path("test_history.db"))
+    @mock.patch("history_manager.DB_FILE", Path("test_history.db"))
     def test_clear_history(self):
         HistoryManager.init_db()
         HistoryManager.add_entry(
@@ -63,7 +64,7 @@ class TestHistoryManager(unittest.TestCase):
         HistoryManager.clear_history()
         self.assertEqual(len(HistoryManager.get_history()), 0)
 
-    @unittest.mock.patch("history_manager.DB_FILE", Path("test_history.db"))
+    @mock.patch("history_manager.DB_FILE", Path("test_history.db"))
     def test_migration(self):
         # Create old schema
         conn = sqlite3.connect("test_history.db")
