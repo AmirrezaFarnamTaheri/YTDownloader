@@ -1,7 +1,9 @@
-import unittest
-from unittest.mock import patch, MagicMock
 import os
+import unittest
+from unittest.mock import MagicMock, patch
+
 import requests
+
 from downloader.engines.generic import download_generic
 
 

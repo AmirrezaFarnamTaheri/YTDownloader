@@ -1,7 +1,9 @@
-import pytest
-from unittest.mock import patch, MagicMock
-from ui_utils import open_folder, validate_rate_limit
 import os
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from ui_utils import open_folder, validate_rate_limit
 
 
 def test_open_folder_exceptions():

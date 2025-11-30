@@ -1,8 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 import pyperclip
-from clipboard_monitor import _clipboard_loop, start_clipboard_monitor
+
 from app_state import state
+from clipboard_monitor import _clipboard_loop, start_clipboard_monitor
 
 
 class TestClipboardMonitor(unittest.TestCase):

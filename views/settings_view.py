@@ -1,7 +1,9 @@
 import flet as ft
-from theme import Theme
-from .base_view import BaseView
+
 from config_manager import ConfigManager
+from theme import Theme
+
+from .base_view import BaseView
 
 
 class SettingsView(BaseView):

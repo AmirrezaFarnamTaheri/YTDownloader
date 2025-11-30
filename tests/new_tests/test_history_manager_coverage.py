@@ -1,7 +1,8 @@
-import unittest
-from unittest.mock import MagicMock, patch, ANY
 import sqlite3
-from history_manager import HistoryManager, DB_FILE
+import unittest
+from unittest.mock import ANY, MagicMock, patch
+
+from history_manager import DB_FILE, HistoryManager
 
 
 class TestHistoryManagerCoverage(unittest.TestCase):
@@ -115,7 +116,9 @@ class TestHistoryManagerCoverage(unittest.TestCase):
         ]
 
         with patch("history_manager.HistoryManager.DB_RETRY_DELAY", 0.01):
-            HistoryManager.add_entry("http://url", "title", "path", "fmt", "done", "10MB")
+            HistoryManager.add_entry(
+                "http://url", "title", "path", "fmt", "done", "10MB"
+            )
 
         self.assertEqual(mock_cursor.execute.call_count, 3)
 

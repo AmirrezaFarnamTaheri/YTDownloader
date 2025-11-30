@@ -1,8 +1,9 @@
 import logging
 import re
+from typing import Any, Dict, List, Optional
+
 import requests
 from bs4 import BeautifulSoup
-from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
 

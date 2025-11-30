@@ -1,11 +1,13 @@
-import flet as ft
 import logging
-from theme import Theme
-from .base_view import BaseView
-from config_manager import ConfigManager
-from rss_manager import RSSManager
 import threading
 
+import flet as ft
+
+from config_manager import ConfigManager
+from rss_manager import RSSManager
+from theme import Theme
+
+from .base_view import BaseView
 
 logger = logging.getLogger(__name__)
 

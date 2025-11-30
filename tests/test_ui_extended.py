@@ -1,10 +1,12 @@
 import unittest
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import ANY, MagicMock, patch
+
 import flet as ft
-from views.rss_view import RSSView
-from views.settings_view import SettingsView
+
 from app_layout import AppLayout
 from theme import Theme
+from views.rss_view import RSSView
+from views.settings_view import SettingsView
 
 
 class TestUIExtended(unittest.TestCase):

@@ -1,10 +1,11 @@
-import unittest
-from unittest.mock import MagicMock, patch
 import threading
 import time
-from tasks import process_queue, download_task
+import unittest
+from unittest.mock import MagicMock, patch
+
 from app_state import state
 from queue_manager import QueueManager
+from tasks import download_task, process_queue
 
 
 class TestPipelineIntegration(unittest.TestCase):

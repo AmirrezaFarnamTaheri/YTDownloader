@@ -1,12 +1,12 @@
-import threading
 import logging
-from typing import Dict, Any, Optional
+import threading
 from datetime import datetime, time
+from typing import Any, Dict, Optional
 
-from config_manager import ConfigManager
-from queue_manager import QueueManager
-from history_manager import HistoryManager
 from cloud_manager import CloudManager
+from config_manager import ConfigManager
+from history_manager import HistoryManager
+from queue_manager import QueueManager
 from social_manager import SocialManager
 from ui_utils import is_ffmpeg_available
 from utils import CancelToken
@@ -67,7 +67,9 @@ class AppState:
         # Try connecting to social - but with error isolation
         def _safe_social_connect():
             try:
+                logger.debug("Waiting for init to complete before connecting social...")
                 self._init_complete.wait(timeout=5.0)  # Wait for init to complete
+                logger.debug("Connecting social manager...")
                 self.social_manager.connect()
             except Exception as e:
                 logger.debug(f"Social manager connection failed (non-critical): {e}")
@@ -84,6 +86,7 @@ class AppState:
         self.shutdown_flag.set()
 
         try:
+            logger.debug("Closing social manager...")
             self.social_manager.close()
         except Exception as e:
             logger.debug(f"Social manager cleanup error: {e}")

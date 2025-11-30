@@ -1,7 +1,9 @@
 import flet as ft
-from theme import Theme
-from .base_view import BaseView
+
 from components import DownloadItemControl
+from theme import Theme
+
+from .base_view import BaseView
 
 
 class QueueView(BaseView):
@@ -40,7 +42,7 @@ class QueueView(BaseView):
         for item_id, control in self._item_controls.items():
             if item_id not in current_items:
                 to_remove.append(item_id)
-                if hasattr(control, 'cleanup'):
+                if hasattr(control, "cleanup"):
                     control.cleanup()
 
         for item_id in to_remove:

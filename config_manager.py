@@ -3,7 +3,7 @@ import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -51,15 +51,15 @@ class ConfigManager:
             raise ValueError("use_aria2c must be a boolean")
 
         if "gpu_accel" in config:
-             # Normalize valid values for check if needed or just check against list
-             # The UI might send lowercase, so we might want to be permissive here
-             # or normalize it before saving.
-             # However, for validation, let's accept strict case or allow case-insensitivity
-             # if we normalize later. But save_config calls validate first.
-             # Let's fix the validation to allow "auto" (lowercase) as well.
-             valid_accels = ("None", "Auto", "auto", "cuda", "vulkan")
-             if config["gpu_accel"] not in valid_accels:
-                 raise ValueError(f"Invalid gpu_accel value: {config['gpu_accel']}")
+            # Normalize valid values for check if needed or just check against list
+            # The UI might send lowercase, so we might want to be permissive here
+            # or normalize it before saving.
+            # However, for validation, let's accept strict case or allow case-insensitivity
+            # if we normalize later. But save_config calls validate first.
+            # Let's fix the validation to allow "auto" (lowercase) as well.
+            valid_accels = ("None", "Auto", "auto", "cuda", "vulkan")
+            if config["gpu_accel"] not in valid_accels:
+                raise ValueError(f"Invalid gpu_accel value: {config['gpu_accel']}")
 
         if "theme_mode" in config and config["theme_mode"] not in (
             "Dark",
@@ -77,8 +77,6 @@ class ConfigManager:
             Configuration dictionary (empty if file doesn't exist or is corrupted)
         """
         logger.info(f"Loading configuration from {CONFIG_FILE}")
-
-        logger.debug("Attempting to load configuration from %s", CONFIG_FILE)
         CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
         if CONFIG_FILE.exists():
@@ -149,6 +147,9 @@ class ConfigManager:
                 # Atomic rename (POSIX systems)
                 # On Windows, need to remove target first
                 if os.name == "nt" and CONFIG_FILE.exists():
+                    logger.debug(
+                        f"Removing existing config file on Windows: {CONFIG_FILE}"
+                    )
                     CONFIG_FILE.unlink()
 
                 Path(temp_path).rename(CONFIG_FILE)

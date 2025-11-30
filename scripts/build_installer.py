@@ -1,6 +1,6 @@
 import os
-import subprocess
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -13,9 +13,9 @@ def build_installer():
     This uses Nuitka instead of PyInstaller to produce a true native
     executable, then hands off to Inno Setup (setup.iss) for packaging.
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("StreamCatch Build Script")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     root = Path(__file__).resolve().parent.parent
     dist_dir = root / "dist"
@@ -29,6 +29,7 @@ def build_installer():
     # Verify requirements
     try:
         import nuitka
+
         print(f"Nuitka version: {nuitka.__version__}")
     except ImportError:
         print("ERROR: Nuitka not installed. Run: pip install nuitka")
@@ -74,7 +75,10 @@ def build_installer():
                 subprocess.check_call([iscc, str(root / "installers" / "setup.iss")])
                 print("✓ Installer built in installers/output/\n")
             except subprocess.CalledProcessError as e:
-                print(f"✗ Installer build failed with exit code {e.returncode}\n", file=sys.stderr)
+                print(
+                    f"✗ Installer build failed with exit code {e.returncode}\n",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
         else:
             print("⚠ Inno Setup (iscc) not found. Skipping installer generation.")
@@ -83,9 +87,9 @@ def build_installer():
         print("Non-Windows platform: standalone binary built.")
         print(f"Output is in {dist_dir}/\n")
 
-    print("="*60)
+    print("=" * 60)
     print("Build complete!")
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":
@@ -97,5 +101,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\nFATAL ERROR: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

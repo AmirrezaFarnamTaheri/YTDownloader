@@ -1,11 +1,12 @@
-import unittest
-from unittest.mock import MagicMock, patch, ANY
 import threading
 import time
+import unittest
 from datetime import datetime, timedelta
-from tasks_extended import fetch_info_task
-from tasks import process_queue, download_task
+from unittest.mock import ANY, MagicMock, patch
+
 from app_state import AppState
+from tasks import download_task, process_queue
+from tasks_extended import fetch_info_task
 from utils import CancelToken
 
 
@@ -143,7 +144,9 @@ class TestMainLogic(unittest.TestCase):
     @patch("tasks.download_video")
     @patch("tasks.process_queue")
     @patch("threading.Timer")
-    def test_download_task_cancelled(self, mock_timer, mock_process_queue, mock_download_video):
+    def test_download_task_cancelled(
+        self, mock_timer, mock_process_queue, mock_download_video
+    ):
         item = {"url": "http://test", "status": "Queued"}
         mock_download_video.side_effect = Exception("Download cancelled by user")
 
@@ -157,7 +160,9 @@ class TestMainLogic(unittest.TestCase):
     @patch("tasks.download_video")
     @patch("tasks.process_queue")
     @patch("threading.Timer")
-    def test_download_task_error(self, mock_timer, mock_process_queue, mock_download_video):
+    def test_download_task_error(
+        self, mock_timer, mock_process_queue, mock_download_video
+    ):
         item = {"url": "http://test", "status": "Queued"}
         mock_download_video.side_effect = Exception("Network Error")
 

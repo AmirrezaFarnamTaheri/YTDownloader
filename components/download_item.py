@@ -1,7 +1,9 @@
-import flet as ft
-from typing import Dict, Any, Optional
-from theme import Theme
 import weakref
+from typing import Any, Dict, Optional
+
+import flet as ft
+
+from theme import Theme
 
 
 class DownloadItemControl:
@@ -24,7 +26,9 @@ class DownloadItemControl:
         # Pre-bind callbacks to avoid creating new lambdas each time
         self._cancel_handler = lambda e: self.on_cancel(self.item)
         self._remove_handler = lambda e: self.on_remove(self.item)
-        self._retry_handler = lambda e: self.on_retry(self.item) if self.on_retry else None
+        self._retry_handler = lambda e: (
+            self.on_retry(self.item) if self.on_retry else None
+        )
         self._reorder_up_handler = lambda e: self.on_reorder(self.item, -1)
         self._reorder_down_handler = lambda e: self.on_reorder(self.item, 1)
 

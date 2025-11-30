@@ -1,5 +1,5 @@
-import unittest
 import re
+import unittest
 
 
 class TestInputValidation(unittest.TestCase):

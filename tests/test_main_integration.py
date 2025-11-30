@@ -1,10 +1,11 @@
-import unittest
-from unittest.mock import MagicMock, patch
 import threading
 import time
-from app_state import AppState
+import unittest
+from unittest.mock import MagicMock, patch
+
 import main as app_main
 import tasks
+from app_state import AppState
 from queue_manager import QueueManager
 
 

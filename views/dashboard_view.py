@@ -1,7 +1,9 @@
 import flet as ft
-from theme import Theme
-from .base_view import BaseView
+
 from history_manager import HistoryManager
+from theme import Theme
+
+from .base_view import BaseView
 
 
 class DashboardView(BaseView):

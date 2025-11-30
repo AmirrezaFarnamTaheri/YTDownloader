@@ -1,8 +1,10 @@
+from unittest.mock import MagicMock, patch
+
 import flet as ft
 import pytest
-from unittest.mock import MagicMock, patch
-from views.download_view import DownloadView
+
 from theme import Theme
+from views.download_view import DownloadView
 
 
 def test_download_view_advanced_interactions():

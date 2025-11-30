@@ -1,9 +1,11 @@
 import unittest
-from unittest.mock import MagicMock, patch, mock_open, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, mock_open, patch
+
 import requests
-from downloader.extractors.telegram import TelegramExtractor
-from downloader.extractors.generic import GenericExtractor
+
 from downloader.engines.generic import download_generic
+from downloader.extractors.generic import GenericExtractor
+from downloader.extractors.telegram import TelegramExtractor
 
 
 class TestGenericDownloaderCoverage(unittest.TestCase):

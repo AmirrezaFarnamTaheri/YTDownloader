@@ -1,11 +1,14 @@
+import logging
+import os
+
 import flet as ft
+
 from theme import Theme
-from .base_view import BaseView
 from ui_utils import format_file_size, open_folder
 from views.components.input_card import DownloadInputCard
 from views.components.preview_card import DownloadPreviewCard
-import logging
-import os
+
+from .base_view import BaseView
 
 
 class DownloadView(BaseView):

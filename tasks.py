@@ -1,12 +1,12 @@
-import threading
 import logging
+import threading
 import time
 from datetime import datetime, timedelta
 
-from downloader import download_video
-from ui_utils import format_file_size
-from history_manager import HistoryManager
 from app_state import state
+from downloader import download_video
+from history_manager import HistoryManager
+from ui_utils import format_file_size
 from utils import CancelToken
 
 logger = logging.getLogger(__name__)
@@ -24,13 +24,14 @@ def process_queue():
     # Non-blocking acquire to prevent pileup
     acquired = _process_queue_lock.acquire(blocking=False)
     if not acquired:
-        logger.debug("process_queue already running, skipping")
+        # logger.debug("process_queue already running, skipping") # Too noisy
         return
 
     try:
         _process_queue_impl()
     finally:
         _process_queue_lock.release()
+
 
 def _process_queue_impl():
     """Internal implementation separated from lock management."""
@@ -67,19 +68,20 @@ def _process_queue_impl():
     # ATOMIC CLAIM
     item = state.queue_manager.claim_next_downloadable()
     if item:
+        logger.debug(f"Claimed item for processing: {item.get('title', item['url'])}")
         # Check if we can start another download
         if _active_downloads.acquire(blocking=False):
-            logger.info(f"Starting download: {item.get('title', item['url'])}")
+            logger.info(f"Starting download task for: {item.get('title', item['url'])}")
             thread = threading.Thread(
                 target=download_task,
                 args=(item,),
                 daemon=True,
-                name=f"Download-{item.get('title', 'Unknown')[:20]}"
+                name=f"Download-{item.get('title', 'Unknown')[:20]}",
             )
             thread.start()
         else:
-            logger.info("Max concurrent downloads reached, item will retry")
-            item['status'] = 'Queued'  # Reset for next attempt
+            logger.info("Max concurrent downloads reached, item will retry later")
+            item["status"] = "Queued"  # Reset for next attempt
 
 
 def download_task(item):
@@ -94,11 +96,13 @@ def download_task(item):
 
     # Ensure we release the semaphore
     try:
+        logger.debug(f"Entering download_task for {item.get('url')}")
         return _download_task_impl(item)
     finally:
         thread.name = old_name
         _active_downloads.release()
         logger.debug(f"Download slot released, {_active_downloads._value} available")
+
 
 def _download_task_impl(item):
     """Internal download implementation."""
@@ -115,13 +119,13 @@ def _download_task_impl(item):
 
             if not is_terminal:
                 current_time = time.time()
-                last_update = item.get('_last_progress_update', 0)
+                last_update = item.get("_last_progress_update", 0)
 
                 # Update at most every 0.5 seconds
                 if current_time - last_update < 0.5:
                     return
 
-                item['_last_progress_update'] = current_time
+                item["_last_progress_update"] = current_time
 
             if d["status"] == "downloading":
                 total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
@@ -130,10 +134,10 @@ def _download_task_impl(item):
                     pct = downloaded / total
 
                     # Only update if change is significant (> 1%)
-                    last_pct = item.get('_last_pct', 0)
+                    last_pct = item.get("_last_pct", 0)
                     if abs(pct - last_pct) < 0.01:
                         return
-                    item['_last_pct'] = pct
+                    item["_last_pct"] = pct
 
                     if "control" in item:
                         item["control"].progress_bar.value = pct

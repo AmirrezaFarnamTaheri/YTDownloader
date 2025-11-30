@@ -1,11 +1,13 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from downloader.info import get_video_info
-from downloader.core import download_video
-from downloader.extractors.telegram import TelegramExtractor
-from downloader.extractors.generic import GenericExtractor
-from downloader.engines.generic import download_generic
+
 import yt_dlp
+
+from downloader.core import download_video
+from downloader.engines.generic import download_generic
+from downloader.extractors.generic import GenericExtractor
+from downloader.extractors.telegram import TelegramExtractor
+from downloader.info import get_video_info
 
 
 class TestDownloaderRobustness(unittest.TestCase):

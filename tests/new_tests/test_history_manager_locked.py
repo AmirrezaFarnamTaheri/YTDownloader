@@ -1,6 +1,8 @@
 import sqlite3
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from history_manager import HistoryManager
 
 

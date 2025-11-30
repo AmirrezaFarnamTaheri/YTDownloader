@@ -1,7 +1,8 @@
-import threading
 import logging
-from downloader.info import get_video_info
+import threading
+
 from app_state import state
+from downloader.info import get_video_info
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +22,16 @@ def fetch_info_task(url, download_view, page):
 
         info = get_video_info(url, cookies_from_browser=cookies_from_browser)
         if not info:
+            logger.error(f"get_video_info returned None for {url}")
             raise Exception("Failed to fetch info")
         state.video_info = info
-        logger.info(f"Metadata fetched successfully for: {info.get('title', 'Unknown Title')}")
+        logger.info(
+            f"Metadata fetched successfully for: {info.get('title', 'Unknown Title')}"
+        )
+        logger.debug(f"Metadata keys: {list(info.keys())}")
 
         if download_view:
+            logger.debug("Updating DownloadView with new info")
             download_view.update_info(info)
 
         # We need to be careful updating UI from background thread

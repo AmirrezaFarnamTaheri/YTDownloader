@@ -1,8 +1,9 @@
-import unittest
-from unittest.mock import MagicMock, patch, mock_open
 import json
-from sync_manager import SyncManager
+import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, mock_open, patch
+
+from sync_manager import SyncManager
 
 
 class TestSyncManagerCoverage(unittest.TestCase):
@@ -17,20 +18,22 @@ class TestSyncManagerCoverage(unittest.TestCase):
 
         # Mock tempfile and os.replace
         with patch("builtins.open", mock_open()) as mock_file:
-             with patch("tempfile.mkstemp", return_value=(123, "/tmp/tempfile")):
-                 with patch("os.fdopen", mock_file):
-                      with patch("os.replace") as mock_replace:
-                           with patch("os.fsync"): # mock fsync
-                               path = SyncManager.export_data()
-                               self.assertEqual(path, expected_path)
-                               # It writes to temp file handle
-                               mock_file.assert_called()
-                               mock_replace.assert_called_with("/tmp/tempfile", expected_path)
+            with patch("tempfile.mkstemp", return_value=(123, "/tmp/tempfile")):
+                with patch("os.fdopen", mock_file):
+                    with patch("os.replace") as mock_replace:
+                        with patch("os.fsync"):  # mock fsync
+                            path = SyncManager.export_data()
+                            self.assertEqual(path, expected_path)
+                            # It writes to temp file handle
+                            mock_file.assert_called()
+                            mock_replace.assert_called_with(
+                                "/tmp/tempfile", expected_path
+                            )
 
         # Verify json dump content
         # handle = mock_file()
-            # We can't easily check the written content with json.dump directly on mock without more complex setup
-            # but we know it didn't crash.
+        # We can't easily check the written content with json.dump directly on mock without more complex setup
+        # but we know it didn't crash.
 
     @patch("sync_manager.ConfigManager.load_config")
     def test_export_data_failure(self, mock_load):

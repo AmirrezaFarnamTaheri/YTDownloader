@@ -1,8 +1,9 @@
 import logging
 import re
-import requests
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 from urllib.parse import unquote, urlparse
+
+import requests
 
 logger = logging.getLogger(__name__)
 

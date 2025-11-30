@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock
+
 import flet as ft
+
 from components.download_item import DownloadItemControl
 
 

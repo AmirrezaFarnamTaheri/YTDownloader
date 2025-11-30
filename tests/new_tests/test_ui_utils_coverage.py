@@ -1,8 +1,9 @@
-import unittest
-from unittest.mock import MagicMock, patch, ANY
-import ui_utils
 import os
 import platform
+import unittest
+from unittest.mock import ANY, MagicMock, patch
+
+import ui_utils
 
 
 class TestUIUtilsCoverage(unittest.TestCase):

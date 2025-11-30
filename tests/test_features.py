@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 import flet as ft
+
 from app_state import AppState
 from components import DownloadItemControl
 from downloader.core import download_video

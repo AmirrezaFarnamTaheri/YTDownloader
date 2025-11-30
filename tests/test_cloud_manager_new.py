@@ -1,6 +1,6 @@
+import os
 import unittest
 from unittest.mock import MagicMock, patch
-import os
 
 from cloud_manager import CloudManager
 
@@ -123,5 +123,3 @@ class TestCloudManagerPatched(unittest.TestCase):
 
         with self.assertRaisesRegex(Exception, "Auth failed"):
             self.manager.upload_file("test.txt")
-
-

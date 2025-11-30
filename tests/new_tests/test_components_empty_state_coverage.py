@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 import flet as ft
+
 from components.empty_state import EmptyState
 from theme import Theme
 

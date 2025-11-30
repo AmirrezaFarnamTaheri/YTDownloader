@@ -1,8 +1,10 @@
 import unittest
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import ANY, MagicMock, patch
+
 import yt_dlp
-from downloader.info import get_video_info
+
 from downloader.core import download_video
+from downloader.info import get_video_info
 
 
 class TestDownloaderCoverage(unittest.TestCase):
