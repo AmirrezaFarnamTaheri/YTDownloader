@@ -1,3 +1,4 @@
+import logging
 import flet as ft
 
 from components import DownloadItemControl
@@ -5,9 +6,12 @@ from theme import Theme
 
 from .base_view import BaseView
 
+logger = logging.getLogger(__name__)
+
 
 class QueueView(BaseView):
     def __init__(self, queue_manager, on_cancel, on_remove, on_reorder):
+        logger.debug("Initializing QueueView")
         super().__init__("Queue", ft.Icons.QUEUE_MUSIC)
         self.queue_manager = queue_manager
         self.on_cancel = on_cancel
@@ -31,6 +35,7 @@ class QueueView(BaseView):
         self._item_controls = {}  # Cache controls by item id
 
     def rebuild(self):
+        # logger.debug("Rebuilding QueueView...")
         self.queue_list.controls.clear()
         items = self.queue_manager.get_all()
 
@@ -76,11 +81,13 @@ class QueueView(BaseView):
         self.update()
 
     def clear_finished(self, e):
+        logger.info("User requested clear of finished items")
         to_remove = [
             item
             for item in self.queue_manager.get_all()
             if item["status"] in ("Completed", "Cancelled", "Error")
         ]
+        logger.info(f"Clearing {len(to_remove)} finished items")
         for item in to_remove:
             self.on_remove(item)
         self.rebuild()

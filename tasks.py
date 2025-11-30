@@ -28,7 +28,10 @@ def process_queue():
         return
 
     try:
+        # logger.debug("Entered process_queue critical section")
         _process_queue_impl()
+    except Exception as e:
+        logger.error(f"Error in process_queue critical section: {e}", exc_info=True)
     finally:
         _process_queue_lock.release()
 
@@ -68,19 +71,25 @@ def _process_queue_impl():
     # ATOMIC CLAIM
     item = state.queue_manager.claim_next_downloadable()
     if item:
-        logger.debug(f"Claimed item for processing: {item.get('title', item['url'])}")
+        item_title = item.get("title", item.get("url", "Unknown"))
+        logger.debug(f"Claimed item for processing: {item_title}")
         # Check if we can start another download
         if _active_downloads.acquire(blocking=False):
-            logger.info(f"Starting download task for: {item.get('title', item['url'])}")
+            logger.info(
+                f"Starting download task for: {item_title} "
+                f"(Active: {3 - _active_downloads._value}/3)"
+            )
             thread = threading.Thread(
                 target=download_task,
                 args=(item,),
                 daemon=True,
-                name=f"Download-{item.get('title', 'Unknown')[:20]}",
+                name=f"Download-{item_title[:20]}",
             )
             thread.start()
         else:
-            logger.info("Max concurrent downloads reached, item will retry later")
+            logger.info(
+                f"Max concurrent downloads reached, returning {item_title} to queue"
+            )
             item["status"] = "Queued"  # Reset for next attempt
 
 
@@ -92,16 +101,26 @@ def download_task(item):
     # Set thread name for debugging
     thread = threading.current_thread()
     old_name = thread.name
-    thread.name = f"DL-{item.get('title', 'Unknown')[:15]}"
+    item_title = item.get("title", "Unknown")
+    thread.name = f"DL-{item_title[:15]}"
+
+    logger.info(f"Thread started for download task: {item_title}")
 
     # Ensure we release the semaphore
     try:
-        logger.debug(f"Entering download_task for {item.get('url')}")
+        logger.debug(f"Entering download_task implementation for {item.get('url')}")
         return _download_task_impl(item)
+    except Exception as e:
+        logger.error(
+            f"Unhandled exception in download_task wrapper: {e}", exc_info=True
+        )
     finally:
         thread.name = old_name
         _active_downloads.release()
-        logger.debug(f"Download slot released, {_active_downloads._value} available")
+        logger.info(
+            f"Download task finished. Slot released. "
+            f"Available slots: {3 - (2 - _active_downloads._value)}"
+        )
 
 
 def _download_task_impl(item):
@@ -177,6 +196,8 @@ def _download_task_impl(item):
             cookies_from_browser=cookies,
         )
 
+        logger.info(f"Download successful: {item.get('title')}")
+
         # Add to history first, then mark as completed
         try:
             HistoryManager.add_entry(
@@ -196,10 +217,13 @@ def _download_task_impl(item):
 
     except Exception as e:
         if "cancelled" in str(e).lower():
+            logger.info(f"Download cancelled by user: {item.get('title')}")
             item["status"] = "Cancelled"
         else:
             item["status"] = "Error"
-            logger.error(f"Download failed: {e}")
+            logger.error(
+                f"Download failed for {item.get('title')}: {e}", exc_info=True
+            )
     finally:
         if "control" in item:
             item["control"].update_progress()
