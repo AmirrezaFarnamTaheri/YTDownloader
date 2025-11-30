@@ -30,10 +30,33 @@ class SyncManager:
         }
 
         try:
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4)
-            logger.info(f"Data exported to {output_path}")
-            return output_path
+            # Atomic write using temp file and rename
+            import tempfile
+            dir_name = os.path.dirname(output_path) or "."
+            os.makedirs(dir_name, exist_ok=True)
+
+            fd, temp_path = tempfile.mkstemp(
+                dir=dir_name, prefix=".export_tmp_", suffix=".json"
+            )
+
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4)
+                    f.flush()
+                    os.fsync(f.fileno())
+
+                # Atomic rename
+                if os.name == "nt" and os.path.exists(output_path):
+                    os.remove(output_path)
+
+                os.replace(temp_path, output_path)
+                logger.info(f"Data exported to {output_path}")
+                return output_path
+            except Exception:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                raise
+
         except Exception as e:
             logger.error(f"Export failed: {e}")
             raise
@@ -50,6 +73,9 @@ class SyncManager:
             raise FileNotFoundError(f"Import file not found: {input_path}")
 
         try:
+            # Ensure DB is initialized before importing
+            HistoryManager.init_db()
+
             with open(input_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 

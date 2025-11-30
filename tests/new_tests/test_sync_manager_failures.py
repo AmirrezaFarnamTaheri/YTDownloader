@@ -5,7 +5,8 @@ from sync_manager import SyncManager
 
 def test_export_data_failure():
     """Test export_data failure handling."""
-    with patch("builtins.open", side_effect=IOError("Write error")):
+    # We need to mock tempfile creation or fdopen to fail
+    with patch("tempfile.mkstemp", side_effect=IOError("Write error")):
         with pytest.raises(IOError):
             SyncManager.export_data("/tmp/test.json")
 

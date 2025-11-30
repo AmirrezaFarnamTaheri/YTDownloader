@@ -103,8 +103,10 @@ class TestMainLogic(unittest.TestCase):
 
     def test_process_queue_busy(self):
         self.mock_state.queue_manager.any_downloading.return_value = True
+        # Concurrency logic changed: we don't bail out on busy anymore, but rely on semaphore.
+        # So we expect it to attempt to claim.
         process_queue()
-        self.mock_state.queue_manager.claim_next_downloadable.assert_not_called()
+        self.mock_state.queue_manager.claim_next_downloadable.assert_called()
 
     # --- Download Task Tests ---
 

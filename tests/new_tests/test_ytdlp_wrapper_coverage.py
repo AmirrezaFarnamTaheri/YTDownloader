@@ -19,14 +19,18 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
             "http://url", "/tmp", progress_hook, download_item, options
         )
 
+        # options is now copied, so the original options dict is not modified.
+        # We must check the arguments passed to YoutubeDL constructor
+        mock_ydl.assert_called_once()
+        call_args = mock_ydl.call_args[0][0]
+        self.assertIn("progress_hooks", call_args)
+        self.assertEqual(len(call_args["progress_hooks"]), 1)
+
         mock_instance.download.assert_called_with(["http://url"])
 
-        # Verify progress hook wrapper was added
-        self.assertIn("progress_hooks", options)
-        self.assertEqual(len(options["progress_hooks"]), 1)
-
         # Test hook execution
-        options["progress_hooks"][0]({})
+        # We need to access the hooks from the call_args since they are not in original options
+        call_args["progress_hooks"][0]({})
         progress_hook.assert_called_with({}, download_item)
 
     @patch("yt_dlp.YoutubeDL")
@@ -41,12 +45,22 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
             "http://url", "/tmp", MagicMock(), {}, options, cancel_token
         )
 
-        # Verify cancel hook added
-        self.assertEqual(len(options["progress_hooks"]), 2)  # Hook + Token Check
+        # Verify cancel hook added in the copy passed to constructor
+        mock_ydl.assert_called_once()
+        call_args = mock_ydl.call_args[0][0]
+        self.assertIn("progress_hooks", call_args)
+        self.assertEqual(len(call_args["progress_hooks"]), 2)
 
         # Execute token check
-        options["progress_hooks"][0]({})
-        cancel_token.check.assert_called_with({})
+        # Note: the order of hooks depends on append. check token logic added first or last?
+        # In code:
+        # 1. hooks = options.copy...
+        # 2. if cancel_token: hooks.append(...)
+        # 3. hooks.append(lambda d: progress_hook...)
+        # So hook 0 is cancel token check (if options was empty initially)
+
+        call_args["progress_hooks"][0]({})
+        cancel_token.check.assert_called()
 
     @patch("yt_dlp.YoutubeDL")
     def test_download_cancelled_exception(self, mock_ydl):

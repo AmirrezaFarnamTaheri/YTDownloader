@@ -50,13 +50,16 @@ class ConfigManager:
         if "use_aria2c" in config and not isinstance(config["use_aria2c"], bool):
             raise ValueError("use_aria2c must be a boolean")
 
-        if "gpu_accel" in config and config["gpu_accel"] not in (
-            "None",
-            "Auto",
-            "cuda",
-            "vulkan",
-        ):
-            raise ValueError(f"Invalid gpu_accel value: {config['gpu_accel']}")
+        if "gpu_accel" in config:
+             # Normalize valid values for check if needed or just check against list
+             # The UI might send lowercase, so we might want to be permissive here
+             # or normalize it before saving.
+             # However, for validation, let's accept strict case or allow case-insensitivity
+             # if we normalize later. But save_config calls validate first.
+             # Let's fix the validation to allow "auto" (lowercase) as well.
+             valid_accels = ("None", "Auto", "auto", "cuda", "vulkan")
+             if config["gpu_accel"] not in valid_accels:
+                 raise ValueError(f"Invalid gpu_accel value: {config['gpu_accel']}")
 
         if "theme_mode" in config and config["theme_mode"] not in (
             "Dark",

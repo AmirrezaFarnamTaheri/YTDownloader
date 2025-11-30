@@ -27,8 +27,16 @@ class YTDLPWrapper:
         Handles fallback to Generic Downloader if yt-dlp fails.
         """
 
-        # Ensure progress_hooks list exists once
+        # Create a shallow copy of options to avoid accumulating hooks in the original dict
+        # if it's reused by the caller.
+        options = options.copy()
+
+        # Ensure progress_hooks list exists
         hooks = options.setdefault("progress_hooks", [])
+        # Also copy the hooks list so we don't modify the original list object
+        # if it was shared.
+        options["progress_hooks"] = list(hooks)
+        hooks = options["progress_hooks"]
 
         # Add cancel token check to progress hooks (if provided)
         if cancel_token:
@@ -61,10 +69,20 @@ class YTDLPWrapper:
                 title_lower = title.lower()
                 ext_lower = ext.lower()
 
-                if not title_lower.endswith(f".{ext_lower}"):
-                    filename = f"{title}.{ext}"
+                # Sanitize title
+                from pathlib import Path
+                from downloader.core import _sanitize_filename
+
+                safe_title = Path(title).name
+                safe_title = _sanitize_filename(safe_title)
+
+                if safe_title != title:
+                    logger.warning(f"Sanitized title (Fallback) from '{title}' to '{safe_title}'")
+
+                if not safe_title.lower().endswith(f".{ext_lower}"):
+                    filename = f"{safe_title}.{ext}"
                 else:
-                    filename = title
+                    filename = safe_title
 
                 logger.info(f"Downloading Generic file (Fallback): {filename}")
                 download_generic(

@@ -31,6 +31,8 @@ def download_generic(
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
 
+    # Ensure filename is just a name, not a path
+    filename = os.path.basename(filename)
     final_path = os.path.join(output_path, filename)
     downloaded = 0
 

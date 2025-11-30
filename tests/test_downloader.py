@@ -415,9 +415,9 @@ class TestDownloadVideo(unittest.TestCase):
         ydl_opts = args[4]
         self.assertTrue(ydl_opts["playlist"])
 
-    @patch("downloader.core.Path.mkdir")
+    @patch("downloader.core.os.makedirs")
     @patch("downloader.core.YTDLPWrapper.download")
-    def test_download_video_creates_output_directory(self, mock_download, mock_mkdir):
+    def test_download_video_creates_output_directory(self, mock_download, mock_makedirs):
         """Test that output directory is created if it doesn't exist."""
         progress_hook = MagicMock()
         download_item = {}
@@ -438,7 +438,7 @@ class TestDownloadVideo(unittest.TestCase):
         )
 
         # mkdir should be called to create the output directory
-        mock_mkdir.assert_called()
+        mock_makedirs.assert_called()
 
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper.download")
