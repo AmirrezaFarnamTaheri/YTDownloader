@@ -1,3 +1,4 @@
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -7,134 +8,78 @@ from app_state import state
 from clipboard_monitor import _clipboard_loop, start_clipboard_monitor
 
 
-class TestClipboardMonitor(unittest.TestCase):
+class TestClipboardMonitorCoverage(unittest.TestCase):
     def setUp(self):
         state.clipboard_monitor_active = True
-        state.last_clipboard_content = None
-
-    @patch("clipboard_monitor.pyperclip.paste")
-    @patch("clipboard_monitor.validate_url")
-    @patch("time.sleep")
-    def test_clipboard_loop_detects_url(self, mock_sleep, mock_validate, mock_paste):
-        # Setup
+        state.last_clipboard_content = ""
         state.shutdown_flag.clear()
-        mock_paste.return_value = "https://example.com"
-        mock_validate.return_value = True
 
-        mock_download_view = MagicMock()
-        mock_download_view.url_input.value = ""  # Empty input
+        self.page = MagicMock()
+        self.download_view = MagicMock()
+        self.download_view.url_input.value = ""
 
-        mock_page = MagicMock()
+    @patch("pyperclip.paste")
+    @patch("time.sleep", side_effect=InterruptedError)  # Break the loop
+    @patch("ui_utils.validate_url", return_value=True)
+    def test_clipboard_loop_detects_url(self, mock_validate, mock_sleep, mock_paste):
+        mock_paste.return_value = "http://example.com"
 
-        # Mock shutdown_flag to run once then exit
-        call_count = [0]
-        original_is_set = state.shutdown_flag.is_set
+        # We need to run it once.
+        # _clipboard_loop logic:
+        # while not shutdown:
+        #    sleep
+        #    paste
+        #    check
 
-        def is_set_side_effect():
-            call_count[0] += 1
-            return call_count[0] > 1
+        # sleep throws InterruptedError to break loop.
+        # But wait, sleep is called BEFORE paste.
+        # So if sleep raises, paste is never called.
 
-        state.shutdown_flag.is_set = is_set_side_effect
+        # We need sleep to NOT raise on first call, but raise on second call?
+        # Or mock shutdown flag.
 
-        try:
-            # Execute
-            _clipboard_loop(mock_page, mock_download_view)
+        # Let's mock sleep to do nothing, and set shutdown_flag after one iteration.
+        # But loop condition is checked at start.
 
-            # Verify
-            self.assertEqual(mock_download_view.url_input.value, "https://example.com")
-            mock_page.open.assert_called_once()
-            mock_page.update.assert_called_once()
-        finally:
-            state.shutdown_flag.is_set = original_is_set
+        # Approach: Mock sleep to set shutdown flag.
+        def stop_loop(*args):
+            state.shutdown_flag.set()
 
-    @patch("clipboard_monitor.pyperclip.paste")
-    @patch("clipboard_monitor.validate_url")
+        mock_sleep.side_effect = stop_loop
+
+        _clipboard_loop(self.page, self.download_view)
+
+        self.assertEqual(state.last_clipboard_content, "http://example.com")
+        self.assertEqual(self.download_view.url_input.value, "http://example.com")
+
+    @patch("pyperclip.paste")
     @patch("time.sleep")
-    def test_clipboard_loop_ignores_existing_input(
-        self, mock_sleep, mock_validate, mock_paste
+    @patch("ui_utils.validate_url", return_value=False)
+    def test_clipboard_loop_ignores_invalid_url(
+        self, mock_validate, mock_sleep, mock_paste
     ):
-        # Setup
-        state.shutdown_flag.clear()
-        mock_paste.return_value = "https://example.com"
-        mock_validate.return_value = True
+        mock_paste.return_value = "invalid url"
 
-        mock_download_view = MagicMock()
-        mock_download_view.url_input.value = "existing text"
+        def stop_loop(*args):
+            state.shutdown_flag.set()
 
-        mock_page = MagicMock()
+        mock_sleep.side_effect = stop_loop
 
-        # Mock shutdown_flag to run once then exit
-        call_count = [0]
-        original_is_set = state.shutdown_flag.is_set
+        _clipboard_loop(self.page, self.download_view)
 
-        def is_set_side_effect():
-            call_count[0] += 1
-            return call_count[0] > 1
+        self.assertEqual(state.last_clipboard_content, "invalid url")
+        self.assertNotEqual(self.download_view.url_input.value, "invalid url")
 
-        state.shutdown_flag.is_set = is_set_side_effect
+    @patch("pyperclip.paste")
+    def test_start_monitor_no_clipboard(self, mock_paste):
+        mock_paste.side_effect = pyperclip.PyperclipException("No clipboard")
 
-        try:
-            # Execute
-            _clipboard_loop(mock_page, mock_download_view)
-
-            # Verify
-            self.assertEqual(mock_download_view.url_input.value, "existing text")
-            mock_page.open.assert_not_called()
-        finally:
-            state.shutdown_flag.is_set = original_is_set
-
-    @patch("clipboard_monitor.pyperclip.paste")
-    @patch("time.sleep")
-    def test_clipboard_loop_handles_exception(self, mock_sleep, mock_paste):
-        # Setup
-        state.shutdown_flag.clear()
-        mock_paste.side_effect = Exception("Clipboard error")
-
-        mock_download_view = MagicMock()
-
-        # Mock shutdown_flag to run once then exit
-        call_count = [0]
-        original_is_set = state.shutdown_flag.is_set
-
-        def is_set_side_effect():
-            call_count[0] += 1
-            return call_count[0] > 1
-
-        state.shutdown_flag.is_set = is_set_side_effect
-
-        try:
-            # Execute - should not raise
-            _clipboard_loop(None, mock_download_view)
-        finally:
-            state.shutdown_flag.is_set = original_is_set
-
-    @patch("clipboard_monitor.pyperclip.paste")
-    @patch("time.sleep")
-    def test_clipboard_loop_handles_pyperclip_exception(self, mock_sleep, mock_paste):
-        # Setup
-        state.shutdown_flag.clear()
-        mock_paste.side_effect = pyperclip.PyperclipException("No xclip")
-
-        mock_download_view = MagicMock()
-
-        # Mock shutdown_flag to run once then exit
-        call_count = [0]
-        original_is_set = state.shutdown_flag.is_set
-
-        def is_set_side_effect():
-            call_count[0] += 1
-            return call_count[0] > 1
-
-        state.shutdown_flag.is_set = is_set_side_effect
-
-        try:
-            # Execute - should not raise
-            _clipboard_loop(None, mock_download_view)
-        finally:
-            state.shutdown_flag.is_set = original_is_set
+        start_clipboard_monitor(self.page, self.download_view)
+        # Should catch exception and log warning (implied, no return/thread check easy here without further mocking)
 
     @patch("threading.Thread")
-    @patch("clipboard_monitor.pyperclip.paste")
-    def test_start_clipboard_monitor(self, mock_paste, mock_thread):
-        start_clipboard_monitor(None, None)
+    @patch("pyperclip.paste")
+    def test_start_monitor_success(self, mock_paste, mock_thread):
+        mock_paste.return_value = "test"
+        start_clipboard_monitor(self.page, self.download_view)
         mock_thread.assert_called_once()

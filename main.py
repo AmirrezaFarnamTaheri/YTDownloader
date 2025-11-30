@@ -74,7 +74,7 @@ logger = logging.getLogger(__name__)
 download_view = None
 queue_view = None
 page = None
-active_threads = []  # Track all created threads
+active_threads: list[str] = []  # Track all created threads
 
 
 @contextmanager
@@ -434,7 +434,7 @@ def main(pg: ft.Page):
     bg_thread = threading.Thread(
         target=background_loop, daemon=True, name="BackgroundLoop"
     )
-    active_threads.append(bg_thread)
+    active_threads.append(bg_thread.name)
     bg_thread.start()
 
 

@@ -11,7 +11,9 @@
 # =============================================================================
 # Desktop Build Tools (NOT compatible with mobile builds)
 # =============================================================================
-pyinstaller>=6.0.0              # Create standalone desktop executables
+nuitka>=2.0.0                   # Create standalone native executables
+ordered-set                     # Recommended for Nuitka performance
+zstandard                       # Recommended for Nuitka compression
 
 # =============================================================================
 # Testing

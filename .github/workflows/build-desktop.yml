@@ -77,11 +77,11 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgtk-3-dev fakeroot
+        sudo apt-get install -y libgtk-3-dev fakeroot patchelf
 
-    - name: Build with PyInstaller
+    - name: Build with Nuitka
       run: |
-        pyinstaller streamcatch.spec
+        python scripts/build_installer.py
 
     - name: Verify build output
       shell: bash

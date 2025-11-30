@@ -10,7 +10,6 @@ from views.components.preview_card import DownloadPreviewCard
 
 from .base_view import BaseView
 
-
 logger = logging.getLogger(__name__)
 
 

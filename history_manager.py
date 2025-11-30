@@ -310,9 +310,7 @@ class HistoryManager:
                 for row in rows:
                     entries.append(dict(row))
             elapsed = time.time() - start_time
-            logger.debug(
-                f"Retrieved {len(entries)} history entries in {elapsed:.4f}s"
-            )
+            logger.debug(f"Retrieved {len(entries)} history entries in {elapsed:.4f}s")
         except Exception as e:
             logger.error(f"Failed to retrieve history: {e}")
         return entries
