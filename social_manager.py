@@ -1,6 +1,10 @@
+"""
+Social interactions manager (e.g. Discord Rich Presence).
+"""
+
 import logging
 import threading
-from typing import Any, Dict, Optional
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +32,8 @@ class SocialManager:
             logger.info("Connected to Discord Rich Presence")
         except ImportError:
             logger.debug("pypresence not installed, social features disabled")
-        except Exception as e:
-            logger.debug(f"Failed to connect to Discord RPC: {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.debug("Failed to connect to Discord RPC: %s", e)
             self.connected = False
 
     def update_activity(
@@ -51,8 +55,8 @@ class SocialManager:
                     large_image=large_image or "logo",
                     small_image=small_image,
                 )
-            except Exception as e:
-                logger.debug(f"Failed to update activity: {e}")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.debug("Failed to update activity: %s", e)
                 self.connected = False
 
     def close(self):
@@ -60,7 +64,7 @@ class SocialManager:
         if self.rpc:
             try:
                 self.rpc.close()
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 pass
             self.connected = False
             logger.info("Social manager closed")

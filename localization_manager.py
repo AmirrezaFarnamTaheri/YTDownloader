@@ -1,63 +1,68 @@
+"""
+Localization Manager for handling multi-language support.
+"""
 import json
 import logging
-import threading
+import os
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class LocalizationManager:
-    """Manages localization strings."""
+    """
+    Manages loading and retrieving localized strings.
+    Static implementation as required by tests.
+    """
 
     _strings: Dict[str, str] = {}
     _current_lang: str = "en"
-    _lock = threading.RLock()
+    _locale_dir: str = "locales"
 
     @classmethod
-    def load_language(cls, lang_code: str) -> None:
+    def load_language(cls, lang_code: str):
         """Load a language file."""
-        try:
-            logger.debug(f"Loading language: {lang_code}")
-            path = Path(__file__).parent / "locales" / f"{lang_code}.json"
-            if path.exists():
-                with cls._lock:
-                    with open(path, "r", encoding="utf-8") as f:
-                        cls._strings = json.load(f)
-                        cls._current_lang = lang_code
-                logger.info(
-                    f"Loaded language '{lang_code}' with {len(cls._strings)} strings"
-                )
-            else:
-                logger.warning(
-                    f"Language file {path} not found. Falling back to English."
-                )
-                if lang_code != "en":
-                    cls.load_language("en")
+        cls._current_lang = lang_code
+        cls._strings = {}
 
-        except Exception as e:
-            logger.error(f"Error loading language {lang_code}: {e}", exc_info=True)
+        # Try to load requested language
+        file_path = Path(cls._locale_dir) / f"{lang_code}.json"
+        if not file_path.exists():
+            logger.warning("Locale file not found: %s", file_path)
+            # Fallback to English if different
+            if lang_code != "en":
+                logger.info("Falling back to English")
+                cls.load_language("en")
+            return
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                cls._strings = json.load(f)
+            logger.debug("Loaded locale: %s", lang_code)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to load locale %s: %s", lang_code, e)
 
     @classmethod
     def get(cls, key: str, *args) -> str:
-        """Get a localized string."""
-        with cls._lock:
-            val = cls._strings.get(key, key)
+        """
+        Get a localized string.
+        Supports string formatting if args are provided.
+        """
+        val = cls._strings.get(key, key)
         if args:
             try:
                 return val.format(*args)
-            except IndexError:
-                logger.warning(f"Formatting error for key '{key}' with args {args}")
+            except Exception:  # pylint: disable=broad-exception-caught
                 return val
         return val
 
     @classmethod
-    def get_available_languages(cls) -> list:
+    def get_available_languages(cls) -> List[str]:
         """Get list of available language codes."""
-        locales_dir = Path(__file__).parent / "locales"
-        if locales_dir.exists():
-            langs = [f.stem for f in locales_dir.glob("*.json")]
-            logger.debug(f"Available languages: {langs}")
-            return langs
-        logger.warning("Locales directory not found.")
-        return ["en"]
+        path = Path(cls._locale_dir)
+        if not path.exists():
+            return ["en"]
+
+        langs = [f.stem for f in path.glob("*.json")]
+        return sorted(langs) if langs else ["en"]
