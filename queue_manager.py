@@ -46,7 +46,9 @@ class QueueManager:
         with self._lock:
             if 0 <= index < len(self._queue):
                 return self._queue[index]
-        logger.warning(f"QueueManager: Index {index} out of bounds (Size: {len(self._queue)})")
+        logger.warning(
+            f"QueueManager: Index {index} out of bounds (Size: {len(self._queue)})"
+        )
         return None
 
     def add_listener(self, listener: Callable[[], None]):
@@ -54,14 +56,18 @@ class QueueManager:
         with self._lock:
             if listener not in self._listeners:
                 self._listeners.append(listener)
-                logger.debug(f"Queue listener added. Total listeners: {len(self._listeners)}")
+                logger.debug(
+                    f"Queue listener added. Total listeners: {len(self._listeners)}"
+                )
 
     def remove_listener(self, listener: Callable[[], None]):
         """Remove a listener callback."""
         with self._lock:
             if listener in self._listeners:
                 self._listeners.remove(listener)
-                logger.debug(f"Queue listener removed. Total listeners: {len(self._listeners)}")
+                logger.debug(
+                    f"Queue listener removed. Total listeners: {len(self._listeners)}"
+                )
 
     def _notify_listeners_safe(self):
         """
@@ -85,7 +91,9 @@ class QueueManager:
             try:
                 listener()
             except Exception as e:
-                logger.error(f"Error in queue listener (non-critical): {e}", exc_info=True)
+                logger.error(
+                    f"Error in queue listener (non-critical): {e}", exc_info=True
+                )
                 # Don't propagate listener errors
 
     def add_item(self, item: Dict[str, Any]):

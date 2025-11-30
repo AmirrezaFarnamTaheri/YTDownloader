@@ -1,17 +1,18 @@
+import logging
 import threading
 import time
 import unittest
-import logging
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import tasks
 import main  # Import main to access potential background threads logic if needed
+import tasks
 from app_state import state
 from queue_manager import QueueManager
 from tasks import download_task, process_queue
 
 logger = logging.getLogger(__name__)
+
 
 class TestPipelineIntegration(unittest.TestCase):
     def setUp(self):

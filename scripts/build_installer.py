@@ -38,9 +38,11 @@ def build_installer():
     except AttributeError:
         # Fallback for some versions or if structure differs
         try:
-             subprocess.run([sys.executable, "-m", "nuitka", "--version"], check=True)
+            subprocess.run([sys.executable, "-m", "nuitka", "--version"], check=True)
         except Exception:
-             print("WARNING: Could not determine Nuitka version via module, but import succeeded.")
+            print(
+                "WARNING: Could not determine Nuitka version via module, but import succeeded."
+            )
 
     print("\nStep 2: Building with Nuitka...")
 
@@ -53,7 +55,9 @@ def build_installer():
         "--onefile",
         # Enable LTO if stable, otherwise disable for speed/memory
         # "--lto=no",
-        "--enable-plugin=pyside6" if os.name != "nt" else "",  # Linux might need hints if using Qt (we use Flet/GTK though)
+        (
+            "--enable-plugin=pyside6" if os.name != "nt" else ""
+        ),  # Linux might need hints if using Qt (we use Flet/GTK though)
         # Flet often needs explicit data for assets
         f"--include-data-dir={root / 'assets'}=assets",
         f"--include-data-dir={root / 'locales'}=locales",
@@ -63,23 +67,27 @@ def build_installer():
 
     # Windows specific flags
     if os.name == "nt":
-        cmd.extend([
-            "--windows-console-mode=disable",
-            "--windows-icon-from-ico=assets/icon.ico",
-            "--company-name=StreamCatch",
-            "--product-name=StreamCatch",
-            "--file-version=2.0.0.0",
-            "--product-version=2.0.0.0",
-            "--copyright=Copyright © 2024 Jules",
-        ])
+        cmd.extend(
+            [
+                "--windows-console-mode=disable",
+                "--windows-icon-from-ico=assets/icon.ico",
+                "--company-name=StreamCatch",
+                "--product-name=StreamCatch",
+                "--file-version=2.0.0.0",
+                "--product-version=2.0.0.0",
+                "--copyright=Copyright © 2024 Jules",
+            ]
+        )
     elif sys.platform == "darwin":
         # MacOS specific flags
-        cmd.extend([
-            "--macos-create-app-bundle",
-            "--macos-app-icon=assets/icon.icns", # Assuming icon exists
-            "--macos-app-name=StreamCatch",
-            "--macos-app-version=2.0.0",
-        ])
+        cmd.extend(
+            [
+                "--macos-create-app-bundle",
+                "--macos-app-icon=assets/icon.icns",  # Assuming icon exists
+                "--macos-app-name=StreamCatch",
+                "--macos-app-version=2.0.0",
+            ]
+        )
 
     # Linux/Mac specific flags (if any needed for Nuitka)
     if sys.platform.startswith("linux"):

@@ -205,7 +205,11 @@ def main(pg: ft.Page):
         video_info = state.get_video_info(data["url"])
         if video_info:
             title = video_info.get("title", data["url"])
-        elif state.video_info and download_view and data["url"] == download_view.url_input.value:
+        elif (
+            state.video_info
+            and download_view
+            and data["url"] == download_view.url_input.value
+        ):
             title = state.video_info.get("title", data["url"])
 
         logger.debug(f"Resolved title for queue item: {title}")
@@ -286,7 +290,9 @@ def main(pg: ft.Page):
             # Limit batch import size
             max_batch = 100
             if len(urls) > max_batch:
-                logger.warning(f"Batch file too large ({len(urls)}), limiting to {max_batch}")
+                logger.warning(
+                    f"Batch file too large ({len(urls)}), limiting to {max_batch}"
+                )
                 page.open(
                     ft.SnackBar(
                         content=ft.Text(
@@ -458,7 +464,7 @@ def main(pg: ft.Page):
         logger.info("Cleanup complete")
 
     page.on_disconnect = cleanup_on_disconnect
-    page.on_close = cleanup_on_disconnect # Also handle close event explicitly
+    page.on_close = cleanup_on_disconnect  # Also handle close event explicitly
 
     bg_thread = threading.Thread(
         target=background_loop, daemon=True, name="BackgroundLoop"

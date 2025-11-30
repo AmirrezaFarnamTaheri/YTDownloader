@@ -74,10 +74,11 @@ class YTDLPWrapper:
                 ext_lower = ext.lower()
 
                 # Sanitize title
+                import re
                 from pathlib import Path
 
-                import re
-                def _sanitize_filename(s: str) -> str: return re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", s)
+                def _sanitize_filename(s: str) -> str:
+                    return re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", s)
 
                 safe_title = Path(title).name
                 safe_title = _sanitize_filename(str(safe_title))

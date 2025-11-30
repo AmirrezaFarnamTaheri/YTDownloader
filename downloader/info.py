@@ -73,7 +73,7 @@ def get_video_info(
         # Wrap extraction in timeout
         with extraction_timeout(45):
             # Explicitly cast to Any or suppress error because YoutubeDL expects _Params but we pass Dict
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl: # type: ignore
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
                 info_dict = ydl.extract_info(url, download=False)
 
             # Check if yt-dlp fell back to generic and didn't find much
@@ -82,7 +82,9 @@ def get_video_info(
 
             # If generic extractor and no video/audio formats found, it might be a file link
             if extractor == "Generic" and not formats:
-                logger.debug("yt-dlp returned Generic extractor with no formats. Trying GenericExtractor fallback.")
+                logger.debug(
+                    "yt-dlp returned Generic extractor with no formats. Trying GenericExtractor fallback."
+                )
                 generic_info = GenericExtractor.extract(url)
                 if generic_info:
                     return generic_info
