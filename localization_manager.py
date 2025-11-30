@@ -18,12 +18,14 @@ class LocalizationManager:
     def load_language(cls, lang_code: str) -> None:
         """Load a language file."""
         try:
+            logger.debug(f"Loading language: {lang_code}")
             path = Path(__file__).parent / "locales" / f"{lang_code}.json"
             if path.exists():
                 with cls._lock:
                     with open(path, "r", encoding="utf-8") as f:
                         cls._strings = json.load(f)
                         cls._current_lang = lang_code
+                logger.info(f"Loaded language '{lang_code}' with {len(cls._strings)} strings")
             else:
                 logger.warning(
                     f"Language file {path} not found. Falling back to English."

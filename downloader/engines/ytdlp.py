@@ -47,6 +47,7 @@ class YTDLPWrapper:
 
         try:
             logger.info(f"Starting yt-dlp download: {url}")
+            logger.debug(f"yt-dlp options: {options}")
             with yt_dlp.YoutubeDL(options) as ydl:
                 ydl.download([url])
             logger.info(f"yt-dlp download completed: {url}")

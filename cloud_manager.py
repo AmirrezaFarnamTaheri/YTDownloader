@@ -54,7 +54,11 @@ class CloudManager:
             Exception: If upload fails or credentials missing.
         """
         if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
+            error_msg = f"File not found for upload: {file_path}"
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
+
+        logger.info(f"Initiating upload for {file_path} to {provider}")
 
         if provider == "google_drive":
             self._upload_to_google_drive(file_path)
@@ -79,6 +83,7 @@ class CloudManager:
             from pydrive2.drive import GoogleDrive
 
             # Automatic authentication (requires user interaction on first run or saved creds)
+            logger.debug("Authenticating with Google Drive...")
             gauth = GoogleAuth()
 
             # Try to load saved credentials
@@ -95,8 +100,10 @@ class CloudManager:
                     raise Exception(
                         "Cannot authenticate in headless mode without saved creds."
                     )
+                logger.info("Opening local webserver for Google authentication...")
                 gauth.LocalWebserverAuth()
             elif gauth.access_token_expired:
+                logger.info("Refreshing Google Drive access token...")
                 gauth.Refresh()
             else:
                 gauth.Authorize()
@@ -106,6 +113,7 @@ class CloudManager:
             drive = GoogleDrive(gauth)
 
             file_name = os.path.basename(file_path)
+            logger.debug(f"Uploading file content: {file_name}")
             file_drive = drive.CreateFile({"title": file_name})
             file_drive.SetContentFile(file_path)
             file_drive.Upload()

@@ -116,6 +116,8 @@ def download_video(
         "is_telegram"
     ) or TelegramExtractor.is_telegram_url(url)
 
+    logger.debug(f"Starting download process for {url} (is_telegram={is_telegram}, force_generic={force_generic})")
+
     if force_generic:
         logger.info("Force Generic Mode enabled. Bypassing yt-dlp extraction.")
         info = GenericExtractor.extract(url)
@@ -151,6 +153,7 @@ def download_video(
 
     # Telegram Handling (only when not forcing generic)
     if is_telegram and not force_generic:
+        logger.debug(f"Telegram URL detected, attempting extraction: {url}")
         info = TelegramExtractor.extract(url)
         if info and info.get("video_streams"):
             direct_url = info["video_streams"][0]["url"]
@@ -173,9 +176,12 @@ def download_video(
             )
             return
 
-        raise Exception("Could not extract Telegram media")
+        error_msg = "Could not extract Telegram media"
+        logger.error(error_msg)
+        raise Exception(error_msg)
 
     # Build yt-dlp Options
+    logger.debug(f"Building yt-dlp options for: {url}")
     if output_template:
         tmpl = _sanitize_template(output_template)
         outtmpl = os.path.join(output_path, tmpl)
@@ -346,6 +352,7 @@ def download_video(
         )
 
     # Execute Download
+    logger.info(f"Delegating download to YTDLPWrapper for {url}")
     YTDLPWrapper.download(
         url, output_path, progress_hook, download_item, ydl_opts, cancel_token
     )

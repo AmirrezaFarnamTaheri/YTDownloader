@@ -21,6 +21,7 @@ class RSSManager:
         - video_id
         """
         try:
+            logger.debug(f"Fetching RSS feed: {url}")
             response = requests.get(url, timeout=10)
             response.raise_for_status()
 
@@ -40,9 +41,16 @@ class RSSManager:
 
                 videos.append(video)
 
+            logger.info(f"Successfully parsed {len(videos)} videos from feed: {url}")
             return videos
+        except requests.RequestException as e:
+            logger.error(f"Network error fetching RSS feed {url}: {e}")
+            return []
+        except ET.ParseError as e:
+            logger.error(f"XML parsing error for feed {url}: {e}")
+            return []
         except Exception as e:
-            logger.error(f"Error parsing RSS feed {url}: {e}")
+            logger.error(f"Unexpected error parsing RSS feed {url}: {e}", exc_info=True)
             return []
 
     @staticmethod

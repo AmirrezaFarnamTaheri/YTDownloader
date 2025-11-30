@@ -176,6 +176,10 @@ def is_ffmpeg_available() -> bool:
         logger.warning("FFmpeg check timed out")
         return False
 
+    if result[0]:
+        logger.info("FFmpeg is available.")
+    else:
+        logger.warning("FFmpeg not found. Video processing capabilities will be limited.")
     return result[0] or False
 
 
@@ -197,6 +201,7 @@ def open_folder(path: str):
             logger.warning(f"Path does not exist: {path}")
             return False
 
+        logger.debug(f"Opening folder: {path}")
         if platform.system() == "Windows":
             os.startfile(path)
         elif platform.system() == "Darwin":
