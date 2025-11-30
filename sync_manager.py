@@ -23,6 +23,8 @@ class SyncManager:
         if output_path is None:
             output_path = str(Path.home() / SyncManager.EXPORT_FILE)
 
+        logger.info(f"Starting data export to: {output_path}")
+
         data = {
             "timestamp": datetime.now().isoformat(),
             "config": ConfigManager.load_config(),
@@ -69,8 +71,12 @@ class SyncManager:
         if input_path is None:
             input_path = str(Path.home() / SyncManager.EXPORT_FILE)
 
+        logger.info(f"Starting data import from: {input_path}")
+
         if not os.path.exists(input_path):
-            raise FileNotFoundError(f"Import file not found: {input_path}")
+            error_msg = f"Import file not found: {input_path}"
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
 
         try:
             # Ensure DB is initialized before importing
@@ -81,10 +87,12 @@ class SyncManager:
 
             # Import Config
             if "config" in data:
+                logger.debug(f"Importing configuration with {len(data['config'])} keys")
                 ConfigManager.save_config(data["config"])
 
             # Import History
             if "history" in data:
+                count = 0
                 for item in data["history"]:
                     HistoryManager.add_entry(
                         url=item.get("url", ""),
@@ -95,8 +103,10 @@ class SyncManager:
                         file_size=item.get("file_size", "N/A"),
                         file_path=item.get("file_path"),
                     )
+                    count += 1
+                logger.info(f"Imported {count} history entries")
 
-            logger.info(f"Data imported from {input_path}")
+            logger.info(f"Data imported successfully from {input_path}")
 
         except Exception as e:
             logger.error(f"Import failed: {e}")

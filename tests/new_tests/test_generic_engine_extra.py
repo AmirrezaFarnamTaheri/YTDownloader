@@ -21,22 +21,16 @@ class TestGenericEngineExtra(unittest.TestCase):
         progress_hook = MagicMock()
 
         # Mock time to ensure we hit the 0.1s update threshold
-        with patch(
-            "time.time",
-            side_effect=[
-                0.0,  # start_time
-                0.2,  # first chunk
-                0.4,
-                0.6,
-                0.8,
-                1.0,
-                1.2,
-                1.4,
-                1.6,
-                1.8,
-                2.0,  # subsequent
-            ],
-        ):
+        # Use a mutable list to track time and increment on each call to avoid StopIteration
+        # caused by extra logging calls that access time.time()
+        current_time = [0.0]
+
+        def increment_time():
+            t = current_time[0]
+            current_time[0] += 0.2
+            return t
+
+        with patch("time.time", side_effect=increment_time):
             with patch("builtins.open", new_callable=MagicMock):
                 download_generic("http://url", "/tmp", "file.mp4", progress_hook, {})
 

@@ -13,6 +13,7 @@ def start_clipboard_monitor(page, download_view):
     # Test clipboard access first
     try:
         pyperclip.paste()
+        logger.info("Clipboard monitoring initialized.")
     except pyperclip.PyperclipException as e:
         logger.warning(f"Clipboard access not available: {e}")
         logger.warning("Clipboard monitor will be disabled")
@@ -47,6 +48,7 @@ def _clipboard_loop(page, download_view):
                     if validate_url(content) and download_view:
                         # Only auto-paste if field is empty
                         if not download_view.url_input.value:
+                            logger.info(f"Clipboard URL detected: {content}")
                             download_view.url_input.value = content
                             if page:
                                 import flet as ft

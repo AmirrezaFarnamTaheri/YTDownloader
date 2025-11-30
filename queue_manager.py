@@ -92,9 +92,11 @@ class QueueManager:
 
         with self._lock:
             if len(self._queue) >= self.MAX_QUEUE_SIZE:
-                raise ValueError(
-                    f"Queue is full (max {self.MAX_QUEUE_SIZE} items). Please clear some items first."
-                )
+                error_msg = f"Queue is full (max {self.MAX_QUEUE_SIZE} items). Please clear some items first."
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+
+            logger.info(f"Adding item to queue: {item.get('url')} (Title: {item.get('title')})")
             self._queue.append(item)
         self._notify_listeners_safe()
 
@@ -103,6 +105,7 @@ class QueueManager:
         changed = False
         with self._lock:
             if item in self._queue:
+                logger.info(f"Removing item from queue: {item.get('url')} (Status: {item.get('status')})")
                 self._queue.remove(item)
                 changed = True
         if changed:
@@ -113,6 +116,7 @@ class QueueManager:
         changed = False
         with self._lock:
             if 0 <= index1 < len(self._queue) and 0 <= index2 < len(self._queue):
+                logger.debug(f"Swapping queue items at indices {index1} and {index2}")
                 self._queue[index1], self._queue[index2] = (
                     self._queue[index2],
                     self._queue[index1],
@@ -145,6 +149,7 @@ class QueueManager:
                     "Scheduled"
                 ):
                     if now >= item["scheduled_time"]:
+                        logger.info(f"Scheduled time reached for item: {item.get('title')}")
                         item["status"] = "Queued"
                         item["scheduled_time"] = None
                         updated += 1
@@ -179,6 +184,7 @@ class QueueManager:
             # Now find next queued item
             for item in self._queue:
                 if item["status"] == "Queued":
+                    logger.debug(f"Claiming next downloadable item: {item.get('title')}")
                     item["status"] = "Allocating"  # Temporary status
                     item["_allocated_at"] = now
                     return item

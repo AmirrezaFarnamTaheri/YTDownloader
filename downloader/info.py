@@ -44,7 +44,9 @@ def get_video_info(
         logger.info("Detected Telegram URL. Attempting to scrape...")
         info = TelegramExtractor.extract(url)
         if info:
+            logger.info("Successfully extracted Telegram info.")
             return info
+        logger.warning("Telegram extraction failed, falling back to yt-dlp.")
         # If scraping fails, fall through to see if yt-dlp can handle it
 
     try:
@@ -56,6 +58,7 @@ def get_video_info(
         }
 
         if cookies_from_browser:
+            logger.debug(f"Using browser cookies from: {cookies_from_browser}")
             ydl_opts["cookies_from_browser"] = (
                 cookies_from_browser,
                 cookies_from_browser_profile if cookies_from_browser_profile else None,

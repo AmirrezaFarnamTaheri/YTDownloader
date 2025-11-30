@@ -30,6 +30,7 @@ class SocialManager:
             )
             return
         try:
+            logger.debug(f"Attempting to connect to Discord RPC with ID: {self.client_id}")
             from pypresence import Presence
 
             self.rpc = Presence(self.client_id)
@@ -55,6 +56,7 @@ class SocialManager:
                 return
 
         try:
+            logger.debug(f"Updating Discord RPC - State: {state}, Details: {details}")
             self.rpc.update(
                 state=state,
                 details=details,

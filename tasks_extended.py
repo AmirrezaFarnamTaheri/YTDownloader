@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 def fetch_info_task(url, download_view, page):
     """Fetch video info in background with cookie support."""
+    logger.info(f"Starting metadata fetch for: {url}")
     try:
         # Get selected browser cookies if available
         cookies_from_browser = None
@@ -16,11 +17,14 @@ def fetch_info_task(url, download_view, page):
 
             if cookies_value and cookies_value != "None":
                 cookies_from_browser = cookies_value
+                logger.debug(f"Using browser cookies: {cookies_from_browser}")
 
         info = get_video_info(url, cookies_from_browser=cookies_from_browser)
         if not info:
             raise Exception("Failed to fetch info")
         state.video_info = info
+        logger.info(f"Metadata fetched successfully for: {info.get('title', 'Unknown Title')}")
+
         if download_view:
             download_view.update_info(info)
 

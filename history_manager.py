@@ -279,6 +279,7 @@ class HistoryManager:
         """Retrieve history entries."""
         entries = []
         try:
+            logger.debug(f"Fetching history (limit={limit})")
             with HistoryManager._get_connection() as conn:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
@@ -288,6 +289,7 @@ class HistoryManager:
                 rows = cursor.fetchall()
                 for row in rows:
                     entries.append(dict(row))
+            logger.debug(f"Retrieved {len(entries)} history entries")
         except Exception as e:
             logger.error(f"Failed to retrieve history: {e}")
         return entries
@@ -336,6 +338,7 @@ class HistoryManager:
     def clear_history():
         """Clear all history."""
         try:
+            logger.info("Clearing download history...")
             with HistoryManager._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM history")
@@ -350,6 +353,6 @@ class HistoryManager:
             with sqlite3.connect(db_file, isolation_level=None) as vac_conn:
                 vac_conn.execute("VACUUM")
 
-            logger.info("History cleared.")
+            logger.info("History cleared successfully.")
         except Exception as e:
             logger.error(f"Failed to clear history: {e}")

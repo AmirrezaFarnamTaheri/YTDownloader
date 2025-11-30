@@ -47,6 +47,7 @@ def download_generic(
 
     while retry_count <= max_retries:
         try:
+            logger.debug(f"Attempting download (try {retry_count + 1}) for {url}")
             # Start stream with timeout suitable for large files
             with requests.get(
                 url, stream=True, headers=headers, timeout=REQUEST_TIMEOUT
