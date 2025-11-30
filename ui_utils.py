@@ -1,6 +1,12 @@
+"""
+Utilities for UI components and platform interaction.
+"""
+
 import logging
 import os
 import platform
+import re
+import shutil
 import subprocess
 import threading
 from typing import Optional
@@ -61,8 +67,6 @@ def validate_url(url: str) -> bool:
         return False
 
     # Basic URL structure validation
-    import re
-
     # Pattern: scheme://domain.tld/path (simplified)
     pattern = r"^https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+$"
     return bool(re.match(pattern, url))
@@ -86,7 +90,7 @@ def validate_proxy(proxy: str) -> bool:
 
     # Split scheme and rest
     try:
-        scheme, rest = proxy.split("://", 1)
+        _, rest = proxy.split("://", 1)
         if not rest:
             return False
 
@@ -97,7 +101,7 @@ def validate_proxy(proxy: str) -> bool:
         # Basic validation of host:port
         # Handle user:pass@host:port case
         if "@" in rest:
-            auth, hostport = rest.rsplit("@", 1)
+            _, hostport = rest.rsplit("@", 1)
         else:
             hostport = rest
 
@@ -137,8 +141,6 @@ def validate_rate_limit(rate_limit: str) -> bool:
     if not rate_limit:
         return True
 
-    import re
-
     # Pattern: number with optional decimal, optional SINGLE unit, optional "/s"
     pattern = r"^\d+(\.\d+)?[KMGT]?(?:/s)?$"
     if not re.match(pattern, rate_limit, re.IGNORECASE):
@@ -157,15 +159,13 @@ def validate_rate_limit(rate_limit: str) -> bool:
 
 def is_ffmpeg_available() -> bool:
     """Check if ffmpeg is available in the system path with timeout."""
-    import shutil
-
     result = [None]
 
     def check():
         try:
             result[0] = shutil.which("ffmpeg") is not None
-        except Exception as e:
-            logger.warning(f"FFmpeg check failed: {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.warning("FFmpeg check failed: %s", e)
             result[0] = False
 
     thread = threading.Thread(target=check, daemon=True)
@@ -200,19 +200,21 @@ def open_folder(path: str):
     try:
         path = os.path.expanduser(path)
         if not os.path.exists(path):
-            logger.warning(f"Path does not exist: {path}")
+            logger.warning("Path does not exist: %s", path)
             return False
 
-        logger.debug(f"Opening folder: {path}")
+        logger.debug("Opening folder: %s", path)
         if platform.system() == "Windows":
-            os.startfile(path)  # type: ignore
+            os.startfile(path)  # type: ignore # pylint: disable=no-member
         elif platform.system() == "Darwin":
+            # pylint: disable=consider-using-with
             subprocess.Popen(["open", path])
         else:
+            # pylint: disable=consider-using-with
             subprocess.Popen(["xdg-open", path])
 
         return True
 
-    except Exception as ex:
-        logger.error(f"Failed to open folder {path}: {ex}")
+    except Exception as ex:  # pylint: disable=broad-exception-caught
+        logger.error("Failed to open folder %s: %s", path, ex)
         return False  # Don't raise in UI context

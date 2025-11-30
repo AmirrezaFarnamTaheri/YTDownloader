@@ -1,5 +1,11 @@
+"""
+Extended background tasks, specifically for fetching metadata.
+"""
+
 import logging
-import threading
+from typing import Optional
+
+import flet as ft
 
 from app_state import state
 from downloader.info import get_video_info
@@ -7,9 +13,9 @@ from downloader.info import get_video_info
 logger = logging.getLogger(__name__)
 
 
-def fetch_info_task(url, download_view, page):
+def fetch_info_task(url: str, download_view, page: Optional[ft.Page]):
     """Fetch video info in background with cookie support."""
-    logger.info(f"Starting metadata fetch for: {url}")
+    logger.info("Starting metadata fetch for: %s", url)
     try:
         # Get selected browser cookies if available
         cookies_from_browser = None
@@ -18,17 +24,18 @@ def fetch_info_task(url, download_view, page):
 
             if cookies_value and cookies_value != "None":
                 cookies_from_browser = cookies_value
-                logger.debug(f"Using browser cookies: {cookies_from_browser}")
+                logger.debug("Using browser cookies: %s", cookies_from_browser)
 
         info = get_video_info(url, cookies_from_browser=cookies_from_browser)
         if not info:
-            logger.error(f"get_video_info returned None for {url}")
-            raise Exception("Failed to fetch info")
+            logger.error("get_video_info returned None for %s", url)
+            raise RuntimeError("Failed to fetch info")
         state.video_info = info
         logger.info(
-            f"Metadata fetched successfully for: {info.get('title', 'Unknown Title')}"
+            "Metadata fetched successfully for: %s",
+            info.get("title", "Unknown Title"),
         )
-        logger.debug(f"Metadata keys: {list(info.keys())}")
+        logger.debug("Metadata keys: %s", list(info.keys()))
 
         if download_view:
             logger.debug("Updating DownloadView with new info")
@@ -37,14 +44,10 @@ def fetch_info_task(url, download_view, page):
         # We need to be careful updating UI from background thread
         # Flet is usually thread-safe for page.update() but it's good practice to verify
         if page:
-            import flet as ft
-
             page.open(ft.SnackBar(content=ft.Text("Metadata fetched successfully")))
-    except Exception as e:
-        logger.error(f"Fetch error: {e}")
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.error("Fetch error: %s", e)
         if page:
-            import flet as ft
-
             page.open(ft.SnackBar(content=ft.Text(f"Error: {e}")))
     finally:
         if download_view:

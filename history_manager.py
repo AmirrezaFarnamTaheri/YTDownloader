@@ -1,3 +1,7 @@
+"""
+History manager for persistent storage of download history.
+"""
+
 import logging
 import os
 import sqlite3
@@ -66,12 +70,12 @@ class HistoryManager:
             raise sqlite3.OperationalError(f"Database file not writable: {db_file}")
 
         conn = sqlite3.connect(db_file, timeout=timeout)
-        logger.debug(f"Opened DB connection to {db_file} (Timeout: {timeout}s)")
+        logger.debug("Opened DB connection to %s (Timeout: %ss)", db_file, timeout)
         # Enable WAL mode for better concurrency
         try:
             conn.execute("PRAGMA journal_mode=WAL")
-        except Exception as e:
-            logger.warning(f"Failed to enable WAL mode: {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.warning("Failed to enable WAL mode: %s", e)
         return HistoryManager._ConnectionWrapper(conn)
 
     @staticmethod
@@ -124,7 +128,7 @@ class HistoryManager:
 
         for pattern in dangerous_patterns:
             if pattern.lower() in url.lower():
-                logger.warning(f"Potentially dangerous pattern in URL: {pattern}")
+                logger.warning("Potentially dangerous pattern in URL: %s", pattern)
                 # Don't block - yt-dlp might need these in query strings
                 break
             if title and pattern.lower() in title.lower():
@@ -145,7 +149,7 @@ class HistoryManager:
         last_error = None
 
         logger.info(
-            f"Initializing history database at {HistoryManager._resolve_db_file()}"
+            "Initializing history database at %s", HistoryManager._resolve_db_file()
         )
 
         while retry_count < HistoryManager.MAX_DB_RETRIES:
@@ -195,26 +199,31 @@ class HistoryManager:
                     retry_count += 1
                     if retry_count < HistoryManager.MAX_DB_RETRIES:
                         logger.warning(
-                            f"Database locked during init, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})..."
+                            "Database locked during init, retrying (%d/%d)...",
+                            retry_count,
+                            HistoryManager.MAX_DB_RETRIES,
                         )
                         time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
                     else:
                         logger.error(
-                            f"Failed to init history DB after {retry_count} retries: {e}",
+                            "Failed to init history DB after %d retries: %s",
+                            retry_count,
+                            e,
                             exc_info=True,
                         )
                         raise
                 else:
-                    logger.error(f"Failed to init history DB: {e}", exc_info=True)
+                    logger.error("Failed to init history DB: %s", e, exc_info=True)
                     raise
             except Exception as e:
-                logger.error(f"Failed to init history DB: {e}", exc_info=True)
+                logger.error("Failed to init history DB: %s", e, exc_info=True)
                 raise
 
         if last_error:
             raise last_error
 
     @staticmethod
+    # pylint: disable=too-many-arguments
     def add_entry(
         url: str,
         title: str,
@@ -268,7 +277,7 @@ class HistoryManager:
                     )
                     conn.commit()
                     new_id = cursor.lastrowid
-                logger.debug(f"Added history entry: {title} (ID: {new_id})")
+                logger.debug("Added history entry: %s (ID: %s)", title, new_id)
                 return  # Success
 
             except sqlite3.OperationalError as e:
@@ -277,20 +286,24 @@ class HistoryManager:
                     retry_count += 1
                     if retry_count < HistoryManager.MAX_DB_RETRIES:
                         logger.warning(
-                            f"Database locked during add, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})..."
+                            "Database locked during add, retrying (%d/%d)...",
+                            retry_count,
+                            HistoryManager.MAX_DB_RETRIES,
                         )
                         time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
                     else:
                         logger.error(
-                            f"Failed to add history entry after {retry_count} retries: {e}",
+                            "Failed to add history entry after %d retries: %s",
+                            retry_count,
+                            e,
                             exc_info=True,
                         )
                         raise
                 else:
-                    logger.error(f"Failed to add history entry: {e}", exc_info=True)
+                    logger.error("Failed to add history entry: %s", e, exc_info=True)
                     raise
             except Exception as e:
-                logger.error(f"Failed to add history entry: {e}", exc_info=True)
+                logger.error("Failed to add history entry: %s", e, exc_info=True)
                 raise
 
         if last_error:
@@ -301,7 +314,7 @@ class HistoryManager:
         """Retrieve history entries."""
         entries = []
         try:
-            logger.debug(f"Fetching history (limit={limit})")
+            logger.debug("Fetching history (limit=%d)", limit)
             start_time = time.time()
             with HistoryManager._get_connection() as conn:
                 conn.row_factory = sqlite3.Row
@@ -313,9 +326,9 @@ class HistoryManager:
                 for row in rows:
                     entries.append(dict(row))
             elapsed = time.time() - start_time
-            logger.debug(f"Retrieved {len(entries)} history entries in {elapsed:.4f}s")
-        except Exception as e:
-            logger.error(f"Failed to retrieve history: {e}", exc_info=True)
+            logger.debug("Retrieved %d history entries in %.4fs", len(entries), elapsed)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to retrieve history: %s", e, exc_info=True)
         return entries
 
     @staticmethod
@@ -348,11 +361,15 @@ class HistoryManager:
                     entries.append(dict(row))
 
             logger.debug(
-                f"Paginated history: offset={offset}, limit={limit}, fetched={len(entries)}, total={total}"
+                "Paginated history: offset=%d, limit=%d, fetched=%d, total=%d",
+                offset,
+                limit,
+                len(entries),
+                total,
             )
 
-        except Exception as e:
-            logger.error(f"Failed to retrieve paginated history: {e}", exc_info=True)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to retrieve paginated history: %s", e, exc_info=True)
 
         return {
             "entries": entries,
@@ -382,5 +399,5 @@ class HistoryManager:
                 vac_conn.execute("VACUUM")
 
             logger.info("History cleared successfully.")
-        except Exception as e:
-            logger.error(f"Failed to clear history: {e}", exc_info=True)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to clear history: %s", e, exc_info=True)

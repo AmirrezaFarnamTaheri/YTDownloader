@@ -1,5 +1,6 @@
-import flet as ft
 from typing import Any, Dict, Optional
+
+import flet as ft
 
 from theme import Theme
 

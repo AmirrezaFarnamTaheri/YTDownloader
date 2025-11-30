@@ -27,3 +27,4 @@ lxml>=4.9.0                     # Fast XML/HTML parser
 PyDrive2>=1.16.0                # Google Drive API wrapper
 pypresence>=4.2.0               # Discord Rich Presence
 pyperclip>=1.8.2                # Clipboard access
+python-dateutil>=2.8.2

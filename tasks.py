@@ -1,3 +1,7 @@
+"""
+Handles background tasks for the application, primarily the download queue processing.
+"""
+
 import logging
 import threading
 import time
@@ -34,7 +38,7 @@ def process_queue():
 
     try:
         _process_queue_impl()
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Error in process_queue critical section: %s", e, exc_info=True)
     finally:
         _process_queue_lock.release()
@@ -45,16 +49,17 @@ def _process_queue_impl():
     # Check for scheduled items and update them atomically via QueueManager API
     now = datetime.now()
     queue_mgr = app_state.state.queue_manager
-    logger.debug(f"Processing queue with QueueManager instance: {id(queue_mgr)}")
+    logger.debug("Processing queue with QueueManager instance: %s", id(queue_mgr))
 
     # Prefer the dedicated API for real QueueManager instances,
     # but fall back to legacy direct access for mocked instances in tests.
     try:
-        from queue_manager import QueueManager  # local import to avoid cycles
-    except Exception:
-        QueueManager = None  # type: ignore
+        from queue_manager import \
+            QueueManager as QueueManagerCls  # local import to avoid cycles
+    except Exception:  # pylint: disable=broad-exception-caught
+        QueueManagerCls = None  # type: ignore
 
-    if QueueManager is not None and isinstance(queue_mgr, QueueManager):
+    if QueueManagerCls is not None and isinstance(queue_mgr, QueueManagerCls):
         logger.debug("Updating scheduled items via QueueManager")
         queue_mgr.update_scheduled_items(now)
     else:
@@ -74,7 +79,7 @@ def _process_queue_impl():
                             # Allow up to 1 second early
                             if now >= (scheduled - timedelta(seconds=1)):
                                 logger.info(
-                                    f"Activating scheduled item: {item.get('url')}"
+                                    "Activating scheduled item: %s", item.get("url")
                                 )
                                 item["status"] = "Queued"
                                 item["scheduled_time"] = None
@@ -83,12 +88,13 @@ def _process_queue_impl():
     item = app_state.state.queue_manager.claim_next_downloadable()
     if item:
         item_title = item.get("title", item.get("url", "Unknown"))
-        logger.debug(f"Claimed item for processing: {item_title}")
+        logger.debug("Claimed item for processing: %s", item_title)
         # Check if we can start another download
         if _active_downloads.acquire(blocking=False):
             logger.info(
-                f"Starting download task for: {item_title} "
-                f"(Active: {3 - _active_downloads._value}/3)"
+                "Starting download task for: %s (Active: %d/3)",
+                item_title,
+                3 - _active_downloads._value,  # pylint: disable=protected-access
             )
             thread = threading.Thread(
                 target=download_task,
@@ -99,16 +105,20 @@ def _process_queue_impl():
             thread.start()
         else:
             logger.info(
-                f"Max concurrent downloads reached, returning {item_title} to queue"
+                "Max concurrent downloads reached, returning %s to queue", item_title
             )
             item["status"] = "Queued"  # Reset for next attempt
     else:
         logger.debug(
-            f"No downloadable items found in queue. QM: {id(app_state.state.queue_manager)}"
+            "No downloadable items found in queue. QM: %s",
+            id(app_state.state.queue_manager),
         )
 
 
 def download_task(item):
+    """
+    Background thread entry point for a single download.
+    """
     item["status"] = "Downloading"
     app_state.state.current_download_item = item
     app_state.state.cancel_token = CancelToken()
@@ -119,22 +129,22 @@ def download_task(item):
     item_title = item.get("title", "Unknown")
     thread.name = f"DL-{item_title[:15]}"
 
-    logger.info(f"Thread started for download task: {item_title}")
+    logger.info("Thread started for download task: %s", item_title)
 
     # Ensure we release the semaphore
     try:
-        logger.debug(f"Entering download_task implementation for {item.get('url')}")
-        return _download_task_impl(item)
-    except Exception as e:
+        logger.debug("Entering download_task implementation for %s", item.get("url"))
+        _download_task_impl(item)
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error(
-            f"Unhandled exception in download_task wrapper: {e}", exc_info=True
+            "Unhandled exception in download_task wrapper: %s", e, exc_info=True
         )
     finally:
         thread.name = old_name
         _active_downloads.release()
         logger.info(
-            f"Download task finished. Slot released. "
-            f"Available slots: {3 - (2 - _active_downloads._value)}"
+            "Download task finished. Slot released. Available slots: %d",
+            3 - (2 - _active_downloads._value),  # pylint: disable=protected-access
         )
 
 
@@ -184,7 +194,7 @@ def _download_task_impl(item):
                     item["control"].update_progress()
 
             elif d["status"] == "finished":
-                logger.debug(f"Progress hook finished status for {item.get('title')}")
+                logger.debug("Progress hook finished status for %s", item.get("title"))
                 item["status"] = "Processing"
                 if "control" in item:
                     item["control"].progress_bar.value = 1.0
@@ -194,7 +204,7 @@ def _download_task_impl(item):
         # Extract cookies if passed
         cookies = item.get("cookies_from_browser")
 
-        logger.info(f"Calling download_video for {item.get('title')}")
+        logger.info("Calling download_video for %s", item.get("title"))
         download_video(
             item["url"],
             progress_hook,
@@ -213,7 +223,7 @@ def _download_task_impl(item):
             cookies_from_browser=cookies,
         )
 
-        logger.info(f"Download successful: {item.get('title')}")
+        logger.info("Download successful: %s", item.get("title"))
 
         # Add to history first, then mark as completed
         try:
@@ -226,21 +236,24 @@ def _download_task_impl(item):
                 file_size=item.get("size", "N/A"),
                 file_path=item.get("final_filename"),
             )
-        except Exception as history_error:
-            logger.error(f"Failed to add entry to history: {history_error}")
+        except Exception as history_error:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to add entry to history: %s", history_error)
             # Continue anyway - download succeeded even if history failed
 
         item["status"] = "Completed"
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         if "cancelled" in str(e).lower():
-            logger.info(f"Download cancelled by user: {item.get('title')}")
+            logger.info("Download cancelled by user: %s", item.get("title"))
             item["status"] = "Cancelled"
         else:
             item["status"] = "Error"
             try:
                 logger.error(
-                    f"Download failed for {item.get('title')}: {e}", exc_info=True
+                    "Download failed for %s: %s",
+                    item.get("title"),
+                    e,
+                    exc_info=True,
                 )
             except ValueError:
                 # Logging system might be closed during shutdown/tests

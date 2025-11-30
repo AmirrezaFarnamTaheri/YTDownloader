@@ -1,3 +1,7 @@
+"""
+Queue Manager module for handling download tasks.
+"""
+
 import logging
 import threading
 from datetime import datetime, timedelta
@@ -31,7 +35,7 @@ class QueueManager:
     MAX_QUEUE_SIZE = 1000
 
     def __init__(self):
-        logger.debug(f"Initializing QueueManager instance {id(self)}")
+        logger.debug("Initializing QueueManager instance %s", id(self))
         self._queue: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
         self._listeners: List[Callable[[], None]] = []
@@ -47,7 +51,7 @@ class QueueManager:
             if 0 <= index < len(self._queue):
                 return self._queue[index]
         logger.warning(
-            f"QueueManager: Index {index} out of bounds (Size: {len(self._queue)})"
+            "QueueManager: Index %d out of bounds (Size: %d)", index, len(self._queue)
         )
         return None
 
@@ -57,7 +61,7 @@ class QueueManager:
             if listener not in self._listeners:
                 self._listeners.append(listener)
                 logger.debug(
-                    f"Queue listener added. Total listeners: {len(self._listeners)}"
+                    "Queue listener added. Total listeners: %d", len(self._listeners)
                 )
 
     def remove_listener(self, listener: Callable[[], None]):
@@ -66,7 +70,7 @@ class QueueManager:
             if listener in self._listeners:
                 self._listeners.remove(listener)
                 logger.debug(
-                    f"Queue listener removed. Total listeners: {len(self._listeners)}"
+                    "Queue listener removed. Total listeners: %d", len(self._listeners)
                 )
 
     def _notify_listeners_safe(self):
@@ -84,15 +88,15 @@ class QueueManager:
             listeners = list(self._listeners)
 
         if listeners:
-            # logger.debug(f"Notifying {len(listeners)} queue listeners") # Noisy
+            # logger.debug("Notifying %d queue listeners", len(listeners)) # Noisy
             pass
 
         for listener in listeners:
             try:
                 listener()
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error(
-                    f"Error in queue listener (non-critical): {e}", exc_info=True
+                    "Error in queue listener (non-critical): %s", e, exc_info=True
                 )
                 # Don't propagate listener errors
 
@@ -109,16 +113,22 @@ class QueueManager:
 
         with self._lock:
             if len(self._queue) >= self.MAX_QUEUE_SIZE:
-                error_msg = f"Queue is full (max {self.MAX_QUEUE_SIZE} items). Please clear some items first."
+                error_msg = (
+                    f"Queue is full (max {self.MAX_QUEUE_SIZE} items). "
+                    "Please clear some items first."
+                )
                 logger.error(error_msg)
                 raise ValueError(error_msg)
 
             logger.info(
-                f"Adding item to queue: {item.get('url')} (Title: {item.get('title')}, Status: {item.get('status')}) [QM: {id(self)}]"
+                "Adding item to queue: %s (Title: %s, Status: %s) [QM: %s]",
+                item.get("url"),
+                item.get("title"),
+                item.get("status"),
+                id(self),
             )
-            # logger.debug(f"Queue size before add: {len(self._queue)}")
             self._queue.append(item)
-            logger.debug(f"Queue size after add: {len(self._queue)}")
+            logger.debug("Queue size after add: %d", len(self._queue))
         self._notify_listeners_safe()
 
     def remove_item(self, item: Dict[str, Any]):
@@ -127,14 +137,18 @@ class QueueManager:
         with self._lock:
             if item in self._queue:
                 logger.info(
-                    f"Removing item from queue: {item.get('url')} (Status: {item.get('status')})"
+                    "Removing item from queue: %s (Status: %s)",
+                    item.get("url"),
+                    item.get("status"),
                 )
                 self._queue.remove(item)
                 changed = True
-                logger.debug(f"Queue size after remove: {len(self._queue)}")
+                logger.debug("Queue size after remove: %d", len(self._queue))
             else:
                 logger.warning(
-                    f"Attempted to remove item not in queue: {item.get('url')} (Title: {item.get('title')})"
+                    "Attempted to remove item not in queue: %s (Title: %s)",
+                    item.get("url"),
+                    item.get("title"),
                 )
         if changed:
             self._notify_listeners_safe()
@@ -144,7 +158,9 @@ class QueueManager:
         changed = False
         with self._lock:
             if 0 <= index1 < len(self._queue) and 0 <= index2 < len(self._queue):
-                logger.debug(f"Swapping queue items at indices {index1} and {index2}")
+                logger.debug(
+                    "Swapping queue items at indices %d and %d", index1, index2
+                )
                 self._queue[index1], self._queue[index2] = (
                     self._queue[index2],
                     self._queue[index1],
@@ -160,7 +176,7 @@ class QueueManager:
         """
         Update all items whose scheduled time has been reached.
 
-        This transitions items from "Scheduled (HH:MM)" → "Queued" when their
+        This transitions items from "Scheduled (HH:MM)" -> "Queued" when their
         scheduled_time is in the past, while keeping all mutations localized
         inside QueueManager to avoid external locking on its internals.
 
@@ -178,7 +194,7 @@ class QueueManager:
                 ).startswith("Scheduled"):
                     if now >= item["scheduled_time"]:
                         logger.info(
-                            f"Scheduled time reached for item: {item.get('title')}"
+                            "Scheduled time reached for item: %s", item.get("title")
                         )
                         item["status"] = "Queued"
                         item["scheduled_time"] = None
@@ -205,18 +221,19 @@ class QueueManager:
                     if allocated_time:
                         if now - allocated_time > stale_timeout:
                             logger.warning(
-                                f"Found stale 'Allocating' item, resetting to Queued: "
-                                f"{item.get('title', item['url'])}"
+                                "Found stale 'Allocating' item, resetting to Queued: %s",
+                                item.get("title", item["url"]),
                             )
                             item["status"] = "Queued"
                             item.pop("_allocated_at", None)
 
             # Now find next queued item
-            for i, item in enumerate(self._queue):
-                # logger.debug(f"Checking item {i} in QM {id(self)}: status={item.get('status')}")
+            for _i, item in enumerate(self._queue):
                 if item["status"] == "Queued":
                     logger.info(
-                        f"Claiming next downloadable item: {item.get('title', item.get('url'))} from QM {id(self)}"
+                        "Claiming next downloadable item: %s from QM %s",
+                        item.get("title", item.get("url")),
+                        id(self),
                     )
                     item["status"] = "Allocating"  # Temporary status
                     item["_allocated_at"] = now

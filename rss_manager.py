@@ -1,92 +1,156 @@
+"""
+RSS Manager module for fetching and parsing RSS feeds.
+"""
 import logging
-import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional
-
+from typing import Any, Dict, List, Optional
+from datetime import datetime
 import requests
+from dateutil import parser as date_parser
 
 logger = logging.getLogger(__name__)
 
 
 class RSSManager:
-    """Manages RSS feeds and checking for new videos."""
+    """Manages RSS feed subscriptions and updates."""
+
+    def __init__(self, config_manager):
+        self.config = config_manager
+        self.feeds = self.config.get("rss_feeds", [])
+
+    def get_feeds(self) -> List[Dict[str, str]]:
+        """Return list of feeds."""
+        return self.feeds
+
+    def add_feed(self, url: str):
+        """Add a new RSS feed."""
+        if not any(f["url"] == url for f in self.feeds):
+            self.feeds.append({"url": url, "name": url})  # Name will be updated later
+            self.config.set("rss_feeds", self.feeds)
+            logger.info("Added RSS feed: %s", url)
+
+    def remove_feed(self, url: str):
+        """Remove an RSS feed."""
+        self.feeds = [f for f in self.feeds if f["url"] != url]
+        self.config.set("rss_feeds", self.feeds)
+        logger.info("Removed RSS feed: %s", url)
+
+    def fetch_feed(self, url: str) -> List[Dict[str, Any]]:
+        """Fetch and parse a single RSS feed (Instance wrapper)."""
+        return RSSManager.parse_feed(url, self)
 
     @staticmethod
-    def parse_feed(url: str) -> List[Dict[str, str]]:
-        """
-        Parses a YouTube RSS feed and returns a list of videos.
-
-        Returns a list of dictionaries, where each dictionary contains:
-        - title
-        - link
-        - published
-        - video_id
-        """
+    def parse_feed(url: str, instance: Optional['RSSManager'] = None) -> List[Dict[str, Any]]:
+        """Fetch and parse a single RSS feed (Static implementation)."""
         try:
-            logger.debug(f"Fetching RSS feed: {url}")
+            logger.debug("Fetching RSS feed: %s", url)
             response = requests.get(url, timeout=10)
             response.raise_for_status()
 
+            import xml.etree.ElementTree as ET
+
             root = ET.fromstring(response.content)
-            ns = {
-                "atom": "http://www.w3.org/2005/Atom",
-                "yt": "http://www.youtube.com/xml/schemas/2015",
-            }
 
-            videos = []
-            entries = root.findall("atom:entry", ns)
-            logger.debug(f"Found {len(entries)} entries in feed")
+            items = []
+            # Handle Atom vs RSS
+            if "feed" in root.tag:
+                # Atom
+                ns = {"atom": "http://www.w3.org/2005/Atom", "yt": "http://www.youtube.com/xml/schemas/2015"}
+                # Update feed title if needed
+                title_elem = root.find("atom:title", ns)
+                if instance and title_elem is not None and title_elem.text:
+                    instance._update_feed_name(url, title_elem.text)
 
-            for entry in entries:
-                video: Dict[str, str] = {}
+                for entry in root.findall("atom:entry", ns):
+                    title = entry.find("atom:title", ns)
+                    link = entry.find("atom:link", ns)
+                    published = entry.find("atom:published", ns) or entry.find(
+                        "atom:updated", ns
+                    )
+                    video_id_elem = entry.find("yt:videoId", ns)
+
+                    link_href = link.attrib.get("href") if link is not None else None
+
+                    if title is not None and title.text and link_href:
+                        item_data = {
+                            "title": title.text,
+                            "link": link_href,
+                            "published": (
+                                published.text if published is not None else None
+                            ),
+                        }
+                        if video_id_elem is not None:
+                             item_data["video_id"] = video_id_elem.text
+                        items.append(item_data)
+            else:
+                # RSS 2.0
+                channel = root.find("channel")
+                if channel is not None:
+                    title_elem = channel.find("title")
+                    if instance and title_elem is not None and title_elem.text:
+                        instance._update_feed_name(url, title_elem.text)
+
+                    for item in channel.findall("item"):
+                        title = item.find("title")
+                        link = item.find("link")
+                        pubDate = item.find("pubDate")
+
+                        if (
+                            title is not None
+                            and title.text
+                            and link is not None
+                            and link.text
+                        ):
+                            items.append(
+                                {
+                                    "title": title.text,
+                                    "link": link.text,
+                                    "published": (
+                                        pubDate.text if pubDate is not None else None
+                                    ),
+                                }
+                            )
+
+            logger.info("Fetched %d items from %s", len(items), url)
+            return items
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to fetch RSS feed %s: %s", url, e)
+            return []
+
+    def _update_feed_name(self, url: str, name: str):
+        """Update the friendly name of a feed."""
+        for feed in self.feeds:
+            if feed["url"] == url and feed["name"] == url:
+                feed["name"] = name
+                self.config.set("rss_feeds", self.feeds)
+                logger.debug("Updated feed name for %s to %s", url, name)
+                break
+
+    def get_aggregated_items(self) -> List[Dict[str, Any]]:
+        """Fetch all feeds and return combined, sorted items."""
+        all_items = []
+        for feed in self.feeds:
+            items = self.fetch_feed(feed["url"])
+            for item in items:
+                item["feed_name"] = feed.get("name", feed["url"])
+                # Try to parse date for sorting
                 try:
-                    title_elem = entry.find("atom:title", ns)
-                    link_elem = entry.find("atom:link", ns)
-                    pub_elem = entry.find("atom:published", ns)
-                    vid_elem = entry.find("yt:videoId", ns)
+                    if item.get("published"):
+                        item["date_obj"] = date_parser.parse(item["published"])
+                    else:
+                        item["date_obj"] = datetime.min
+                except Exception:  # pylint: disable=broad-exception-caught
+                    item["date_obj"] = datetime.min
+                all_items.append(item)
 
-                    if (
-                        title_elem is not None
-                        and title_elem.text
-                        and link_elem is not None
-                        and pub_elem is not None
-                        and pub_elem.text
-                        and vid_elem is not None
-                        and vid_elem.text
-                    ):
-                        video["title"] = title_elem.text
-                        # attrib is a dict, but mypy might worry. link_elem is not None here.
-                        # .attrib is usually present on Element.
-                        href = link_elem.attrib.get("href")
-                        if href:
-                            video["link"] = href
-                        else:
-                            continue
-                        video["published"] = pub_elem.text
-                        video["video_id"] = vid_elem.text
-                        videos.append(video)
-                except AttributeError as e:
-                    logger.warning(f"Skipping malformed RSS entry in {url}: {e}")
-                    continue
+        # Sort by date descending
+        all_items.sort(key=lambda x: x["date_obj"], reverse=True)
+        return all_items
 
-            logger.info(f"Successfully parsed {len(videos)} videos from feed: {url}")
-            return videos
-        except requests.RequestException as e:
-            logger.error(f"Network error fetching RSS feed {url}: {e}", exc_info=True)
-            return []
-        except ET.ParseError as e:
-            logger.error(f"XML parsing error for feed {url}: {e}", exc_info=True)
-            return []
-        except Exception as e:
-            logger.error(f"Unexpected error parsing RSS feed {url}: {e}", exc_info=True)
-            return []
-
-    @staticmethod
-    def get_latest_video(url: str) -> Optional[Dict[str, str]]:
-        """Returns the latest video from the feed."""
-        logger.debug(f"Getting latest video from {url}")
-        videos = RSSManager.parse_feed(url)
-        if videos:
-            logger.debug(f"Latest video: {videos[0].get('title', 'Unknown')}")
-            return videos[0]
-        logger.debug("No videos found in feed.")
+    @classmethod
+    def get_latest_video(cls, url: str) -> Optional[Dict[str, Any]]:
+        """Get the latest video from a feed (Static)."""
+        items = cls.parse_feed(url)
+        if items:
+            return items[0]
         return None

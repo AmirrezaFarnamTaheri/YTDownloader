@@ -1,3 +1,7 @@
+"""
+General utility classes and functions.
+"""
+
 import threading
 import time
 from typing import Any
@@ -46,23 +50,23 @@ class CancelToken:
         with self._lock:
             return self._is_paused
 
-    def check(self, d: Any = None):
+    def check(self, _d: Any = None):
         """
         Checks if the download should be cancelled or paused.
-        Accepts an argument 'd' to be compatible with yt-dlp progress hooks.
+        Accepts an argument '_d' to be compatible with yt-dlp progress hooks (unused).
 
         Raises:
-            Exception: If download is cancelled or pause timeout exceeded.
+            RuntimeError: If download is cancelled or pause timeout exceeded.
         """
         if self.cancelled:
-            raise Exception("Download cancelled by user.")
+            raise RuntimeError("Download cancelled by user.")
 
         if self.is_paused:
             pause_start = time.time()
             while self.is_paused:
                 time.sleep(0.5)
                 if self.cancelled:
-                    raise Exception("Download cancelled by user.")
+                    raise RuntimeError("Download cancelled by user.")
 
                 # Check for timeout to prevent infinite pause
                 if self._pause_timeout > 0:
@@ -71,6 +75,6 @@ class CancelToken:
                         # Auto-resume after timeout
                         with self._lock:
                             self._is_paused = False
-                        raise Exception(
+                        raise RuntimeError(
                             f"Download paused for too long ({elapsed:.0f}s), auto-cancelled."
                         )

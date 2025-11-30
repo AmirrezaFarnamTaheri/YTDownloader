@@ -1,8 +1,15 @@
+"""
+Application theme definitions and constants.
+"""
+
 import flet as ft
 
 
 class Theme:
-    # Soulful Palette V2 (Refined, Higher Contrast, Modern)
+    """
+    Main theme class containing color definitions and theme generation logic.
+    Soulful Palette V2 (Refined, Higher Contrast, Modern).
+    """
 
     # Primary: A vibrant, electric violet/indigo
     PRIMARY = "#818CF8"  # Indigo 400 - lighter for better contrast on dark
@@ -46,19 +53,28 @@ class Theme:
 
     # Sub-classes for better organization (and to fix test attribute errors)
     class Surface:
+        """Surface colors."""
+
         BG = "#1E293B"  # Same as BG_CARD
 
     class Primary:
+        """Primary colors."""
+
         MAIN = "#818CF8"  # Same as PRIMARY
 
     class Text:
+        """Text colors."""
+
         PRIMARY = "#F8FAFC"
 
     class Divider:
+        """Divider colors."""
+
         COLOR = "#334155"  # Same as BORDER
 
     @staticmethod
     def get_theme():
+        """Returns the Flet Theme object configured with application colors."""
         return ft.Theme(
             color_scheme=ft.ColorScheme(
                 primary=Theme.PRIMARY,
