@@ -122,6 +122,7 @@ def download_generic(
                 )
 
                 # Success - break retry loop
+                logger.info(f"Generic download finished: {final_path}")
                 return
 
         except (requests.exceptions.RequestException, IOError) as e:
@@ -139,9 +140,10 @@ def download_generic(
                     headers["Range"] = f"bytes={downloaded}-"
         except Exception as e:
             # Non-retryable errors (like cancellation)
-            logger.error(f"Generic download error: {e}")
+            logger.error(f"Generic download error: {e}", exc_info=True)
             raise
 
     # If we exhausted retries
     if last_error:
+        logger.error(f"Generic download failed after {max_retries} retries.")
         raise last_error

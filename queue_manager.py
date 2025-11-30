@@ -31,6 +31,7 @@ class QueueManager:
     MAX_QUEUE_SIZE = 1000
 
     def __init__(self):
+        logger.debug("Initializing QueueManager...")
         self._queue: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
         self._listeners: List[Callable[[], None]] = []
@@ -45,6 +46,7 @@ class QueueManager:
         with self._lock:
             if 0 <= index < len(self._queue):
                 return self._queue[index]
+        logger.warning(f"QueueManager: Index {index} out of bounds (Size: {len(self._queue)})")
         return None
 
     def add_listener(self, listener: Callable[[], None]):
@@ -52,12 +54,14 @@ class QueueManager:
         with self._lock:
             if listener not in self._listeners:
                 self._listeners.append(listener)
+                logger.debug(f"Queue listener added. Total listeners: {len(self._listeners)}")
 
     def remove_listener(self, listener: Callable[[], None]):
         """Remove a listener callback."""
         with self._lock:
             if listener in self._listeners:
                 self._listeners.remove(listener)
+                logger.debug(f"Queue listener removed. Total listeners: {len(self._listeners)}")
 
     def _notify_listeners_safe(self):
         """
@@ -74,13 +78,14 @@ class QueueManager:
             listeners = list(self._listeners)
 
         if listeners:
-            logger.debug(f"Notifying {len(listeners)} queue listeners")
+            # logger.debug(f"Notifying {len(listeners)} queue listeners") # Noisy
+            pass
 
         for listener in listeners:
             try:
                 listener()
             except Exception as e:
-                logger.debug(f"Error in queue listener (non-critical): {e}")
+                logger.error(f"Error in queue listener (non-critical): {e}", exc_info=True)
                 # Don't propagate listener errors
 
     def add_item(self, item: Dict[str, Any]):
@@ -103,7 +108,7 @@ class QueueManager:
             logger.info(
                 f"Adding item to queue: {item.get('url')} (Title: {item.get('title')}, Status: {item.get('status')})"
             )
-            logger.debug(f"Queue size before add: {len(self._queue)}")
+            # logger.debug(f"Queue size before add: {len(self._queue)}")
             self._queue.append(item)
             logger.debug(f"Queue size after add: {len(self._queue)}")
         self._notify_listeners_safe()

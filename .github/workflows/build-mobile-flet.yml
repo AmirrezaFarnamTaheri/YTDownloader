@@ -18,6 +18,8 @@ on:
 env:
   FLET_VERSION: "0.28.3"
   PYTHON_VERSION: "3.12"
+  # Clean version string (remove spaces)
+  APP_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.0.0' }}
 
 jobs:
   # ===========================================================================
@@ -62,7 +64,8 @@ jobs:
 
     - name: Build APK with Flet
       run: |
-        flet build apk --verbose
+        # Use --build-version to inject version into the app bundle
+        flet build apk --verbose --build-version "${{ env.APP_VERSION }}"
 
     - name: Find and verify APK
       id: find_apk
@@ -150,7 +153,8 @@ jobs:
     - name: Build iOS Archive with Flet
       run: |
         # Build xcarchive (no code signing required for archive)
-        flet build ipa --verbose
+        # Use --build-version to inject version into the app bundle
+        flet build ipa --verbose --build-version "${{ env.APP_VERSION }}"
       continue-on-error: true
 
     - name: Find iOS artifacts

@@ -14,6 +14,7 @@ class SocialManager:
     DEFAULT_CLIENT_ID = "123456789012345678"  # Fallback placeholder
 
     def __init__(self, client_id: Optional[str] = None):
+        logger.debug("Initializing SocialManager...")
         # Prefer environment variable, but fall back to legacy placeholder for compatibility/tests
         self.client_id = (
             client_id or os.environ.get("DISCORD_CLIENT_ID") or self.DEFAULT_CLIENT_ID
@@ -23,6 +24,7 @@ class SocialManager:
 
     def connect(self):
         if self.connected:
+            logger.debug("Discord RPC already connected.")
             return
         if not self.client_id:
             logger.info(
@@ -67,13 +69,15 @@ class SocialManager:
                 start=time.time(),
             )
         except Exception as e:
-            logger.debug(f"Failed to update RPC: {e}")
+            logger.error(f"Failed to update RPC: {e}", exc_info=True)
             self.connected = False  # Assume disconnected
 
     def close(self):
+        logger.debug("Closing SocialManager...")
         if self.rpc:
             try:
                 self.rpc.close()
+                logger.info("Discord RPC closed.")
             except Exception as exc:
                 logger.debug("Failed to close Discord RPC cleanly: %s", exc)
         self.connected = False

@@ -71,10 +71,10 @@ class RSSManager:
             logger.info(f"Successfully parsed {len(videos)} videos from feed: {url}")
             return videos
         except requests.RequestException as e:
-            logger.error(f"Network error fetching RSS feed {url}: {e}")
+            logger.error(f"Network error fetching RSS feed {url}: {e}", exc_info=True)
             return []
         except ET.ParseError as e:
-            logger.error(f"XML parsing error for feed {url}: {e}")
+            logger.error(f"XML parsing error for feed {url}: {e}", exc_info=True)
             return []
         except Exception as e:
             logger.error(f"Unexpected error parsing RSS feed {url}: {e}", exc_info=True)
@@ -83,7 +83,10 @@ class RSSManager:
     @staticmethod
     def get_latest_video(url: str) -> Optional[Dict[str, str]]:
         """Returns the latest video from the feed."""
+        logger.debug(f"Getting latest video from {url}")
         videos = RSSManager.parse_feed(url)
         if videos:
+            logger.debug(f"Latest video: {videos[0].get('title', 'Unknown')}")
             return videos[0]
+        logger.debug("No videos found in feed.")
         return None

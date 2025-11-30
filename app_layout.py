@@ -1,7 +1,9 @@
 import flet as ft
+import logging
 
 from theme import Theme
 
+logger = logging.getLogger(__name__)
 
 class AppLayout:
     """
@@ -15,6 +17,7 @@ class AppLayout:
         toggle_clipboard_callback,
         clipboard_active=False,
     ):
+        logger.debug("Initializing AppLayout...")
         self.page = page
         self.navigate_callback = navigate_callback
         self.toggle_clipboard_callback = toggle_clipboard_callback
@@ -100,15 +103,19 @@ class AppLayout:
             expand=True,
             spacing=0,
         )
+        logger.debug("AppLayout initialized.")
 
     def _on_clipboard_change(self, e):
+        logger.info(f"Clipboard monitor toggled: {e.control.value}")
         self.toggle_clipboard_callback(e.control.value)
 
     def set_content(self, view_control):
+        # logger.debug(f"Setting content area to: {type(view_control).__name__}") # Noisy
         self.content_area.content = view_control
         self.content_area.update()
 
     def show_about_dialog(self, e):
+        logger.debug("Showing About dialog")
         dlg = ft.AlertDialog(
             title=ft.Text("StreamCatch"),
             content=ft.Column(

@@ -21,14 +21,18 @@ def process_queue():
     Process the queue to start the next download.
     Uses a lock to prevent race conditions from concurrent calls.
     """
+    # Check shutdown flag first to prevent zombie threads from processing
+    if state.shutdown_flag.is_set():
+        # logger.debug("process_queue skipped due to shutdown flag")
+        return
+
     # Non-blocking acquire to prevent pileup
     acquired = _process_queue_lock.acquire(blocking=False)
     if not acquired:
-        # logger.debug("process_queue already running, skipping") # Too noisy
+        logger.debug("process_queue locked, skipping execution")
         return
 
     try:
-        # logger.debug("Entered process_queue critical section")
         _process_queue_impl()
     except Exception as e:
         logger.error(f"Error in process_queue critical section: {e}", exc_info=True)
@@ -49,9 +53,11 @@ def _process_queue_impl():
         QueueManager = None  # type: ignore
 
     if QueueManager is not None and isinstance(queue_mgr, QueueManager):
+        logger.debug("Updating scheduled items via QueueManager")
         queue_mgr.update_scheduled_items(now)
     else:
         # Legacy path for tests
+        logger.debug("Updating scheduled items via Legacy Path")
         lock = getattr(queue_mgr, "_lock", None)
         q = getattr(queue_mgr, "_queue", None)
         if lock is not None and q is not None:
@@ -65,6 +71,7 @@ def _process_queue_impl():
                         if isinstance(scheduled, datetime):
                             # Allow up to 1 second early
                             if now >= (scheduled - timedelta(seconds=1)):
+                                logger.info(f"Activating scheduled item: {item.get('url')}")
                                 item["status"] = "Queued"
                                 item["scheduled_time"] = None
 
@@ -91,6 +98,8 @@ def _process_queue_impl():
                 f"Max concurrent downloads reached, returning {item_title} to queue"
             )
             item["status"] = "Queued"  # Reset for next attempt
+    else:
+        logger.debug("No downloadable items found in queue.")
 
 
 def download_task(item):
@@ -169,6 +178,7 @@ def _download_task_impl(item):
                     item["control"].update_progress()
 
             elif d["status"] == "finished":
+                logger.debug(f"Progress hook finished status for {item.get('title')}")
                 item["status"] = "Processing"
                 if "control" in item:
                     item["control"].progress_bar.value = 1.0
@@ -178,6 +188,7 @@ def _download_task_impl(item):
         # Extract cookies if passed
         cookies = item.get("cookies_from_browser")
 
+        logger.info(f"Calling download_video for {item.get('title')}")
         download_video(
             item["url"],
             progress_hook,

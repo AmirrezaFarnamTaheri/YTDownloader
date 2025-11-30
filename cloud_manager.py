@@ -37,6 +37,7 @@ class CloudManager:
     """
 
     def __init__(self):
+        logger.debug("Initializing CloudManager...")
         self.enabled = False
         self.credentials_path = "client_secrets.json"  # Standard PyDrive2 file
         self.settings_path = "settings.yaml"  # PyDrive2 settings
@@ -63,6 +64,7 @@ class CloudManager:
         if provider == "google_drive":
             self._upload_to_google_drive(file_path)
         else:
+            logger.error(f"Provider {provider} not supported.")
             raise NotImplementedError(f"Provider {provider} not supported yet.")
 
     def _upload_to_google_drive(self, file_path: str):
@@ -123,5 +125,5 @@ class CloudManager:
             logger.error("PyDrive2 not installed.")
             raise Exception("PyDrive2 dependency missing.")
         except Exception as e:
-            logger.error(f"Google Drive upload failed: {e}")
+            logger.error(f"Google Drive upload failed: {e}", exc_info=True)
             raise

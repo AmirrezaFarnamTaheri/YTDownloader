@@ -1,25 +1,39 @@
 import threading
 import time
 import unittest
+import logging
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import tasks
+import main  # Import main to access potential background threads logic if needed
 from app_state import state
 from queue_manager import QueueManager
 from tasks import download_task, process_queue
 
+logger = logging.getLogger(__name__)
 
 class TestPipelineIntegration(unittest.TestCase):
     def setUp(self):
-        # Reset state
+        # 1. Stop any lingering background threads from previous tests
+        # We set the flag to TRUE to stop background loops.
+        state.shutdown_flag.set()
+
+        # Wait longer than the background loop's sleep interval (2s)
+        # to ensure any sleeping threads wake up, check the flag, and exit.
+        time.sleep(2.2)
+
+        # Now it is safe to clear the flag, because all zombie loops should have exited.
+        state.shutdown_flag.clear()
+
+        # 2. Reset state
         state.queue_manager = QueueManager()
         state.current_download_item = None
         state.cancel_token = None
         state.config = {}
 
-        # Reset semaphore
+        # 3. Reset concurrency primitives
         tasks._active_downloads = threading.Semaphore(3)
-        # Ensure lock is released if stuck (though risky)
         tasks._process_queue_lock = threading.RLock()
 
     @patch("tasks.download_video")
@@ -43,24 +57,14 @@ class TestPipelineIntegration(unittest.TestCase):
         process_queue()
 
         # Since process_queue spawns a thread, we need to wait briefly
-        time.sleep(0.2)
+        time.sleep(0.5)
 
-        # 3. Verify item status changed to Allocating/Downloading (Allocating is transient)
-        # Actually, process_queue spawns a thread that runs download_task.
-        # download_task sets status to "Downloading" immediately.
-
-        # We need to wait for the thread to finish.
-        # Since download_video is mocked, it returns immediately.
-        # So the item should be "Completed" very quickly.
-
-        # Verify mock was called
+        # 3. Verify execution
         mock_download.assert_called_once()
         args, _ = mock_download.call_args
         self.assertEqual(args[0], "http://test.com/vid")
 
         # Verify item status
-        # Note: In the real code, download_task modifies the item dictionary in place.
-        # We need to check the item in the queue.
         q_items = state.queue_manager.get_all()
         self.assertEqual(len(q_items), 1)
         self.assertEqual(q_items[0]["status"], "Completed")
@@ -77,7 +81,7 @@ class TestPipelineIntegration(unittest.TestCase):
         state.queue_manager.add_item(item)
 
         process_queue()
-        time.sleep(0.2)
+        time.sleep(0.5)
 
         q_items = state.queue_manager.get_all()
         self.assertEqual(q_items[0]["status"], "Error")
@@ -106,11 +110,6 @@ class TestPipelineIntegration(unittest.TestCase):
         process_queue()
         time.sleep(0.1)
 
-        # Should have been picked up (and likely failed because we didn't mock download here,
-        # or if we did, it would proceed. Since we didn't mock download_video globally here,
-        # it might try to run. But wait, download_task imports download_video.
-        # We should patch it to avoid real network call.)
-
     @patch("tasks.download_video")
     def test_scheduling_execution(self, mock_download):
         now = datetime.now()
@@ -123,13 +122,11 @@ class TestPipelineIntegration(unittest.TestCase):
         state.queue_manager.add_item(item)
 
         process_queue()
-        time.sleep(0.2)
+        time.sleep(0.5)
 
         # Should be processed
         mock_download.assert_called()
 
-
-from datetime import datetime, timedelta
 
 if __name__ == "__main__":
     unittest.main()

@@ -59,12 +59,14 @@ def _sanitize_template(
 
     # Check for path traversal
     if ".." in template.replace("\\", "/"):
+        logger.error(f"Path traversal attempt in template: {template}")
         raise ValueError("Output template must not contain '..' segments")
 
     # Check for absolute paths
     import os
 
     if os.path.isabs(template):
+        logger.error(f"Absolute path attempt in template: {template}")
         raise ValueError("Output template must not be an absolute path")
 
     # Check for leading slashes
@@ -76,6 +78,7 @@ def _sanitize_template(
         os.path.join(output_path, template.replace("%(title)s", "test"))
     )
     if not test_path.startswith(os.path.abspath(output_path)):
+        logger.error(f"Path escape attempt in template: {template}")
         raise ValueError("Output template would escape output directory")
 
     return template
@@ -284,7 +287,7 @@ def download_video(
             ]
             ydl_opts["force_keyframes_at_cuts"] = True
         except Exception as e:
-            logger.error(f"Failed to configure time range: {e}")
+            logger.error(f"Failed to configure time range: {e}", exc_info=True)
             raise ValueError(f"Invalid time range format: {e}") from e
 
     postprocessors = []
@@ -347,6 +350,7 @@ def download_video(
         proxy_pattern = r"^(https?|socks[45])://([^:@]+:[^:@]+@)?[\w\.\-]+:\d+$"
 
         if not re.match(proxy_pattern, proxy, re.IGNORECASE):
+            logger.error(f"Invalid proxy format: {proxy}")
             raise ValueError(
                 f"Invalid proxy format: {proxy}. "
                 "Expected: scheme://[user:pass@]host:port "
@@ -357,6 +361,7 @@ def download_video(
         dangerous_chars = [";", "&", "|", "`", "$", "(", ")", "<", ">", "\n", "\r"]
         for char in dangerous_chars:
             if char in proxy:
+                logger.error(f"Dangerous character '{char}' in proxy string")
                 raise ValueError(f"Dangerous character '{char}' not allowed in proxy")
 
         # Extract and validate port
@@ -364,8 +369,10 @@ def download_video(
         try:
             port_num = int(port)
             if not (1 <= port_num <= 65535):
+                logger.error(f"Invalid port number: {port_num}")
                 raise ValueError(f"Invalid port number: {port_num}")
         except ValueError:
+            logger.error(f"Invalid port in proxy: {port}")
             raise ValueError(f"Invalid port in proxy: {port}")
 
         ydl_opts["proxy"] = proxy
@@ -379,6 +386,7 @@ def download_video(
             if not re.match(
                 r"^\d+(\.\d+)?[KMGT]?(?:/s)?$", rate_limit_clean, re.IGNORECASE
             ):
+                logger.error(f"Invalid rate limit format: {rate_limit}")
                 raise ValueError(f"Invalid rate limit format: {rate_limit}")
             ydl_opts["ratelimit"] = rate_limit_clean
 

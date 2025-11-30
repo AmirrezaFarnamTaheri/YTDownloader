@@ -51,17 +51,37 @@ def build_installer():
         "nuitka",
         "--standalone",
         "--onefile",
-        "--windows-console-mode=disable",
+        # Enable LTO if stable, otherwise disable for speed/memory
+        # "--lto=no",
+        "--enable-plugin=pyside6" if os.name != "nt" else "",  # Linux might need hints if using Qt (we use Flet/GTK though)
+        # Flet often needs explicit data for assets
         f"--include-data-dir={root / 'assets'}=assets",
         f"--include-data-dir={root / 'locales'}=locales",
         f"--output-dir={dist_dir}",
         f"--output-filename={'StreamCatch.exe' if os.name == 'nt' else 'streamcatch'}",
-        str(root / "main.py"),
     ]
 
-    # Add --no-lto on Windows to prevent memory issues
+    # Windows specific flags
     if os.name == "nt":
-        cmd.append("--no-lto")
+        cmd.extend([
+            "--windows-console-mode=disable",
+            "--windows-icon-from-ico=assets/icon.ico",
+            "--company-name=StreamCatch",
+            "--product-name=StreamCatch",
+            "--file-version=2.0.0.0",
+            "--product-version=2.0.0.0",
+            "--copyright=Copyright © 2024 Jules",
+        ])
+
+    # Linux/Mac specific flags (if any needed for Nuitka)
+    if sys.platform.startswith("linux"):
+        # Ensure patchelf is used
+        pass
+
+    cmd.append(str(root / "main.py"))
+
+    # Remove empty strings
+    cmd = [c for c in cmd if c]
 
     print(f"Build command: {' '.join(cmd)}\n")
 
