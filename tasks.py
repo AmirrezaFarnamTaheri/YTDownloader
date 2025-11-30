@@ -221,9 +221,13 @@ def _download_task_impl(item):
             item["status"] = "Cancelled"
         else:
             item["status"] = "Error"
-            logger.error(
-                f"Download failed for {item.get('title')}: {e}", exc_info=True
-            )
+            try:
+                logger.error(
+                    f"Download failed for {item.get('title')}: {e}", exc_info=True
+                )
+            except ValueError:
+                # Logging system might be closed during shutdown/tests
+                pass
     finally:
         if "control" in item:
             item["control"].update_progress()

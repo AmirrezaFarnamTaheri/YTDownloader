@@ -29,11 +29,18 @@ def build_installer():
     # Verify requirements
     try:
         import nuitka
+        from nuitka import Version
 
-        print(f"Nuitka version: {nuitka.__version__}")
+        print(f"Nuitka version: {Version.getNuitkaVersion()}")
     except ImportError:
         print("ERROR: Nuitka not installed. Run: pip install nuitka")
         sys.exit(1)
+    except AttributeError:
+        # Fallback for some versions or if structure differs
+        try:
+             subprocess.run([sys.executable, "-m", "nuitka", "--version"], check=True)
+        except Exception:
+             print("WARNING: Could not determine Nuitka version via module, but import succeeded.")
 
     print("\nStep 2: Building with Nuitka...")
 
@@ -48,8 +55,7 @@ def build_installer():
         f"--include-data-dir={root / 'assets'}=assets",
         f"--include-data-dir={root / 'locales'}=locales",
         f"--output-dir={dist_dir}",
-        "--output-filename",
-        "StreamCatch.exe" if os.name == "nt" else "streamcatch",
+        f"--output-filename={'StreamCatch.exe' if os.name == 'nt' else 'streamcatch'}",
         str(root / "main.py"),
     ]
 

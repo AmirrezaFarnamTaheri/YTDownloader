@@ -56,13 +56,16 @@ Grab the latest release artifacts:
     ```bash
     python scripts/build_installer.py
     ```
-    - On **Windows**, install Inno Setup (`iscc`) to produce the `.exe` installer; otherwise only the PyInstaller binary is created.
-    - On **Linux**, PyInstaller writes the binary to `dist/`; use the GitHub Action or `dpkg-deb` steps from `.github/workflows/build.yml` to create a `.deb`.
-    - On **macOS**, PyInstaller generates `dist/StreamCatch.app`; you can wrap it into a `.dmg` using `hdiutil create ...` (see the workflow for the exact command).
+    - The script uses **Nuitka** to compile the application into a native binary.
+    - On **Windows**, install Inno Setup (`iscc`) to produce the `.exe` installer; otherwise only the executable is created.
+    - On **Linux**, Nuitka writes the binary to `dist/streamcatch`. The GitHub Action workflow creates a `.deb` package.
+    - On **macOS**, Nuitka generates `dist/StreamCatch.app`; this can be wrapped into a `.dmg`.
 
 ### Mobile (Android/iOS)
 
-See [MOBILE_DEPLOYMENT.md](MOBILE_DEPLOYMENT.md) for detailed build instructions using `flet build`.
+Mobile builds are handled via `flet build` commands or GitHub Actions.
+- **Android**: `flet build apk`
+- **iOS**: `flet build ipa`
 
 ### Optional: Discord Rich Presence
 Set `DISCORD_CLIENT_ID` in your environment to enable Discord Rich Presence updates. Without it, social integration stays disabled gracefully.
