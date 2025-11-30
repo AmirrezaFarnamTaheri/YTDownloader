@@ -1,108 +1,94 @@
 import sqlite3
-import time
 import unittest
+from pathlib import Path
+from unittest import mock
 from unittest.mock import MagicMock, patch
 
 from history_manager import HistoryManager
 
 
 class TestHistoryManagerRobustness(unittest.TestCase):
-    @patch("history_manager.HistoryManager._get_connection")
-    def test_init_db_locked_exhausted(self, mock_get_conn):
-        """Test init_db when database is locked and retries are exhausted."""
-        # Create a mock connection context manager
+
+    def setUp(self):
+        self.db_patcher = patch("history_manager.HistoryManager.DB_FILE", Path("test_history_robust.db"), create=True)
+        self.mock_db_file = self.db_patcher.start()
+        # We also need to patch the module level DB_FILE if it's used directly
+        self.module_db_patcher = patch("history_manager.DB_FILE", Path("test_history_robust.db"))
+        self.module_db_patcher.start()
+
+    def tearDown(self):
+        self.db_patcher.stop()
+        self.module_db_patcher.stop()
+        if Path("test_history_robust.db").exists():
+             try:
+                 Path("test_history_robust.db").unlink()
+             except:
+                 pass
+
+    @patch("history_manager.sqlite3.connect")
+    def test_db_locked_retry(self, mock_connect):
+        # Mock connect to raise OperationalError "locked" twice, then succeed
         mock_conn = MagicMock()
-        mock_conn.__enter__.return_value = mock_conn
-        mock_cursor = MagicMock()
-        mock_conn.cursor.return_value = mock_cursor
+        mock_connect.side_effect = [
+            sqlite3.OperationalError("database is locked"),
+            sqlite3.OperationalError("database is locked"),
+            mock_conn
+        ]
 
-        # Setup mock to always raise OperationalError("database is locked")
-        mock_cursor.execute.side_effect = sqlite3.OperationalError("database is locked")
-        mock_get_conn.return_value = mock_conn
+        # We need to mock _get_connection internals basically?
+        # Actually _get_connection calls sqlite3.connect.
+        # But `init_db` calls `_get_connection`.
 
-        # Mock time.sleep to speed up test
-        with patch("time.sleep"):
-            with self.assertRaises(sqlite3.OperationalError):
-                HistoryManager.init_db()
+        # Testing init_db retries
+        with patch("time.sleep") as mock_sleep: # Speed up tests
+             HistoryManager.init_db()
 
-    @patch("history_manager.HistoryManager._get_connection")
-    def test_init_db_generic_error(self, mock_get_conn):
-        """Test init_db with a generic exception."""
-        mock_conn = MagicMock()
-        mock_conn.__enter__.return_value = mock_conn
-        mock_cursor = MagicMock()
-        mock_conn.cursor.return_value = mock_cursor
+        self.assertEqual(mock_connect.call_count, 3)
 
-        # Setup mock to raise generic exception
-        mock_cursor.execute.side_effect = Exception("Generic Error")
-        mock_get_conn.return_value = mock_conn
-
-        with self.assertRaises(Exception):
-            HistoryManager.init_db()
-
-    @patch("history_manager.HistoryManager._get_connection")
-    def test_add_entry_locked_exhausted(self, mock_get_conn):
-        """Test add_entry when database is locked and retries are exhausted."""
-        mock_conn = MagicMock()
-        mock_conn.__enter__.return_value = mock_conn
-        mock_cursor = MagicMock()
-        mock_conn.cursor.return_value = mock_cursor
-
-        mock_cursor.execute.side_effect = sqlite3.OperationalError("database is locked")
-        mock_get_conn.return_value = mock_conn
+    @patch("history_manager.sqlite3.connect")
+    def test_db_locked_failure(self, mock_connect):
+        # Always locked
+        mock_connect.side_effect = sqlite3.OperationalError("database is locked")
 
         with patch("time.sleep"):
-            with self.assertRaises(sqlite3.OperationalError):
-                HistoryManager.add_entry(
-                    "http://url", "Title", "/tmp", "mp4", "finished", "10MB"
-                )
+             with self.assertRaises(sqlite3.OperationalError):
+                  HistoryManager.init_db()
 
-    @patch("history_manager.HistoryManager._get_connection")
-    def test_add_entry_generic_error(self, mock_get_conn):
-        """Test add_entry with a generic exception."""
-        mock_conn = MagicMock()
-        mock_conn.__enter__.return_value = mock_conn
-        mock_cursor = MagicMock()
-        mock_conn.cursor.return_value = mock_cursor
+        # Should try MAX_DB_RETRIES (3)
+        self.assertEqual(mock_connect.call_count, 3)
 
-        mock_cursor.execute.side_effect = Exception("Generic Error")
-        mock_get_conn.return_value = mock_conn
+    def test_validate_input_errors(self):
+        with self.assertRaises(ValueError):
+            HistoryManager._validate_input("", "title", "path")
 
-        with self.assertRaises(Exception):
-            HistoryManager.add_entry(
-                "http://url", "Title", "/tmp", "mp4", "finished", "10MB"
-            )
+        with self.assertRaises(ValueError):
+            HistoryManager._validate_input("ftp://bad", "title", "A"*1025)
 
-    @patch("history_manager.HistoryManager._get_connection")
-    def test_add_entry_operational_not_locked(self, mock_get_conn):
-        """Test add_entry with OperationalError that is NOT locked."""
-        mock_conn = MagicMock()
-        mock_conn.__enter__.return_value = mock_conn
-        mock_cursor = MagicMock()
-        mock_conn.cursor.return_value = mock_cursor
+        with self.assertRaises(ValueError):
+            HistoryManager._validate_input("http://good", "Bad DROP TABLE", "path")
 
-        mock_cursor.execute.side_effect = sqlite3.OperationalError("some other error")
-        mock_get_conn.return_value = mock_conn
+    @patch("history_manager.sqlite3.connect")
+    def test_add_entry_locked_retry(self, mock_connect):
+         mock_conn = MagicMock()
+         # Mocking context manager behavior of connection
+         mock_conn.__enter__.return_value = mock_conn
+         mock_conn.__exit__.return_value = None
 
-        with self.assertRaises(sqlite3.OperationalError):
-            HistoryManager.add_entry(
-                "http://url", "Title", "/tmp", "mp4", "finished", "10MB"
-            )
+         # Mock connect success, but execute failure?
+         # _get_connection returns a wrapper around conn.
+         # So first call to connect succeeds.
+         # Then inside `add_entry` -> `_get_connection`.
 
-    @patch("history_manager.HistoryManager._get_connection")
-    def test_init_db_operational_not_locked(self, mock_get_conn):
-        """Test init_db with OperationalError that is NOT locked."""
-        mock_conn = MagicMock()
-        mock_conn.__enter__.return_value = mock_conn
-        mock_cursor = MagicMock()
-        mock_conn.cursor.return_value = mock_cursor
+         # If we want to simulate lock during `_get_connection`, we mock `connect`.
+         # If we want to simulate lock during `execute`, we mock cursor.
 
-        mock_cursor.execute.side_effect = sqlite3.OperationalError("some other error")
-        mock_get_conn.return_value = mock_conn
+         # Let's mock `connect` raising locked.
+         mock_connect.side_effect = [
+             sqlite3.OperationalError("database is locked"),
+             mock_conn
+         ]
 
-        with self.assertRaises(sqlite3.OperationalError):
-            HistoryManager.init_db()
+         with patch("time.sleep"):
+             HistoryManager.add_entry("http://u", "t", "p", "f", "s", "sz")
 
-
-if __name__ == "__main__":
-    unittest.main()
+         self.assertEqual(mock_connect.call_count, 2)

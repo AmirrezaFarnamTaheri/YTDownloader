@@ -205,7 +205,7 @@ def open_folder(path: str):
 
         logger.debug(f"Opening folder: {path}")
         if platform.system() == "Windows":
-            os.startfile(path)
+            os.startfile(path)  # type: ignore
         elif platform.system() == "Darwin":
             subprocess.Popen(["open", path])
         else:

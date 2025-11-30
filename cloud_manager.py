@@ -79,8 +79,8 @@ class CloudManager:
             )
 
         try:
-            from pydrive2.auth import GoogleAuth
-            from pydrive2.drive import GoogleDrive
+            from pydrive2.auth import GoogleAuth  # type: ignore
+            from pydrive2.drive import GoogleDrive  # type: ignore
 
             # Automatic authentication (requires user interaction on first run or saved creds)
             logger.debug("Authenticating with Google Drive...")

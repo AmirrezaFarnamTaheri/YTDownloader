@@ -205,7 +205,10 @@ def download_video(
     if output_template:
         logger.debug(f"Sanitizing user template: {output_template}")
         tmpl = _sanitize_template(output_template)
-        outtmpl = os.path.join(output_path, tmpl)
+        if tmpl:
+            outtmpl = os.path.join(output_path, tmpl)
+        else:
+             outtmpl = os.path.join(output_path, "%(title)s.%(ext)s")
     else:
         # We don't sanitize %(title)s here because yt-dlp handles it,
         # but we do want to ensure we don't accidentally introduce paths.
@@ -240,7 +243,7 @@ def download_video(
                 "writesubtitles": True,
                 "subtitleslangs": [subtitle_lang],
                 "subtitlesformat": subtitle_format,
-            }
+            }  # type: ignore
         )
 
     if split_chapters:
