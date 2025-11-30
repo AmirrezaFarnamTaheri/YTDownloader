@@ -1,10 +1,10 @@
-import sqlite3
 import logging
-import time
 import os
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+import sqlite3
+import time
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,7 @@ class HistoryManager:
             raise sqlite3.OperationalError(f"Database file not writable: {db_file}")
 
         conn = sqlite3.connect(db_file, timeout=timeout)
+        logger.debug(f"Opened DB connection to {db_file}")
         # Enable WAL mode for better concurrency
         conn.execute("PRAGMA journal_mode=WAL")
         return HistoryManager._ConnectionWrapper(conn)
@@ -101,10 +102,21 @@ class HistoryManager:
 
         # Additional SQL injection prevention
         dangerous_patterns = [
-            "';", '";', "--", "/*", "*/",
-            "xp_", "sp_", "EXEC", "EXECUTE",
-            "DROP", "DELETE", "INSERT", "UPDATE",
-            "UNION", "SELECT"
+            "';",
+            '";',
+            "--",
+            "/*",
+            "*/",
+            "xp_",
+            "sp_",
+            "EXEC",
+            "EXECUTE",
+            "DROP",
+            "DELETE",
+            "INSERT",
+            "UPDATE",
+            "UNION",
+            "SELECT",
         ]
 
         for pattern in dangerous_patterns:
@@ -119,7 +131,9 @@ class HistoryManager:
 
         # Validate URL format
         if not url.startswith(("http://", "https://", "ftp://", "ftps://")):
-            raise ValueError("URL must start with http://, https://, ftp://, or ftps://")
+            raise ValueError(
+                "URL must start with http://, https://, ftp://, or ftps://"
+            )
 
     @staticmethod
     def init_db():
@@ -127,7 +141,9 @@ class HistoryManager:
         retry_count = 0
         last_error = None
 
-        logger.info(f"Initializing history database at {HistoryManager._resolve_db_file()}")
+        logger.info(
+            f"Initializing history database at {HistoryManager._resolve_db_file()}"
+        )
 
         while retry_count < HistoryManager.MAX_DB_RETRIES:
             try:
@@ -247,7 +263,7 @@ class HistoryManager:
                         ),
                     )
                     conn.commit()
-                logger.debug(f"Added history entry: {title}")
+                logger.debug(f"Added history entry: {title} (ID: {cursor.lastrowid})")
                 return  # Success
 
             except sqlite3.OperationalError as e:
@@ -317,7 +333,7 @@ class HistoryManager:
                 # Get paginated results
                 cursor.execute(
                     "SELECT * FROM history ORDER BY timestamp DESC LIMIT ? OFFSET ?",
-                    (limit, offset)
+                    (limit, offset),
                 )
                 rows = cursor.fetchall()
                 for row in rows:
@@ -327,11 +343,11 @@ class HistoryManager:
             logger.error(f"Failed to retrieve paginated history: {e}")
 
         return {
-            'entries': entries,
-            'total': total,
-            'offset': offset,
-            'limit': limit,
-            'has_more': (offset + limit) < total
+            "entries": entries,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "has_more": (offset + limit) < total,
         }
 
     @staticmethod

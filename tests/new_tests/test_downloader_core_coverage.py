@@ -1,9 +1,11 @@
-import pytest
 import os
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import ANY, MagicMock, patch
+
+import pytest
+
 from downloader.core import download_video
-from downloader.extractors.telegram import TelegramExtractor
 from downloader.extractors.generic import GenericExtractor
+from downloader.extractors.telegram import TelegramExtractor
 from utils import CancelToken
 
 

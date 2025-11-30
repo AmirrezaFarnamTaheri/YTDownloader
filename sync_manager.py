@@ -1,8 +1,9 @@
 import json
-import os
 import logging
-from pathlib import Path
+import os
 from datetime import datetime
+from pathlib import Path
+
 from config_manager import ConfigManager
 from history_manager import HistoryManager
 
@@ -34,6 +35,7 @@ class SyncManager:
         try:
             # Atomic write using temp file and rename
             import tempfile
+
             dir_name = os.path.dirname(output_path) or "."
             os.makedirs(dir_name, exist_ok=True)
 
@@ -49,12 +51,14 @@ class SyncManager:
 
                 # Atomic rename
                 if os.name == "nt" and os.path.exists(output_path):
+                    logger.debug(f"Removing existing file on Windows: {output_path}")
                     os.remove(output_path)
 
                 os.replace(temp_path, output_path)
                 logger.info(f"Data exported to {output_path}")
                 return output_path
-            except Exception:
+            except Exception as e:
+                logger.error(f"Error during export file operations: {e}")
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
                 raise
@@ -89,10 +93,15 @@ class SyncManager:
             if "config" in data:
                 logger.debug(f"Importing configuration with {len(data['config'])} keys")
                 ConfigManager.save_config(data["config"])
+            else:
+                logger.warning("No config found in import data")
 
             # Import History
             if "history" in data:
                 count = 0
+                total_items = len(data["history"])
+                logger.debug(f"Found {total_items} history items to import")
+
                 for item in data["history"]:
                     HistoryManager.add_entry(
                         url=item.get("url", ""),
@@ -105,6 +114,8 @@ class SyncManager:
                     )
                     count += 1
                 logger.info(f"Imported {count} history entries")
+            else:
+                logger.warning("No history found in import data")
 
             logger.info(f"Data imported successfully from {input_path}")
 

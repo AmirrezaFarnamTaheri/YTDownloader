@@ -1,10 +1,11 @@
-import unittest
 import json
 import os
-from unittest.mock import patch, MagicMock
-from sync_manager import SyncManager
+import unittest
+from unittest.mock import MagicMock, patch
+
 from config_manager import ConfigManager
 from history_manager import HistoryManager
+from sync_manager import SyncManager
 
 
 class TestSyncManager(unittest.TestCase):

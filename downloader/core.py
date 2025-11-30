@@ -1,14 +1,15 @@
+import logging
 import os
 import re
-import logging
-from typing import Dict, Any, Callable, Optional, TYPE_CHECKING
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict
+from typing import Optional
 from typing import Optional as _OptionalStr
 
-from downloader.extractors.telegram import TelegramExtractor
-from downloader.extractors.generic import GenericExtractor
 from downloader.engines.generic import download_generic
 from downloader.engines.ytdlp import YTDLPWrapper
+from downloader.extractors.generic import GenericExtractor
+from downloader.extractors.telegram import TelegramExtractor
 from downloader.info import get_video_info
 
 if TYPE_CHECKING:
@@ -34,10 +35,12 @@ def _sanitize_filename(filename: str) -> str:
     """
     # Windows illegal characters: < > : " / \ | ? *
     # Also removing control characters
-    return re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', filename)
+    return re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", filename)
 
 
-def _sanitize_template(template: _OptionalStr[str], output_path: str = ".") -> _OptionalStr[str]:
+def _sanitize_template(
+    template: _OptionalStr[str], output_path: str = "."
+) -> _OptionalStr[str]:
     """
     Robust validation for the output template to prevent path traversal.
 
@@ -60,6 +63,7 @@ def _sanitize_template(template: _OptionalStr[str], output_path: str = ".") -> _
 
     # Check for absolute paths
     import os
+
     if os.path.isabs(template):
         raise ValueError("Output template must not be an absolute path")
 
@@ -68,7 +72,9 @@ def _sanitize_template(template: _OptionalStr[str], output_path: str = ".") -> _
         raise ValueError("Output template must not start with path separator")
 
     # Verify the final path would be within output_path
-    test_path = os.path.abspath(os.path.join(output_path, template.replace("%(title)s", "test")))
+    test_path = os.path.abspath(
+        os.path.join(output_path, template.replace("%(title)s", "test"))
+    )
     if not test_path.startswith(os.path.abspath(output_path)):
         raise ValueError("Output template would escape output directory")
 
@@ -116,7 +122,14 @@ def download_video(
         "is_telegram"
     ) or TelegramExtractor.is_telegram_url(url)
 
-    logger.debug(f"Starting download process for {url} (is_telegram={is_telegram}, force_generic={force_generic})")
+    logger.debug(
+        f"Starting download process for {url} (is_telegram={is_telegram}, force_generic={force_generic})"
+    )
+    logger.debug(
+        f"Download parameters: output_path={output_path}, "
+        f"video_format={video_format}, playlist={playlist}, "
+        f"use_aria2c={use_aria2c}, gpu_accel={gpu_accel}"
+    )
 
     if force_generic:
         logger.info("Force Generic Mode enabled. Bypassing yt-dlp extraction.")
@@ -183,6 +196,7 @@ def download_video(
     # Build yt-dlp Options
     logger.debug(f"Building yt-dlp options for: {url}")
     if output_template:
+        logger.debug(f"Sanitizing user template: {output_template}")
         tmpl = _sanitize_template(output_template)
         outtmpl = os.path.join(output_path, tmpl)
     else:
@@ -307,7 +321,7 @@ def download_video(
         import re
 
         # Valid proxy format: scheme://[user:pass@]host:port
-        proxy_pattern = r'^(https?|socks[45])://([^:@]+:[^:@]+@)?[\w\.\-]+:\d+$'
+        proxy_pattern = r"^(https?|socks[45])://([^:@]+:[^:@]+@)?[\w\.\-]+:\d+$"
 
         if not re.match(proxy_pattern, proxy, re.IGNORECASE):
             raise ValueError(
@@ -317,13 +331,13 @@ def download_video(
             )
 
         # Check for command injection attempts
-        dangerous_chars = [';', '&', '|', '`', '$', '(', ')', '<', '>', '\n', '\r']
+        dangerous_chars = [";", "&", "|", "`", "$", "(", ")", "<", ">", "\n", "\r"]
         for char in dangerous_chars:
             if char in proxy:
                 raise ValueError(f"Dangerous character '{char}' not allowed in proxy")
 
         # Extract and validate port
-        port = proxy.split(':')[-1]
+        port = proxy.split(":")[-1]
         try:
             port_num = int(port)
             if not (1 <= port_num <= 65535):
@@ -346,6 +360,7 @@ def download_video(
             ydl_opts["ratelimit"] = rate_limit_clean
 
     if cookies_from_browser:
+        logger.debug(f"Using cookies from browser: {cookies_from_browser}")
         ydl_opts["cookies_from_browser"] = (
             cookies_from_browser,
             cookies_from_browser_profile if cookies_from_browser_profile else None,
@@ -353,6 +368,7 @@ def download_video(
 
     # Execute Download
     logger.info(f"Delegating download to YTDLPWrapper for {url}")
+    logger.debug(f"Final ytdlp options: {ydl_opts}")
     YTDLPWrapper.download(
         url, output_path, progress_hook, download_item, ydl_opts, cancel_token
     )

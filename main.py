@@ -1,40 +1,42 @@
-import flet as ft
 import logging
 import logging.handlers
+import os
+import signal
+import sys
 import threading
 import time
-from pathlib import Path
-from datetime import datetime, timedelta
-import os
-import sys
 import traceback
-import signal
 from contextlib import contextmanager
+from datetime import datetime, timedelta
+from pathlib import Path
 
+import flet as ft
+
+from app_layout import AppLayout
+# Refactored modules
+from app_state import state
+from clipboard_monitor import start_clipboard_monitor
 # Updated imports
 from downloader.info import get_video_info
+from tasks import process_queue
+from tasks_extended import fetch_info_task
 from theme import Theme
-from app_layout import AppLayout
 from ui_utils import validate_url
-
+from views.dashboard_view import DashboardView
 # Import Views
 from views.download_view import DownloadView
-from views.queue_view import QueueView
 from views.history_view import HistoryView
-from views.dashboard_view import DashboardView
+from views.queue_view import QueueView
 from views.rss_view import RSSView
 from views.settings_view import SettingsView
 
-# Refactored modules
-from app_state import state
-from tasks import process_queue
-from tasks_extended import fetch_info_task
-from clipboard_monitor import start_clipboard_monitor
 
 # Configure logging
 def setup_logging():
     """Setup comprehensive logging configuration."""
-    log_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    log_formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 
@@ -50,22 +52,20 @@ def setup_logging():
 
     # File Handler (DEBUG+, Rotating)
     # Log to both local directory (for easy access) and user home (persistence)
-    log_files = [
-        Path("ytdownloader.log"),
-        Path.home() / ".streamcatch" / "app.log"
-    ]
+    log_files = [Path("ytdownloader.log"), Path.home() / ".streamcatch" / "app.log"]
 
     for log_file in log_files:
         try:
             log_file.parent.mkdir(parents=True, exist_ok=True)
             file_handler = logging.handlers.RotatingFileHandler(
-                log_file, maxBytes=5*1024*1024, backupCount=2, encoding="utf-8"
+                log_file, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8"
             )
             file_handler.setLevel(logging.DEBUG)
             file_handler.setFormatter(log_formatter)
             root_logger.addHandler(file_handler)
         except Exception as e:
             print(f"Failed to setup log file {log_file}: {e}", file=sys.stderr)
+
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -80,10 +80,11 @@ active_threads = []  # Track all created threads
 @contextmanager
 def startup_timeout(seconds=10):
     """Context manager for timeout on startup operations."""
+
     def timeout_handler(signum, frame):
         raise TimeoutError(f"Operation timed out after {seconds} seconds")
 
-    if os.name != 'nt':  # signal.alarm not available on Windows
+    if os.name != "nt":  # signal.alarm not available on Windows
         old_handler = signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(seconds)
         try:
@@ -130,11 +131,15 @@ def main(pg: ft.Page):
     # --- Helpers ---
 
     def on_fetch_info(url):
+        logger.debug(f"on_fetch_info called with url: {url}")
         if not url:
             page.open(ft.SnackBar(content=ft.Text("Please enter a URL")))
             return
         if not validate_url(url):
-            page.open(ft.SnackBar(content=ft.Text("Please enter a valid http/https URL")))
+            logger.warning(f"Invalid URL provided: {url}")
+            page.open(
+                ft.SnackBar(content=ft.Text("Please enter a valid http/https URL"))
+            )
             return
 
         download_view.fetch_btn.disabled = True
@@ -145,14 +150,23 @@ def main(pg: ft.Page):
         ).start()
 
     def on_add_to_queue(data):
+        logger.info(f"User requested add to queue: {data.get('url')}")
         # Process data and add to queue
         if not validate_url(data.get("url", "")):
-            page.open(ft.SnackBar(content=ft.Text("Please enter a valid http/https URL")))
+            logger.warning(f"Invalid URL rejected: {data.get('url')}")
+            page.open(
+                ft.SnackBar(content=ft.Text("Please enter a valid http/https URL"))
+            )
             return
 
         # Rate limiting
         if not check_rate_limit():
-            page.open(ft.SnackBar(content=ft.Text("Please wait before adding another download")))
+            logger.debug("Rate limit hit for adding to queue")
+            page.open(
+                ft.SnackBar(
+                    content=ft.Text("Please wait before adding another download")
+                )
+            )
             return
 
         status = "Queued"
@@ -207,6 +221,7 @@ def main(pg: ft.Page):
         process_queue()
 
     def on_cancel_item(item):
+        logger.info(f"Cancelling item: {item.get('title', 'Unknown')}")
         item["status"] = "Cancelled"
         if state.current_download_item == item and state.cancel_token:
             state.cancel_token.cancel()
@@ -214,6 +229,7 @@ def main(pg: ft.Page):
             item["control"].update_progress()
 
     def on_remove_item(item):
+        logger.info(f"Removing item from queue UI: {item.get('title', 'Unknown')}")
         state.queue_manager.remove_item(item)
         queue_view.rebuild()
 
@@ -223,10 +239,12 @@ def main(pg: ft.Page):
             idx = q.index(item)
             new_idx = idx + direction
             if 0 <= new_idx < len(q):
+                logger.debug(f"Reordering item {idx} -> {new_idx}")
                 state.queue_manager.swap_items(idx, new_idx)
                 queue_view.rebuild()
 
     def on_retry_item(item):
+        logger.info(f"Retrying item: {item.get('title', 'Unknown')}")
         # Logic to retry download
         item["status"] = "Queued"
         item["speed"] = ""
@@ -237,9 +255,11 @@ def main(pg: ft.Page):
 
     def on_batch_file_result(e: ft.FilePickerResultEvent):
         if not e.files:
+            logger.debug("Batch import cancelled by user")
             return
 
         path = e.files[0].path
+        logger.info(f"Processing batch file: {path}")
         try:
             with open(path, "r", encoding="utf-8") as f:
                 urls = [line.strip() for line in f if line.strip()]
@@ -247,7 +267,13 @@ def main(pg: ft.Page):
             # Limit batch import size
             max_batch = 100
             if len(urls) > max_batch:
-                page.open(ft.SnackBar(content=ft.Text(f"Batch import limited to {max_batch} URLs. Imported first {max_batch}.")))
+                page.open(
+                    ft.SnackBar(
+                        content=ft.Text(
+                            f"Batch import limited to {max_batch} URLs. Imported first {max_batch}."
+                        )
+                    )
+                )
                 urls = urls[:max_batch]
 
             count = 0
@@ -280,6 +306,7 @@ def main(pg: ft.Page):
             process_queue()
 
         except Exception as ex:
+            logger.error(f"Failed to import batch file: {ex}", exc_info=True)
             page.open(ft.SnackBar(content=ft.Text(f"Failed to import: {ex}")))
 
     def on_batch_import():
@@ -288,6 +315,7 @@ def main(pg: ft.Page):
     def on_time_picked(e):
         if e.value:
             state.scheduled_time = e.value
+            logger.info(f"Scheduled time set to: {e.value}")
             page.open(
                 ft.SnackBar(
                     content=ft.Text(
@@ -309,6 +337,7 @@ def main(pg: ft.Page):
 
     def check_rate_limit():
         import time
+
         now = time.time()
         if now - last_add_time[0] < add_rate_limit_seconds:
             return False
@@ -318,20 +347,27 @@ def main(pg: ft.Page):
     def on_toggle_clipboard(active):
         state.clipboard_monitor_active = active
         msg = "Clipboard Monitor Enabled" if active else "Clipboard Monitor Disabled"
+        logger.info(msg)
         page.open(ft.SnackBar(content=ft.Text(msg)))
 
     # --- Views Initialization ---
+    logger.debug("Initializing DownloadView...")
     download_view = DownloadView(
         on_fetch_info, on_add_to_queue, on_batch_import, on_schedule, state
     )
+    logger.debug("Initializing QueueView...")
     queue_view = QueueView(
         state.queue_manager, on_cancel_item, on_remove_item, on_reorder_item
     )
     queue_view.on_retry = on_retry_item
 
+    logger.debug("Initializing HistoryView...")
     history_view = HistoryView()
+    logger.debug("Initializing DashboardView...")
     dashboard_view = DashboardView()
+    logger.debug("Initializing RSSView...")
     rss_view = RSSView(state.config)
+    logger.debug("Initializing SettingsView...")
     settings_view = SettingsView(state.config)
 
     views_list = [
@@ -346,6 +382,7 @@ def main(pg: ft.Page):
     # --- Navigation ---
 
     def navigate_to(index):
+        logger.debug(f"Navigating to view index: {index}")
         app_layout.set_content(views_list[index])
         if index == 2:
             history_view.load()
@@ -391,7 +428,9 @@ def main(pg: ft.Page):
 
     page.on_disconnect = cleanup_on_disconnect
 
-    bg_thread = threading.Thread(target=background_loop, daemon=True, name="BackgroundLoop")
+    bg_thread = threading.Thread(
+        target=background_loop, daemon=True, name="BackgroundLoop"
+    )
     active_threads.append(bg_thread)
     bg_thread.start()
 
@@ -433,11 +472,11 @@ def global_crash_handler(exctype, value, tb):
     # Surface to user
     try:
         # Always write to stderr first
-        print("\n" + "="*60, file=sys.stderr)
+        print("\n" + "=" * 60, file=sys.stderr)
         print("CRITICAL ERROR - STREAMCATCH CRASHED", file=sys.stderr)
-        print("="*60, file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
         print(crash_report, file=sys.stderr)
-        print("="*60 + "\n", file=sys.stderr)
+        print("=" * 60 + "\n", file=sys.stderr)
 
         msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
         if os.name == "nt":
@@ -457,7 +496,7 @@ def global_crash_handler(exctype, value, tb):
 
 if __name__ == "__main__":  # pragma: no cover
     # Check for console mode flag
-    console_mode = '--console' in sys.argv or '--debug' in sys.argv
+    console_mode = "--console" in sys.argv or "--debug" in sys.argv
     if console_mode:
         print("Console mode enabled - all output will be visible")
 
@@ -465,14 +504,14 @@ if __name__ == "__main__":  # pragma: no cover
     sys.excepthook = global_crash_handler
 
     # Startup diagnostics
-    print("="*60)
+    print("=" * 60)
     print("StreamCatch Starting...")
     print(f"Python: {sys.version}")
     print(f"Working Directory: {os.getcwd()}")
     print(f"Executable: {sys.executable}")
     print(f"Frozen: {getattr(sys, 'frozen', False)}")
     print(f"Arguments: {sys.argv}")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     try:
         # Wrap startup in timeout

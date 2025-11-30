@@ -1,8 +1,9 @@
 import logging
 import os
 import time
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+
 import requests
-from typing import Dict, Any, Callable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from utils import CancelToken
@@ -48,10 +49,12 @@ def download_generic(
     while retry_count <= max_retries:
         try:
             logger.debug(f"Attempting download (try {retry_count + 1}) for {url}")
+            logger.debug(f"Request headers: {headers}")
             # Start stream with timeout suitable for large files
             with requests.get(
                 url, stream=True, headers=headers, timeout=REQUEST_TIMEOUT
             ) as r:
+                logger.debug(f"Response status: {r.status_code}, headers: {r.headers}")
                 r.raise_for_status()
 
                 # Handle resume response

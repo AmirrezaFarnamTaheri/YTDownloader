@@ -1,10 +1,12 @@
-import yt_dlp
-import os
 import logging
-from typing import Dict, Any, Callable, Optional, TYPE_CHECKING
+import os
 from pathlib import Path
-from downloader.extractors.generic import GenericExtractor
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+
+import yt_dlp
+
 from downloader.engines.generic import download_generic
+from downloader.extractors.generic import GenericExtractor
 
 if TYPE_CHECKING:
     from utils import CancelToken
@@ -47,8 +49,9 @@ class YTDLPWrapper:
 
         try:
             logger.info(f"Starting yt-dlp download: {url}")
-            logger.debug(f"yt-dlp options: {options}")
+            logger.debug(f"yt-dlp options keys: {list(options.keys())}")
             with yt_dlp.YoutubeDL(options) as ydl:
+                logger.debug("Executing ydl.download()...")
                 ydl.download([url])
             logger.info(f"yt-dlp download completed: {url}")
 
@@ -72,13 +75,16 @@ class YTDLPWrapper:
 
                 # Sanitize title
                 from pathlib import Path
+
                 from downloader.core import _sanitize_filename
 
                 safe_title = Path(title).name
                 safe_title = _sanitize_filename(safe_title)
 
                 if safe_title != title:
-                    logger.warning(f"Sanitized title (Fallback) from '{title}' to '{safe_title}'")
+                    logger.warning(
+                        f"Sanitized title (Fallback) from '{title}' to '{safe_title}'"
+                    )
 
                 if not safe_title.lower().endswith(f".{ext_lower}"):
                     filename = f"{safe_title}.{ext}"

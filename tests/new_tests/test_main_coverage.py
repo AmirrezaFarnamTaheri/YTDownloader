@@ -1,8 +1,10 @@
-import pytest
-from unittest.mock import MagicMock, patch, ANY
-import main
-import flet as ft
 from datetime import datetime, time
+from unittest.mock import ANY, MagicMock, patch
+
+import flet as ft
+import pytest
+
+import main
 
 
 class TestMainCoverage:
@@ -97,6 +99,7 @@ class TestMainCoverage:
 
         # Sleep to bypass rate limit
         import time as pytime
+
         pytime.sleep(0.6)
 
         # Test scheduled

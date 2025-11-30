@@ -1,9 +1,12 @@
-import flet as ft
-from theme import Theme
-from .base_view import BaseView
-from history_manager import HistoryManager
-from ui_utils import open_folder
 import logging
+
+import flet as ft
+
+from history_manager import HistoryManager
+from theme import Theme
+from ui_utils import open_folder
+
+from .base_view import BaseView
 
 
 class HistoryView(BaseView):

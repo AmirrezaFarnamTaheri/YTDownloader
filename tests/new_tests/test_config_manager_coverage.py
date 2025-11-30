@@ -1,9 +1,10 @@
-import unittest
-from unittest.mock import MagicMock, patch, mock_open
 import json
 import os
+import unittest
 from pathlib import Path
-from config_manager import ConfigManager, CONFIG_FILE
+from unittest.mock import MagicMock, mock_open, patch
+
+from config_manager import CONFIG_FILE, ConfigManager
 
 
 class TestConfigManagerCoverage(unittest.TestCase):

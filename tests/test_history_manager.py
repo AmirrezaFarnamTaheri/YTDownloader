@@ -1,8 +1,9 @@
-import unittest
-import sqlite3
-from pathlib import Path
-from history_manager import HistoryManager, DB_FILE
 import os
+import sqlite3
+import unittest
+from pathlib import Path
+
+from history_manager import DB_FILE, HistoryManager
 
 
 class TestHistoryManager(unittest.TestCase):

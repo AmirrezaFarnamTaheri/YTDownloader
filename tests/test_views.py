@@ -1,13 +1,15 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 import flet as ft
-from views.download_view import DownloadView
-from views.queue_view import QueueView
-from views.history_view import HistoryView
+
+from app_state import AppState
 from views.dashboard_view import DashboardView
+from views.download_view import DownloadView
+from views.history_view import HistoryView
+from views.queue_view import QueueView
 from views.rss_view import RSSView
 from views.settings_view import SettingsView
-from app_state import AppState
 
 
 class TestViews(unittest.TestCase):

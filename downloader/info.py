@@ -1,12 +1,13 @@
-import yt_dlp
 import logging
-from typing import Optional, Dict, Any, List
-import signal
 import os
+import signal
 from contextlib import contextmanager
+from typing import Any, Dict, List, Optional
 
-from downloader.extractors.telegram import TelegramExtractor
+import yt_dlp
+
 from downloader.extractors.generic import GenericExtractor
+from downloader.extractors.telegram import TelegramExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +15,11 @@ logger = logging.getLogger(__name__)
 @contextmanager
 def extraction_timeout(seconds=30):
     """Context manager for timeout on info extraction."""
+
     def timeout_handler(signum, frame):
         raise TimeoutError(f"Info extraction timed out after {seconds}s")
 
-    if os.name != 'nt':
+    if os.name != "nt":
         old_handler = signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(seconds)
         try:

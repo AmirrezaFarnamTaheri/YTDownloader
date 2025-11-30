@@ -4,10 +4,12 @@ Tests cover video info fetching, error handling, and download configuration.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock, call, patch
+
 import yt_dlp
-from downloader.info import get_video_info
+
 from downloader.core import download_video
+from downloader.info import get_video_info
 
 
 class TestGetVideoInfo(unittest.TestCase):
@@ -417,7 +419,9 @@ class TestDownloadVideo(unittest.TestCase):
 
     @patch("downloader.core.os.makedirs")
     @patch("downloader.core.YTDLPWrapper.download")
-    def test_download_video_creates_output_directory(self, mock_download, mock_makedirs):
+    def test_download_video_creates_output_directory(
+        self, mock_download, mock_makedirs
+    ):
         """Test that output directory is created if it doesn't exist."""
         progress_hook = MagicMock()
         download_item = {}

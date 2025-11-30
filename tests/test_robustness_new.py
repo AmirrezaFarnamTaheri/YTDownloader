@@ -1,9 +1,10 @@
-import unittest
-import time
 import threading
+import time
+import unittest
 from unittest.mock import MagicMock
-from utils import CancelToken
+
 from queue_manager import QueueManager
+from utils import CancelToken
 
 
 class TestCancelToken(unittest.TestCase):

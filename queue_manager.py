@@ -1,7 +1,7 @@
-import threading
-from typing import List, Dict, Any, Optional, Callable
 import logging
+import threading
 from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,9 @@ class QueueManager:
         with self._lock:
             listeners = list(self._listeners)
 
+        if listeners:
+            logger.debug(f"Notifying {len(listeners)} queue listeners")
+
         for listener in listeners:
             try:
                 listener()
@@ -96,8 +99,12 @@ class QueueManager:
                 logger.error(error_msg)
                 raise ValueError(error_msg)
 
-            logger.info(f"Adding item to queue: {item.get('url')} (Title: {item.get('title')})")
+            logger.info(
+                f"Adding item to queue: {item.get('url')} (Title: {item.get('title')})"
+            )
+            logger.debug(f"Queue size before add: {len(self._queue)}")
             self._queue.append(item)
+            logger.debug(f"Queue size after add: {len(self._queue)}")
         self._notify_listeners_safe()
 
     def remove_item(self, item: Dict[str, Any]):
@@ -105,9 +112,16 @@ class QueueManager:
         changed = False
         with self._lock:
             if item in self._queue:
-                logger.info(f"Removing item from queue: {item.get('url')} (Status: {item.get('status')})")
+                logger.info(
+                    f"Removing item from queue: {item.get('url')} (Status: {item.get('status')})"
+                )
                 self._queue.remove(item)
                 changed = True
+                logger.debug(f"Queue size after remove: {len(self._queue)}")
+            else:
+                logger.warning(
+                    f"Attempted to remove item not in queue: {item.get('url')}"
+                )
         if changed:
             self._notify_listeners_safe()
 
@@ -145,11 +159,13 @@ class QueueManager:
         updated = 0
         with self._lock:
             for item in self._queue:
-                if item.get("scheduled_time") and str(item.get("status", "")).startswith(
-                    "Scheduled"
-                ):
+                if item.get("scheduled_time") and str(
+                    item.get("status", "")
+                ).startswith("Scheduled"):
                     if now >= item["scheduled_time"]:
-                        logger.info(f"Scheduled time reached for item: {item.get('title')}")
+                        logger.info(
+                            f"Scheduled time reached for item: {item.get('title')}"
+                        )
                         item["status"] = "Queued"
                         item["scheduled_time"] = None
                         updated += 1
@@ -184,10 +200,14 @@ class QueueManager:
             # Now find next queued item
             for item in self._queue:
                 if item["status"] == "Queued":
-                    logger.debug(f"Claiming next downloadable item: {item.get('title')}")
+                    logger.debug(
+                        f"Claiming next downloadable item: {item.get('title')}"
+                    )
                     item["status"] = "Allocating"  # Temporary status
                     item["_allocated_at"] = now
                     return item
+
+            # logger.debug("No downloadable items found in queue") # Too noisy
         return None
 
     def any_in_status(self, status: str) -> bool:

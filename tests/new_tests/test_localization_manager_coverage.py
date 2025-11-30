@@ -1,8 +1,10 @@
 import json
-import pytest
-from unittest.mock import patch, mock_open
-from localization_manager import LocalizationManager
 from pathlib import Path
+from unittest.mock import mock_open, patch
+
+import pytest
+
+from localization_manager import LocalizationManager
 
 
 def test_load_language_fallback():

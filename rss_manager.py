@@ -1,7 +1,8 @@
-import requests
-import xml.etree.ElementTree as ET
 import logging
-from typing import List, Dict, Optional
+import xml.etree.ElementTree as ET
+from typing import Dict, List, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,10 @@ class RSSManager:
             }
 
             videos = []
-            for entry in root.findall("atom:entry", ns):
+            entries = root.findall("atom:entry", ns)
+            logger.debug(f"Found {len(entries)} entries in feed")
+
+            for entry in entries:
                 video = {}
                 video["title"] = entry.find("atom:title", ns).text
                 video["link"] = entry.find("atom:link", ns).attrib["href"]

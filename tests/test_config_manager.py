@@ -2,13 +2,14 @@
 Unit tests for ConfigManager and CancelToken.
 """
 
-import unittest
 import json
-import tempfile
 import shutil
+import tempfile
+import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-from config_manager import ConfigManager, CONFIG_FILE
+from unittest.mock import MagicMock, patch
+
+from config_manager import CONFIG_FILE, ConfigManager
 
 # CancelToken is now in main.py, but we can define a simple mock or import it if it was standalone.
 # For this test file, we will test ConfigManager only, or update import.

@@ -1,9 +1,11 @@
+import logging
 import threading
 import time
-import logging
+
 import pyperclip
-from ui_utils import validate_url
+
 from app_state import state
+from ui_utils import validate_url
 
 logger = logging.getLogger(__name__)
 

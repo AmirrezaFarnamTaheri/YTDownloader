@@ -1,9 +1,9 @@
-from typing import Optional
 import logging
 import os
 import platform
 import subprocess
 import threading
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -179,7 +179,9 @@ def is_ffmpeg_available() -> bool:
     if result[0]:
         logger.info("FFmpeg is available.")
     else:
-        logger.warning("FFmpeg not found. Video processing capabilities will be limited.")
+        logger.warning(
+            "FFmpeg not found. Video processing capabilities will be limited."
+        )
     return result[0] or False
 
 

@@ -1,8 +1,8 @@
 import json
 import logging
+import threading
 from pathlib import Path
 from typing import Dict
-import threading
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,9 @@ class LocalizationManager:
                     with open(path, "r", encoding="utf-8") as f:
                         cls._strings = json.load(f)
                         cls._current_lang = lang_code
-                logger.info(f"Loaded language '{lang_code}' with {len(cls._strings)} strings")
+                logger.info(
+                    f"Loaded language '{lang_code}' with {len(cls._strings)} strings"
+                )
             else:
                 logger.warning(
                     f"Language file {path} not found. Falling back to English."
