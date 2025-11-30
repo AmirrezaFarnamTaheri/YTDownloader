@@ -41,7 +41,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements-mobile.txt') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
 
@@ -52,16 +52,10 @@ jobs:
 
     - name: Prepare mobile requirements
       run: |
-        # Use mobile-specific requirements (no pyinstaller, no dev tools)
-        if [ -f requirements-mobile.txt ]; then
-          cp requirements-mobile.txt requirements.txt
-          echo "Using requirements-mobile.txt for build"
-        else
-          # Fallback: filter out incompatible packages
-          echo "Filtering incompatible packages from requirements.txt"
-          grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort)" requirements.txt > requirements-filtered.txt
-          mv requirements-filtered.txt requirements.txt
-        fi
+        # Use requirements.txt but exclude incompatible packages
+        echo "Filtering incompatible packages from requirements.txt"
+        grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort|nuitka|ordered-set|zstandard)" requirements.txt > requirements-filtered.txt
+        mv requirements-filtered.txt requirements.txt
         
         echo "=== Final requirements.txt ==="
         cat requirements.txt
@@ -112,7 +106,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/Library/Caches/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements-mobile.txt') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
 
@@ -123,16 +117,10 @@ jobs:
 
     - name: Prepare mobile requirements
       run: |
-        # Use mobile-specific requirements (no pyinstaller, no dev tools)
-        if [ -f requirements-mobile.txt ]; then
-          cp requirements-mobile.txt requirements.txt
-          echo "Using requirements-mobile.txt for build"
-        else
-          # Fallback: filter out incompatible packages
-          echo "Filtering incompatible packages from requirements.txt"
-          grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort)" requirements.txt > requirements-filtered.txt
-          mv requirements-filtered.txt requirements.txt
-        fi
+        # Use requirements.txt but exclude incompatible packages
+        echo "Filtering incompatible packages from requirements.txt"
+        grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort|nuitka|ordered-set|zstandard)" requirements.txt > requirements-filtered.txt
+        mv requirements-filtered.txt requirements.txt
         
         echo "=== Final requirements.txt ==="
         cat requirements.txt

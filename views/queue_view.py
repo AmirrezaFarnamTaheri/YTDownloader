@@ -1,4 +1,5 @@
 import logging
+
 import flet as ft
 
 from components import DownloadItemControl
