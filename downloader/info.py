@@ -79,6 +79,7 @@ def get_video_info(
 
             # If generic extractor and no video/audio formats found, it might be a file link
             if extractor == "Generic" and not formats:
+                logger.debug("yt-dlp returned Generic extractor with no formats. Trying GenericExtractor fallback.")
                 generic_info = GenericExtractor.extract(url)
                 if generic_info:
                     return generic_info
@@ -173,5 +174,5 @@ def get_video_info(
             return generic_info
         return None
     except Exception as e:
-        logger.exception(f"Unexpected error while fetching video info: {e}")
+        logger.error(f"Unexpected error while fetching video info: {e}", exc_info=True)
         return None

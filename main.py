@@ -66,6 +66,8 @@ def setup_logging():
         except Exception as e:
             print(f"Failed to setup log file {log_file}: {e}", file=sys.stderr)
 
+    logging.info("Logging initialized successfully.")
+
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -74,7 +76,7 @@ logger = logging.getLogger(__name__)
 download_view = None
 queue_view = None
 page = None
-active_threads: list[str] = []  # Track all created threads
+active_threads: list[threading.Thread] = []  # Track all created threads
 
 
 @contextmanager
@@ -100,7 +102,7 @@ def startup_timeout(seconds=10):
         # Implementing strict timeout on Windows for main thread operations is complex
         # and might be overkill if we just want to avoid hanging forever.
         # Ideally, we should run startup tasks in a thread with timeout, but that requires
-        # restructuring main(). For now, we keep as is but log a warning.
+        # restructuring main(). For now, we keep as is but log_warning.
         logger.warning("Startup timeout not enforced on Windows")
         yield
 
@@ -108,6 +110,9 @@ def startup_timeout(seconds=10):
 def main(pg: ft.Page):
     global page, download_view, queue_view
     page = pg
+
+    logger.info("Initializing main UI...")
+
     page.title = "StreamCatch - Ultimate Downloader"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
@@ -117,6 +122,7 @@ def main(pg: ft.Page):
 
     # Apply Theme
     page.theme = Theme.get_theme()
+    logger.debug("Theme applied.")
 
     # --- Pickers ---
     file_picker = ft.FilePicker()
@@ -127,6 +133,7 @@ def main(pg: ft.Page):
     )
     page.overlay.append(file_picker)
     page.overlay.append(time_picker)
+    logger.debug("Pickers initialized and added to overlay.")
 
     # --- Helpers ---
 
@@ -189,6 +196,7 @@ def main(pg: ft.Page):
                     )
                 )
             )
+            logger.info(f"Item scheduled for {sched_dt}")
 
         # Safely handle potential missing state.video_info or mismatch
         title = data["url"]
@@ -197,6 +205,8 @@ def main(pg: ft.Page):
             title = video_info.get("title", data["url"])
         elif state.video_info and data["url"] == download_view.url_input.value:
             title = state.video_info.get("title", data["url"])
+
+        logger.debug(f"Resolved title for queue item: {title}")
 
         item = {
             "url": data["url"],
@@ -270,6 +280,7 @@ def main(pg: ft.Page):
             # Limit batch import size
             max_batch = 100
             if len(urls) > max_batch:
+                logger.warning(f"Batch file too large ({len(urls)}), limiting to {max_batch}")
                 page.open(
                     ft.SnackBar(
                         content=ft.Text(
@@ -305,6 +316,7 @@ def main(pg: ft.Page):
                 count += 1
 
             queue_view.rebuild()
+            logger.info(f"Batch import completed: {count} URLs added")
             page.open(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
             process_queue()
 
@@ -313,6 +325,7 @@ def main(pg: ft.Page):
             page.open(ft.SnackBar(content=ft.Text(f"Failed to import: {ex}")))
 
     def on_batch_import():
+        logger.debug("Opening file picker for batch import")
         file_picker.pick_files(allow_multiple=False, allowed_extensions=["txt", "csv"])
 
     def on_time_picked(e):
@@ -328,6 +341,7 @@ def main(pg: ft.Page):
             )
 
     def on_schedule(e):
+        logger.debug("Opening time picker for scheduling")
         page.open(time_picker)
 
     # Wire up pickers
@@ -402,17 +416,20 @@ def main(pg: ft.Page):
     # Initial View
     app_layout.set_content(download_view)
     page.add(app_layout.view)
+    logger.info("Main view added to page.")
 
     # --- Background Logic ---
 
     def background_loop():
         """Background loop for queue processing."""
+        logger.info("Background loop started.")
         while not state.shutdown_flag.is_set():
             time.sleep(2)
             try:
                 process_queue()
             except Exception as e:
                 logger.error(f"Error in process_queue: {e}", exc_info=True)
+        logger.info("Background loop stopped.")
 
     # Start Clipboard Monitor (it runs its own loop)
     start_clipboard_monitor(page, download_view)
@@ -425,6 +442,7 @@ def main(pg: ft.Page):
         # Wait for threads to finish (with timeout)
         for thread in active_threads:
             if thread.is_alive():
+                logger.debug(f"Waiting for thread {thread.name} to finish...")
                 thread.join(timeout=2.0)
 
         logger.info("Cleanup complete")
@@ -434,7 +452,7 @@ def main(pg: ft.Page):
     bg_thread = threading.Thread(
         target=background_loop, daemon=True, name="BackgroundLoop"
     )
-    active_threads.append(bg_thread.name)
+    active_threads.append(bg_thread)
     bg_thread.start()
 
 

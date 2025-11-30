@@ -76,7 +76,12 @@ class YTDLPWrapper:
                 # Sanitize title
                 from pathlib import Path
 
-                from downloader.core import _sanitize_filename
+                # Circular import avoidance if possible, or robust import
+                try:
+                    from downloader.core import _sanitize_filename
+                except ImportError:
+                    import re
+                    def _sanitize_filename(s): return re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", s)
 
                 safe_title = Path(title).name
                 safe_title = _sanitize_filename(safe_title)
@@ -105,5 +110,5 @@ class YTDLPWrapper:
                 raise e
 
         except Exception as e:
-            logger.exception(f"Unexpected error during yt-dlp download: {e}")
+            logger.error(f"Unexpected error during yt-dlp download: {e}", exc_info=True)
             raise

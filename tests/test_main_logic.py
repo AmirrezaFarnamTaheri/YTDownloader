@@ -4,6 +4,7 @@ import unittest
 from datetime import datetime, timedelta
 from unittest.mock import ANY, MagicMock, patch
 
+import tasks  # Import tasks to patch module-level variables
 from app_state import AppState
 from tasks import download_task, process_queue
 from tasks_extended import fetch_info_task
@@ -20,16 +21,27 @@ class TestMainLogic(unittest.TestCase):
         self.mock_state.queue_manager.any_downloading.return_value = False
         self.mock_state.queue_manager.claim_next_downloadable.return_value = None
         self.mock_state.current_download_item = None
+        # Ensure shutdown flag is not set so process_queue doesn't skip
+        self.mock_state.shutdown_flag.is_set.return_value = False
 
         # Patch the global state in tasks and main
         self.patcher_main = patch("tasks_extended.state", self.mock_state)
         self.patcher_tasks = patch("tasks.state", self.mock_state)
+
+        # Patch the semaphore and lock in tasks to avoid interference
+        self.patcher_sem = patch("tasks._active_downloads", threading.Semaphore(3))
+        self.patcher_lock = patch("tasks._process_queue_lock", threading.RLock())
+
         self.patcher_main.start()
         self.patcher_tasks.start()
+        self.patcher_sem.start()
+        self.patcher_lock.start()
 
     def tearDown(self):
         self.patcher_main.stop()
         self.patcher_tasks.stop()
+        self.patcher_sem.stop()
+        self.patcher_lock.stop()
 
     # --- CancelToken Tests ---
     def test_cancel_token(self):
@@ -82,23 +94,47 @@ class TestMainLogic(unittest.TestCase):
         self.assertEqual(kwargs["args"][0], item)
 
     def test_process_queue_scheduled(self):
+        # This test relies on internal logic of process_queue which accesses state.queue_manager
+        # But we mocked state.queue_manager.
+        # We need to ensure isinstance(queue_mgr, QueueManager) check passes in tasks.py
+        # Or patch tasks.QueueManager to match our mock type?
+
+        # The tasks.py code:
+        # try: from queue_manager import QueueManager ...
+        # if isinstance(queue_mgr, QueueManager): ...
+
+        # Since our mock is a MagicMock, it won't be an instance of QueueManager class.
+        # So it falls back to "Legacy path".
+
         future_time = datetime.now() + timedelta(hours=1)
         item = {
             "url": "http://test",
             "status": "Scheduled (future)",
             "scheduled_time": future_time,
         }
-        # Mock _queue and _lock for direct access
+
+        # Configure mock for Legacy path access
+        # lock = getattr(queue_mgr, "_lock", None)
+        # q = getattr(queue_mgr, "_queue", None)
+
         self.mock_state.queue_manager._queue = [item]
-        self.mock_state.queue_manager._lock = threading.Lock()
-        self.mock_state.queue_manager.get_all.return_value = [item]
+        # Make _lock context manager compliant
+        lock_mock = MagicMock()
+        lock_mock.__enter__.return_value = None
+        lock_mock.__exit__.return_value = None
+        self.mock_state.queue_manager._lock = lock_mock
+
+        # Note: get_all is not used in Legacy path
 
         process_queue()
         self.assertEqual(item["status"], "Scheduled (future)")  # Should not change
 
         past_time = datetime.now() - timedelta(hours=1)
         item["scheduled_time"] = past_time
+
         process_queue()
+
+        # Check if item status updated
         self.assertEqual(item["status"], "Queued")
         self.assertIsNone(item["scheduled_time"])
 

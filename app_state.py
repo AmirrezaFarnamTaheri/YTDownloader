@@ -39,6 +39,7 @@ class AppState:
         # Prevent double initialization
         with self._init_lock:
             if self._initialized:
+                logger.debug("AppState already initialized, skipping.")
                 return
 
             logger.info("Initializing AppState singleton...")
@@ -91,9 +92,21 @@ class AppState:
         except Exception as e:
             logger.debug(f"Social manager cleanup error: {e}")
 
+        try:
+            logger.debug("Closing queue manager...")
+            # If QueueManager had cleanup
+            pass
+        except Exception as e:
+            logger.debug(f"Queue manager cleanup error: {e}")
+
     def get_video_info(self, url: str) -> Optional[Dict[str, Any]]:
         """Get cached video info for URL."""
-        return self._video_info_cache.get(url)
+        info = self._video_info_cache.get(url)
+        if info:
+            logger.debug(f"Cache hit for video info: {url}")
+        else:
+            logger.debug(f"Cache miss for video info: {url}")
+        return info
 
     def set_video_info(self, url: str, info: Dict[str, Any]):
         """Cache video info for URL with size limit."""

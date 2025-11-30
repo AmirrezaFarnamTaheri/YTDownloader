@@ -39,6 +39,7 @@ class ConfigManager:
             ValueError: If configuration is invalid
         """
         if not isinstance(config, dict):
+            logger.error(f"Invalid config type: {type(config)}")
             raise ValueError("Configuration must be a dictionary")
 
         # Validate known keys
@@ -59,6 +60,7 @@ class ConfigManager:
             # Let's fix the validation to allow "auto" (lowercase) as well.
             valid_accels = ("None", "Auto", "auto", "cuda", "vulkan")
             if config["gpu_accel"] not in valid_accels:
+                logger.error(f"Invalid gpu_accel value: {config['gpu_accel']}")
                 raise ValueError(f"Invalid gpu_accel value: {config['gpu_accel']}")
 
         if "theme_mode" in config and config["theme_mode"] not in (
@@ -66,6 +68,7 @@ class ConfigManager:
             "Light",
             "System",
         ):
+            logger.error(f"Invalid theme_mode value: {config['theme_mode']}")
             raise ValueError(f"Invalid theme_mode value: {config['theme_mode']}")
 
     @staticmethod
@@ -89,7 +92,7 @@ class ConfigManager:
                     )
                     return data
             except json.JSONDecodeError as e:
-                logger.warning(f"Configuration file corrupted, using defaults: {e}")
+                logger.warning(f"Configuration file corrupted, using defaults: {e}", exc_info=True)
                 # Attempt to backup corrupted file
                 backup_path = CONFIG_FILE.with_suffix(".json.corrupt")
                 try:
@@ -99,7 +102,7 @@ class ConfigManager:
                     pass
                 return {}
             except ValueError as e:
-                logger.warning(f"Configuration validation failed, using defaults: {e}")
+                logger.warning(f"Configuration validation failed, using defaults: {e}", exc_info=True)
                 return {}
             except IOError as e:
                 logger.info(f"No existing config file, will create on save: {e}")
@@ -164,5 +167,5 @@ class ConfigManager:
                 raise
 
         except IOError as e:
-            logger.error(f"Failed to save config: {e}")
+            logger.error(f"Failed to save config: {e}", exc_info=True)
             raise

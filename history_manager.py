@@ -195,19 +195,19 @@ class HistoryManager:
                     retry_count += 1
                     if retry_count < HistoryManager.MAX_DB_RETRIES:
                         logger.warning(
-                            f"Database locked, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})..."
+                            f"Database locked during init, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})..."
                         )
                         time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
                     else:
                         logger.error(
-                            f"Failed to init history DB after {retry_count} retries: {e}"
+                            f"Failed to init history DB after {retry_count} retries: {e}", exc_info=True
                         )
                         raise
                 else:
-                    logger.error(f"Failed to init history DB: {e}")
+                    logger.error(f"Failed to init history DB: {e}", exc_info=True)
                     raise
             except Exception as e:
-                logger.error(f"Failed to init history DB: {e}")
+                logger.error(f"Failed to init history DB: {e}", exc_info=True)
                 raise
 
         if last_error:
@@ -275,19 +275,19 @@ class HistoryManager:
                     retry_count += 1
                     if retry_count < HistoryManager.MAX_DB_RETRIES:
                         logger.warning(
-                            f"Database locked, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})..."
+                            f"Database locked during add, retrying ({retry_count}/{HistoryManager.MAX_DB_RETRIES})..."
                         )
                         time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
                     else:
                         logger.error(
-                            f"Failed to add history entry after {retry_count} retries: {e}"
+                            f"Failed to add history entry after {retry_count} retries: {e}", exc_info=True
                         )
                         raise
                 else:
-                    logger.error(f"Failed to add history entry: {e}")
+                    logger.error(f"Failed to add history entry: {e}", exc_info=True)
                     raise
             except Exception as e:
-                logger.error(f"Failed to add history entry: {e}")
+                logger.error(f"Failed to add history entry: {e}", exc_info=True)
                 raise
 
         if last_error:
@@ -312,7 +312,7 @@ class HistoryManager:
             elapsed = time.time() - start_time
             logger.debug(f"Retrieved {len(entries)} history entries in {elapsed:.4f}s")
         except Exception as e:
-            logger.error(f"Failed to retrieve history: {e}")
+            logger.error(f"Failed to retrieve history: {e}", exc_info=True)
         return entries
 
     @staticmethod
@@ -344,8 +344,10 @@ class HistoryManager:
                 for row in rows:
                     entries.append(dict(row))
 
+            logger.debug(f"Paginated history: offset={offset}, limit={limit}, fetched={len(entries)}, total={total}")
+
         except Exception as e:
-            logger.error(f"Failed to retrieve paginated history: {e}")
+            logger.error(f"Failed to retrieve paginated history: {e}", exc_info=True)
 
         return {
             "entries": entries,
@@ -376,4 +378,4 @@ class HistoryManager:
 
             logger.info("History cleared successfully.")
         except Exception as e:
-            logger.error(f"Failed to clear history: {e}")
+            logger.error(f"Failed to clear history: {e}", exc_info=True)

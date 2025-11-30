@@ -58,13 +58,13 @@ class SyncManager:
                 logger.info(f"Data exported to {output_path}")
                 return output_path
             except Exception as e:
-                logger.error(f"Error during export file operations: {e}")
+                logger.error(f"Error during export file operations: {e}", exc_info=True)
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
                 raise
 
         except Exception as e:
-            logger.error(f"Export failed: {e}")
+            logger.error(f"Export failed: {e}", exc_info=True)
             raise
 
     @staticmethod
@@ -120,5 +120,5 @@ class SyncManager:
             logger.info(f"Data imported successfully from {input_path}")
 
         except Exception as e:
-            logger.error(f"Import failed: {e}")
+            logger.error(f"Import failed: {e}", exc_info=True)
             raise

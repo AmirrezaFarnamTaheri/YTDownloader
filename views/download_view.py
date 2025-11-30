@@ -342,7 +342,7 @@ class DownloadView(BaseView):
         try:
             open_folder(path)
         except Exception as ex:
-            logger.error(f"Failed to open folder: {ex}")
+            logger.error(f"Failed to open folder: {ex}", exc_info=True)
             if self.page:
                 self.page.open(
                     ft.SnackBar(content=ft.Text(f"Failed to open folder: {ex}"))

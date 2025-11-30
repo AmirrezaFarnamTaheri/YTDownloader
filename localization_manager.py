@@ -36,7 +36,7 @@ class LocalizationManager:
                     cls.load_language("en")
 
         except Exception as e:
-            logger.error(f"Error loading language {lang_code}: {e}")
+            logger.error(f"Error loading language {lang_code}: {e}", exc_info=True)
 
     @classmethod
     def get(cls, key: str, *args) -> str:
@@ -44,7 +44,11 @@ class LocalizationManager:
         with cls._lock:
             val = cls._strings.get(key, key)
         if args:
-            return val.format(*args)
+            try:
+                return val.format(*args)
+            except IndexError:
+                logger.warning(f"Formatting error for key '{key}' with args {args}")
+                return val
         return val
 
     @classmethod
@@ -52,5 +56,8 @@ class LocalizationManager:
         """Get list of available language codes."""
         locales_dir = Path(__file__).parent / "locales"
         if locales_dir.exists():
-            return [f.stem for f in locales_dir.glob("*.json")]
+            langs = [f.stem for f in locales_dir.glob("*.json")]
+            logger.debug(f"Available languages: {langs}")
+            return langs
+        logger.warning("Locales directory not found.")
         return ["en"]
