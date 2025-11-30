@@ -64,11 +64,13 @@ class TelegramExtractor:
                     style = " ".join(style)
 
                 # style="background-image:url('https://...')"
-                match = re.search(r"url\('?(.*?)'?\)", style)
-                if match:
-                    media_url = match.group(1)
-                    is_video = False
-                    ext = "jpg"
+                # Mypy fix: style is str here
+                if style:
+                     match = re.search(r"url\('?(.*?)'?\)", style)
+                     if match:
+                         media_url = match.group(1)
+                         is_video = False
+                         ext = "jpg"
 
             if not media_url:
                 # Fallback: Check Open Graph tags

@@ -31,7 +31,7 @@ class QueueManager:
     MAX_QUEUE_SIZE = 1000
 
     def __init__(self):
-        logger.debug("Initializing QueueManager...")
+        logger.debug(f"Initializing QueueManager instance {id(self)}")
         self._queue: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
         self._listeners: List[Callable[[], None]] = []
@@ -106,7 +106,7 @@ class QueueManager:
                 raise ValueError(error_msg)
 
             logger.info(
-                f"Adding item to queue: {item.get('url')} (Title: {item.get('title')}, Status: {item.get('status')})"
+                f"Adding item to queue: {item.get('url')} (Title: {item.get('title')}, Status: {item.get('status')}) [QM: {id(self)}]"
             )
             # logger.debug(f"Queue size before add: {len(self._queue)}")
             self._queue.append(item)
@@ -204,10 +204,11 @@ class QueueManager:
                             item.pop("_allocated_at", None)
 
             # Now find next queued item
-            for item in self._queue:
+            for i, item in enumerate(self._queue):
+                # logger.debug(f"Checking item {i} in QM {id(self)}: status={item.get('status')}")
                 if item["status"] == "Queued":
-                    logger.debug(
-                        f"Claiming next downloadable item: {item.get('title', item.get('url'))}"
+                    logger.info(
+                        f"Claiming next downloadable item: {item.get('title', item.get('url'))} from QM {id(self)}"
                     )
                     item["status"] = "Allocating"  # Temporary status
                     item["_allocated_at"] = now

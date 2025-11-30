@@ -1,139 +1,141 @@
-import flet as ft
 import logging
-
+import flet as ft
 from theme import Theme
 
 logger = logging.getLogger(__name__)
 
 class AppLayout:
-    """
-    Manages the main application layout, including the NavigationRail and Content Area.
-    """
-
     def __init__(
         self,
         page: ft.Page,
         navigate_callback,
         toggle_clipboard_callback,
         clipboard_active=False,
+        initial_view=None,
     ):
-        logger.debug("Initializing AppLayout...")
         self.page = page
         self.navigate_callback = navigate_callback
         self.toggle_clipboard_callback = toggle_clipboard_callback
-        self.clipboard_active = clipboard_active
-        self.content_area = ft.Container(expand=True, bgcolor=Theme.BG_DARK)
 
-        self.nav_rail = ft.NavigationRail(
+        # Main content area
+        self.content_area = ft.Container(content=initial_view, expand=True, padding=20)
+
+        # Navigation Rail
+        self.rail = ft.NavigationRail(
             selected_index=0,
             label_type=ft.NavigationRailLabelType.ALL,
             min_width=100,
             min_extended_width=200,
             group_alignment=-0.9,
-            bgcolor=Theme.BG_CARD,
             destinations=[
                 ft.NavigationRailDestination(
-                    icon=ft.Icons.DOWNLOAD,
-                    selected_icon=ft.Icons.DOWNLOAD_DONE,
+                    icon=ft.Icons.DOWNLOAD_OUTLINED,
+                    selected_icon=ft.Icons.DOWNLOAD,
                     label="Download",
                 ),
                 ft.NavigationRailDestination(
-                    icon=ft.Icons.QUEUE_MUSIC,
-                    selected_icon=ft.Icons.QUEUE_MUSIC_ROUNDED,
+                    icon=ft.Icons.QUEUE_MUSIC_OUTLINED,
+                    selected_icon=ft.Icons.QUEUE_MUSIC,
                     label="Queue",
                 ),
                 ft.NavigationRailDestination(
-                    icon=ft.Icons.HISTORY,
-                    selected_icon=ft.Icons.HISTORY_TOGGLE_OFF,
+                    icon=ft.Icons.HISTORY_OUTLINED,
+                    selected_icon=ft.Icons.HISTORY,
                     label="History",
                 ),
                 ft.NavigationRailDestination(
-                    icon=ft.Icons.DASHBOARD,
-                    selected_icon=ft.Icons.DASHBOARD_CUSTOMIZE,
+                    icon=ft.Icons.DASHBOARD_OUTLINED,
+                    selected_icon=ft.Icons.DASHBOARD,
                     label="Dashboard",
                 ),
-                ft.NavigationRailDestination(icon=ft.Icons.RSS_FEED, label="RSS"),
-                ft.NavigationRailDestination(icon=ft.Icons.SETTINGS, label="Settings"),
+                ft.NavigationRailDestination(
+                    icon=ft.Icons.RSS_FEED_OUTLINED,
+                    selected_icon=ft.Icons.RSS_FEED,
+                    label="RSS Feeds",
+                ),
+                ft.NavigationRailDestination(
+                    icon=ft.Icons.SETTINGS_OUTLINED,
+                    selected_icon=ft.Icons.SETTINGS,
+                    label="Settings",
+                ),
             ],
-            on_change=lambda e: self.navigate_callback(e.control.selected_index),
+            on_change=self._on_nav_change,
+            bgcolor=Theme.Surface.BG,
         )
 
         # Clipboard Monitor Toggle
         self.clipboard_switch = ft.Switch(
             label="Clipboard Monitor",
-            value=self.clipboard_active,
-            active_color=Theme.PRIMARY,
-            on_change=self._on_clipboard_change,
+            value=clipboard_active,
+            on_change=self._on_clipboard_toggle,
+            # label_position=ft.LabelPosition.LEFT # Removed, might not be supported in this flet version stubs
         )
 
-        # About / Help Button
-        self.about_btn = ft.IconButton(
-            ft.Icons.HELP_OUTLINE,
-            tooltip="About & Help",
-            icon_color=Theme.TEXT_SECONDARY,
-            on_click=self.show_about_dialog,
-        )
-
-        # Sidebar Footer
-        sidebar_content = ft.Column(
-            [
-                self.nav_rail,
-                ft.Container(expand=True),
-                ft.Container(
-                    padding=20,
-                    content=ft.Column(
-                        [
-                            self.clipboard_switch,
-                            ft.Row(
-                                [self.about_btn], alignment=ft.MainAxisAlignment.CENTER
-                            ),
-                        ]
+        # Logo / Header
+        self.header = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Image(
+                        src="assets/logo.svg",
+                        width=48,
+                        height=48,
+                        color=Theme.Primary.MAIN,
                     ),
-                ),
-            ],
-            width=200,
+                    ft.Text(
+                        "StreamCatch",
+                        size=16,
+                        weight=ft.FontWeight.BOLD,
+                        color=Theme.Text.PRIMARY,
+                    ),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=5,
+            ),
+            padding=ft.padding.only(top=20, bottom=10),
         )
 
+        # Sidebar container
+        self.sidebar = ft.Container(
+            content=ft.Column(
+                [
+                    self.header,
+                    ft.Divider(color=Theme.Divider.COLOR, thickness=1),
+                    ft.Container(content=self.rail, expand=True),
+                    ft.Divider(color=Theme.Divider.COLOR, thickness=1),
+                    ft.Container(
+                        content=self.clipboard_switch, padding=ft.padding.all(15)
+                    ),
+                ],
+                spacing=0,
+            ),
+            width=200,
+            bgcolor=Theme.Surface.BG,
+            border=ft.border.only(right=ft.BorderSide(1, Theme.Divider.COLOR)),
+        )
+
+        # Main Layout
         self.view = ft.Row(
-            [
-                sidebar_content,
-                ft.VerticalDivider(width=1, color=Theme.BORDER),
-                self.content_area,
-            ],
+            [self.sidebar, ft.VerticalDivider(width=1, color="transparent"), self.content_area],
             expand=True,
             spacing=0,
         )
-        logger.debug("AppLayout initialized.")
 
-    def _on_clipboard_change(self, e):
-        logger.info(f"Clipboard monitor toggled: {e.control.value}")
+    def _on_nav_change(self, e):
+        index = e.control.selected_index
+        logger.info(f"Navigation changed to index: {index}")
+        self.navigate_callback(index)
+
+    def _on_clipboard_toggle(self, e):
+        logger.info(f"Clipboard monitor toggled to: {e.control.value}")
         self.toggle_clipboard_callback(e.control.value)
 
     def set_content(self, view_control):
-        # logger.debug(f"Setting content area to: {type(view_control).__name__}") # Noisy
+        logger.debug(f"Setting content view: {type(view_control).__name__}")
         self.content_area.content = view_control
-        self.content_area.update()
-
-    def show_about_dialog(self, e):
-        logger.debug("Showing About dialog")
-        dlg = ft.AlertDialog(
-            title=ft.Text("StreamCatch"),
-            content=ft.Column(
-                [
-                    ft.Text("Version: 2.0.0 (Soul Update)"),
-                    ft.Text("The ultimate media downloader with a soul."),
-                    ft.Divider(),
-                    ft.Text("Created by Jules."),
-                    ft.Text(
-                        "Features: YouTube, Telegram, Twitter, RSS, GPU Accel, Cloud Upload."
-                    ),
-                    ft.Text("Check WIKI.md for detailed help."),
-                ],
-                tight=True,
-                width=400,
-            ),
-            actions=[
-                ft.TextButton("Close", on_click=lambda e: self.page.close_dialog())
-            ],
-        )
-        self.page.show_dialog(dlg)
+        try:
+            self.content_area.update()
+        except AssertionError:
+            # Can happen if called before adding to page
+            pass
+        except Exception as e:
+            logger.warning(f"Failed to update content area: {e}")

@@ -83,7 +83,7 @@ class TestUIExtended(unittest.TestCase):
         layout = AppLayout(self.mock_page, nav_cb, clip_cb)
 
         self.assertIsInstance(layout.view, ft.Row)
-        self.assertIsInstance(layout.nav_rail, ft.NavigationRail)
+        self.assertIsInstance(layout.rail, ft.NavigationRail)
 
     def test_app_layout_clipboard_toggle(self):
         nav_cb = MagicMock()
@@ -92,7 +92,7 @@ class TestUIExtended(unittest.TestCase):
 
         e = MagicMock()
         e.control.value = True
-        layout._on_clipboard_change(e)
+        layout._on_clipboard_toggle(e)
 
         clip_cb.assert_called_with(True)
 
@@ -107,14 +107,6 @@ class TestUIExtended(unittest.TestCase):
 
         self.assertEqual(layout.content_area.content, content)
         layout.content_area.update.assert_called()
-
-    def test_app_layout_about_dialog(self):
-        nav_cb = MagicMock()
-        clip_cb = MagicMock()
-        layout = AppLayout(self.mock_page, nav_cb, clip_cb)
-
-        layout.show_about_dialog(None)
-        self.mock_page.show_dialog.assert_called()
 
     # --- SettingsView Tests ---
 

@@ -266,7 +266,8 @@ class HistoryManager:
                         ),
                     )
                     conn.commit()
-                logger.debug(f"Added history entry: {title} (ID: {cursor.lastrowid})")
+                    new_id = cursor.lastrowid
+                logger.debug(f"Added history entry: {title} (ID: {new_id})")
                 return  # Success
 
             except sqlite3.OperationalError as e:

@@ -72,6 +72,14 @@ def build_installer():
             "--product-version=2.0.0.0",
             "--copyright=Copyright © 2024 Jules",
         ])
+    elif sys.platform == "darwin":
+        # MacOS specific flags
+        cmd.extend([
+            "--macos-create-app-bundle",
+            "--macos-app-icon=assets/icon.icns", # Assuming icon exists
+            "--macos-app-name=StreamCatch",
+            "--macos-app-version=2.0.0",
+        ])
 
     # Linux/Mac specific flags (if any needed for Nuitka)
     if sys.platform.startswith("linux"):

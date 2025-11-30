@@ -9,6 +9,7 @@ import traceback
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
 import flet as ft
 
@@ -73,9 +74,9 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # Module-level handles primarily for tests and integrations
-download_view = None
-queue_view = None
-page = None
+download_view: Optional[DownloadView] = None
+queue_view: Optional[QueueView] = None
+page: Optional[ft.Page] = None
 active_threads: list[threading.Thread] = []  # Track all created threads
 
 
@@ -150,7 +151,8 @@ def main(pg: ft.Page):
             )
             return
 
-        download_view.fetch_btn.disabled = True
+        if download_view:
+            download_view.fetch_btn.disabled = True
         page.update()
 
         logger.debug("Starting fetch_info_task thread...")
@@ -203,7 +205,7 @@ def main(pg: ft.Page):
         video_info = state.get_video_info(data["url"])
         if video_info:
             title = video_info.get("title", data["url"])
-        elif state.video_info and data["url"] == download_view.url_input.value:
+        elif state.video_info and download_view and data["url"] == download_view.url_input.value:
             title = state.video_info.get("title", data["url"])
 
         logger.debug(f"Resolved title for queue item: {title}")
@@ -227,7 +229,8 @@ def main(pg: ft.Page):
         }
         state.queue_manager.add_item(item)
         state.scheduled_time = None
-        queue_view.rebuild()
+        if queue_view:
+            queue_view.rebuild()
         if status == "Queued":
             page.open(ft.SnackBar(content=ft.Text("Added to queue")))
         process_queue()
@@ -244,7 +247,8 @@ def main(pg: ft.Page):
     def on_remove_item(item):
         logger.info(f"Removing item from queue UI: {item.get('title', 'Unknown')}")
         state.queue_manager.remove_item(item)
-        queue_view.rebuild()
+        if queue_view:
+            queue_view.rebuild()
 
     def on_reorder_item(item, direction):
         q = state.queue_manager.get_all()
@@ -254,7 +258,8 @@ def main(pg: ft.Page):
             if 0 <= new_idx < len(q):
                 logger.debug(f"Reordering item {idx} -> {new_idx}")
                 state.queue_manager.swap_items(idx, new_idx)
-                queue_view.rebuild()
+                if queue_view:
+                    queue_view.rebuild()
 
     def on_retry_item(item):
         logger.info(f"Retrying item: {item.get('title', 'Unknown')}")
@@ -263,7 +268,8 @@ def main(pg: ft.Page):
         item["speed"] = ""
         item["eta"] = ""
         item["size"] = ""
-        queue_view.rebuild()
+        if queue_view:
+            queue_view.rebuild()
         process_queue()
 
     def on_batch_file_result(e: ft.FilePickerResultEvent):
@@ -315,7 +321,8 @@ def main(pg: ft.Page):
                 state.queue_manager.add_item(item)
                 count += 1
 
-            queue_view.rebuild()
+            if queue_view:
+                queue_view.rebuild()
             logger.info(f"Batch import completed: {count} URLs added")
             page.open(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
             process_queue()
@@ -410,11 +417,14 @@ def main(pg: ft.Page):
         page.update()
 
     app_layout = AppLayout(
-        page, navigate_to, on_toggle_clipboard, state.clipboard_monitor_active
+        page,
+        navigate_to,
+        on_toggle_clipboard,
+        state.clipboard_monitor_active,
+        initial_view=download_view,
     )
 
     # Initial View
-    app_layout.set_content(download_view)
     page.add(app_layout.view)
     logger.info("Main view added to page.")
 
@@ -448,6 +458,7 @@ def main(pg: ft.Page):
         logger.info("Cleanup complete")
 
     page.on_disconnect = cleanup_on_disconnect
+    page.on_close = cleanup_on_disconnect # Also handle close event explicitly
 
     bg_thread = threading.Thread(
         target=background_loop, daemon=True, name="BackgroundLoop"

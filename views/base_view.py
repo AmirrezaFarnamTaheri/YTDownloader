@@ -1,11 +1,12 @@
 import flet as ft
+from typing import Optional
 
 from theme import Theme
 from ui_utils import format_file_size
 
 
 class BaseView(ft.Container):
-    def __init__(self, title: str, icon: str = None, **kwargs):
+    def __init__(self, title: str, icon: Optional[str] = None, **kwargs):
         super().__init__(**kwargs)
         self.expand = True
         self.padding = 30

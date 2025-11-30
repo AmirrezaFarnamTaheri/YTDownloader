@@ -44,6 +44,19 @@ class Theme:
         colors=[PRIMARY, ACCENT],
     )
 
+    # Sub-classes for better organization (and to fix test attribute errors)
+    class Surface:
+        BG = "#1E293B"  # Same as BG_CARD
+
+    class Primary:
+        MAIN = "#818CF8" # Same as PRIMARY
+
+    class Text:
+        PRIMARY = "#F8FAFC"
+
+    class Divider:
+        COLOR = "#334155" # Same as BORDER
+
     @staticmethod
     def get_theme():
         return ft.Theme(

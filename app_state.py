@@ -8,6 +8,7 @@ from config_manager import ConfigManager
 from history_manager import HistoryManager
 from queue_manager import QueueManager
 from social_manager import SocialManager
+from sync_manager import SyncManager
 from ui_utils import is_ffmpeg_available
 from utils import CancelToken
 
@@ -58,6 +59,10 @@ class AppState:
         self.cinema_mode = False
         self.cloud_manager = CloudManager()
         self.social_manager = SocialManager()
+
+        # Instantiate SyncManager with dependencies to avoid circular imports
+        self.sync_manager = SyncManager(self.cloud_manager, self.config)
+
         self.scheduled_time: Optional[time] = None
         self.clipboard_monitor_active = False
         self.last_clipboard_content = ""
