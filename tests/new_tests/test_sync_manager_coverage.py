@@ -15,13 +15,20 @@ class TestSyncManagerCoverage(unittest.TestCase):
 
         expected_path = str(Path.home() / SyncManager.EXPORT_FILE)
 
+        # Mock tempfile and os.replace
         with patch("builtins.open", mock_open()) as mock_file:
-            path = SyncManager.export_data()
-            self.assertEqual(path, expected_path)
-            mock_file.assert_called_with(expected_path, "w", encoding="utf-8")
+             with patch("tempfile.mkstemp", return_value=(123, "/tmp/tempfile")):
+                 with patch("os.fdopen", mock_file):
+                      with patch("os.replace") as mock_replace:
+                           with patch("os.fsync"): # mock fsync
+                               path = SyncManager.export_data()
+                               self.assertEqual(path, expected_path)
+                               # It writes to temp file handle
+                               mock_file.assert_called()
+                               mock_replace.assert_called_with("/tmp/tempfile", expected_path)
 
-            # Verify json dump content
-            handle = mock_file()
+        # Verify json dump content
+        # handle = mock_file()
             # We can't easily check the written content with json.dump directly on mock without more complex setup
             # but we know it didn't crash.
 

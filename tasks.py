@@ -64,10 +64,6 @@ def _process_queue_impl():
                                 item["status"] = "Queued"
                                 item["scheduled_time"] = None
 
-    if state.queue_manager.any_downloading():
-        logger.debug("Downloads already in progress, not starting new")
-        return
-
     # ATOMIC CLAIM
     item = state.queue_manager.claim_next_downloadable()
     if item:

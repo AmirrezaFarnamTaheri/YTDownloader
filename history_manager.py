@@ -341,8 +341,15 @@ class HistoryManager:
                 cursor.execute("DELETE FROM history")
                 conn.commit()
 
-                # Vacuum to reclaim space
-                cursor.execute("VACUUM")
+            # Vacuum must be done outside of transaction or with autocommit.
+            # _get_connection uses default isolation (implicit transaction).
+            # We need to run VACUUM in a separate step with isolation_level=None
+
+            db_file = HistoryManager._resolve_db_file()
+            # Brief connection just for VACUUM
+            with sqlite3.connect(db_file, isolation_level=None) as vac_conn:
+                vac_conn.execute("VACUUM")
+
             logger.info("History cleared.")
         except Exception as e:
             logger.error(f"Failed to clear history: {e}")

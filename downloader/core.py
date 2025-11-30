@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 from typing import Dict, Any, Callable, Optional, TYPE_CHECKING
 from pathlib import Path
@@ -24,6 +25,16 @@ def _sanitize_output_path(base_path: str) -> str:
     compatible) but still normalize empty/None values to the current directory.
     """
     return base_path or "."
+
+
+def _sanitize_filename(filename: str) -> str:
+    """
+    Sanitize filename for cross-platform compatibility.
+    Replaces illegal characters with underscores.
+    """
+    # Windows illegal characters: < > : " / \ | ? *
+    # Also removing control characters
+    return re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', filename)
 
 
 def _sanitize_template(template: _OptionalStr[str], output_path: str = ".") -> _OptionalStr[str]:
@@ -97,7 +108,8 @@ def download_video(
     """
     # Sanitize and ensure output path exists
     output_path = _sanitize_output_path(output_path or ".")
-    Path(output_path).mkdir(parents=True, exist_ok=True)
+    if not os.path.exists(output_path):
+        os.makedirs(output_path, exist_ok=True)
 
     # Check for hints in download_item or detect
     is_telegram = (download_item or {}).get(
@@ -111,11 +123,19 @@ def download_video(
             direct_url = info["video_streams"][0]["url"]
             ext = info["video_streams"][0]["ext"]
             title = info["title"]
+
+            # Sanitize title to prevent path traversal and Windows issues
+            safe_title = Path(title).name
+            safe_title = _sanitize_filename(safe_title)
+
+            if safe_title != title:
+                logger.warning(f"Sanitized title from '{title}' to '{safe_title}'")
+
             # Be case-insensitive when checking for existing extension
-            if not title.lower().endswith(f".{ext.lower()}"):
-                filename = f"{title}.{ext}"
+            if not safe_title.lower().endswith(f".{ext.lower()}"):
+                filename = f"{safe_title}.{ext}"
             else:
-                filename = title
+                filename = safe_title
 
             logger.info("Downloading Generic file (Forced): %s", filename)
             download_generic(
@@ -136,7 +156,11 @@ def download_video(
             direct_url = info["video_streams"][0]["url"]
             ext = info["video_streams"][0]["ext"]
             title = info["title"]
-            filename = f"{title}.{ext}"
+
+            # Sanitize title
+            safe_title = Path(title).name
+            safe_title = _sanitize_filename(safe_title)
+            filename = f"{safe_title}.{ext}"
 
             logger.info("Downloading Telegram media: %s", filename)
             download_generic(
@@ -156,6 +180,8 @@ def download_video(
         tmpl = _sanitize_template(output_template)
         outtmpl = os.path.join(output_path, tmpl)
     else:
+        # We don't sanitize %(title)s here because yt-dlp handles it,
+        # but we do want to ensure we don't accidentally introduce paths.
         outtmpl = os.path.join(output_path, "%(title)s.%(ext)s")
 
     ydl_opts: Dict[str, Any] = {

@@ -58,7 +58,15 @@ def startup_timeout(seconds=10):
             signal.alarm(0)
             signal.signal(signal.SIGALRM, old_handler)
     else:
-        # Windows: no timeout, just yield
+        # Windows: usage of threading.Timer to simulate timeout for the block
+        # However, we can't easily interrupt the main thread from a timer thread
+        # without raising an exception in it (which is tricky in Python).
+        # We will use a simpler approach: Just yield.
+        # Implementing strict timeout on Windows for main thread operations is complex
+        # and might be overkill if we just want to avoid hanging forever.
+        # Ideally, we should run startup tasks in a thread with timeout, but that requires
+        # restructuring main(). For now, we keep as is but log a warning.
+        logger.warning("Startup timeout not enforced on Windows")
         yield
 
 

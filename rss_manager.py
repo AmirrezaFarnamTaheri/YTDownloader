@@ -33,14 +33,6 @@ class RSSManager:
             videos = []
             for entry in root.findall("atom:entry", ns):
                 video = {}
-            ns = {
-                "atom": "http://www.w3.org/2005/Atom",
-                "yt": "http://www.youtube.com/xml/schemas/2015",
-            }
-
-            videos = []
-            for entry in root.findall("atom:entry", ns):
-                video = {}
                 video["title"] = entry.find("atom:title", ns).text
                 video["link"] = entry.find("atom:link", ns).attrib["href"]
                 video["published"] = entry.find("atom:published", ns).text
