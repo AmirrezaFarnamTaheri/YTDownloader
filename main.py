@@ -131,12 +131,13 @@ def main(pg: ft.Page):
     # --- Helpers ---
 
     def on_fetch_info(url):
-        logger.debug(f"on_fetch_info called with url: {url}")
+        logger.info(f"User requested video info fetch for: {url}")
         if not url:
+            logger.debug("Fetch ignored: URL is empty")
             page.open(ft.SnackBar(content=ft.Text("Please enter a URL")))
             return
         if not validate_url(url):
-            logger.warning(f"Invalid URL provided: {url}")
+            logger.warning(f"Fetch ignored: Invalid URL format: {url}")
             page.open(
                 ft.SnackBar(content=ft.Text("Please enter a valid http/https URL"))
             )
@@ -145,6 +146,7 @@ def main(pg: ft.Page):
         download_view.fetch_btn.disabled = True
         page.update()
 
+        logger.debug("Starting fetch_info_task thread...")
         threading.Thread(
             target=fetch_info_task, args=(url, download_view, page), daemon=True
         ).start()
@@ -221,9 +223,10 @@ def main(pg: ft.Page):
         process_queue()
 
     def on_cancel_item(item):
-        logger.info(f"Cancelling item: {item.get('title', 'Unknown')}")
+        logger.info(f"User requested cancel for item: {item.get('title', 'Unknown')}")
         item["status"] = "Cancelled"
         if state.current_download_item == item and state.cancel_token:
+            logger.info("Triggering cancel_token for active download")
             state.cancel_token.cancel()
         if "control" in item:
             item["control"].update_progress()

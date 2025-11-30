@@ -11,10 +11,14 @@ from views.components.preview_card import DownloadPreviewCard
 from .base_view import BaseView
 
 
+logger = logging.getLogger(__name__)
+
+
 class DownloadView(BaseView):
     def __init__(
         self, on_fetch_info, on_add_to_queue, on_batch_import, on_schedule, state
     ):
+        logger.debug("Initializing DownloadView")
         super().__init__("New Download", ft.Icons.DOWNLOAD)
         self.on_fetch_info = on_fetch_info
         self.on_add_to_queue = on_add_to_queue
@@ -274,7 +278,10 @@ class DownloadView(BaseView):
 
     def update_info(self, info):
         if not info:
+            logger.debug("update_info called with no info")
             return
+
+        logger.debug(f"Updating UI with video info: {info.get('title', 'N/A')}")
 
         self.thumbnail_img.src = info.get("thumbnail") or ""
         self.thumbnail_img.visible = True
@@ -312,6 +319,7 @@ class DownloadView(BaseView):
         self.update()
 
     def _on_add_click(self, e):
+        logger.info("Add to queue button clicked")
         # Handle cookie selection
         cookies = self.cookies_dd.value if self.cookies_dd.value != "None" else None
 
@@ -326,13 +334,16 @@ class DownloadView(BaseView):
             "output_template": "%(title)s.%(ext)s",
             "cookies_from_browser": cookies,
         }
+        logger.debug(f"Dispatching add_to_queue with options: {data}")
         self.on_add_to_queue(data)
 
     def open_download_folder(self, e):
         path = os.path.expanduser("~/Downloads")
+        logger.info(f"Opening downloads folder: {path}")
         try:
             open_folder(path)
         except Exception as ex:
+            logger.error(f"Failed to open folder: {ex}")
             if self.page:
                 self.page.open(
                     ft.SnackBar(content=ft.Text(f"Failed to open folder: {ex}"))

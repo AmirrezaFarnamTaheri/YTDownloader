@@ -115,6 +115,7 @@ def download_video(
     # Sanitize and ensure output path exists
     output_path = _sanitize_output_path(output_path or ".")
     if not os.path.exists(output_path):
+        logger.debug(f"Creating output directory: {output_path}")
         os.makedirs(output_path, exist_ok=True)
 
     # Check for hints in download_item or detect
@@ -122,13 +123,19 @@ def download_video(
         "is_telegram"
     ) or TelegramExtractor.is_telegram_url(url)
 
+    logger.info(f"Initiating download_video for URL: {url}")
     logger.debug(
-        f"Starting download process for {url} (is_telegram={is_telegram}, force_generic={force_generic})"
-    )
-    logger.debug(
-        f"Download parameters: output_path={output_path}, "
-        f"video_format={video_format}, playlist={playlist}, "
-        f"use_aria2c={use_aria2c}, gpu_accel={gpu_accel}"
+        f"Download Configuration:\n"
+        f"  - Output Path: {output_path}\n"
+        f"  - Format: {video_format}\n"
+        f"  - Playlist: {playlist}\n"
+        f"  - Aria2c: {use_aria2c}\n"
+        f"  - GPU Accel: {gpu_accel}\n"
+        f"  - Force Generic: {force_generic}\n"
+        f"  - Is Telegram: {is_telegram}\n"
+        f"  - SponsorBlock: {sponsorblock_remove}\n"
+        f"  - Time Range: {start_time} - {end_time}\n"
+        f"  - Proxy: {'Yes' if proxy else 'No'}"
     )
 
     if force_generic:
@@ -204,6 +211,8 @@ def download_video(
         # but we do want to ensure we don't accidentally introduce paths.
         outtmpl = os.path.join(output_path, "%(title)s.%(ext)s")
 
+    logger.debug(f"Constructed base outtmpl: {outtmpl}")
+
     ydl_opts: Dict[str, Any] = {
         "format": video_format,
         "playlist": playlist,
@@ -220,10 +229,12 @@ def download_video(
         ydl_opts["match_filter"] = match_filter
 
     if use_aria2c:
+        logger.debug("Enabling aria2c external downloader")
         ydl_opts["external_downloader"] = "aria2c"
         ydl_opts["external_downloader_args"] = ["-x", "16", "-s", "16", "-k", "1M"]
 
     if subtitle_lang:
+        logger.debug(f"Enabling subtitles for language: {subtitle_lang}")
         ydl_opts.update(
             {
                 "writesubtitles": True,
@@ -233,12 +244,14 @@ def download_video(
         )
 
     if split_chapters:
+        logger.debug("Enabling split chapters")
         ydl_opts["split_chapters"] = True
         ydl_opts["outtmpl"] = os.path.join(
             output_path, "%(title)s", "%(section_number)02d - %(section_title)s.%(ext)s"
         )
 
     if start_time and end_time:
+        logger.debug(f"Configuring download range: {start_time} to {end_time}")
         try:
             from yt_dlp.utils import parse_duration
 
@@ -268,24 +281,29 @@ def download_video(
             ]
             ydl_opts["force_keyframes_at_cuts"] = True
         except Exception as e:
+            logger.error(f"Failed to configure time range: {e}")
             raise ValueError(f"Invalid time range format: {e}") from e
 
     postprocessors = []
 
     if add_metadata:
+        logger.debug("Adding metadata postprocessor")
         ydl_opts["addmetadata"] = True
         postprocessors.append({"key": "FFmpegMetadata"})
 
     if embed_thumbnail:
+        logger.debug("Adding thumbnail embed postprocessor")
         ydl_opts["writethumbnail"] = True
         postprocessors.append({"key": "EmbedThumbnail"})
 
     if recode_video:
+        logger.debug(f"Adding video recode postprocessor: {recode_video}")
         postprocessors.append(
             {"key": "FFmpegVideoConvertor", "preferredformat": recode_video}
         )
 
     if sponsorblock_remove:
+        logger.debug("Adding SponsorBlock postprocessor")
         postprocessors.append(
             {
                 "key": "SponsorBlock",
@@ -303,6 +321,7 @@ def download_video(
         )
 
     if gpu_accel and gpu_accel.lower() != "none":
+        logger.debug(f"Configuring GPU acceleration: {gpu_accel}")
         ffmpeg_args = []
         if gpu_accel == "cuda":
             ffmpeg_args.extend(["-c:v", "h264_nvenc", "-preset", "fast"])
@@ -312,6 +331,7 @@ def download_video(
             ydl_opts["postprocessor_args"] = {"ffmpeg": ffmpeg_args}
 
     if postprocessors:
+        logger.debug(f"Attached {len(postprocessors)} postprocessors")
         ydl_opts["postprocessors"] = postprocessors
 
     if proxy:

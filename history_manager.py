@@ -66,9 +66,12 @@ class HistoryManager:
             raise sqlite3.OperationalError(f"Database file not writable: {db_file}")
 
         conn = sqlite3.connect(db_file, timeout=timeout)
-        logger.debug(f"Opened DB connection to {db_file}")
+        logger.debug(f"Opened DB connection to {db_file} (Timeout: {timeout}s)")
         # Enable WAL mode for better concurrency
-        conn.execute("PRAGMA journal_mode=WAL")
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+        except Exception as e:
+            logger.warning(f"Failed to enable WAL mode: {e}")
         return HistoryManager._ConnectionWrapper(conn)
 
     @staticmethod
@@ -296,6 +299,7 @@ class HistoryManager:
         entries = []
         try:
             logger.debug(f"Fetching history (limit={limit})")
+            start_time = time.time()
             with HistoryManager._get_connection() as conn:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
@@ -305,7 +309,10 @@ class HistoryManager:
                 rows = cursor.fetchall()
                 for row in rows:
                     entries.append(dict(row))
-            logger.debug(f"Retrieved {len(entries)} history entries")
+            elapsed = time.time() - start_time
+            logger.debug(
+                f"Retrieved {len(entries)} history entries in {elapsed:.4f}s"
+            )
         except Exception as e:
             logger.error(f"Failed to retrieve history: {e}")
         return entries

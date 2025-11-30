@@ -101,12 +101,15 @@ class AppState:
         if len(self._video_info_cache) >= self._video_info_max_size:
             # Remove oldest entry
             oldest_key = next(iter(self._video_info_cache))
+            logger.debug(f"Evicting oldest video info cache entry: {oldest_key}")
             del self._video_info_cache[oldest_key]
 
+        logger.debug(f"Caching video info for: {url}")
         self._video_info_cache[url] = info
 
     def clear_video_info_cache(self):
         """Clear video info cache to free memory."""
+        logger.debug("Clearing all video info cache")
         self._video_info_cache.clear()
 
 

@@ -38,12 +38,15 @@ class RSSManager:
 
             for entry in entries:
                 video = {}
-                video["title"] = entry.find("atom:title", ns).text
-                video["link"] = entry.find("atom:link", ns).attrib["href"]
-                video["published"] = entry.find("atom:published", ns).text
-                video["video_id"] = entry.find("yt:videoId", ns).text
-
-                videos.append(video)
+                try:
+                    video["title"] = entry.find("atom:title", ns).text
+                    video["link"] = entry.find("atom:link", ns).attrib["href"]
+                    video["published"] = entry.find("atom:published", ns).text
+                    video["video_id"] = entry.find("yt:videoId", ns).text
+                    videos.append(video)
+                except AttributeError as e:
+                    logger.warning(f"Skipping malformed RSS entry in {url}: {e}")
+                    continue
 
             logger.info(f"Successfully parsed {len(videos)} videos from feed: {url}")
             return videos

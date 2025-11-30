@@ -91,6 +91,7 @@ class QueueManager:
             ValueError: If queue is at maximum capacity.
         """
         if not item or not isinstance(item, dict):
+            logger.error("Attempted to add invalid item to queue (not a dict)")
             raise ValueError("Item must be a non-empty dictionary")
 
         with self._lock:
@@ -100,7 +101,7 @@ class QueueManager:
                 raise ValueError(error_msg)
 
             logger.info(
-                f"Adding item to queue: {item.get('url')} (Title: {item.get('title')})"
+                f"Adding item to queue: {item.get('url')} (Title: {item.get('title')}, Status: {item.get('status')})"
             )
             logger.debug(f"Queue size before add: {len(self._queue)}")
             self._queue.append(item)
@@ -120,7 +121,7 @@ class QueueManager:
                 logger.debug(f"Queue size after remove: {len(self._queue)}")
             else:
                 logger.warning(
-                    f"Attempted to remove item not in queue: {item.get('url')}"
+                    f"Attempted to remove item not in queue: {item.get('url')} (Title: {item.get('title')})"
                 )
         if changed:
             self._notify_listeners_safe()
@@ -201,7 +202,7 @@ class QueueManager:
             for item in self._queue:
                 if item["status"] == "Queued":
                     logger.debug(
-                        f"Claiming next downloadable item: {item.get('title')}"
+                        f"Claiming next downloadable item: {item.get('title', item.get('url'))}"
                     )
                     item["status"] = "Allocating"  # Temporary status
                     item["_allocated_at"] = now
