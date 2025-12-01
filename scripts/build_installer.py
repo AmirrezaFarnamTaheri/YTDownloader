@@ -4,6 +4,55 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Avoid compiling yt-dlp's massive lazy extractor table, which can exhaust
+# the Windows C compiler heap when Nuitka converts it to C code.
+os.environ.setdefault("YTDLP_NO_LAZY_EXTRACTORS", "1")
+
+
+def ensure_macos_app_bundle(dist_dir: Path, app_name: str, binary_name: str) -> Path:
+    """Assemble a .app bundle in ``dist/`` for downstream packaging.
+
+    Nuitka's onefile output can scatter macOS bundle parts across helper
+    directories. CI expects a concrete ``dist/StreamCatch.app`` for DMG
+    creation, so we copy or build the bundle if it is missing.
+    """
+
+    target = dist_dir / f"{app_name}.app"
+    if target.exists():
+        return target
+
+    # First, check if Nuitka produced a bundle elsewhere under dist/.
+    for candidate in dist_dir.rglob("*.app"):
+        if candidate.is_dir():
+            shutil.copytree(candidate, target, dirs_exist_ok=True)
+            return target
+
+    # Fallback: construct a minimal bundle from the emitted files.
+    contents_dir = target / "Contents"
+    macos_dir = contents_dir / "MacOS"
+    resources_dir = contents_dir / "Resources"
+    macos_dir.mkdir(parents=True, exist_ok=True)
+    resources_dir.mkdir(exist_ok=True)
+
+    info_plist = dist_dir / "Info.plist"
+    if info_plist.exists():
+        shutil.copy2(info_plist, contents_dir / "Info.plist")
+
+    resources_src = dist_dir / "Resources"
+    if resources_src.exists():
+        for item in resources_src.iterdir():
+            dest = resources_dir / item.name
+            if item.is_dir():
+                shutil.copytree(item, dest, dirs_exist_ok=True)
+            else:
+                shutil.copy2(item, dest)
+
+    binary_src = dist_dir / binary_name
+    if binary_src.exists():
+        shutil.copy2(binary_src, macos_dir / app_name)
+
+    return target
+
 
 def build_installer():
     """
@@ -47,20 +96,37 @@ def build_installer():
     print("\nStep 2: Building with Nuitka...")
 
     # Build compiled binary
+    output_name = (
+        "StreamCatch.exe"
+        if os.name == "nt"
+        else "StreamCatch"
+        if sys.platform == "darwin"
+        else "streamcatch"
+    )
+
     cmd = [
         sys.executable,
         "-m",
         "nuitka",
         "--standalone",
-        "--onefile",
+        # Onefile yields a smaller distribution, but leave it disabled on
+        # macOS so we can easily assemble a .app bundle for the DMG step.
+    ]
+
+    if sys.platform != "darwin":
+        cmd.append("--onefile")
+
+    cmd.extend(
+        [
         # Enable LTO if stable, otherwise disable for speed/memory
         # "--lto=no",
         # Flet often needs explicit data for assets
         f"--include-data-dir={root / 'assets'}=assets",
         f"--include-data-dir={root / 'locales'}=locales",
         f"--output-dir={dist_dir}",
-        f"--output-filename={'StreamCatch.exe' if os.name == 'nt' else 'streamcatch'}",
-    ]
+        f"--output-filename={output_name}",
+        ]
+    )
 
     # Windows specific flags
     if os.name == "nt":
@@ -104,6 +170,10 @@ def build_installer():
     except subprocess.CalledProcessError as e:
         print(f"\n✗ Build failed with exit code {e.returncode}\n", file=sys.stderr)
         sys.exit(1)
+
+    if sys.platform == "darwin":
+        bundle_path = ensure_macos_app_bundle(dist_dir, "StreamCatch", output_name)
+        print(f"macOS app bundle ready at: {bundle_path}\n")
 
     # 2. Optionally build Windows installer via Inno Setup
     if os.name == "nt":
