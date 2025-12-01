@@ -16,11 +16,11 @@ class TestConfigManager(unittest.TestCase):
         config = ConfigManager.load_config()
         self.assertEqual(config.get("test"), 1)
 
-    @patch("config_manager.Path.rename")
+    @patch("config_manager.Path.replace")
     @patch("config_manager.tempfile.mkstemp")
     @patch("os.fdopen", new_callable=mock_open)
     @patch("os.fsync")
-    def test_save_config(self, mock_fsync, mock_fdopen, mock_mkstemp, mock_rename):
+    def test_save_config(self, mock_fsync, mock_fdopen, mock_mkstemp, mock_replace):
         # Mock tempfile creation
         mock_mkstemp.return_value = (999, "/tmp/test_config.json")
 
@@ -32,7 +32,7 @@ class TestConfigManager(unittest.TestCase):
         mock_mkstemp.assert_called_once()
         mock_fdopen.assert_called_once()
         mock_fsync.assert_called_once()
-        mock_rename.assert_called_once()
+        mock_replace.assert_called_once()
 
 
 if __name__ == "__main__":
