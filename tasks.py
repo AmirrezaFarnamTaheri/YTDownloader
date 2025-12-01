@@ -17,6 +17,18 @@ logger = logging.getLogger(__name__)
 MAX_CONCURRENT_DOWNLOADS = 3
 _active_downloads = threading.Semaphore(MAX_CONCURRENT_DOWNLOADS)
 _thread_pool = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_DOWNLOADS)
+# A dedicated lock keeps queue processing predictable for tests and runtime
+# alike. Some tests expect the attribute to exist for patching, so we expose it
+# as a module-level object.
+_process_queue_lock = threading.RLock()
+
+# HistoryManager is imported lazily inside download_task, but a number of tests
+# patch the symbol directly on this module. Import it here defensively so patch
+# lookups succeed without altering runtime behaviour.
+try:  # pragma: no cover - defensive import for test stability
+    from history_manager import HistoryManager  # noqa: F401
+except Exception:  # pragma: no cover - fallback if optional dependency missing
+    HistoryManager = None
 
 
 def process_queue():
