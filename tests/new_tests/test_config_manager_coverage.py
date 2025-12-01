@@ -87,11 +87,12 @@ class TestConfigManagerCoverage(unittest.TestCase):
 
         mock_path.parent.mkdir.return_value = None
 
-        # Mock Path unlink for cleanup
-        with patch("pathlib.Path.unlink") as mock_unlink:
+        with patch("config_manager.Path") as mock_path_cls:
+            temp_path_instance = mock_path_cls.return_value
             with self.assertRaises(Exception):
                 ConfigManager.save_config({"theme_mode": "Dark"})
-            mock_unlink.assert_called_with()
+            # Ensure unlink called on the temp path instance specifically
+            temp_path_instance.unlink.assert_called_with()
 
     @patch("config_manager.Path")
     @patch("config_manager.CONFIG_FILE")
@@ -99,10 +100,10 @@ class TestConfigManagerCoverage(unittest.TestCase):
     @patch("os.fdopen")
     @patch("os.fsync")
     # pylint: disable=too-many-arguments, too-many-positional-arguments, unused-argument
-    def test_save_config_windows_unlink(
+    def test_save_config_atomic_replace(
         self, mock_fsync, mock_fdopen, mock_mkstemp, mock_config_file, mock_path_cls
     ):
-        """Test Windows-specific atomic rename logic where target must be removed first."""
+        """Test atomic replace logic."""
         mock_mkstemp.return_value = (1, "/tmp/temp_file")
         mock_fdopen.return_value.__enter__.return_value = MagicMock()
 
@@ -112,13 +113,13 @@ class TestConfigManagerCoverage(unittest.TestCase):
         # Mock the Path instance returned by Path(temp_path)
         mock_temp_path_instance = mock_path_cls.return_value
 
-        # Simulate Windows environment
-        with patch("os.name", "nt"):
-            ConfigManager.save_config({"theme_mode": "Dark"})
-            # Should verify unlink was called
-            mock_config_file.unlink.assert_called()
-            # Verify rename was called on the temp path instance
-            mock_temp_path_instance.rename.assert_called_with(mock_config_file)
+        ConfigManager.save_config({"theme_mode": "Dark"})
+
+        # Verify replace was called on the temp path instance
+        mock_temp_path_instance.replace.assert_called_with(mock_config_file)
+
+        # Verify unlink was NOT called on config file (old windows logic)
+        mock_config_file.unlink.assert_not_called()
 
     @patch("config_manager.CONFIG_FILE")
     def test_save_config_io_error_initial(self, mock_path):
