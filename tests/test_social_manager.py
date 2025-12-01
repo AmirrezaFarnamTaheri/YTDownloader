@@ -1,15 +1,24 @@
 import unittest
 from unittest.mock import MagicMock, patch
+import os
 
+# Import after setting up environment if needed, but patching is better
 from social_manager import SocialManager
 
 
 class TestSocialManager(unittest.TestCase):
 
-    @patch.dict("sys.modules", {"pypresence": MagicMock()})
+    def setUp(self):
+        # Set a fake client ID so connect() doesn't skip
+        self.env_patcher = patch.dict(os.environ, {"DISCORD_CLIENT_ID": "111111111111111111"})
+        self.env_patcher.start()
+
+    def tearDown(self):
+        self.env_patcher.stop()
+
     def test_connect_success(self):
-        # Mock pypresence.Presence
-        with patch("pypresence.Presence") as MockPresence:
+        # Patch the class imported in social_manager module
+        with patch("social_manager.Presence") as MockPresence:
             mock_rpc = MockPresence.return_value
 
             manager = SocialManager()
@@ -19,20 +28,8 @@ class TestSocialManager(unittest.TestCase):
             MockPresence.assert_called()
             mock_rpc.connect.assert_called_once()
 
-    def test_connect_import_error(self):
-        # Simulate ImportError by ensuring pypresence cannot be imported
-        with patch.dict("sys.modules", {"pypresence": None}):
-            # We need to ensure import fails. Mocking __import__ is tricky for specific modules.
-            # But SocialManager imports inside connect().
-            # If sys.modules['pypresence'] is None, import might fail or return None.
-            # Actually, if we set side_effect on the import...
-            # A simpler way is to just let it fail if not installed or mocking failure.
-            # But here I'll assume it handles it gracefully as per code.
-            pass
-
-    @patch.dict("sys.modules", {"pypresence": MagicMock()})
     def test_connect_exception(self):
-        with patch("pypresence.Presence") as MockPresence:
+        with patch("social_manager.Presence") as MockPresence:
             mock_rpc = MockPresence.return_value
             mock_rpc.connect.side_effect = Exception("Connection failed")
 
@@ -41,45 +38,44 @@ class TestSocialManager(unittest.TestCase):
 
             self.assertFalse(manager.connected)
 
-    @patch.dict("sys.modules", {"pypresence": MagicMock()})
     def test_update_activity_success(self):
-        with patch("pypresence.Presence") as MockPresence:
+        with patch("social_manager.Presence") as MockPresence:
             mock_rpc = MockPresence.return_value
 
             manager = SocialManager()
             manager.connect()
+
             manager.update_activity("Downloading", "Video 1")
 
-            mock_rpc.update.assert_called_with(
-                state="Downloading",
-                details="Video 1",
-                large_image="logo",
-                small_image=None,
-            )
+            # Let's inspect call args
+            args, kwargs = mock_rpc.update.call_args
+            self.assertEqual(kwargs['details'], "Downloading")
+            self.assertEqual(kwargs['state'], "Video 1")
+            self.assertEqual(kwargs['large_image'], "logo")
+            self.assertEqual(kwargs['large_text'], "StreamCatch")
+            self.assertIn('start', kwargs)
 
     def test_update_activity_not_connected(self):
         manager = SocialManager()
         manager.connected = False
         manager.rpc = MagicMock()
 
-        manager.update_activity("State")
+        manager.update_activity("State", "Details")
         manager.rpc.update.assert_not_called()
 
-    @patch.dict("sys.modules", {"pypresence": MagicMock()})
     def test_update_activity_exception(self):
-        with patch("pypresence.Presence") as MockPresence:
+        with patch("social_manager.Presence") as MockPresence:
             mock_rpc = MockPresence.return_value
             mock_rpc.update.side_effect = Exception("Update failed")
 
             manager = SocialManager()
             manager.connect()
-            manager.update_activity("State")
+            manager.update_activity("State", "Details")
 
             self.assertFalse(manager.connected)
 
-    @patch.dict("sys.modules", {"pypresence": MagicMock()})
     def test_close(self):
-        with patch("pypresence.Presence") as MockPresence:
+        with patch("social_manager.Presence") as MockPresence:
             mock_rpc = MockPresence.return_value
 
             manager = SocialManager()

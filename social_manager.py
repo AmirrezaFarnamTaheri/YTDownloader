@@ -1,70 +1,72 @@
 """
-Social interactions manager (e.g. Discord Rich Presence).
+Social media integration manager (Discord Rich Presence).
+
+Handles connection to Discord RPC to display current status.
 """
 
 import logging
+import os
 import threading
-from typing import Optional
+import time
+
+from pypresence import Presence
 
 logger = logging.getLogger(__name__)
 
 
 class SocialManager:
-    """
-    Manages social interactions (Discord Rich Presence, etc.).
-    Fails gracefully if libraries are missing or connection fails.
-    """
+    """Manages Discord Rich Presence."""
 
     def __init__(self):
         self.rpc = None
         self.connected = False
-        self._client_id = "123456789012345678"  # Dummy ID for now
+        # Get client ID from env or use default/dummy
+        self._client_id = os.environ.get("DISCORD_CLIENT_ID", "123456789012345678")
         self._lock = threading.Lock()
 
     def connect(self):
         """Connect to Discord RPC."""
-        try:
-            from pypresence import Presence
+        # Simple check to avoid trying if ID is dummy/invalid
+        if self._client_id == "123456789012345678":
+             # Silent fail or log debug
+             logger.debug("Discord RPC skipped: No valid Client ID provided")
+             return
 
-            self.rpc = Presence(self._client_id)
-            self.rpc.connect()
-            self.connected = True
-            logger.info("Connected to Discord Rich Presence")
-        except ImportError:
-            logger.debug("pypresence not installed, social features disabled")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.debug("Failed to connect to Discord RPC: %s", e)
-            self.connected = False
+        with self._lock:
+            if self.connected:
+                return
+            try:
+                self.rpc = Presence(self._client_id)
+                self.rpc.connect()
+                self.connected = True
+                logger.info("Connected to Discord RPC")
+            except Exception as e:
+                logger.warning("Failed to connect to Discord RPC: %s", e)
 
-    def update_activity(
-        self,
-        state: str,
-        details: Optional[str] = None,
-        large_image: Optional[str] = None,
-        small_image: Optional[str] = None,
-    ):
-        """Update user activity."""
-        if not self.connected or not self.rpc:
+    def update_activity(self, details: str, state: str, large_image: str = "logo"):
+        """Update the rich presence activity."""
+        if not self.connected:
             return
 
         with self._lock:
             try:
                 self.rpc.update(
-                    state=state,
                     details=details,
-                    large_image=large_image or "logo",
-                    small_image=small_image,
+                    state=state,
+                    large_image=large_image,
+                    large_text="StreamCatch",
+                    start=time.time(),
                 )
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.debug("Failed to update activity: %s", e)
+            except Exception as e:
+                logger.warning("Failed to update Discord activity: %s", e)
                 self.connected = False
 
     def close(self):
-        """Close connection."""
-        if self.rpc:
-            try:
-                self.rpc.close()
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
-            self.connected = False
-            logger.info("Social manager closed")
+        """Close the RPC connection."""
+        with self._lock:
+            if self.rpc:
+                try:
+                    self.rpc.close()
+                except Exception:
+                    pass
+                self.connected = False

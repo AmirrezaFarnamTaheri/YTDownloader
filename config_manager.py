@@ -14,8 +14,13 @@ from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
-# Configuration file path
-CONFIG_FILE = Path.home() / ".streamcatch" / "config.json"
+# Configuration file path with fallback for mobile/sandboxed environments
+try:
+    CONFIG_FILE = Path.home() / ".streamcatch" / "config.json"
+    # Test if we can resolve/access home
+    _ = CONFIG_FILE.parent
+except Exception:
+    CONFIG_FILE = Path("config.json")
 
 
 class ConfigManager:
@@ -86,8 +91,18 @@ class ConfigManager:
         Returns:
             Configuration dictionary (empty if file doesn't exist or is corrupted)
         """
+        global CONFIG_FILE
         logger.info("Loading configuration from %s", CONFIG_FILE)
-        CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+        # Ensure directory exists (if using home path)
+        try:
+            CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.warning("Could not create config dir: %s – using fallback path", e)
+            # Switch to local path if home creation fails
+            if CONFIG_FILE.parent != Path("."):
+                CONFIG_FILE = Path("config.json")
+                logger.info("Switched to fallback config file: %s", CONFIG_FILE)
 
         if CONFIG_FILE.exists():
             try:

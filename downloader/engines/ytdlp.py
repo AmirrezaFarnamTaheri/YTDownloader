@@ -1,12 +1,7 @@
 import logging
-import os
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 import yt_dlp
-
-from downloader.engines.generic import download_generic
-from downloader.extractors.generic import GenericExtractor
 
 if TYPE_CHECKING:
     from utils import CancelToken
@@ -15,97 +10,81 @@ logger = logging.getLogger(__name__)
 
 
 class YTDLPWrapper:
+    """Wrapper around yt-dlp to handle configuration and execution."""
+
+    def __init__(self, options: Dict[str, Any]):
+        self.options = options.copy()
+
     @staticmethod
+    def supports(url: str) -> bool:
+        """Check if yt-dlp supports the URL."""
+        # Simple check, or use yt-dlp's extractor list
+        # For now, assume yes unless it's a known unsupported type (e.g. some direct files)
+        # But core logic handles generic fallback if yt-dlp fails.
+        # We can just return True and let it fail/fallback.
+        return True
+
     def download(
+        self,
         url: str,
-        output_path: str,
-        progress_hook: Callable,
-        download_item: Dict[str, Any],
-        options: Dict[str, Any],
-        cancel_token: Optional["Any"] = None,
-    ) -> None:
+        progress_hook: Optional[Callable] = None,
+        cancel_token: Optional[Any] = None,
+    ) -> Dict[str, Any]:
         """
-        Executes yt-dlp download with provided options.
-        Handles fallback to Generic Downloader if yt-dlp fails.
+        Execute download.
+
+        Returns:
+            Dict containing metadata of downloaded file.
         """
+        options = self.options.copy()
 
-        # Create a shallow copy of options to avoid accumulating hooks in the original dict
-        # if it's reused by the caller.
-        options = options.copy()
-
-        # Ensure progress_hooks list exists
+        # Prepare hooks
         hooks = options.setdefault("progress_hooks", [])
-        # Also copy the hooks list so we don't modify the original list object
-        # if it was shared.
-        options["progress_hooks"] = list(hooks)
-        hooks = options["progress_hooks"]
 
-        # Add cancel token check to progress hooks (if provided)
         if cancel_token:
-            hooks.append(lambda d: cancel_token.check(d))
+            # yt-dlp progress hook receives a dict 'd'
+            def check_cancel(d):
+                if cancel_token and hasattr(cancel_token, 'check'):
+                    cancel_token.check()
+                elif cancel_token and getattr(cancel_token, 'cancelled', False):
+                    raise Exception("Cancelled")
+            hooks.append(check_cancel)
 
-        # Basic progress hook wrapper for UI updates
-        hooks.append(lambda d: progress_hook(d, download_item))
+        if progress_hook:
+            hooks.append(progress_hook)
+
+        options["progress_hooks"] = hooks
 
         try:
             logger.info(f"Starting yt-dlp download: {url}")
-            logger.debug(f"yt-dlp options keys: {list(options.keys())}")
-            with yt_dlp.YoutubeDL(options) as ydl:  # type: ignore
-                logger.debug("Executing ydl.download()...")
-                ydl.download([url])
-            logger.info(f"yt-dlp download completed: {url}")
+            with yt_dlp.YoutubeDL(options) as ydl:
+                # Extract info and download
+                info = ydl.extract_info(url, download=True)
 
-        except yt_dlp.utils.DownloadError as e:
-            if "by user" in str(e):
-                logger.info(f"Download cancelled by user: {url}")
-                return
+                # If playlist, info['entries'] exists.
+                # If single video, info is the video info.
 
-            # Fallback to Generic Downloader if yt-dlp fails
-            logger.warning(f"yt-dlp failed ({e}). Attempting Generic Downloader...")
+                if "entries" in info:
+                    # It's a playlist. Return summary or first item?
+                    # Core expects a dict.
+                    return {
+                        "filename": "Playlist", # Placeholder
+                        "filepath": options.get("outtmpl", "."), # Approximation
+                        "title": info.get("title", "Playlist"),
+                        "entries": len(info["entries"])
+                    }
 
-            info = GenericExtractor.extract(url)
-            if info and info.get("video_streams"):
-                direct_url = info["video_streams"][0]["url"]
-                ext = info["video_streams"][0]["ext"]
-                title = info["title"]
-
-                # Normalize extension handling
-                title_lower = title.lower()
-                ext_lower = ext.lower()
-
-                # Sanitize title
-                import re
-                from pathlib import Path
-
-                def _sanitize_filename(s: str) -> str:
-                    return re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", s)
-
-                safe_title = Path(title).name
-                safe_title = _sanitize_filename(str(safe_title))
-
-                if safe_title != title:
-                    logger.warning(
-                        f"Sanitized title (Fallback) from '{title}' to '{safe_title}'"
-                    )
-
-                if not safe_title.lower().endswith(f".{ext_lower}"):
-                    filename = f"{safe_title}.{ext}"
-                else:
-                    filename = safe_title
-
-                logger.info(f"Downloading Generic file (Fallback): {filename}")
-                download_generic(
-                    direct_url,
-                    output_path,
-                    filename,
-                    progress_hook,
-                    download_item,
-                    cancel_token,
-                )
-            else:
-                logger.error("Generic extraction also failed.")
-                raise e
+                # Single video
+                filename = ydl.prepare_filename(info)
+                return {
+                    "filename": info.get("title", "Video"),
+                    "filepath": filename,
+                    "title": info.get("title"),
+                    "duration": info.get("duration"),
+                    "thumbnail": info.get("thumbnail"),
+                    "uploader": info.get("uploader"),
+                }
 
         except Exception as e:
-            logger.error(f"Unexpected error during yt-dlp download: {e}", exc_info=True)
+            logger.error(f"yt-dlp error: {e}")
             raise
