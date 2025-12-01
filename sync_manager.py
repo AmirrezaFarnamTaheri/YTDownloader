@@ -1,6 +1,7 @@
 """
 Synchronizes configuration and history to cloud storage.
 """
+
 import json
 import logging
 import os
@@ -105,7 +106,9 @@ class SyncManager:
                 logger.info("Starting sync DOWN...")
 
                 # 1. Download Config
-                local_config_path = os.path.join(tempfile.gettempdir(), "config_downloaded.json")
+                local_config_path = os.path.join(
+                    tempfile.gettempdir(), "config_downloaded.json"
+                )
                 if self.cloud.download_file("config.json", local_config_path):
                     with open(local_config_path, "r", encoding="utf-8") as f:
                         new_config = json.load(f)
@@ -186,7 +189,9 @@ class SyncManager:
                             os.remove(target_db)
                         except OSError:
                             # Windows might lock it
-                            logger.warning("Could not remove existing DB, import might be incomplete if locked")
+                            logger.warning(
+                                "Could not remove existing DB, import might be incomplete if locked"
+                            )
                             pass
 
                     if not os.path.exists(target_db):

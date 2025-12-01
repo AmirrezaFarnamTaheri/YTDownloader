@@ -1,9 +1,12 @@
 """
 RSS Manager module for fetching and parsing RSS feeds.
 """
+
 import logging
-from typing import Any, Dict, List, Optional
+import xml.etree.ElementTree as ET
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import requests
 from dateutil import parser as date_parser
 
@@ -39,76 +42,23 @@ class RSSManager:
         return RSSManager.parse_feed(url, self)
 
     @staticmethod
-    def parse_feed(url: str, instance: Optional['RSSManager'] = None) -> List[Dict[str, Any]]:
+    def parse_feed(
+        url: str, instance: Optional["RSSManager"] = None
+    ) -> List[Dict[str, Any]]:
         """Fetch and parse a single RSS feed (Static implementation)."""
         try:
             logger.debug("Fetching RSS feed: %s", url)
             response = requests.get(url, timeout=10)
             response.raise_for_status()
 
-            import xml.etree.ElementTree as ET
-
             root = ET.fromstring(response.content)
 
             items = []
             # Handle Atom vs RSS
             if "feed" in root.tag:
-                # Atom
-                ns = {"atom": "http://www.w3.org/2005/Atom", "yt": "http://www.youtube.com/xml/schemas/2015"}
-                # Update feed title if needed
-                title_elem = root.find("atom:title", ns)
-                if instance and title_elem is not None and title_elem.text:
-                    instance._update_feed_name(url, title_elem.text)
-
-                for entry in root.findall("atom:entry", ns):
-                    title = entry.find("atom:title", ns)
-                    link = entry.find("atom:link", ns)
-                    published = entry.find("atom:published", ns) or entry.find(
-                        "atom:updated", ns
-                    )
-                    video_id_elem = entry.find("yt:videoId", ns)
-
-                    link_href = link.attrib.get("href") if link is not None else None
-
-                    if title is not None and title.text and link_href:
-                        item_data = {
-                            "title": title.text,
-                            "link": link_href,
-                            "published": (
-                                published.text if published is not None else None
-                            ),
-                        }
-                        if video_id_elem is not None:
-                             item_data["video_id"] = video_id_elem.text
-                        items.append(item_data)
+                RSSManager._parse_atom_feed(root, items, instance, url)
             else:
-                # RSS 2.0
-                channel = root.find("channel")
-                if channel is not None:
-                    title_elem = channel.find("title")
-                    if instance and title_elem is not None and title_elem.text:
-                        instance._update_feed_name(url, title_elem.text)
-
-                    for item in channel.findall("item"):
-                        title = item.find("title")
-                        link = item.find("link")
-                        pubDate = item.find("pubDate")
-
-                        if (
-                            title is not None
-                            and title.text
-                            and link is not None
-                            and link.text
-                        ):
-                            items.append(
-                                {
-                                    "title": title.text,
-                                    "link": link.text,
-                                    "published": (
-                                        pubDate.text if pubDate is not None else None
-                                    ),
-                                }
-                            )
+                RSSManager._parse_rss_feed(root, items, instance, url)
 
             logger.info("Fetched %d items from %s", len(items), url)
             return items
@@ -116,6 +66,75 @@ class RSSManager:
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Failed to fetch RSS feed %s: %s", url, e)
             return []
+
+    @staticmethod
+    def _parse_atom_feed(
+        root: ET.Element,
+        items: List[Dict[str, Any]],
+        instance: Optional["RSSManager"],
+        url: str,
+    ):
+        """Parse Atom feed entries."""
+        ns = {
+            "atom": "http://www.w3.org/2005/Atom",
+            "yt": "http://www.youtube.com/xml/schemas/2015",
+        }
+        # Update feed title if needed
+        title_elem = root.find("atom:title", ns)
+        if instance and title_elem is not None and title_elem.text:
+            # pylint: disable=protected-access
+            instance._update_feed_name(url, title_elem.text)
+
+        for entry in root.findall("atom:entry", ns):
+            title = entry.find("atom:title", ns)
+            link = entry.find("atom:link", ns)
+            published = entry.find("atom:published", ns)
+            if published is None:
+                published = entry.find("atom:updated", ns)
+            video_id_elem = entry.find("yt:videoId", ns)
+
+            link_href = link.attrib.get("href") if link is not None else None
+
+            if title is not None and title.text and link_href:
+                item_data = {
+                    "title": title.text,
+                    "link": link_href,
+                    "published": (published.text if published is not None else None),
+                }
+                if video_id_elem is not None:
+                    item_data["video_id"] = video_id_elem.text
+                items.append(item_data)
+
+    @staticmethod
+    def _parse_rss_feed(
+        root: ET.Element,
+        items: List[Dict[str, Any]],
+        instance: Optional["RSSManager"],
+        url: str,
+    ):
+        """Parse RSS 2.0 feed items."""
+        channel = root.find("channel")
+        if channel is not None:
+            title_elem = channel.find("title")
+            if instance and title_elem is not None and title_elem.text:
+                # pylint: disable=protected-access
+                instance._update_feed_name(url, title_elem.text)
+
+            for item in channel.findall("item"):
+                title = item.find("title")
+                link = item.find("link")
+                pub_date = item.find("pubDate")
+
+                if title is not None and title.text and link is not None and link.text:
+                    items.append(
+                        {
+                            "title": title.text,
+                            "link": link.text,
+                            "published": (
+                                pub_date.text if pub_date is not None else None
+                            ),
+                        }
+                    )
 
     def _update_feed_name(self, url: str, name: str):
         """Update the friendly name of a feed."""

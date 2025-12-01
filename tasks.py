@@ -68,6 +68,7 @@ def _process_queue_impl():
         lock = getattr(queue_mgr, "_lock", None)
         q = getattr(queue_mgr, "_queue", None)
         if lock is not None and q is not None:
+            # pylint: disable=protected-access
             with lock:
                 for item in q:
                     if item.get("scheduled_time") and str(

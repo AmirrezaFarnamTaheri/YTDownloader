@@ -17,9 +17,9 @@ class TestSyncManager(unittest.TestCase):
             os.remove(self.test_file)
 
         self.mock_cloud = MagicMock()
-        self.mock_config = MagicMock() # Mock the object, not a dict
+        self.mock_config = MagicMock()  # Mock the object, not a dict
         self.mock_config.get_all.return_value = {"device_id": "test_device"}
-        self.mock_config.get.return_value = True # For auto_sync_enabled checks
+        self.mock_config.get.return_value = True  # For auto_sync_enabled checks
 
         self.manager = SyncManager(self.mock_cloud, self.mock_config)
 
@@ -55,9 +55,7 @@ class TestSyncManager(unittest.TestCase):
             []
         )  # No existing history, so all should be added
 
-        data = {
-            "theme": "light"
-        }
+        data = {"theme": "light"}
 
         # Create a ZIP file for import
         with zipfile.ZipFile(self.test_file, "w") as zf:

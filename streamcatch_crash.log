@@ -1,9 +1,0 @@
-STREAMCATCH CRASH REPORT [2025-11-30 23:35:37]
---------------------------------------------------
-Type: ValueError
-Message: Test error
-
-Traceback:
-ValueError: Test error
-
---------------------------------------------------

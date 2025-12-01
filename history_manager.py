@@ -259,11 +259,11 @@ class HistoryManager:
                 with HistoryManager._get_connection() as conn:
                     cursor = conn.cursor()
                     timestamp_str = datetime.now().isoformat()
+                    # pylint: disable=line-too-long
+                    query = "INSERT INTO history (url, title, output_path, format_str, status, timestamp, file_size, file_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                    # pylint: enable=line-too-long
                     cursor.execute(
-                        """
-                        INSERT INTO history (url, title, output_path, format_str, status, timestamp, file_size, file_path)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
+                        query,
                         (
                             url,
                             title,

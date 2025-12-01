@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 class UIConstants:
     """Class to hold UI-related constants."""
 
+    # pylint: disable=too-few-public-methods
+
     THUMBNAIL_SIZE = (160, 120)  # Larger thumbnail for better visibility
     WINDOW_MIN_WIDTH = 1000
     WINDOW_MIN_HEIGHT = 750
