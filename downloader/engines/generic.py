@@ -28,6 +28,7 @@ class GenericDownloader:
         progress_hook: Optional[Callable] = None,
         cancel_token: Optional[Any] = None,
         max_retries: int = 3,
+        filename: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Downloads a file using requests with streaming.
@@ -38,6 +39,7 @@ class GenericDownloader:
             progress_hook: Callback for progress
             cancel_token: Token to check for cancellation
             max_retries: Number of retries
+            filename: Optional filename override
 
         Returns:
             Dict with metadata (filename, filepath, etc.)
@@ -46,23 +48,24 @@ class GenericDownloader:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
 
-        # Determine filename from URL or headers (pre-check)
-        try:
-            with requests.head(url, allow_redirects=True, timeout=10) as h:
-                if "Content-Disposition" in h.headers:
-                    import re
-                    fname = re.findall("filename=(.+)", h.headers["Content-Disposition"])
-                    if fname:
-                        filename = fname[0].strip('"')
+        if not filename:
+            # Determine filename from URL or headers (pre-check)
+            try:
+                with requests.head(url, allow_redirects=True, timeout=10) as h:
+                    if "Content-Disposition" in h.headers:
+                        import re
+                        fname = re.findall("filename=(.+)", h.headers["Content-Disposition"])
+                        if fname:
+                            filename = fname[0].strip('"')
+                        else:
+                            filename = url.split("/")[-1].split("?")[0]
                     else:
                         filename = url.split("/")[-1].split("?")[0]
-                else:
-                    filename = url.split("/")[-1].split("?")[0]
-        except Exception:
-            filename = url.split("/")[-1].split("?")[0]
+            except Exception:
+                filename = url.split("/")[-1].split("?")[0]
 
-        if not filename:
-            filename = "downloaded_file"
+            if not filename:
+                filename = "downloaded_file"
 
         # Ensure filename is just a name, not a path
         filename = os.path.basename(filename)
@@ -190,9 +193,6 @@ def download_generic(
 ):
     """
     Legacy wrapper for GenericDownloader.download.
-    Note: 'filename' argument is largely ignored in favor of auto-detection
-    or extracted from url/headers in new implementation,
-    but we keep signature for compat.
     """
     # Create a progress hook wrapper if needed to match old dict format
     # The new download() calls hook with {_percent_str...}, old might expect diff?
@@ -204,5 +204,5 @@ def download_generic(
         progress_hook(d, download_item)
 
     return GenericDownloader.download(
-        url, output_path, hook_wrapper, cancel_token, max_retries
+        url, output_path, hook_wrapper, cancel_token, max_retries, filename
     )

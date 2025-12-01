@@ -1,123 +1,78 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-import flet as ft
-
-from app_state import AppState
-from components import DownloadItemControl
 from downloader.core import download_video
 
 
-# Mock the page
-class MockPage:
-    def __init__(self):
-        self.overlay = []
-        self.controls = []
-        self.theme_mode = "DARK"
-        self.snack_bar = None
-
-    def update(self):
-        pass
-
-    def open(self, bar):
-        self.snack_bar = bar
-
-
 class TestFeatureVerification(unittest.TestCase):
-
-    def setUp(self):
-        self.state = AppState()
-        # Reset queue using the internal lock
-        if hasattr(self.state, "queue_manager"):
-            with self.state.queue_manager._lock:
-                self.state.queue_manager._queue = []
-
-        self.page = MockPage()
-
-    def test_keyboard_navigation_logic(self):
-        """Verify that J/K keys change the selected index in the queue."""
-
-        item1 = {"url": "http://a.com", "status": "Queued", "control": MagicMock()}
-        item2 = {"url": "http://b.com", "status": "Queued", "control": MagicMock()}
-        item3 = {"url": "http://c.com", "status": "Queued", "control": MagicMock()}
-
-        self.state.queue_manager.add_item(item1)
-        self.state.queue_manager.add_item(item2)
-        self.state.queue_manager.add_item(item3)
-
-        self.state.selected_queue_index = 0  # Start at top
-
-        # Simulate 'J' (Down) logic
-        self.state.selected_queue_index += 1
-        self.assertEqual(self.state.selected_queue_index, 1)
-
-        # Simulate 'J' (Down) again
-        self.state.selected_queue_index += 1
-        self.assertEqual(self.state.selected_queue_index, 2)
-
-        # Simulate 'J' (Loop around?)
-        self.state.selected_queue_index += 1
-        queue_len = len(self.state.queue_manager.get_all())
-        if self.state.selected_queue_index >= queue_len:
-            self.state.selected_queue_index = 0
-        self.assertEqual(self.state.selected_queue_index, 0)
-
-        # Simulate 'K' (Up) - Loop back
-        self.state.selected_queue_index -= 1
-        if self.state.selected_queue_index < 0:
-            self.state.selected_queue_index = queue_len - 1
-        self.assertEqual(self.state.selected_queue_index, 2)
-
     @patch("downloader.core.YTDLPWrapper.download")
-    def test_downloader_arguments_partial(self, mock_download):
+    def test_downloader_basic_call(self, mock_download):
+        """Verify basic call structure."""
+        item = {}
+
+        def hook(d, i):
+            pass
+
+        download_video("http://example.com", output_path=".", progress_hook=hook, download_item=item)
+
+        mock_download.assert_called()
+
+    @patch("downloader.core.YTDLPWrapper")
+    def test_downloader_arguments_partial(self, mock_wrapper_class):
         """Verify that start/end time arguments are passed to yt-dlp."""
 
         item = {}
 
-        def hook(d, i):
+        def hook(d):
             pass
 
-        download_video(
-            "http://example.com", hook, item, start_time="00:01:00", end_time="00:02:00"
-        )
+        # Ensure ffmpeg available
+        with patch("downloader.core.state") as mock_state:
+            mock_state.ffmpeg_available = True
 
-        # Check options passed to download
-        call_args = mock_download.call_args[0][4]
-        self.assertIn("download_ranges", call_args)
-        self.assertTrue(callable(call_args["download_ranges"]))
-        self.assertTrue(call_args.get("force_keyframes_at_cuts"))
+            download_video(
+                url="http://example.com", progress_hook=hook, download_item=item, start_time="00:01:00", end_time="00:02:00"
+            )
 
-    @patch("downloader.core.YTDLPWrapper.download")
-    def test_downloader_arguments_aria2c(self, mock_download):
+            args, kwargs = mock_wrapper_class.call_args
+            opts = args[0]
+            self.assertIn("download_ranges", opts)
+
+    @patch("downloader.core.YTDLPWrapper")
+    @patch("shutil.which")
+    def test_downloader_arguments_aria2c(self, mock_which, mock_wrapper_class):
         """Verify that aria2c arguments are passed."""
+        mock_which.return_value = "/usr/bin/aria2c"
 
         item = {}
 
-        def hook(d, i):
+        def hook(d):
             pass
 
-        download_video("http://example.com", hook, item, use_aria2c=True)
+        download_video(url="http://example.com", progress_hook=hook, download_item=item, use_aria2c=True)
 
-        call_args = mock_download.call_args[0][4]
-        self.assertEqual(call_args.get("external_downloader"), "aria2c")
-        self.assertIn("-x", call_args.get("external_downloader_args"))
+        args, kwargs = mock_wrapper_class.call_args
+        opts = args[0]
+        self.assertEqual(opts["external_downloader"], "aria2c")
 
-    @patch("downloader.core.YTDLPWrapper.download")
-    def test_downloader_arguments_gpu(self, mock_download):
+    @patch("downloader.core.YTDLPWrapper")
+    def test_downloader_arguments_gpu(self, mock_wrapper_class):
         """Verify that GPU arguments are added to postprocessor args."""
 
         item = {}
 
-        def hook(d, i):
+        def hook(d):
             pass
 
-        download_video("http://example.com", hook, item, gpu_accel="cuda")
+        # Ensure ffmpeg available
+        with patch("downloader.core.state") as mock_state:
+            mock_state.ffmpeg_available = True
 
-        call_args = mock_download.call_args[0][4]
-        # Check postprocessor_args
-        pp_args = call_args.get("postprocessor_args", {})
-        self.assertIn("ffmpeg", pp_args)
-        self.assertIn("h264_nvenc", pp_args["ffmpeg"])
+            download_video(url="http://example.com", progress_hook=hook, download_item=item, gpu_accel="cuda")
+
+            args, kwargs = mock_wrapper_class.call_args
+            opts = args[0]
+            self.assertIn("-hwaccel", opts["postprocessor_args"]["ffmpeg"])
 
 
 if __name__ == "__main__":

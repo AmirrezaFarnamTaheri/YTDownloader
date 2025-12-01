@@ -62,8 +62,9 @@ class TestPipelineIntegration(unittest.TestCase):
 
         # 3. Verify execution
         mock_download.assert_called_once()
-        args, _ = mock_download.call_args
-        self.assertEqual(args[0], "http://test.com/vid")
+        # Tasks calls download_video with kwargs
+        _, kwargs = mock_download.call_args
+        self.assertEqual(kwargs["url"], "http://test.com/vid")
 
         # Verify item status
         q_items = state.queue_manager.get_all()
@@ -121,6 +122,9 @@ class TestPipelineIntegration(unittest.TestCase):
             "scheduled_time": past_time,
         }
         state.queue_manager.add_item(item)
+
+        # Manually trigger schedule update as main loop is not running
+        state.queue_manager.update_scheduled_items(datetime.now())
 
         process_queue()
         time.sleep(0.5)

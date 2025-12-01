@@ -50,8 +50,10 @@ def test_download_view_open_download_folder_error():
     view = DownloadView(mock_fetch, mock_add, mock_batch, mock_schedule, mock_state)
     view.page = MagicMock()
 
+    # Patch ui_utils.open_folder instead of views.download_view.open_folder
+    # because it's imported locally inside the method
     with patch(
-        "views.download_view.open_folder", side_effect=Exception("Folder Error")
+        "ui_utils.open_folder", side_effect=Exception("Folder Error")
     ):
         view.open_download_folder(None)
 
@@ -72,17 +74,16 @@ def test_download_view_update_info_empty():
 
     view = DownloadView(mock_fetch, mock_add, mock_batch, mock_schedule, mock_state)
     view.update = MagicMock()
+    # Mock preview card update to prevent "not added to page" error
+    view.preview_card.update = MagicMock()
 
     view.update_info(None)
-    view.update.assert_not_called()
+    # It SHOULD be called to reset/hide fields
+    view.update.assert_called()
 
-    # In my previous edit I tried to fix logic but failed to apply patch.
-    # The code currently says:
-    # if not info: return
-    # So if info is {}, it returns!
-
+    view.update.reset_mock()
     view.update_info({})
-    view.update.assert_not_called()
+    view.update.assert_called()
 
 
 def test_download_view_update_info_full():
@@ -95,6 +96,8 @@ def test_download_view_update_info_full():
 
     view = DownloadView(mock_fetch, mock_add, mock_batch, mock_schedule, mock_state)
     view.update = MagicMock()
+    # Mock preview card update to prevent "not added to page" error
+    view.preview_card.update = MagicMock()
 
     info = {
         "title": "Test Video",

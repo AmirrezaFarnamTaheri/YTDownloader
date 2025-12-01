@@ -99,6 +99,22 @@ def download_video(
         os.makedirs(output_path, exist_ok=True)
 
     # 2. Check for Generic Fallback
+    # Validate Proxy
+    if proxy and not (
+        proxy.startswith("http://")
+        or proxy.startswith("https://")
+        or proxy.startswith("socks")
+    ):
+        raise ValueError("Invalid proxy URL. Must start with http://, https://, or socks")
+
+    # Validate Time Range
+    start_sec = _parse_time(start_time)
+    end_sec = _parse_time(end_time)
+    if start_sec < 0 or end_sec < 0:
+        raise ValueError("Time values must be non-negative")
+    if start_time and end_time and start_sec >= end_sec:
+         raise ValueError("Start time must be before end time")
+
     if force_generic or not YTDLPWrapper.supports(url):
         logger.info("Using GenericDownloader (force=%s)", force_generic)
         if "t.me/" in url:
@@ -134,6 +150,10 @@ def download_video(
         ydl_opts["proxy"] = proxy
     if rate_limit:
         ydl_opts["ratelimit"] = rate_limit
+    # 3a. FFmpeg Availability Check
+    # Some features require FFmpeg. If not available, we must disable them.
+    ffmpeg_available = getattr(state, "ffmpeg_available", True)
+
     if subtitle_lang:
         ydl_opts["subtitles"] = subtitle_lang
         ydl_opts["writesubtitles"] = True
@@ -142,9 +162,6 @@ def download_video(
     if split_chapters and ffmpeg_available:
         ydl_opts.setdefault("postprocessors", []).append({"key": "FFmpegSplitChapters"})
 
-    # 3a. FFmpeg Availability Check
-    # Some features require FFmpeg. If not available, we must disable them.
-    ffmpeg_available = getattr(state, "ffmpeg_available", True)
     if not ffmpeg_available:
         logger.warning("FFmpeg not available - disabling post-processors and merging")
         ydl_opts["postprocessors"] = [] # Clear postprocessors
