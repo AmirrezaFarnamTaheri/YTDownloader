@@ -82,16 +82,23 @@ class TestConfigManagerCoverage(unittest.TestCase):
     ):
         """Test that temporary files are cleaned up if saving fails."""
         # Setup to raise exception during write
-        mock_mkstemp.return_value = (1, "/tmp/temp_file")
+        temp_path_str = "/tmp/temp_file"
+        mock_mkstemp.return_value = (1, temp_path_str)
         mock_fdopen.side_effect = Exception("Write failed")
 
         mock_path.parent.mkdir.return_value = None
 
-        # Mock Path unlink for cleanup
-        with patch("pathlib.Path.unlink") as mock_unlink:
+        with patch("config_manager.Path") as mock_path_cls:
+            temp_path_instance = MagicMock()
+            other_instance = MagicMock()
+            mock_path_cls.side_effect = lambda p: temp_path_instance if p == temp_path_str else other_instance
+
             with self.assertRaises(Exception):
                 ConfigManager.save_config({"theme_mode": "Dark"})
-            mock_unlink.assert_called_with()
+
+            # Ensure unlink called on the temp path instance specifically
+            temp_path_instance.unlink.assert_called_once_with()
+            other_instance.unlink.assert_not_called()
 
     @patch("config_manager.Path")
     @patch("config_manager.CONFIG_FILE")
@@ -99,26 +106,28 @@ class TestConfigManagerCoverage(unittest.TestCase):
     @patch("os.fdopen")
     @patch("os.fsync")
     # pylint: disable=too-many-arguments, too-many-positional-arguments, unused-argument
-    def test_save_config_windows_unlink(
+    def test_save_config_atomic_replace(
         self, mock_fsync, mock_fdopen, mock_mkstemp, mock_config_file, mock_path_cls
     ):
-        """Test Windows-specific atomic rename logic where target must be removed first."""
-        mock_mkstemp.return_value = (1, "/tmp/temp_file")
+        """Test atomic replace logic."""
+        temp_path_str = "/tmp/temp_file"
+        mock_mkstemp.return_value = (1, temp_path_str)
         mock_fdopen.return_value.__enter__.return_value = MagicMock()
 
         mock_config_file.parent.mkdir.return_value = None
         mock_config_file.exists.return_value = True
 
         # Mock the Path instance returned by Path(temp_path)
-        mock_temp_path_instance = mock_path_cls.return_value
+        mock_temp_path_instance = MagicMock()
+        mock_path_cls.side_effect = lambda p: mock_temp_path_instance if p == temp_path_str else MagicMock()
 
-        # Simulate Windows environment
-        with patch("os.name", "nt"):
-            ConfigManager.save_config({"theme_mode": "Dark"})
-            # Should verify unlink was called
-            mock_config_file.unlink.assert_called()
-            # Verify rename was called on the temp path instance
-            mock_temp_path_instance.rename.assert_called_with(mock_config_file)
+        ConfigManager.save_config({"theme_mode": "Dark"})
+
+        # Verify replace was called on the temp path instance
+        mock_temp_path_instance.replace.assert_called_with(mock_config_file)
+
+        # Verify unlink was NOT called on config file (old windows logic)
+        mock_config_file.unlink.assert_not_called()
 
     @patch("config_manager.CONFIG_FILE")
     def test_save_config_io_error_initial(self, mock_path):
