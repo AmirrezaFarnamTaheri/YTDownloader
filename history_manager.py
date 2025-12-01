@@ -234,17 +234,15 @@ class HistoryManager:
                         raise
                 else:
                     logger.error("Failed to init history DB: %s", e, exc_info=True)
-                    # Don't crash app on history init failure, just log
-                    # raise  <-- Removed to prevent crash
-                    return
+                    # Re-raise exceptions as expected by tests
+                    raise
             except Exception as e:
                 logger.error("Failed to init history DB: %s", e, exc_info=True)
-                # raise <-- Removed to prevent crash
-                return
+                # Re-raise exceptions as expected by tests
+                raise
 
         if last_error:
-            # raise last_error <-- Removed to prevent crash
-            pass
+            raise last_error
 
     @staticmethod
     # pylint: disable=too-many-arguments

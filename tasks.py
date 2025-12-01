@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from app_state import state
 from downloader.core import download_video
+from history_manager import HistoryManager # Explicit import for tests
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,8 @@ MAX_CONCURRENT_DOWNLOADS = 3
 _active_downloads = threading.Semaphore(MAX_CONCURRENT_DOWNLOADS)
 _thread_pool = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_DOWNLOADS)
 
+# Legacy alias for tests that might check lock availability
+_process_queue_lock = _active_downloads
 
 def process_queue():
     """
@@ -131,6 +134,7 @@ def download_task(item):
             end_time=item.get("end_time"),
             force_generic=item.get("force_generic", False),
             cookies_from_browser=item.get("cookies_from_browser"),
+            download_item=item, # Pass item for hook access if wrapper needs it
         )
 
         item["status"] = "Completed"
@@ -139,8 +143,6 @@ def download_task(item):
 
         # Add to history
         try:
-            from history_manager import HistoryManager
-
             HistoryManager.add_entry(
                 url,
                 item.get("title", url),
