@@ -160,15 +160,10 @@ class ConfigManager:
                     f.flush()
                     os.fsync(f.fileno())  # Force write to disk
 
-                # Atomic rename (POSIX systems)
-                # On Windows, need to remove target first
-                if os.name == "nt" and CONFIG_FILE.exists():
-                    logger.debug(
-                        "Removing existing config file on Windows: %s", CONFIG_FILE
-                    )
-                    CONFIG_FILE.unlink()
-
-                Path(temp_path).rename(CONFIG_FILE)
+                # Atomically move the temporary file to the final destination.
+                # .replace() will overwrite the destination if it exists, providing
+                # an atomic update on both POSIX and Windows.
+                Path(temp_path).replace(CONFIG_FILE)
                 logger.info("Configuration saved successfully")
 
             except Exception:
