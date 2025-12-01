@@ -1,3 +1,10 @@
+"""
+App Layout module.
+
+Defines the main application layout including the sidebar navigation
+and content area management.
+"""
+
 import logging
 
 import flet as ft
@@ -8,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class AppLayout:
+    """
+    Main application layout component.
+    """
+
     def __init__(
         self,
         page: ft.Page,
@@ -129,20 +140,21 @@ class AppLayout:
 
     def _on_nav_change(self, e):
         index = e.control.selected_index
-        logger.info(f"Navigation changed to index: {index}")
+        logger.info("Navigation changed to index: %d", index)
         self.navigate_callback(index)
 
     def _on_clipboard_toggle(self, e):
-        logger.info(f"Clipboard monitor toggled to: {e.control.value}")
+        logger.info("Clipboard monitor toggled to: %s", e.control.value)
         self.toggle_clipboard_callback(e.control.value)
 
     def set_content(self, view_control):
-        logger.debug(f"Setting content view: {type(view_control).__name__}")
+        """Update the main content area with a new view."""
+        logger.debug("Setting content view: %s", type(view_control).__name__)
         self.content_area.content = view_control
         try:
             self.content_area.update()
         except AssertionError:
             # Can happen if called before adding to page
             pass
-        except Exception as e:
-            logger.warning(f"Failed to update content area: {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.warning("Failed to update content area: %s", e)

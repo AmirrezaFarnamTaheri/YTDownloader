@@ -55,20 +55,28 @@ class Theme:
     class Surface:
         """Surface colors."""
 
+        # pylint: disable=too-few-public-methods
+
         BG = "#1E293B"  # Same as BG_CARD
 
     class Primary:
         """Primary colors."""
+
+        # pylint: disable=too-few-public-methods
 
         MAIN = "#818CF8"  # Same as PRIMARY
 
     class Text:
         """Text colors."""
 
+        # pylint: disable=too-few-public-methods
+
         PRIMARY = "#F8FAFC"
 
     class Divider:
         """Divider colors."""
+
+        # pylint: disable=too-few-public-methods
 
         COLOR = "#334155"  # Same as BORDER
 

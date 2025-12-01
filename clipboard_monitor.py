@@ -1,3 +1,9 @@
+"""
+Clipboard monitor module.
+
+Monitors the system clipboard for URLs and automatically populates the download field.
+"""
+
 import logging
 import threading
 import time
@@ -17,11 +23,11 @@ def start_clipboard_monitor(page, download_view):
         pyperclip.paste()
         logger.info("Clipboard monitoring initialized.")
     except pyperclip.PyperclipException as e:
-        logger.warning(f"Clipboard access not available: {e}")
+        logger.warning("Clipboard access not available: %s", e)
         logger.warning("Clipboard monitor will be disabled")
         return  # Don't start monitor if clipboard isn't available
-    except Exception as e:
-        logger.error(f"Unexpected clipboard error: {e}")
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.error("Unexpected clipboard error: %s", e)
         return
 
     threading.Thread(
@@ -50,7 +56,7 @@ def _clipboard_loop(page, download_view):
                     if validate_url(content) and download_view:
                         # Only auto-paste if field is empty
                         if not download_view.url_input.value:
-                            logger.info(f"Clipboard URL detected: {content}")
+                            logger.info("Clipboard URL detected: %s", content)
                             download_view.url_input.value = content
                             if page:
                                 import flet as ft
@@ -61,6 +67,6 @@ def _clipboard_loop(page, download_view):
                                     )
                                 )
                                 page.update()
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 # Catch-all to prevent thread death
-                logger.error(f"Error in clipboard monitor: {e}", exc_info=True)
+                logger.error("Error in clipboard monitor: %s", e, exc_info=True)

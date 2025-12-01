@@ -55,9 +55,6 @@ def build_installer():
         "--onefile",
         # Enable LTO if stable, otherwise disable for speed/memory
         # "--lto=no",
-        (
-            "--enable-plugin=pyside6" if os.name != "nt" else ""
-        ),  # Linux might need hints if using Qt (we use Flet/GTK though)
         # Flet often needs explicit data for assets
         f"--include-data-dir={root / 'assets'}=assets",
         f"--include-data-dir={root / 'locales'}=locales",

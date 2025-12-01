@@ -1,3 +1,10 @@
+"""
+Configuration management module.
+
+Handles loading, saving, and validating application configuration
+with atomic file operations and error recovery.
+"""
+
 import json
 import logging
 import os
@@ -39,13 +46,13 @@ class ConfigManager:
             ValueError: If configuration is invalid
         """
         if not isinstance(config, dict):
-            logger.error(f"Invalid config type: {type(config)}")
+            logger.error("Invalid config type: %s", type(config))
             raise ValueError("Configuration must be a dictionary")
 
         # Validate known keys
         for key in config.keys():
             if key not in ConfigManager.VALID_KEYS:
-                logger.warning(f"Unknown configuration key: {key}")
+                logger.warning("Unknown configuration key: %s", key)
 
         # Validate specific values
         if "use_aria2c" in config and not isinstance(config["use_aria2c"], bool):
@@ -60,7 +67,7 @@ class ConfigManager:
             # Let's fix the validation to allow "auto" (lowercase) as well.
             valid_accels = ("None", "Auto", "auto", "cuda", "vulkan")
             if config["gpu_accel"] not in valid_accels:
-                logger.error(f"Invalid gpu_accel value: {config['gpu_accel']}")
+                logger.error("Invalid gpu_accel value: %s", config["gpu_accel"])
                 raise ValueError(f"Invalid gpu_accel value: {config['gpu_accel']}")
 
         if "theme_mode" in config and config["theme_mode"] not in (
@@ -68,7 +75,7 @@ class ConfigManager:
             "Light",
             "System",
         ):
-            logger.error(f"Invalid theme_mode value: {config['theme_mode']}")
+            logger.error("Invalid theme_mode value: %s", config["theme_mode"])
             raise ValueError(f"Invalid theme_mode value: {config['theme_mode']}")
 
     @staticmethod
@@ -79,7 +86,7 @@ class ConfigManager:
         Returns:
             Configuration dictionary (empty if file doesn't exist or is corrupted)
         """
-        logger.info(f"Loading configuration from {CONFIG_FILE}")
+        logger.info("Loading configuration from %s", CONFIG_FILE)
         CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
         if CONFIG_FILE.exists():
@@ -93,24 +100,25 @@ class ConfigManager:
                     return data
             except json.JSONDecodeError as e:
                 logger.warning(
-                    f"Configuration file corrupted, using defaults: {e}", exc_info=True
+                    "Configuration file corrupted, using defaults: %s", e, exc_info=True
                 )
                 # Attempt to backup corrupted file
                 backup_path = CONFIG_FILE.with_suffix(".json.corrupt")
                 try:
                     CONFIG_FILE.rename(backup_path)
-                    logger.info(f"Corrupted config backed up to {backup_path}")
+                    logger.info("Corrupted config backed up to %s", backup_path)
                 except OSError:
                     pass
                 return {}
             except ValueError as e:
                 logger.warning(
-                    f"Configuration validation failed, using defaults: {e}",
+                    "Configuration validation failed, using defaults: %s",
+                    e,
                     exc_info=True,
                 )
                 return {}
             except IOError as e:
-                logger.info(f"No existing config file, will create on save: {e}")
+                logger.info("No existing config file, will create on save: %s", e)
                 return {}
 
         logger.info("No configuration file found, using defaults")
@@ -156,14 +164,14 @@ class ConfigManager:
                 # On Windows, need to remove target first
                 if os.name == "nt" and CONFIG_FILE.exists():
                     logger.debug(
-                        f"Removing existing config file on Windows: {CONFIG_FILE}"
+                        "Removing existing config file on Windows: %s", CONFIG_FILE
                     )
                     CONFIG_FILE.unlink()
 
                 Path(temp_path).rename(CONFIG_FILE)
                 logger.info("Configuration saved successfully")
 
-            except Exception as e:
+            except Exception:
                 # Cleanup temp file on error
                 try:
                     Path(temp_path).unlink()
@@ -172,5 +180,5 @@ class ConfigManager:
                 raise
 
         except IOError as e:
-            logger.error(f"Failed to save config: {e}", exc_info=True)
+            logger.error("Failed to save config: %s", e, exc_info=True)
             raise

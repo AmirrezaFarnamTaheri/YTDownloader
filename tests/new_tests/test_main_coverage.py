@@ -92,7 +92,7 @@ class TestMainCoverage:
         }
 
         # Test basic add
-        main.download_view.url_input.value = "http://test.com"
+        main.DOWNLOAD_VIEW.url_input.value = "http://test.com"
         on_add_to_queue(data)
         main.state.queue_manager.add_item.assert_called()
         main.process_queue.assert_called()
@@ -183,7 +183,7 @@ class TestMainCoverage:
         # Access via main.queue_view.on_retry assignment
         # But queue_view is a Mock. logic assigns on_retry attribute.
 
-        on_retry = main.queue_view.on_retry
+        on_retry = main.QUEUE_VIEW.on_retry
 
         item = {"status": "Error"}
         on_retry(item)

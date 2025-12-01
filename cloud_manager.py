@@ -59,12 +59,12 @@ class CloudManager:
             logger.error(error_msg)
             raise FileNotFoundError(error_msg)
 
-        logger.info(f"Initiating upload for {file_path} to {provider}")
+        logger.info("Initiating upload for %s to %s", file_path, provider)
 
         if provider == "google_drive":
             self._upload_to_google_drive(file_path)
         else:
-            logger.error(f"Provider {provider} not supported.")
+            logger.error("Provider %s not supported.", provider)
             raise NotImplementedError(f"Provider {provider} not supported yet.")
 
     def _upload_to_google_drive(self, file_path: str):
@@ -74,7 +74,7 @@ class CloudManager:
         """
         if not os.path.exists(self.credentials_path):
             logger.warning(
-                f"Google Drive {self.credentials_path} not found. Skipping upload."
+                "Google Drive %s not found. Skipping upload.", self.credentials_path
             )
             raise Exception(
                 "Google Drive not configured (missing client_secrets.json)."
@@ -115,17 +115,17 @@ class CloudManager:
             drive = GoogleDrive(gauth)  # type: ignore
 
             file_name = os.path.basename(file_path)
-            logger.debug(f"Uploading file content: {file_name}")
+            logger.debug("Uploading file content: %s", file_name)
             file_drive = drive.CreateFile({"title": file_name})  # type: ignore
             file_drive.SetContentFile(file_path)  # type: ignore
             file_drive.Upload()  # type: ignore
-            logger.info(f"Successfully uploaded {file_name} to Google Drive.")
+            logger.info("Successfully uploaded %s to Google Drive.", file_name)
 
-        except ImportError:
+        except ImportError as exc:
             logger.error("PyDrive2 not installed.")
-            raise Exception("PyDrive2 dependency missing.")
+            raise Exception("PyDrive2 dependency missing.") from exc
         except Exception as e:
-            logger.error(f"Google Drive upload failed: {e}", exc_info=True)
+            logger.error("Google Drive upload failed: %s", e, exc_info=True)
             raise
 
     # Missing methods expected by sync_manager
@@ -138,7 +138,7 @@ class CloudManager:
                 gauth = GoogleAuth()
                 gauth.LoadCredentialsFile("mycreds.txt")  # type: ignore
                 return gauth.credentials is not None  # type: ignore
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
         return False
 
@@ -161,8 +161,8 @@ class CloudManager:
 
             if file_list:
                 return file_list[0]["id"]  # type: ignore
-        except Exception as e:
-            logger.error(f"Failed to get file ID: {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to get file ID: %s", e)
         return None
 
     def read_file_content(self, file_id: str) -> Optional[str]:
@@ -180,6 +180,6 @@ class CloudManager:
 
             f = drive.CreateFile({"id": file_id})  # type: ignore
             return f.GetContentString()  # type: ignore
-        except Exception as e:
-            logger.error(f"Failed to read file content: {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to read file content: %s", e)
         return None
