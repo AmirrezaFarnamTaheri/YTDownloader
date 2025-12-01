@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 import yt_dlp
 
+from downloader.extractors.generic import GenericExtractor
+
 if TYPE_CHECKING:
     from utils import CancelToken
 
@@ -29,6 +31,9 @@ class YTDLPWrapper:
         url: str,
         progress_hook: Optional[Callable] = None,
         cancel_token: Optional[Any] = None,
+        output_path: Optional[str] = None,
+        download_item: Optional[Dict[str, Any]] = None,
+        options_override: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Execute download.
@@ -37,6 +42,11 @@ class YTDLPWrapper:
             Dict containing metadata of downloaded file.
         """
         options = self.options.copy()
+
+        if options_override:
+            options.update(options_override)
+        if output_path:
+            options["outtmpl"] = output_path
 
         # Prepare hooks
         hooks = options.setdefault("progress_hooks", [])

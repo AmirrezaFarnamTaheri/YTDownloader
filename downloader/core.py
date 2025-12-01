@@ -38,6 +38,7 @@ def download_video(
     video_format: str = "best",
     progress_hook: Optional[Callable[[Dict[str, Any]], None]] = None,
     cancel_token: Optional[Any] = None,
+    download_item: Optional[Dict[str, Any]] = None,
     playlist: bool = False,
     sponsorblock: bool = False,
     use_aria2c: bool = False,
@@ -47,6 +48,11 @@ def download_video(
     end_time: Optional[str] = None,
     force_generic: bool = False,
     cookies_from_browser: Optional[str] = None,
+    subtitle_lang: Optional[str] = None,
+    subtitle_format: Optional[str] = None,
+    split_chapters: bool = False,
+    proxy: Optional[str] = None,
+    rate_limit: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Downloads a video/audio from the given URL using yt-dlp or generic fallback.
@@ -123,6 +129,18 @@ def download_video(
             {"key": "FFmpegMetadata"},
         ],
     }
+
+    if proxy:
+        ydl_opts["proxy"] = proxy
+    if rate_limit:
+        ydl_opts["ratelimit"] = rate_limit
+    if subtitle_lang:
+        ydl_opts["subtitles"] = subtitle_lang
+        ydl_opts["writesubtitles"] = True
+        if subtitle_format:
+            ydl_opts["subtitlesformat"] = subtitle_format
+    if split_chapters and ffmpeg_available:
+        ydl_opts.setdefault("postprocessors", []).append({"key": "FFmpegSplitChapters"})
 
     # 3a. FFmpeg Availability Check
     # Some features require FFmpeg. If not available, we must disable them.
