@@ -12,7 +12,13 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-DB_FILE = Path.home() / ".streamcatch" / "history.db"
+# DB file path with fallback for mobile/sandboxed environments
+try:
+    DB_FILE = Path.home() / ".streamcatch" / "history.db"
+    # Test if we can resolve/access home
+    _ = DB_FILE.parent
+except Exception:
+    DB_FILE = Path("history.db")
 
 
 class HistoryManager:
@@ -63,11 +69,24 @@ class HistoryManager:
             Context manager that yields a sqlite3.Connection
         """
         db_file = HistoryManager._resolve_db_file()
-        db_file.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            db_file.parent.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.warning("Cannot use home directory for DB: %s – using current directory", e)
+            # Switch to local DB if home creation fails, unless explicitly set
+            if db_file == DB_FILE and db_file.parent != Path("."):
+                # Ideally we should update the global DB_FILE too, but _resolve_db_file handles logic
+                # For this session, let's just use local
+                db_file = Path("history.db")
+                logger.info("Switched to fallback DB file: %s", db_file)
 
         # Check if DB file is already locked by another process
         if db_file.exists() and not os.access(db_file, os.W_OK):
-            raise sqlite3.OperationalError(f"Database file not writable: {db_file}")
+            # Try fallback if permission denied
+            logger.warning("Database file not writable: %s. Switching to fallback.", db_file)
+            db_file = Path("history.db")
+            if db_file.exists() and not os.access(db_file, os.W_OK):
+                 raise sqlite3.OperationalError(f"Database file not writable: {db_file}")
 
         conn = sqlite3.connect(db_file, timeout=timeout)
         logger.debug("Opened DB connection to %s (Timeout: %ss)", db_file, timeout)
@@ -126,11 +145,12 @@ class HistoryManager:
             "SELECT",
         ]
 
+        # Improved validation: Log warning for URL, Strict check for Title/Path
         for pattern in dangerous_patterns:
             if pattern.lower() in url.lower():
                 logger.warning("Potentially dangerous pattern in URL: %s", pattern)
                 # Don't block - yt-dlp might need these in query strings
-                break
+
             if title and pattern.lower() in title.lower():
                 raise ValueError(f"Dangerous pattern not allowed in title: {pattern}")
             if output_path and pattern.lower() in output_path.lower():
@@ -214,13 +234,17 @@ class HistoryManager:
                         raise
                 else:
                     logger.error("Failed to init history DB: %s", e, exc_info=True)
-                    raise
+                    # Don't crash app on history init failure, just log
+                    # raise  <-- Removed to prevent crash
+                    return
             except Exception as e:
                 logger.error("Failed to init history DB: %s", e, exc_info=True)
-                raise
+                # raise <-- Removed to prevent crash
+                return
 
         if last_error:
-            raise last_error
+            # raise last_error <-- Removed to prevent crash
+            pass
 
     @staticmethod
     # pylint: disable=too-many-arguments

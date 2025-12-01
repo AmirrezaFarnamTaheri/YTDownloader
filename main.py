@@ -55,7 +55,18 @@ def setup_logging():
 
     # File Handler (DEBUG+, Rotating)
     # Log to both local directory (for easy access) and user home (persistence)
-    log_files = [Path("ytdownloader.log"), Path.home() / ".streamcatch" / "app.log"]
+    # Use fallback if home is not writable (mobile/sandbox)
+    home_log = Path.home() / ".streamcatch" / "app.log"
+    try:
+        home_log.parent.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        # Fallback to local
+        home_log = Path("app.log")
+
+    log_files = [Path("ytdownloader.log"), home_log]
+
+    # Deduplicate paths if home == local
+    log_files = list(set(log_files))
 
     for log_file in log_files:
         try:
@@ -165,6 +176,24 @@ def main(pg: ft.Page):
             target=fetch_info_task, args=(url, DOWNLOAD_VIEW, PAGE), daemon=True
         ).start()
 
+    def get_default_download_path():
+        """Get a safe default download path for the current platform."""
+        try:
+            home = Path.home()
+            downloads = home / "Downloads"
+            # Check if downloads directory exists/is accessible
+            if downloads.exists() and os.access(downloads, os.W_OK):
+                return str(downloads)
+
+            # Fallback to home if writable
+            if os.access(home, os.W_OK):
+                return str(home)
+        except Exception:
+            pass
+
+        # Fallback to current directory (app sandbox/local)
+        return "."
+
     def on_add_to_queue(data):
         logger.info("User requested add to queue: %s", data.get("url"))
         # Process data and add to queue
@@ -225,7 +254,7 @@ def main(pg: ft.Page):
             "status": status,
             "scheduled_time": sched_dt,
             "video_format": data["video_format"],
-            "output_path": str(Path.home() / "Downloads"),
+            "output_path": get_default_download_path(),
             "playlist": data["playlist"],
             "sponsorblock": data["sponsorblock"],
             "use_aria2c": state.config.get("use_aria2c", False),
@@ -308,6 +337,9 @@ def main(pg: ft.Page):
                 urls = urls[:max_batch]
 
             count = 0
+            # Get safe download path once
+            dl_path = get_default_download_path()
+
             for url in urls:
                 if not url:
                     continue
@@ -318,7 +350,7 @@ def main(pg: ft.Page):
                     "status": "Queued",
                     "scheduled_time": None,
                     "video_format": "best",
-                    "output_path": str(Path.home() / "Downloads"),
+                    "output_path": dl_path,
                     "playlist": False,
                     "sponsorblock": False,
                     "use_aria2c": state.config.get("use_aria2c", False),
@@ -499,19 +531,26 @@ def global_crash_handler(exctype, value, tb):
     )
 
     # Persist to disk
-    log_path = Path.home() / ".streamcatch" / "crash.log"
     try:
+        log_path = Path.home() / ".streamcatch" / "crash.log"
         log_path.parent.mkdir(parents=True, exist_ok=True)
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(crash_report)
+    except Exception:
+        # Fallback log path if home not accessible
+        log_path = Path("crash.log")
+        try:
+             with open(log_path, "a", encoding="utf-8") as f:
+                f.write(crash_report)
+        except Exception:
+            pass
 
-        # ALSO write to current directory for visibility
+    # ALSO write to current directory for visibility
+    try:
         local_crash = Path("streamcatch_crash.log")
         with open(local_crash, "w", encoding="utf-8") as f:
             f.write(crash_report)
-
-    except Exception:  # pylint: disable=broad-exception-caught
-        # Best-effort logging; ignore filesystem errors
+    except Exception:
         pass
 
     # Surface to user

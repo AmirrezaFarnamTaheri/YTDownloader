@@ -55,8 +55,9 @@ jobs:
     - name: Prepare mobile requirements
       run: |
         # Use requirements.txt but exclude incompatible packages
+        # Exclude dev tools AND lxml/Pillow as they are problematic/unused on mobile
         echo "Filtering incompatible packages from requirements.txt"
-        grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort|nuitka|ordered-set|zstandard)" requirements.txt > requirements-filtered.txt
+        grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort|nuitka|ordered-set|zstandard|lxml|Pillow)" requirements.txt > requirements-filtered.txt
         mv requirements-filtered.txt requirements.txt
         
         echo "=== Final requirements.txt ==="
@@ -122,7 +123,7 @@ jobs:
       run: |
         # Use requirements.txt but exclude incompatible packages
         echo "Filtering incompatible packages from requirements.txt"
-        grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort|nuitka|ordered-set|zstandard)" requirements.txt > requirements-filtered.txt
+        grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort|nuitka|ordered-set|zstandard|lxml|Pillow)" requirements.txt > requirements-filtered.txt
         mv requirements-filtered.txt requirements.txt
         
         echo "=== Final requirements.txt ==="
