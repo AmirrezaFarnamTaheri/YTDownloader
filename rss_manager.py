@@ -80,19 +80,26 @@ class RSSManager:
             response = requests.get(url, timeout=(5, 10))
             response.raise_for_status()
 
+            content = response.content
+            # Check for empty or excessively small content
+            if not content or len(content.strip()) < 10:
+                logger.warning("Empty or too short content for feed: %s", url)
+                return []
+
             # Safe XML parsing
             if safe_fromstring:
                 try:
-                    root = safe_fromstring(response.content)
+                    root = safe_fromstring(content)
                 except Exception as e:
-                    logger.error("XML parse error for %s: %s", url, e)
+                    # Log but suppress verbose error for invalid XML to avoid test noise
+                    logger.warning("XML parse error for %s: %s", url, e)
                     return []
             else:
                  logger.warning("defusedxml not found, using standard ET (less secure)")
                  try:
-                     root = ET.fromstring(response.content)
+                     root = ET.fromstring(content)
                  except ET.ParseError as e:
-                     logger.error("XML parse error for %s: %s", url, e)
+                     logger.warning("XML parse error for %s: %s", url, e)
                      return []
 
             items = []
@@ -107,6 +114,7 @@ class RSSManager:
             logger.warning("Network error fetching feed %s: %s", url, e)
             return []
         except Exception as e:
+            # Generic catch-all to prevent crashes
             logger.error("Unexpected error parsing feed %s: %s", url, e)
             return []
 

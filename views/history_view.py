@@ -5,13 +5,14 @@ import flet as ft
 from history_manager import HistoryManager
 from theme import Theme
 from ui_utils import open_folder
+from localization_manager import LocalizationManager as LM
 
 from .base_view import BaseView
 
 
 class HistoryView(BaseView):
     def __init__(self):
-        super().__init__("History", ft.Icons.HISTORY)
+        super().__init__(LM.get("history"), ft.Icons.HISTORY)
 
         self.history_list = ft.ListView(expand=True, spacing=10)
         self.add_control(
@@ -19,7 +20,7 @@ class HistoryView(BaseView):
                 [
                     ft.Container(expand=True),
                     ft.OutlinedButton(
-                        "Clear All",
+                        LM.get("clear_history"),
                         icon=ft.Icons.DELETE_SWEEP,
                         on_click=self.clear_history,
                     ),
@@ -62,7 +63,7 @@ class HistoryView(BaseView):
                     ft.Container(expand=True),
                     ft.IconButton(
                         ft.Icons.FOLDER_OPEN,
-                        tooltip="Open Folder",
+                        tooltip=LM.get("open_folder"),
                         icon_color=Theme.PRIMARY,
                         on_click=lambda e, p=item.get(
                             "output_path"
@@ -70,7 +71,7 @@ class HistoryView(BaseView):
                     ),
                     ft.IconButton(
                         ft.Icons.COPY,
-                        tooltip="Copy URL",
+                        tooltip=LM.get("copy_url"),
                         icon_color=Theme.TEXT_SECONDARY,
                         on_click=lambda e, u=item["url"]: self.page.set_clipboard(u),
                     ),
@@ -79,8 +80,24 @@ class HistoryView(BaseView):
         )
 
     def clear_history(self, e):
-        HistoryManager.clear_history()
-        self.load()
+        def close_dlg(e):
+            self.page.close(dlg)
+
+        def confirm_clear(e):
+            HistoryManager.clear_history()
+            self.load()
+            self.page.close(dlg)
+
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(LM.get("confirm_clear_history")),
+            actions=[
+                ft.TextButton(LM.get("yes"), on_click=confirm_clear),
+                ft.TextButton(LM.get("no"), on_click=close_dlg),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.page.open(dlg)
 
     def open_folder_safe(self, path):
         try:
