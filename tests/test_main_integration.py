@@ -35,7 +35,9 @@ class TestMainIntegration(unittest.TestCase):
         self.mock_sem = self.patcher_sem.start()
         self.mock_sem.acquire.return_value = True
 
-        self.patcher_lock = patch("tasks._process_queue_lock", threading.RLock(), create=True)
+        self.patcher_lock = patch(
+            "tasks._process_queue_lock", threading.RLock(), create=True
+        )
         self.patcher_lock.start()
 
     def tearDown(self):
@@ -47,11 +49,7 @@ class TestMainIntegration(unittest.TestCase):
     @patch("tasks.download_video")
     @patch("tasks._log_to_history")
     def test_download_task_success(self, mock_history, mock_download, mock_dl_task):
-        item = {
-            "url": "http://test",
-            "status": "Queued",
-            "title": "Test Video"
-        }
+        item = {"url": "http://test", "status": "Queued", "title": "Test Video"}
         mock_download.return_value = {"filename": "vid.mp4", "filepath": "/tmp/vid.mp4"}
 
         # Patch state in tasks module so it sees our mock state/queue manager

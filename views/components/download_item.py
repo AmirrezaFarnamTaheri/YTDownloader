@@ -14,6 +14,7 @@ class DownloadItemControl:
     """
     Control for displaying a single download item.
     """
+
     # pylint: disable=too-many-instance-attributes
     def __init__(
         self,

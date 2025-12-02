@@ -32,7 +32,6 @@ class TestHistoryManagerCoverage(unittest.TestCase):
 
         self.assertGreaterEqual(mock_cursor.execute.call_count, 6)
 
-
     @patch("history_manager.HistoryManager._get_connection")
     def test_init_db_locked_failure(self, mock_get_conn):
         mock_conn = MagicMock()
@@ -46,13 +45,11 @@ class TestHistoryManagerCoverage(unittest.TestCase):
             with self.assertRaises(sqlite3.OperationalError):
                 HistoryManager.init_db()
 
-
     @patch("history_manager.HistoryManager._get_connection")
     def test_init_db_other_error(self, mock_get_conn):
         mock_get_conn.side_effect = Exception("General failure")
         with self.assertRaises(Exception):
             HistoryManager.init_db()
-
 
     def test_validate_input_edge_cases(self):
         with self.assertRaises(ValueError):
@@ -62,7 +59,6 @@ class TestHistoryManagerCoverage(unittest.TestCase):
         long_url = "http://" + "a" * 2050
         with self.assertRaises(ValueError):
             HistoryManager._validate_input(long_url, "Title", "path")
-
 
     @patch("history_manager.HistoryManager._get_connection")
     def test_add_entry_locked_retry(self, mock_get_conn):
@@ -84,22 +80,22 @@ class TestHistoryManagerCoverage(unittest.TestCase):
 
         self.assertEqual(mock_cursor.execute.call_count, 3)
 
-
     @patch("history_manager.HistoryManager._get_connection")
     def test_get_history_error(self, mock_get_conn):
         mock_get_conn.side_effect = Exception("DB Down")
         entries = HistoryManager.get_history()
         self.assertEqual(entries, [])
 
-
     @patch("sqlite3.connect")
     def test_clear_history_error(self, mock_connect):
         # We now use _get_connection which uses sqlite3.connect
         # Mocking _get_connection is safer if we want to bypass connection logic
-        with patch("history_manager.HistoryManager._get_connection", side_effect=Exception("DB Down")):
-             with self.assertRaises(Exception):
-                 HistoryManager.clear_history()
-
+        with patch(
+            "history_manager.HistoryManager._get_connection",
+            side_effect=Exception("DB Down"),
+        ):
+            with self.assertRaises(Exception):
+                HistoryManager.clear_history()
 
     @patch("sqlite3.connect")
     @patch("pathlib.Path.mkdir")
@@ -120,7 +116,6 @@ class TestHistoryManagerCoverage(unittest.TestCase):
 
         conn = HistoryManager._get_connection()
         mock_mkdir.assert_called()
-
 
     @patch("history_manager.HistoryManager._get_connection")
     def test_init_db_migration(self, mock_get_conn):
@@ -145,7 +140,6 @@ class TestHistoryManagerCoverage(unittest.TestCase):
                 break
         self.assertTrue(found_alter)
 
-
     @patch("history_manager.HistoryManager._get_connection")
     def test_add_entry_success(self, mock_get_conn):
         mock_conn = MagicMock()
@@ -156,7 +150,6 @@ class TestHistoryManagerCoverage(unittest.TestCase):
         )
         mock_conn.commit.assert_called()
 
-
     @patch("history_manager.HistoryManager._get_connection")
     def test_get_history_success(self, mock_get_conn):
         mock_conn = MagicMock()
@@ -165,14 +158,11 @@ class TestHistoryManagerCoverage(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
 
         mock_cursor.fetchone.return_value = [1]
-        mock_cursor.fetchall.return_value = [
-            {"id": 1, "url": "test"}
-        ]
+        mock_cursor.fetchall.return_value = [{"id": 1, "url": "test"}]
 
         entries = HistoryManager.get_history(limit=10)
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0]["url"], "test")
-
 
     @patch("history_manager.HistoryManager._get_connection")
     def test_clear_history_success(self, mock_get_conn):

@@ -86,7 +86,9 @@ class TestGetVideoInfo(unittest.TestCase):
     @patch("downloader.info.GenericExtractor.get_metadata")
     @patch("downloader.info.TelegramExtractor.get_metadata")
     @patch("downloader.info.yt_dlp.YoutubeDL")
-    def test_get_video_info_download_error(self, mock_youtube_dl, mock_tg, mock_generic):
+    def test_get_video_info_download_error(
+        self, mock_youtube_dl, mock_tg, mock_generic
+    ):
         """Test handling of download errors during info fetching."""
         mock_instance = MagicMock()
         mock_youtube_dl.return_value.__enter__.return_value = mock_instance
@@ -282,11 +284,13 @@ class TestDownloadVideo(unittest.TestCase):
         self.assertEqual(ydl_opts["proxy"], "http://proxy.example.com:8080")
 
         with self.assertRaises(ValueError):
-             download_video(DownloadOptions(
-                url="https://www.youtube.com/watch?v=test",
-                progress_hook=progress_hook,
-                proxy="invalid",
-            ))
+            download_video(
+                DownloadOptions(
+                    url="https://www.youtube.com/watch?v=test",
+                    progress_hook=progress_hook,
+                    proxy="invalid",
+                )
+            )
 
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
@@ -347,19 +351,21 @@ class TestDownloadVideo(unittest.TestCase):
         progress_hook = MagicMock()
 
         with self.assertRaises(yt_dlp.utils.DownloadError):
-            download_video(DownloadOptions(
-                url="https://www.youtube.com/watch?v=test",
-                progress_hook=progress_hook,
-                playlist=False,
-                video_format="best",
-                output_path=".",
-                subtitle_lang=None,
-                subtitle_format="srt",
-                split_chapters=False,
-                proxy=None,
-                rate_limit=None,
-                cancel_token=None,
-            ))
+            download_video(
+                DownloadOptions(
+                    url="https://www.youtube.com/watch?v=test",
+                    progress_hook=progress_hook,
+                    playlist=False,
+                    video_format="best",
+                    output_path=".",
+                    subtitle_lang=None,
+                    subtitle_format="srt",
+                    split_chapters=False,
+                    proxy=None,
+                    rate_limit=None,
+                    cancel_token=None,
+                )
+            )
 
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper.download")
@@ -369,19 +375,21 @@ class TestDownloadVideo(unittest.TestCase):
         progress_hook = MagicMock()
 
         with self.assertRaises(yt_dlp.utils.DownloadError):
-            download_video(DownloadOptions(
-                url="https://www.youtube.com/watch?v=test",
-                progress_hook=progress_hook,
-                playlist=False,
-                video_format="best",
-                output_path=".",
-                subtitle_lang=None,
-                subtitle_format="srt",
-                split_chapters=False,
-                proxy=None,
-                rate_limit=None,
-                cancel_token=None,
-            ))
+            download_video(
+                DownloadOptions(
+                    url="https://www.youtube.com/watch?v=test",
+                    progress_hook=progress_hook,
+                    playlist=False,
+                    video_format="best",
+                    output_path=".",
+                    subtitle_lang=None,
+                    subtitle_format="srt",
+                    split_chapters=False,
+                    proxy=None,
+                    rate_limit=None,
+                    cancel_token=None,
+                )
+            )
 
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
@@ -438,11 +446,13 @@ class TestDownloadVideo(unittest.TestCase):
         with patch("downloader.core.state") as mock_state:
             mock_state.ffmpeg_available = True
 
-            download_video(DownloadOptions(
-                url="test",
-                progress_hook=lambda d: None,
-                sponsorblock=True,
-            ))
+            download_video(
+                DownloadOptions(
+                    url="test",
+                    progress_hook=lambda d: None,
+                    sponsorblock=True,
+                )
+            )
 
             args, kwargs = mock_wrapper_class.call_args
             ydl_opts = args[0]
@@ -455,11 +465,13 @@ class TestDownloadVideo(unittest.TestCase):
         with patch("downloader.core.state") as mock_state:
             mock_state.ffmpeg_available = True
 
-            download_video(DownloadOptions(
-                url="test",
-                progress_hook=lambda d: None,
-                gpu_accel="cuda",
-            ))
+            download_video(
+                DownloadOptions(
+                    url="test",
+                    progress_hook=lambda d: None,
+                    gpu_accel="cuda",
+                )
+            )
 
             args, kwargs = mock_wrapper_class.call_args
             ydl_opts = args[0]
@@ -468,5 +480,5 @@ class TestDownloadVideo(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.mock.MagicMock = MagicMock # ensure compat
+    unittest.mock.MagicMock = MagicMock  # ensure compat
     unittest.main()

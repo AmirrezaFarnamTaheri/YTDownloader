@@ -1,5 +1,7 @@
 import flet as ft
+
 from theme import Theme
+
 
 class DownloadPreviewCard(ft.Container):
     def __init__(self):
@@ -56,7 +58,9 @@ class DownloadPreviewCard(ft.Container):
 
         self.title_text.value = info.get("title", "Unknown Title")
         self.thumbnail.src = info.get("thumbnail", "")
-        self.duration_text.value = info.get("duration_string") or str(info.get("duration", ""))
+        self.duration_text.value = info.get("duration_string") or str(
+            info.get("duration", "")
+        )
         self.author_text.value = info.get("uploader", "Unknown Channel")
 
         self.visible = True

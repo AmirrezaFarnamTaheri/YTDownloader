@@ -52,12 +52,14 @@ def get_video_info(
                 "thumbnail": info.get("thumbnail"),
                 "duration": "N/A",
                 "subtitles": {},
-                "video_streams": [{
-                    "format_id": "telegram_direct",
-                    "ext": "mp4",
-                    "resolution": "Unknown",
-                    "filesize": None
-                }],
+                "video_streams": [
+                    {
+                        "format_id": "telegram_direct",
+                        "ext": "mp4",
+                        "resolution": "Unknown",
+                        "filesize": None,
+                    }
+                ],
                 "audio_streams": [],
                 "original_url": url,
             }
@@ -98,20 +100,22 @@ def get_video_info(
                 )
                 generic_info = GenericExtractor.get_metadata(url)
                 if generic_info:
-                     return {
+                    return {
                         "title": generic_info.get("title"),
                         "thumbnail": None,
                         "duration": "N/A",
                         "subtitles": {},
-                        "video_streams": [{
-                            "format_id": "direct",
-                            "ext": "unknown",
-                            "filesize": generic_info.get("filesize"),
-                            "resolution": "N/A"
-                        }],
+                        "video_streams": [
+                            {
+                                "format_id": "direct",
+                                "ext": "unknown",
+                                "filesize": generic_info.get("filesize"),
+                                "resolution": "N/A",
+                            }
+                        ],
                         "audio_streams": [],
                         "original_url": url,
-                     }
+                    }
 
             # Process yt-dlp info
             subtitles: Dict[str, List[str]] = {}
@@ -206,20 +210,22 @@ def get_video_info(
         # Fallback for when yt-dlp fails (e.g. unknown service)
         generic_info = GenericExtractor.get_metadata(url)
         if generic_info:
-                return {
+            return {
                 "title": generic_info.get("title"),
                 "thumbnail": None,
                 "duration": "N/A",
                 "subtitles": {},
-                "video_streams": [{
-                    "format_id": "direct",
-                    "ext": "unknown",
-                    "filesize": generic_info.get("filesize"),
-                    "resolution": "N/A"
-                }],
+                "video_streams": [
+                    {
+                        "format_id": "direct",
+                        "ext": "unknown",
+                        "filesize": generic_info.get("filesize"),
+                        "resolution": "N/A",
+                    }
+                ],
                 "audio_streams": [],
                 "original_url": url,
-                }
+            }
         return None
     except Exception as e:
         logger.error(f"Unexpected error while fetching video info: {e}", exc_info=True)

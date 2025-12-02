@@ -11,9 +11,9 @@ import threading
 import flet as ft
 
 from config_manager import ConfigManager
+from localization_manager import LocalizationManager as LM
 from rss_manager import RSSManager
 from views.base_view import BaseView
-from localization_manager import LocalizationManager as LM
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class RSSView(BaseView):
                                     ft.IconButton(
                                         icon=ft.Icons.ADD,
                                         tooltip=LM.get("add_feed"),
-                                        on_click=self.add_rss
+                                        on_click=self.add_rss,
                                     ),
                                     ft.IconButton(
                                         icon=ft.Icons.REFRESH,
@@ -68,7 +68,7 @@ class RSSView(BaseView):
                 ),
             ],
             expand=True,
-            on_change=self.on_tab_change
+            on_change=self.on_tab_change,
         )
 
         self.controls = [self.tabs]
@@ -91,9 +91,7 @@ class RSSView(BaseView):
                 normalized_feeds.append(f)
 
         if not normalized_feeds:
-            self.feed_list.controls.append(
-                ft.Text(LM.get("no_rss_feeds"), italic=True)
-            )
+            self.feed_list.controls.append(ft.Text(LM.get("no_rss_feeds"), italic=True))
         else:
             for feed in normalized_feeds:
                 url = feed.get("url")
@@ -157,7 +155,11 @@ class RSSView(BaseView):
         """Remove an RSS feed."""
         feeds = self.config.get("rss_feeds", [])
         target_url = feed.get("url") if isinstance(feed, dict) else feed
-        new_feeds = [f for f in feeds if (f if isinstance(f, str) else f.get("url")) != target_url]
+        new_feeds = [
+            f
+            for f in feeds
+            if (f if isinstance(f, str) else f.get("url")) != target_url
+        ]
 
         if len(new_feeds) != len(feeds):
             self.config["rss_feeds"] = new_feeds
@@ -185,9 +187,7 @@ class RSSView(BaseView):
                         content=ft.Container(
                             content=ft.Column(
                                 [
-                                    ft.Text(
-                                        item["title"], weight=ft.FontWeight.BOLD
-                                    ),
+                                    ft.Text(item["title"], weight=ft.FontWeight.BOLD),
                                     ft.Text(
                                         f"{item['feed_name']} - {item['published']}",
                                         size=12,

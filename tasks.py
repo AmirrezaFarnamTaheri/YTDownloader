@@ -7,6 +7,7 @@ Refactored to use ThreadPoolExecutor and per-task CancelTokens.
 
 import logging
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict
 
@@ -73,9 +74,7 @@ def process_queue():
                 _submission_throttle.release()
 
                 state.queue_manager.update_item_status(
-                     item.get("id"),
-                     "Error",
-                     {"error": "Failed to start"}
+                    item.get("id"), "Error", {"error": "Failed to start"}
                 )
 
 
@@ -84,6 +83,25 @@ def _wrapped_download_task(item):
     try:
         if not state.shutdown_flag.is_set():
             download_task(item)
+        else:
+            # Ensure item state is terminal when skipped due to shutdown
+            try:
+                item["status"] = "Cancelled"
+                state.queue_manager.update_item_status(item.get("id"), "Cancelled")
+                state.history_manager.add_entry(
+                    item.get("url"),
+                    item.get("title"),
+                    item.get("output_path", "."),
+                    item.get("video_format", "best"),
+                    "Cancelled",
+                    "N/A",
+                    "N/A",
+                )
+                if state.ui_manager:
+                    # Best effort notification
+                    pass
+            except Exception:  # best-effort; don't block cleanup
+                logger.exception("Failed to mark item as cancelled on shutdown.")
     finally:
         _submission_throttle.release()
         with _active_count_lock:
@@ -91,8 +109,8 @@ def _wrapped_download_task(item):
 
         # Notify
         try:
-             with state.queue_manager._has_work:
-                 state.queue_manager._has_work.notify_all()
+            with state.queue_manager._has_work:
+                state.queue_manager._has_work.notify_all()
         except Exception:
             pass
 
@@ -108,6 +126,7 @@ def _update_progress_ui(item: Dict[str, Any]):
 
 def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
     """Creates a closure for the progress hook."""
+
     def progress_hook(d):
         if state.shutdown_flag.is_set():
             raise InterruptedError("Shutdown initiated")
@@ -142,8 +161,8 @@ def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
             _update_progress_ui(item)
 
         else:
-             # Ignore other statuses or unknown
-             pass
+            # Ignore other statuses or unknown
+            pass
 
     return progress_hook
 
@@ -152,6 +171,7 @@ def _log_to_history(item: Dict[str, Any], filepath: str):
     """Log completed download to history safely."""
     try:
         from history_manager import HistoryManager
+
         HistoryManager.add_entry(
             item["url"],
             item.get("title", item["url"]),
@@ -203,7 +223,7 @@ def download_task(item: Dict[str, Any]):
             end_time=item.get("end_time"),
             force_generic=item.get("force_generic", False),
             cookies_from_browser=item.get("cookies_from_browser"),
-            download_item=item # Pass item for advanced callbacks/debugging
+            download_item=item,  # Pass item for advanced callbacks/debugging
         )
 
         info = download_video(options)
@@ -212,14 +232,13 @@ def download_task(item: Dict[str, Any]):
         state.queue_manager.update_item_status(
             item_id,
             "Completed",
-            {
-                "filename": info.get("filename", "Unknown"),
-                "progress": 1.0
-            }
+            {"filename": info.get("filename", "Unknown"), "progress": 1.0},
         )
         # Update the item dict in place because download_task caller might hold reference
         # But queue manager update_item_status does it for the queue.
-        item["status"] = "Completed" # Update local ref for test assertion if test uses this ref
+        item["status"] = (
+            "Completed"  # Update local ref for test assertion if test uses this ref
+        )
 
         _log_to_history(item, info.get("filepath"))
         _update_progress_ui(item)
@@ -227,29 +246,24 @@ def download_task(item: Dict[str, Any]):
     except Exception as e:
         # Check for cancellation
         msg = str(e)
-        if "Cancelled" in msg or item.get("status") == "Cancelled" or cancel_token.cancelled:
+        if (
+            "Cancelled" in msg
+            or item.get("status") == "Cancelled"
+            or cancel_token.cancelled
+        ):
             logger.info("Download cancelled: %s", url)
 
             # Ensure status is definitely cancelled and reset progress
             state.queue_manager.update_item_status(
                 item_id,
                 "Cancelled",
-                {
-                    "progress": 0,
-                    "speed": "",
-                    "eta": "",
-                    "size": ""
-                }
+                {"progress": 0, "speed": "", "eta": "", "size": ""},
             )
-            item["status"] = "Cancelled" # Update local ref
+            item["status"] = "Cancelled"  # Update local ref
         else:
             logger.error("Download failed: %s", e, exc_info=True)
-            state.queue_manager.update_item_status(
-                item_id,
-                "Error",
-                {"error": str(e)}
-            )
-            item["status"] = "Error" # Update local ref
+            state.queue_manager.update_item_status(item_id, "Error", {"error": str(e)})
+            item["status"] = "Error"  # Update local ref
 
         _update_progress_ui(item)
 

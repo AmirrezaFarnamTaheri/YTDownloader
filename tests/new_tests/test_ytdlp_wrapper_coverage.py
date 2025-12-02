@@ -19,11 +19,13 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
 
         wrapper = YTDLPWrapper(options)
         wrapper.download(
-            "http://url", progress_hook=progress_hook, download_item=download_item, output_path="/tmp"
+            "http://url",
+            progress_hook=progress_hook,
+            download_item=download_item,
+            output_path="/tmp",
         )
 
         mock_instance.extract_info.assert_called_with("http://url", download=True)
-
 
     @patch("yt_dlp.YoutubeDL")
     def test_download_cancel_token(self, mock_ydl):
@@ -35,14 +37,17 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
 
         wrapper = YTDLPWrapper(options)
         wrapper.download(
-            "http://url", progress_hook=MagicMock(), download_item={}, output_path="/tmp", cancel_token=cancel_token
+            "http://url",
+            progress_hook=MagicMock(),
+            download_item={},
+            output_path="/tmp",
+            cancel_token=cancel_token,
         )
 
         # Verify hook added
         args, kwargs = mock_ydl.call_args
         opts = args[0]
         self.assertTrue(len(opts["progress_hooks"]) >= 1)
-
 
     @patch("yt_dlp.YoutubeDL")
     def test_download_cancelled_exception(self, mock_ydl):
@@ -55,8 +60,9 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
         wrapper = YTDLPWrapper({})
         # Should raise or we catch it? The wrapper currently raises.
         with self.assertRaises(yt_dlp.utils.DownloadError):
-            wrapper.download("http://url", progress_hook=MagicMock(), output_path="/tmp")
-
+            wrapper.download(
+                "http://url", progress_hook=MagicMock(), output_path="/tmp"
+            )
 
     @patch("downloader.extractors.generic.GenericExtractor.extract")
     @patch("yt_dlp.YoutubeDL")
@@ -67,7 +73,8 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
     @patch("downloader.extractors.generic.GenericExtractor.extract")
     @patch("yt_dlp.YoutubeDL")
     def test_fallback_failed(self, mock_ydl, mock_extract):
-         pass
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()

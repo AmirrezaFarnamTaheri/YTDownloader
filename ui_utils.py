@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class UIConstants:
     """Class to hold UI-related constants."""
+
     THUMBNAIL_SIZE = (160, 120)
     WINDOW_MIN_WIDTH = 1000
     WINDOW_MIN_HEIGHT = 750
@@ -60,12 +61,14 @@ def validate_url(url: str) -> bool:
     # Checks for scheme, domain (at least one dot or localhost), and optional path
     # Does not allow user/pass in URL for UI safety
     regex = re.compile(
-        r'^(?:http|https)://'  # http:// or https://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
-        r'localhost|'  # localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
-        r'(?::\d+)?'  # optional port
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+        r"^(?:http|https)://"  # http:// or https://
+        r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|"  # domain...
+        r"localhost|"  # localhost...
+        r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
+        r"(?::\d+)?"  # optional port
+        r"(?:/?|[/?]\S+)$",
+        re.IGNORECASE,
+    )
 
     return bool(regex.match(url))
 
@@ -93,15 +96,16 @@ def validate_proxy(proxy: str) -> bool:
     # User/pass optional
 
     regex = re.compile(
-        r'^(?:http|https|socks4|socks5)://'
-        r'(?:[^:@]+:[^:@]+@)?'
-        r'(?:'
-        r'(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*|'
-        r'localhost|'
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
-        r')'
-        r':\d{1,5}'
-        r'/?$', re.IGNORECASE
+        r"^(?:http|https|socks4|socks5)://"
+        r"(?:[^:@]+:[^:@]+@)?"
+        r"(?:"
+        r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*|"
+        r"localhost|"
+        r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+        r")"
+        r":\d{1,5}"
+        r"/?$",
+        re.IGNORECASE,
     )
 
     if not regex.match(proxy):
@@ -159,7 +163,7 @@ def is_ffmpeg_available() -> bool:
             # check_output is better than which for some path envs
             # but shutil.which is safer/faster
             result[0] = shutil.which("ffmpeg") is not None
-        except Exception as e: # pylint: disable=broad-exception-caught
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logger.warning("FFmpeg check error: %s", e)
 
     thread = threading.Thread(target=check, daemon=True)
@@ -179,7 +183,7 @@ def get_default_download_path() -> str:
             return str(downloads)
         if os.access(home, os.W_OK):
             return str(home)
-    except Exception: # pylint: disable=broad-exception-caught
+    except Exception:  # pylint: disable=broad-exception-caught
         pass
     return "."
 
@@ -206,7 +210,7 @@ def open_folder(path: str) -> bool:
 
         if sys_plat == "Windows":
             # pylint: disable=no-member
-            os.startfile(abs_path) # type: ignore
+            os.startfile(abs_path)  # type: ignore
             return True
 
         cmd = ["open", abs_path] if sys_plat == "Darwin" else ["xdg-open", abs_path]
@@ -216,6 +220,6 @@ def open_folder(path: str) -> bool:
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
 
-    except Exception as e: # pylint: disable=broad-exception-caught
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Failed to open folder: %s", e)
         return False

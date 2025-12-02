@@ -42,16 +42,18 @@ class UIManager:
         # Track current view index
         self.current_view_index = 0
 
-    def initialize_views(self,
-                         on_fetch_info_callback,
-                         on_add_to_queue_callback,
-                         on_batch_import_callback,
-                         on_schedule_callback,
-                         on_cancel_item_callback,
-                         on_remove_item_callback,
-                         on_reorder_item_callback,
-                         on_retry_item_callback,
-                         on_toggle_clipboard_callback):
+    def initialize_views(
+        self,
+        on_fetch_info_callback,
+        on_add_to_queue_callback,
+        on_batch_import_callback,
+        on_schedule_callback,
+        on_cancel_item_callback,
+        on_remove_item_callback,
+        on_reorder_item_callback,
+        on_retry_item_callback,
+        on_toggle_clipboard_callback,
+    ):
         """Initialize all views with their dependencies."""
 
         logger.debug("Initializing views...")
@@ -61,14 +63,14 @@ class UIManager:
             on_add_to_queue_callback,
             on_batch_import_callback,
             on_schedule_callback,
-            state
+            state,
         )
 
         self.queue_view = QueueView(
             state.queue_manager,
             on_cancel_item_callback,
             on_remove_item_callback,
-            on_reorder_item_callback
+            on_reorder_item_callback,
         )
         self.queue_view.on_retry = on_retry_item_callback
 
@@ -126,8 +128,8 @@ class UIManager:
         is_mobile = self.page.width < 800
 
         if self.app_layout:
-             # Use the dedicated method in AppLayout
-             self.app_layout.set_sidebar_collapsed(is_mobile)
+            # Use the dedicated method in AppLayout
+            self.app_layout.set_sidebar_collapsed(is_mobile)
 
     def update_queue_view(self):
         """Rebuild queue view if it exists."""

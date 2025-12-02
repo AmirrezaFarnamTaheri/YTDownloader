@@ -18,7 +18,7 @@ class TestFeatureVerification(unittest.TestCase):
             url="http://example.com",
             output_path=".",
             progress_hook=hook,
-            download_item=item
+            download_item=item,
         )
         download_video(options)
 
@@ -42,7 +42,7 @@ class TestFeatureVerification(unittest.TestCase):
                 progress_hook=hook,
                 download_item=item,
                 start_time="00:01:00",
-                end_time="00:02:00"
+                end_time="00:02:00",
             )
             download_video(options)
 
@@ -65,7 +65,7 @@ class TestFeatureVerification(unittest.TestCase):
             url="http://example.com",
             progress_hook=hook,
             download_item=item,
-            use_aria2c=True
+            use_aria2c=True,
         )
         download_video(options)
 
@@ -90,7 +90,7 @@ class TestFeatureVerification(unittest.TestCase):
                 url="http://example.com",
                 progress_hook=hook,
                 download_item=item,
-                gpu_accel="cuda"
+                gpu_accel="cuda",
             )
             download_video(options)
 

@@ -43,6 +43,6 @@ class TestCancelToken(unittest.TestCase):
 
         # Simulate time passing
         with patch("time.time", side_effect=[100, 100.2, 100.3]):
-             with self.assertRaises(RuntimeError) as cm:
-                 token.check()
-             self.assertIn("too long", str(cm.exception))
+            with self.assertRaises(RuntimeError) as cm:
+                token.check()
+            self.assertIn("too long", str(cm.exception))

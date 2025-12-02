@@ -20,7 +20,7 @@ try:
             DB_FILE.parent.mkdir(parents=True, exist_ok=True)
     except OSError:
         pass
-except Exception: # pylint: disable=broad-exception-caught
+except Exception:  # pylint: disable=broad-exception-caught
     DB_FILE = Path("history.db")
 
 
@@ -55,7 +55,9 @@ class HistoryManager:
         except OSError:
             # Fallback to local if home is not writable
             if db_file != Path("history.db"):
-                logger.warning("DB directory not writable, falling back to local history.db")
+                logger.warning(
+                    "DB directory not writable, falling back to local history.db"
+                )
                 db_file = Path("history.db")
 
         conn = sqlite3.connect(str(db_file), timeout=timeout)
@@ -63,7 +65,7 @@ class HistoryManager:
         # Enable WAL mode for better concurrency
         try:
             conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA synchronous=NORMAL") # Performance tweak
+            conn.execute("PRAGMA synchronous=NORMAL")  # Performance tweak
         except sqlite3.Error as e:
             logger.warning("Failed to set PRAGMA options: %s", e)
 
@@ -80,8 +82,10 @@ class HistoryManager:
             raise ValueError("URL too long")
 
         # Prevent null bytes
-        if "\x00" in url or (title and "\x00" in title) or (
-            output_path and "\x00" in output_path
+        if (
+            "\x00" in url
+            or (title and "\x00" in title)
+            or (output_path and "\x00" in output_path)
         ):
             raise ValueError("Null bytes not allowed")
 
@@ -143,15 +147,15 @@ class HistoryManager:
                     logger.warning(
                         "DB locked during init, retrying (%d/%d)...",
                         retry_count,
-                        HistoryManager.MAX_DB_RETRIES
+                        HistoryManager.MAX_DB_RETRIES,
                     )
                     time.sleep(HistoryManager.DB_RETRY_DELAY)
                     continue
                 logger.error("Failed to init history DB: %s", e)
-                raise e # Re-raise other operational errors
+                raise e  # Re-raise other operational errors
             except Exception as e:
                 logger.error("Failed to init history DB (General): %s", e)
-                raise # Re-raise for visibility
+                raise  # Re-raise for visibility
             finally:
                 if conn:
                     conn.close()
@@ -192,9 +196,15 @@ class HistoryManager:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        url, title, output_path, format_str, status,
-                        timestamp, file_size, file_path
-                    )
+                        url,
+                        title,
+                        output_path,
+                        format_str,
+                        status,
+                        timestamp,
+                        file_size,
+                        file_path,
+                    ),
                 )
                 conn.commit()
                 logger.info("History entry added for: %s", title or url)
@@ -207,15 +217,15 @@ class HistoryManager:
                     logger.warning(
                         "DB locked during add_entry, retrying (%d/%d)...",
                         retry_count,
-                        HistoryManager.MAX_DB_RETRIES
+                        HistoryManager.MAX_DB_RETRIES,
                     )
                     time.sleep(HistoryManager.DB_RETRY_DELAY)
                     continue
                 logger.error("DB Error in add_entry: %s", e)
-                break # Don't retry non-locked errors indefinitely
+                break  # Don't retry non-locked errors indefinitely
             except Exception as e:
                 logger.error("Error in add_entry: %s", e)
-                raise e # Re-raise
+                raise e  # Re-raise
             finally:
                 if conn:
                     conn.close()
@@ -243,13 +253,13 @@ class HistoryManager:
 
             cursor.execute(
                 "SELECT * FROM history ORDER BY timestamp DESC LIMIT ? OFFSET ?",
-                (limit, offset)
+                (limit, offset),
             )
             rows = cursor.fetchall()
             entries = [dict(row) for row in rows]
             logger.debug("Retrieved %d history entries", len(entries))
 
-        except Exception as e: # pylint: disable=broad-exception-caught
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Error retrieving history: %s", e)
         finally:
             if conn:
@@ -260,7 +270,7 @@ class HistoryManager:
             "total": total,
             "offset": offset,
             "limit": limit,
-            "has_more": (offset + limit) < total
+            "has_more": (offset + limit) < total,
         }
 
     @staticmethod
@@ -289,4 +299,4 @@ class HistoryManager:
             logger.info("History cleared.")
         except Exception as e:
             logger.error("Failed to clear history: %s", e)
-            raise e # Raise to satisfy tests expecting errors on failure
+            raise e  # Raise to satisfy tests expecting errors on failure

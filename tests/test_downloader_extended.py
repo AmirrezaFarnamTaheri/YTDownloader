@@ -34,7 +34,7 @@ class TestDownloaderRobustness(unittest.TestCase):
                 url="http://url.com",
                 progress_hook=mock_hook,
                 download_item=item,
-                force_generic=True
+                force_generic=True,
             )
             download_video(options)
 
@@ -60,9 +60,7 @@ class TestDownloaderRobustness(unittest.TestCase):
             }
 
             options = DownloadOptions(
-                url="https://t.me/123",
-                progress_hook=mock_hook,
-                download_item=item
+                url="https://t.me/123", progress_hook=mock_hook, download_item=item
             )
 
             download_video(options)

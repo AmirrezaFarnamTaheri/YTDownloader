@@ -30,7 +30,7 @@ class TestDownloaderCoverage(unittest.TestCase):
             url="http://t.me/1",
             output_path=".",
             progress_hook=MagicMock(),
-            download_item={}
+            download_item={},
         )
         download_video(options)
 
@@ -48,9 +48,7 @@ class TestDownloaderCoverage(unittest.TestCase):
 
         # force_generic=True skips yt-dlp check and goes straight to GenericDownloader
         options = DownloadOptions(
-            url="http://forced.link",
-            output_path=".",
-            force_generic=True
+            url="http://forced.link", output_path=".", force_generic=True
         )
         download_video(options)
 
@@ -58,7 +56,9 @@ class TestDownloaderCoverage(unittest.TestCase):
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_options_time_range(self, mock_wrapper_class, mock_is_telegram):
+    def test_download_video_options_time_range(
+        self, mock_wrapper_class, mock_is_telegram
+    ):
         mock_is_telegram.return_value = False
 
         # Ensure ffmpeg available for ranges
@@ -69,7 +69,7 @@ class TestDownloaderCoverage(unittest.TestCase):
                 url="http://yt.link",
                 output_path=".",
                 start_time="00:01",
-                end_time="00:05"
+                end_time="00:05",
             )
             download_video(options)
 
@@ -79,7 +79,9 @@ class TestDownloaderCoverage(unittest.TestCase):
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_options_gpu_accel(self, mock_wrapper_class, mock_is_telegram):
+    def test_download_video_options_gpu_accel(
+        self, mock_wrapper_class, mock_is_telegram
+    ):
         mock_is_telegram.return_value = False
 
         # Ensure ffmpeg available
@@ -87,9 +89,7 @@ class TestDownloaderCoverage(unittest.TestCase):
             mock_state.ffmpeg_available = True
 
             options = DownloadOptions(
-                url="http://yt.link",
-                output_path=".",
-                gpu_accel="cuda"
+                url="http://yt.link", output_path=".", gpu_accel="cuda"
             )
             download_video(options)
 
@@ -104,28 +104,19 @@ class TestDownloaderCoverage(unittest.TestCase):
         mock_token = MagicMock()
 
         options = DownloadOptions(
-            url="http://yt.link",
-            output_path=".",
-            cancel_token=mock_token
+            url="http://yt.link", output_path=".", cancel_token=mock_token
         )
         download_video(options)
 
         # Verify wrapper called with token
         instance = mock_wrapper_class.return_value
         instance.download.assert_called_with(
-            "http://yt.link",
-            None,
-            mock_token,
-            download_item=None,
-            output_path=ANY
+            "http://yt.link", None, mock_token, download_item=None, output_path=ANY
         )
 
     def test_download_video_validation_fail(self):
         # Invalid time
-        options = DownloadOptions(
-            url="http://valid.com",
-            start_time="-1"
-        )
+        options = DownloadOptions(url="http://valid.com", start_time="-1")
         with self.assertRaises(ValueError):
             download_video(options)
 

@@ -28,9 +28,9 @@ class SocialManager:
         """Connect to Discord RPC."""
         # Simple check to avoid trying if ID is dummy/invalid
         if self._client_id == "123456789012345678":
-             # Silent fail or log debug
-             logger.debug("Discord RPC skipped: No valid Client ID provided")
-             return
+            # Silent fail or log debug
+            logger.debug("Discord RPC skipped: No valid Client ID provided")
+            return
 
         with self._lock:
             if self.connected:

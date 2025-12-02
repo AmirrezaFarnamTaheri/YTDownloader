@@ -31,7 +31,9 @@ class TestTelegramExtractorExtra(unittest.TestCase):
 
             TelegramExtractor.extract("http://t.me/c/1?embed=1", output_path="/tmp")
 
-            mock_get.assert_called_with("http://t.me/c/1?embed=1", headers=unittest.mock.ANY, timeout=15)
+            mock_get.assert_called_with(
+                "http://t.me/c/1?embed=1", headers=unittest.mock.ANY, timeout=15
+            )
 
     @patch("downloader.extractors.telegram.GenericDownloader.download")
     def test_extract_title_fallback(self, mock_download):

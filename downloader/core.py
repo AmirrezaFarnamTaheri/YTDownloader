@@ -14,11 +14,11 @@ from typing import Any, Dict, Optional
 
 import yt_dlp
 
+from app_state import state
 from downloader.engines.generic import GenericDownloader
 from downloader.engines.ytdlp import YTDLPWrapper
-from downloader.types import DownloadOptions
 from downloader.extractors.telegram import TelegramExtractor
-from app_state import state
+from downloader.types import DownloadOptions
 
 logger = logging.getLogger(__name__)
 
@@ -37,20 +37,23 @@ def _sanitize_output_path(output_path: str) -> str:
         # Verify write permissions
         if path.exists():
             if not os.access(path, os.W_OK):
-                logger.warning("No write permission for path '%s', falling back to temp", path)
+                logger.warning(
+                    "No write permission for path '%s', falling back to temp", path
+                )
                 return tempfile.gettempdir()
         else:
             # Try to create it, if fails, fallback
             try:
                 os.makedirs(path, exist_ok=True)
             except OSError:
-                 logger.warning("Cannot create path '%s', falling back to temp", path)
-                 return tempfile.gettempdir()
+                logger.warning("Cannot create path '%s', falling back to temp", path)
+                return tempfile.gettempdir()
 
         return str(path)
     except Exception as e:
         logger.warning("Failed to sanitize path '%s': %s", output_path, e)
         return "."
+
 
 def _check_disk_space(output_path: str, min_mb: int = 100):
     """Check if there is sufficient disk space."""
@@ -64,7 +67,8 @@ def _check_disk_space(output_path: str, min_mb: int = 100):
         return True
     except Exception as e:
         logger.error("Failed to check disk space: %s", e)
-        return True # Assume ok if check fails
+        return True  # Assume ok if check fails
+
 
 def download_video(options: DownloadOptions) -> Dict[str, Any]:
     """
@@ -105,20 +109,14 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
     if TelegramExtractor.is_telegram_url(options.url):
         logger.info("Using TelegramExtractor for: %s", options.url)
         return TelegramExtractor.extract(
-            options.url,
-            output_path,
-            options.progress_hook,
-            options.cancel_token
+            options.url, output_path, options.progress_hook, options.cancel_token
         )
 
     # 3b. Check for Generic Fallback
     if options.force_generic or not YTDLPWrapper.supports(options.url):
         logger.info("Using GenericDownloader (force=%s)", options.force_generic)
         return GenericDownloader.download(
-            options.url,
-            output_path,
-            options.progress_hook,
-            options.cancel_token
+            options.url, output_path, options.progress_hook, options.cancel_token
         )
 
     # 4. Configure yt-dlp options
@@ -177,7 +175,9 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
                 {
                     "key": "FFmpegExtractAudio",
                     "preferredcodec": codec,
-                    "preferredquality": "192" if codec in {"mp3", "m4a", "opus"} else None,
+                    "preferredquality": (
+                        "192" if codec in {"mp3", "m4a", "opus"} else None
+                    ),
                 }
             )
             # Remove None values
@@ -186,14 +186,20 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
             }
     elif options.video_format in ["4k", "1440p", "1080p", "720p", "480p"]:
         height_map = {
-            "4k": 2160, "1440p": 1440, "1080p": 1080, "720p": 720, "480p": 480
+            "4k": 2160,
+            "1440p": 1440,
+            "1080p": 1080,
+            "720p": 720,
+            "480p": 480,
         }
         h = height_map.get(options.video_format, 1080)
-        # Fix logic: user wants resolution R, which typically means "up to R" or "closest to R".
-        # However, yt-dlp "height>=R" means "at least R". Usually users selecting "1080p" want max 1080p.
-        # So "height<=R" is safer to avoid pulling 4k when 1080p is asked.
-        # But we want the BEST up to that.
-        ydl_opts["format"] = f"bestvideo[height<={h}]+bestaudio/best"
+        # Prefer best at or below target height; if none, allow closest above.
+        # Fall back to overall best to avoid hard failures.
+        ydl_opts["format"] = (
+            f"bestvideo[height<={h}]+bestaudio/best/"
+            f"bestvideo[height>={h}]+bestaudio/best/"
+            f"best"
+        )
 
     if not ffmpeg_available and options.video_format != "audio":
         ydl_opts["format"] = "best"
@@ -245,7 +251,7 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
             options.progress_hook,
             options.cancel_token,
             download_item=options.download_item,
-            output_path=output_path
+            output_path=output_path,
         )
     except Exception as e:
         logger.error("yt-dlp download failed: %s", e)

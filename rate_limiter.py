@@ -1,7 +1,9 @@
 """
 Rate limiter for application actions.
 """
+
 import time
+
 
 class RateLimiter:
     """Simple rate limiter based on time intervals."""

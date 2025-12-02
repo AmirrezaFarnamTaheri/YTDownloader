@@ -98,17 +98,17 @@ class RSSManager:
                     logger.warning("XML parse error for %s: %s", url, e)
                     return []
             else:
-                 logger.warning("defusedxml not found, using standard ET (less secure)")
-                 try:
-                     root = ET.fromstring(content_text)
-                 except ET.ParseError as e:
-                     logger.warning("XML parse error for %s: %s", url, e)
-                     return []
+                logger.warning("defusedxml not found, using standard ET (less secure)")
+                try:
+                    root = ET.fromstring(content_text)
+                except ET.ParseError as e:
+                    logger.warning("XML parse error for %s: %s", url, e)
+                    return []
 
             items = []
-            if "feed" in root.tag: # Atom
+            if "feed" in root.tag:  # Atom
                 RSSManager._parse_atom_feed(root, items, instance, url)
-            else: # RSS
+            else:  # RSS
                 RSSManager._parse_rss_feed(root, items, instance, url)
 
             return items
@@ -152,13 +152,15 @@ class RSSManager:
             link_href = link.attrib.get("href") if link is not None else None
 
             if title is not None and title.text and link_href:
-                items.append({
-                    "title": title.text,
-                    "link": link_href,
-                    "published": published.text if published is not None else None,
-                    "video_id": video_id.text if video_id is not None else None,
-                    "is_video": video_id is not None
-                })
+                items.append(
+                    {
+                        "title": title.text,
+                        "link": link_href,
+                        "published": published.text if published is not None else None,
+                        "video_id": video_id.text if video_id is not None else None,
+                        "is_video": video_id is not None,
+                    }
+                )
 
     @staticmethod
     def _parse_rss_feed(
@@ -183,12 +185,14 @@ class RSSManager:
             pub_date = item.find("pubDate")
 
             if title is not None and title.text and link is not None and link.text:
-                items.append({
-                    "title": title.text,
-                    "link": link.text,
-                    "published": pub_date.text if pub_date is not None else None,
-                    "is_video": False # RSS generic usually isn't video unless specific tags
-                })
+                items.append(
+                    {
+                        "title": title.text,
+                        "link": link.text,
+                        "published": pub_date.text if pub_date is not None else None,
+                        "is_video": False,  # RSS generic usually isn't video unless specific tags
+                    }
+                )
 
     def _update_feed_name_safe(self, url: str, name: str):
         """Update feed name thread-safely."""
@@ -210,7 +214,9 @@ class RSSManager:
         with ThreadPoolExecutor(max_workers=5) as executor:
             future_to_feed = {
                 # Ensure we pass the URL string, not the dict, if it's a list of dicts
-                executor.submit(self.fetch_feed, f["url"] if isinstance(f, dict) else f): f
+                executor.submit(
+                    self.fetch_feed, f["url"] if isinstance(f, dict) else f
+                ): f
                 for f in feeds_snapshot
             }
 
@@ -218,7 +224,9 @@ class RSSManager:
                 feed = future_to_feed[future]
                 # Handle string feed input gracefully if tests push strings
                 feed_url = feed["url"] if isinstance(feed, dict) else feed
-                feed_name = feed.get("name", feed_url) if isinstance(feed, dict) else feed_url
+                feed_name = (
+                    feed.get("name", feed_url) if isinstance(feed, dict) else feed_url
+                )
 
                 try:
                     items = future.result()
@@ -226,7 +234,11 @@ class RSSManager:
                         item["feed_name"] = feed_name
                         # Parse date
                         try:
-                            item["date_obj"] = date_parser.parse(item["published"]) if item.get("published") else datetime.min
+                            item["date_obj"] = (
+                                date_parser.parse(item["published"])
+                                if item.get("published")
+                                else datetime.min
+                            )
                         except Exception:
                             item["date_obj"] = datetime.min
                         all_items.append(item)

@@ -34,10 +34,14 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
         mock_get.return_value = mock_response
 
         # Mock download
-        with patch("downloader.extractors.telegram.GenericDownloader.download") as mock_dl:
+        with patch(
+            "downloader.extractors.telegram.GenericDownloader.download"
+        ) as mock_dl:
             mock_dl.return_value = {"filename": "video.mp4"}
 
-            info = TelegramExtractor.extract("https://t.me/c/123/456", output_path="/tmp")
+            info = TelegramExtractor.extract(
+                "https://t.me/c/123/456", output_path="/tmp"
+            )
 
             self.assertEqual(info["filename"], "video.mp4")
             mock_dl.assert_called()
@@ -62,7 +66,7 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
         mock_get.return_value = mock_response
 
         with self.assertRaises(ValueError):
-             TelegramExtractor.extract("https://t.me/c/123/456", output_path="/tmp")
+            TelegramExtractor.extract("https://t.me/c/123/456", output_path="/tmp")
 
     @patch("requests.get")
     def test_telegram_extract_success_og_video(self, mock_get):
@@ -75,9 +79,13 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
         """
         mock_get.return_value = mock_response
 
-        with patch("downloader.extractors.telegram.GenericDownloader.download") as mock_dl:
+        with patch(
+            "downloader.extractors.telegram.GenericDownloader.download"
+        ) as mock_dl:
             mock_dl.return_value = {"filename": "og_video.mp4"}
-            info = TelegramExtractor.extract("https://t.me/c/123/456", output_path="/tmp")
+            info = TelegramExtractor.extract(
+                "https://t.me/c/123/456", output_path="/tmp"
+            )
             self.assertEqual(info["filename"], "og_video.mp4")
 
     @patch("requests.get")
@@ -98,7 +106,9 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     def test_telegram_extract_fail_http(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 404
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("404")
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            "404"
+        )
         mock_get.return_value = mock_response
 
         with self.assertRaises(Exception):
@@ -150,7 +160,7 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     ):
         mock_validate.return_value = True
         mock_isdir.return_value = True
-        mock_exists.return_value = False # No file exists
+        mock_exists.return_value = False  # No file exists
 
         mock_head_resp = MagicMock()
         mock_head_resp.status_code = 200
@@ -173,7 +183,9 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     @patch("downloader.engines.generic.validate_url")
     @patch("os.path.isdir")
     @patch("os.path.exists")
-    def test_download_generic_cancel(self, mock_exists, mock_isdir, mock_validate, mock_file, mock_get, mock_head):
+    def test_download_generic_cancel(
+        self, mock_exists, mock_isdir, mock_validate, mock_file, mock_get, mock_head
+    ):
         mock_validate.return_value = True
         mock_isdir.return_value = True
         mock_exists.return_value = False
@@ -197,7 +209,9 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     @patch("requests.get")
     @patch("downloader.engines.generic.validate_url")
     @patch("os.path.isdir")
-    def test_generic_extract_head_fail_fallback_get(self, mock_isdir, mock_validate, mock_get, mock_head):
+    def test_generic_extract_head_fail_fallback_get(
+        self, mock_isdir, mock_validate, mock_get, mock_head
+    ):
         mock_validate.return_value = True
         mock_isdir.return_value = True
 
@@ -209,7 +223,7 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
         mock_get.return_value.__enter__.return_value = mock_resp
 
         with patch("builtins.open", mock_open()):
-             GenericDownloader.download("http://url", "/tmp")
+            GenericDownloader.download("http://url", "/tmp")
 
         # Should have called get despite head failing
         mock_get.assert_called()
@@ -217,15 +231,22 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     def test_generic_extract_filename_from_url(self):
         # Testing private method via public or direct access
         headers = {}
-        fname = GenericDownloader._get_filename_from_headers("http://site.com/file.mp4?q=1", headers)
+        fname = GenericDownloader._get_filename_from_headers(
+            "http://site.com/file.mp4?q=1", headers
+        )
         self.assertEqual(fname, "file.mp4")
 
         headers = {"Content-Disposition": 'attachment; filename="header.mp4"'}
-        fname = GenericDownloader._get_filename_from_headers("http://site.com/file.mp4", headers)
+        fname = GenericDownloader._get_filename_from_headers(
+            "http://site.com/file.mp4", headers
+        )
         self.assertEqual(fname, "header.mp4")
 
     def test_generic_extract_exception(self):
         # Just ensure GenericExtractor wrapper handles exception propagation or raises
-        with patch("downloader.engines.generic.GenericDownloader.download", side_effect=ValueError("Test")):
+        with patch(
+            "downloader.engines.generic.GenericDownloader.download",
+            side_effect=ValueError("Test"),
+        ):
             with self.assertRaises(ValueError):
                 GenericExtractor.extract("http://url", "/tmp")

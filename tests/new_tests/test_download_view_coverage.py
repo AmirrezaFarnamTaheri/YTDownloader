@@ -1,12 +1,15 @@
 """
 Test coverage for DownloadView.
 """
+
 from unittest.mock import MagicMock, patch
 
-import pytest
 import flet as ft
-from views.download_view import DownloadView
+import pytest
+
 from app_state import AppState
+from views.download_view import DownloadView
+
 
 def test_download_view_advanced_interactions():
     """Test interactions with advanced options."""
@@ -64,10 +67,8 @@ def test_download_view_open_download_folder_error():
 
     # Patch ui_utils.open_folder instead of views.download_view.open_folder
     # because it's imported locally inside the method
-    with patch(
-        "ui_utils.open_folder", side_effect=Exception("Folder Error")
-    ):
-        view._open_downloads_folder() # Correct method name
+    with patch("ui_utils.open_folder", side_effect=Exception("Folder Error")):
+        view._open_downloads_folder()  # Correct method name
         # We assert log error via logger but simplified here just ensuring no crash
 
 
@@ -111,7 +112,7 @@ def test_download_view_update_info_full():
                 "format_id": "137",
                 "resolution": "1080p",
                 "ext": "mp4",
-                "filesize_str": "10.00 MB", # Added filesize_str to mock
+                "filesize_str": "10.00 MB",  # Added filesize_str to mock
             },
             {
                 "format_id": "22",

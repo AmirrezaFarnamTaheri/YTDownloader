@@ -76,7 +76,9 @@ class AppState:
 
         # Instantiate SyncManager with dependencies to avoid circular imports
         # Pass HistoryManager class if needed, or instance if refactored
-        self.sync_manager = SyncManager(self.cloud_manager, self.config, history_manager=HistoryManager)
+        self.sync_manager = SyncManager(
+            self.cloud_manager, self.config, history_manager=HistoryManager
+        )
 
         self.scheduled_time: Optional[time] = None
         self.clipboard_monitor_active = False

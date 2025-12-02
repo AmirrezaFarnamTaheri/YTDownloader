@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 
 import flet as ft
 
-from views.components.empty_state import EmptyState
 from theme import Theme
+from views.components.empty_state import EmptyState
 
 
 class TestEmptyStateCoverage(unittest.TestCase):

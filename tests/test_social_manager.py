@@ -1,6 +1,6 @@
+import os
 import unittest
 from unittest.mock import MagicMock, patch
-import os
 
 # Import after setting up environment if needed, but patching is better
 from social_manager import SocialManager
@@ -10,7 +10,9 @@ class TestSocialManager(unittest.TestCase):
 
     def setUp(self):
         # Set a fake client ID so connect() doesn't skip
-        self.env_patcher = patch.dict(os.environ, {"DISCORD_CLIENT_ID": "111111111111111111"})
+        self.env_patcher = patch.dict(
+            os.environ, {"DISCORD_CLIENT_ID": "111111111111111111"}
+        )
         self.env_patcher.start()
 
     def tearDown(self):
@@ -49,11 +51,11 @@ class TestSocialManager(unittest.TestCase):
 
             # Let's inspect call args
             args, kwargs = mock_rpc.update.call_args
-            self.assertEqual(kwargs['details'], "Downloading")
-            self.assertEqual(kwargs['state'], "Video 1")
-            self.assertEqual(kwargs['large_image'], "logo")
-            self.assertEqual(kwargs['large_text'], "StreamCatch")
-            self.assertIn('start', kwargs)
+            self.assertEqual(kwargs["details"], "Downloading")
+            self.assertEqual(kwargs["state"], "Video 1")
+            self.assertEqual(kwargs["large_image"], "logo")
+            self.assertEqual(kwargs["large_text"], "StreamCatch")
+            self.assertIn("start", kwargs)
 
     def test_update_activity_not_connected(self):
         manager = SocialManager()

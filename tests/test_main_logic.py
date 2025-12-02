@@ -6,11 +6,11 @@ from unittest.mock import ANY, MagicMock, patch
 
 import tasks
 from app_state import AppState
+from downloader.types import DownloadOptions
+from queue_manager import QueueManager
 from tasks import download_task, process_queue
 from tasks_extended import fetch_info_task
 from utils import CancelToken
-from queue_manager import QueueManager
-from downloader.types import DownloadOptions
 
 
 class TestMainLogic(unittest.TestCase):
@@ -38,7 +38,9 @@ class TestMainLogic(unittest.TestCase):
         # Note: tasks.py now uses _submission_throttle but has legacy alias _active_downloads
         self.patcher_sem = patch("tasks._submission_throttle", create=True)
 
-        self.patcher_lock = patch("tasks._process_queue_lock", threading.RLock(), create=True)
+        self.patcher_lock = patch(
+            "tasks._process_queue_lock", threading.RLock(), create=True
+        )
 
         self.patcher_main.start()
         self.patcher_tasks.start()
@@ -119,7 +121,7 @@ class TestMainLogic(unittest.TestCase):
             "url": "http://test",
             "status": "Scheduled (future)",
             "scheduled_time": future_time,
-            "title": "Scheduled Item"
+            "title": "Scheduled Item",
         }
         self.mock_state.queue_manager.add_item(item)
 
@@ -169,7 +171,10 @@ class TestMainLogic(unittest.TestCase):
         self, mock_process_queue, MockHistory, mock_download_video
     ):
         # Configure download_video return value
-        mock_download_video.return_value = {"filename": "video.mp4", "filepath": "/tmp/video.mp4"}
+        mock_download_video.return_value = {
+            "filename": "video.mp4",
+            "filepath": "/tmp/video.mp4",
+        }
 
         item = {
             "url": "http://test",
@@ -192,11 +197,11 @@ class TestMainLogic(unittest.TestCase):
 
     @patch("tasks.download_video")
     @patch("tasks.process_queue")
-    def test_download_task_cancelled(
-        self, mock_process_queue, mock_download_video
-    ):
+    def test_download_task_cancelled(self, mock_process_queue, mock_download_video):
         item = {"url": "http://test", "status": "Queued"}
-        mock_download_video.side_effect = Exception("Download Cancelled by user") # Matches tasks.py check string
+        mock_download_video.side_effect = Exception(
+            "Download Cancelled by user"
+        )  # Matches tasks.py check string
 
         download_task(item)
 
@@ -204,9 +209,7 @@ class TestMainLogic(unittest.TestCase):
 
     @patch("tasks.download_video")
     @patch("tasks.process_queue")
-    def test_download_task_error(
-        self, mock_process_queue, mock_download_video
-    ):
+    def test_download_task_error(self, mock_process_queue, mock_download_video):
         item = {"url": "http://test", "status": "Queued"}
         mock_download_video.side_effect = Exception("Network Error")
 
@@ -215,7 +218,9 @@ class TestMainLogic(unittest.TestCase):
         self.assertEqual(item["status"], "Error")
 
     @patch("tasks.download_video")
-    @patch("tasks.process_queue") # Need to patch this to avoid spawning threads in loop
+    @patch(
+        "tasks.process_queue"
+    )  # Need to patch this to avoid spawning threads in loop
     def test_download_task_progress_hook(self, mock_process_queue, mock_download_video):
         item = {"url": "http://test", "control": MagicMock()}
 
@@ -226,7 +231,7 @@ class TestMainLogic(unittest.TestCase):
         # Configure return value
         mock_download_video.return_value = {"filename": "video.mp4"}
 
-        def side_effect(options): # Changed signature to accept options
+        def side_effect(options):  # Changed signature to accept options
             hook = options.progress_hook
 
             # Simulate downloading
@@ -257,7 +262,7 @@ class TestMainLogic(unittest.TestCase):
         # Verify queue manager content
         q_item = self.mock_state.queue_manager.get_item_by_id(item_id)
         if q_item:
-             self.assertEqual(q_item.get("filename"), "video.mp4")
+            self.assertEqual(q_item.get("filename"), "video.mp4")
 
     # --- Fetch Info Task Tests ---
 

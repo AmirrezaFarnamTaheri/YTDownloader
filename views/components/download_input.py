@@ -1,6 +1,8 @@
 import flet as ft
-from theme import Theme
+
 from localization_manager import LocalizationManager as LM
+from theme import Theme
+
 
 class DownloadInputCard(ft.Container):
     def __init__(
