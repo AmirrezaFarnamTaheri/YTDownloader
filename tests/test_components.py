@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import flet as ft
 
-from components import DownloadItemControl
+from views.components.download_item import DownloadItemControl
 
 
 class TestDownloadItemControl(unittest.TestCase):

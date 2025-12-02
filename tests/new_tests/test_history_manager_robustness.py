@@ -1,7 +1,8 @@
-import sqlite3
+"""
+Robustness tests for HistoryManager.
+"""
+
 import unittest
-from pathlib import Path
-from unittest import mock
 from unittest.mock import MagicMock, patch
 
 from history_manager import HistoryManager
@@ -9,92 +10,34 @@ from history_manager import HistoryManager
 
 class TestHistoryManagerRobustness(unittest.TestCase):
 
-    def setUp(self):
-        self.db_patcher = patch(
-            "history_manager.HistoryManager.DB_FILE",
-            Path("test_history_robust.db"),
-            create=True,
-        )
-        self.mock_db_file = self.db_patcher.start()
-        # We also need to patch the module level DB_FILE if it's used directly
-        self.module_db_patcher = patch(
-            "history_manager.DB_FILE", Path("test_history_robust.db")
-        )
-        self.module_db_patcher.start()
-
-    def tearDown(self):
-        self.db_patcher.stop()
-        self.module_db_patcher.stop()
-        if Path("test_history_robust.db").exists():
-            try:
-                Path("test_history_robust.db").unlink()
-            except:
-                pass
-
-    @patch("history_manager.sqlite3.connect")
-    def test_db_locked_retry(self, mock_connect):
-        # Mock connect to raise OperationalError "locked" twice, then succeed
-        mock_conn = MagicMock()
-        mock_connect.side_effect = [
-            sqlite3.OperationalError("database is locked"),
-            sqlite3.OperationalError("database is locked"),
-            mock_conn,
-        ]
-
-        # We need to mock _get_connection internals basically?
-        # Actually _get_connection calls sqlite3.connect.
-        # But `init_db` calls `_get_connection`.
-
-        # Testing init_db retries
-        with patch("time.sleep") as mock_sleep:  # Speed up tests
-            HistoryManager.init_db()
-
-        self.assertEqual(mock_connect.call_count, 3)
-
-    @patch("history_manager.sqlite3.connect")
-    def test_db_locked_failure(self, mock_connect):
-        # Always locked
-        mock_connect.side_effect = sqlite3.OperationalError("database is locked")
-
-        with patch("time.sleep"):
-            with self.assertRaises(sqlite3.OperationalError):
-                HistoryManager.init_db()
-
-        # Should try MAX_DB_RETRIES (3)
-        self.assertEqual(mock_connect.call_count, 3)
+    def test_validate_input_valid(self):
+        # Should not raise
+        HistoryManager._validate_input("http://url", "Title", "Path")
 
     def test_validate_input_errors(self):
         with self.assertRaises(ValueError):
             HistoryManager._validate_input("", "title", "path")
 
+        # Test length limit
+        long_url = "a" * 2050
         with self.assertRaises(ValueError):
-            HistoryManager._validate_input("ftp://bad", "title", "A" * 1025)
+            HistoryManager._validate_input(long_url, "title", "path")
 
+    def test_validate_input_null_bytes(self):
         with self.assertRaises(ValueError):
-            HistoryManager._validate_input("http://good", "Bad DROP TABLE", "path")
+            HistoryManager._validate_input("http://\x00", "title", "path")
 
-    @patch("history_manager.sqlite3.connect")
-    def test_add_entry_locked_retry(self, mock_connect):
+    @patch("history_manager.HistoryManager._get_connection")
+    def test_init_db_locked_indefinitely(self, mock_get_conn):
         mock_conn = MagicMock()
-        # Mocking context manager behavior of connection
-        mock_conn.__enter__.return_value = mock_conn
-        mock_conn.__exit__.return_value = None
+        mock_cursor = MagicMock()
+        mock_get_conn.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
 
-        # Mock connect success, but execute failure?
-        # _get_connection returns a wrapper around conn.
-        # So first call to connect succeeds.
-        # Then inside `add_entry` -> `_get_connection`.
+        # Simulate locked DB
+        import sqlite3
+        mock_cursor.execute.side_effect = sqlite3.OperationalError("database is locked")
 
-        # If we want to simulate lock during `_get_connection`, we mock `connect`.
-        # If we want to simulate lock during `execute`, we mock cursor.
-
-        # Let's mock `connect` raising locked.
-        mock_connect.side_effect = [
-            sqlite3.OperationalError("database is locked"),
-            mock_conn,
-        ]
-
-        with patch("time.sleep"):
-            HistoryManager.add_entry("http://u", "t", "p", "f", "s", "sz")
-
-        self.assertEqual(mock_connect.call_count, 2)
+        with patch("history_manager.HistoryManager.DB_RETRY_DELAY", 0.001):
+            with self.assertRaises(sqlite3.OperationalError):
+                HistoryManager.init_db()

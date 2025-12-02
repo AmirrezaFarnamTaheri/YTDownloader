@@ -27,9 +27,8 @@ def test_open_folder_not_exist():
 
 def test_open_folder_platforms():
     """Test platform specific calls."""
-    with patch("os.path.exists", return_value=True):
+    with patch("os.path.exists", return_value=True), patch("os.path.isdir", return_value=True):
         # Windows
-        # os.startfile only exists on Windows, so we need create=True for patch if not on windows
         with patch("platform.system", return_value="Windows"):
             with patch("os.startfile", create=True) as mock_start:
                 open_folder("C:\\")
@@ -39,13 +38,16 @@ def test_open_folder_platforms():
         with patch("platform.system", return_value="Darwin"):
             with patch("subprocess.Popen") as mock_popen:
                 open_folder("/tmp")
-                mock_popen.assert_called_with(["open", "/tmp"])
+                # Popen args check: stdout/stderr devnull
+                args, kwargs = mock_popen.call_args
+                assert args[0] == ["open", "/tmp"]
 
         # Linux
         with patch("platform.system", return_value="Linux"):
             with patch("subprocess.Popen") as mock_popen:
                 open_folder("/tmp")
-                mock_popen.assert_called_with(["xdg-open", "/tmp"])
+                args, kwargs = mock_popen.call_args
+                assert args[0] == ["xdg-open", "/tmp"]
 
 
 def test_validate_rate_limit_zero():

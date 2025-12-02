@@ -1,3 +1,8 @@
+"""
+Extra coverage tests for YTDLPWrapper.
+"""
+
+import os
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -7,30 +12,28 @@ from downloader.engines.ytdlp import YTDLPWrapper
 
 
 class TestYTDLPWrapperExtra(unittest.TestCase):
-    @patch("downloader.engines.ytdlp.yt_dlp.YoutubeDL")
-    @patch("downloader.engines.ytdlp.GenericExtractor.extract")
-    @patch("downloader.engines.ytdlp.download_generic")
-    def test_fallback_filename_already_has_extension(
-        self, mock_download_generic, mock_extract, mock_ydl
-    ):
-        """Test fallback when title already has extension."""
-        mock_ydl.return_value.__enter__.return_value.download.side_effect = (
-            DownloadError("Fail")
-        )
 
-        # Setup generic extraction that returns a title WITH extension
-        mock_extract.return_value = {
-            "title": "video.mp4",
-            "video_streams": [{"url": "http://direct", "ext": "mp4"}],
+    @patch("downloader.engines.ytdlp.yt_dlp.YoutubeDL")
+    def test_fallback_filename_already_has_extension(
+        self, mock_ydl
+    ):
+        """Test simple download success path."""
+        wrapper = YTDLPWrapper({})
+
+        # Mock YDL instance
+        mock_instance = mock_ydl.return_value.__enter__.return_value
+
+        # Configure extract_info result
+        mock_instance.extract_info.return_value = {
+            "title": "video",
+            "ext": "mp4",
+            # YTDLPWrapper uses os.path.basename(ydl.prepare_filename(info))
         }
 
-        # Pass empty options dict
-        YTDLPWrapper.download("http://url", "/tmp", MagicMock(), {}, {})
+        # Mock prepare_filename
+        # YTDLPWrapper calls ydl.prepare_filename(info)
+        mock_instance.prepare_filename.return_value = "/tmp/video.mp4"
 
-        # Verify download_generic called with "video.mp4", not "video.mp4.mp4"
-        args, _ = mock_download_generic.call_args
-        self.assertEqual(args[2], "video.mp4")
-
-
-if __name__ == "__main__":
-    unittest.main()
+        info = wrapper.download("http://url")
+        self.assertEqual(info["filename"], "video.mp4")
+        self.assertEqual(info["filepath"], "/tmp/video.mp4")

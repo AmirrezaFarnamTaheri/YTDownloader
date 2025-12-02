@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from ui_utils import validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,9 @@ class GenericDownloader:
         if not filename:
             filename = "downloaded_file"
 
-        # Sanitize filename
+        # Sanitize filename (Path Traversal Protection)
+        # Remove null bytes, directory separators, and control chars
+        filename = os.path.basename(filename)
         filename = "".join(c for c in filename if c.isalnum() or c in "._- ")
         return filename
 
@@ -95,9 +98,19 @@ class GenericDownloader:
         Returns:
             Dict with metadata (filename, filepath, etc.).
         """
+        # SSRF Protection: Validate URL scheme and format
+        if not validate_url(url):
+             raise ValueError(f"Invalid or unsafe URL: {url}")
 
-        # We use requests directly instead of session to allow easier mocking in existing tests
-        # (tests patch requests.get, not session.get)
+        # Path Traversal Protection: Validate output_path
+        output_path = os.path.abspath(output_path)
+        if not os.path.isdir(output_path):
+             # Try to create? The core logic usually handles this,
+             # but here we should ensure we are writing to a valid place.
+             try:
+                 os.makedirs(output_path, exist_ok=True)
+             except OSError as e:
+                 raise ValueError(f"Invalid output path: {e}")
 
         # Initial HEAD request to resolve redirects and get filename/size
         try:
@@ -120,7 +133,14 @@ class GenericDownloader:
             if not filename:
                 filename = os.path.basename(url.split("?")[0]) or "downloaded_file"
 
+        # Sanitize filename again just in case
+        filename = os.path.basename(filename)
         final_path = os.path.join(output_path, filename)
+
+        # Ensure final path is inside output path (Path Traversal check)
+        if not os.path.commonpath([final_path, output_path]) == output_path:
+             # Should be covered by basename, but extra safety
+             raise ValueError("Detected path traversal attempt in filename")
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -139,7 +159,6 @@ class GenericDownloader:
                 mode = "ab"
             elif total_size > 0 and existing_size == total_size:
                 logger.info("File already downloaded: %s", final_path)
-                # Ensure we notify completion for hooks
                 if progress_hook:
                     progress_hook({
                         "status": "finished",
@@ -162,7 +181,6 @@ class GenericDownloader:
 
                 logger.debug("Attempting download (try %d/%d) for %s", retry_count + 1, max_retries, url)
 
-                # Use requests.get directly for mocking compatibility
                 with requests.get(final_url, stream=True, headers=headers, timeout=REQUEST_TIMEOUT) as r:
                     r.raise_for_status()
 
@@ -191,8 +209,8 @@ class GenericDownloader:
 
                                 current_time = time.time()
                                 if current_time - last_update_time > 0.2:  # Update every 200ms
-                                    elapsed = current_time - start_time
-                                    # Speed calc
+                                    elapsed = max(current_time - start_time, 1e-6)
+                                    # Speed calc logic would go here if needed
 
                                     if progress_hook:
                                         percent_str = f"{(downloaded / total_size) * 100:.1f}%" if total_size > 0 else "N/A"
@@ -205,6 +223,16 @@ class GenericDownloader:
                                             "filename": filename,
                                         })
                                     last_update_time = current_time
+
+                                    # Periodic flush to disk for data integrity
+                                    # Not on every chunk to avoid performance kill,
+                                    # but maybe on update interval?
+                                    # Python buffering handles this mostly, but os.fsync ensures persistence.
+                                    try:
+                                        f.flush()
+                                        os.fsync(f.fileno())
+                                    except Exception:
+                                        pass
 
                     if progress_hook:
                         progress_hook({
@@ -251,8 +279,8 @@ class GenericDownloader:
 def download_generic(
     url: str,
     output_path: str,
-    filename: Optional[str],
-    progress_hook: Callable,
+    filename: Optional[str] = None, # Make optional to match usage
+    progress_hook: Optional[Callable] = None,
     cancel_token: Optional[Any] = None,
     max_retries: int = 3,
 ):

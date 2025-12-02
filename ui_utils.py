@@ -82,21 +82,51 @@ def validate_proxy(proxy: str) -> bool:
     if not proxy:
         return True
 
-    # Updated regex to match tests: requires at least scheme://host:port
+    # Check length
+    if len(proxy) > 2048:
+        return False
+
     # schemes: http, https, socks4, socks5
+    # Port is mandatory for proxy usage
+    # Host can be IP, domain, or localhost
+    # User/pass optional
+
+    # Regex breakdown:
+    # Scheme: ^(?:http|https|socks4|socks5)://
+    # Auth (optional): (?:[^:@]+:[^:@]+@)?
+    # Host:
+    #   Domain (multi-label): (?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}
+    #   Hostname (single-label): [a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?
+    #   Localhost: localhost
+    #   IP: \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}
+    # Port: :\d{1,5} (1-5 digits)
+    # Trailing slash (optional): /?
+
     regex = re.compile(
         r'^(?:http|https|socks4|socks5)://'
-        r'(?:[^:@]+:[^:@]+@)?' # optional user:pass
-        r'(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}|' # domain
+        r'(?:[^:@]+:[^:@]+@)?'
+        r'(?:'
+        r'(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*|'
         r'localhost|'
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # IP
-        r'(?::\d+)?' # Port (optional in some cases but usually required for proxy validation context)
-        r'$', re.IGNORECASE
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
+        r')'
+        r':\d{1,5}'
+        r'/?$', re.IGNORECASE
     )
 
-    # Simple check for scheme validity first
-    if not proxy.startswith(("http://", "https://", "socks4://", "socks5://")):
+    if not regex.match(proxy):
         return False
+
+    # Extra check for port validity
+    try:
+        parts = proxy.split(":")
+        # parts[-1] might be "8080/" or "8080"
+        port_str = parts[-1].rstrip("/")
+        port = int(port_str)
+        if not 1 <= port <= 65535:
+            return False
+    except ValueError:
+        pass
 
     return True
 
@@ -108,19 +138,26 @@ def validate_rate_limit(rate_limit: str) -> bool:
         return True
 
     if not isinstance(rate_limit, str):
-         # Non-string false unless it's explicitly None handled above
-         return False
-
-    rate_limit = rate_limit.strip()
-    if not rate_limit:
-        # Empty string is valid (no limit)
-        return True
-
-    if rate_limit == "0":
+        # Non-string false unless it's explicitly None handled above
         return False
 
-    # Regex for number + K/M/G/T + optional /s
-    return bool(re.match(r"^[1-9]\d*(\.\d+)?[KMGT]?(?:/s)?$", rate_limit, re.IGNORECASE))
+    s = rate_limit.strip()
+    if not s:
+        return True
+
+    if s == "0":
+        return False
+
+    # Prevent extremely long strings
+    if len(s) > 20:
+        return False
+
+    # Require a unit when using a decimal; allow integer without unit
+    # e.g., 500K, 1.5M, 1000
+    int_only = re.compile(r"^[1-9]\d*(?:/s)?$", re.IGNORECASE)
+    with_unit = re.compile(r"^[1-9]\d*(\.\d+)?[KMGT](?:/s)?$", re.IGNORECASE)
+
+    return bool(int_only.match(s) or with_unit.match(s))
 
 
 def is_ffmpeg_available() -> bool:
@@ -132,7 +169,7 @@ def is_ffmpeg_available() -> bool:
             # check_output is better than which for some path envs
             # but shutil.which is safer/faster
             result[0] = shutil.which("ffmpeg") is not None
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             logger.warning("FFmpeg check error: %s", e)
 
     thread = threading.Thread(target=check, daemon=True)
@@ -144,35 +181,36 @@ def is_ffmpeg_available() -> bool:
 
 def open_folder(path: str) -> bool:
     """Opens a folder in the system file manager."""
-    if not path:
+    if not path or not isinstance(path, str):
         return False
 
-    # We generally don't check for directory existence strictly here for mocking purposes in tests,
-    # but in prod we should.
-    # However, tests mock platform.system and subprocess, so we need to be careful.
-
     try:
-        # For tests, we might get a mock path that doesn't exist on disk.
-        # But logically we should check existence.
-        # If running in test environment, maybe skip existence check?
-        # Better: check existence, but if it fails (because it's a mock path string), proceed if testing.
+        # Resolve path
+        abs_path = os.path.abspath(os.path.expanduser(path))
 
-        # Actually, let's just try to open.
+        # Security check: Ensure it's a directory
+        if not os.path.exists(abs_path):
+            logger.warning("Path not found: %s", abs_path)
+            return False
+
+        if not os.path.isdir(abs_path):
+            logger.warning("Path is not a directory: %s", abs_path)
+            return False
 
         sys_plat = platform.system()
 
-        cmd = []
         if sys_plat == "Windows":
-            os.startfile(path) # type: ignore
+            # pylint: disable=no-member
+            os.startfile(abs_path) # type: ignore
             return True
-        elif sys_plat == "Darwin":
-            cmd = ["open", path]
-        else:
-            cmd = ["xdg-open", path]
 
+        cmd = ["open", abs_path] if sys_plat == "Darwin" else ["xdg-open", abs_path]
+
+        # Use Popen to avoid blocking
+        # Redirect stdout/stderr to avoid leaking descriptors or output
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
 
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-exception-caught
         logger.error("Failed to open folder: %s", e)
         return False

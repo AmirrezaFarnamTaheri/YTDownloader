@@ -7,7 +7,7 @@ import logging
 import threading
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from utils import CancelToken
 
@@ -42,9 +42,15 @@ class QueueManager:
         # Map item IDs to their active CancelTokens
         self._cancel_tokens: Dict[str, CancelToken] = {}
 
+    @property
+    def has_work_condition(self):
+        """Expose condition variable for workers."""
+        return self._has_work
+
     def get_all(self) -> List[Dict[str, Any]]:
         """Get a copy of the current queue."""
         with self._lock:
+            # Return shallow copy
             return list(self._queue)
 
     def get_item_by_id(self, item_id: str) -> Optional[Dict[str, Any]]:
@@ -66,7 +72,7 @@ class QueueManager:
         """Check if any items are currently in a downloading or active state."""
         return self.any_in_status(["Downloading", "Allocating", "Processing"])
 
-    def any_in_status(self, status: str | List[str]) -> bool:
+    def any_in_status(self, status: Union[str, List[str]]) -> bool:
         """Check if any items match the given status(es)."""
         if isinstance(status, str):
             statuses = {status}
@@ -100,7 +106,7 @@ class QueueManager:
         for listener in listeners:
             try:
                 listener()
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-exception-caught
                 logger.error("Error in queue listener: %s", e)
 
     def add_item(self, item: Dict[str, Any]):
@@ -120,7 +126,11 @@ class QueueManager:
             if "status" not in item:
                 item["status"] = "Queued"
 
-            logger.info("Adding item to queue: %s (ID: %s)", item.get("title", item.get("url")), item["id"])
+            logger.info(
+                "Adding item to queue: %s (ID: %s)",
+                item.get("title", item.get("url")),
+                item["id"]
+            )
             self._queue.append(item)
 
             # Notify workers that work might be available
@@ -129,7 +139,12 @@ class QueueManager:
 
         self._notify_listeners_safe()
 
-    def update_item_status(self, item_id: str, status: str, updates: Optional[Dict[str, Any]] = None):
+    def update_item_status(
+        self,
+        item_id: str,
+        status: str,
+        updates: Optional[Dict[str, Any]] = None
+    ):
         """
         Atomically update an item's status and other fields.
         """
@@ -155,13 +170,17 @@ class QueueManager:
         Atomic operation.
         """
         item_id = item.get("id")
+        removed = False
 
         # If no ID (legacy), fallback to old method
         if not item_id:
             with self._lock:
                 if item in self._queue:
                     self._queue.remove(item)
-                    self._notify_listeners_safe()
+                    removed = True
+
+            if removed:
+                self._notify_listeners_safe()
             return
 
         with self._lock:
@@ -180,7 +199,11 @@ class QueueManager:
                     del self._cancel_tokens[item_id]
 
                 self._queue.remove(target)
-                self._notify_listeners_safe()
+                removed = True
+
+        # Notify outside lock to prevent deadlock if listener calls back into queue
+        if removed:
+            self._notify_listeners_safe()
 
     def swap_items(self, index1: int, index2: int):
         """Swap two items in the queue."""
@@ -249,6 +272,11 @@ class QueueManager:
         with self._has_work:
             return self._has_work.wait(timeout)
 
+    def notify_workers(self):
+        """Notify workers that state has changed."""
+        with self._has_work:
+            self._has_work.notify_all()
+
     # --- Cancellation Handling ---
 
     def register_cancel_token(self, item_id: str, token: CancelToken):
@@ -273,7 +301,9 @@ class QueueManager:
             # Update status if in queue but not running yet
             for item in self._queue:
                 if item.get("id") == item_id:
-                    if item["status"] in ["Queued", "Allocating", "Downloading", "Processing"]:
+                    if item["status"] in [
+                        "Queued", "Allocating", "Downloading", "Processing"
+                    ]:
                         item["status"] = "Cancelled"
                     break
 

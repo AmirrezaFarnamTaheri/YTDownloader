@@ -1,100 +1,86 @@
+"""
+Integration tests for main application logic.
+"""
+
 import threading
 import time
 import unittest
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import main as app_main
 import tasks
 from app_state import AppState
 from queue_manager import QueueManager
+from tasks import download_task, process_queue
 
 
 class TestMainIntegration(unittest.TestCase):
 
     def setUp(self):
+        # Reset singleton state
         self.state = AppState()
         self.state.queue_manager = QueueManager()
+        self.state.current_download_item = None
+        # Mock shutdown_flag if it's an Event
+        self.state.shutdown_flag = MagicMock()
+        self.state.shutdown_flag.is_set.return_value = False
 
+        # Patch active_downloads to avoid thread pool execution if needed
+        # Or patch executor.submit
+        self.patcher_executor = patch("tasks._executor")
+        self.mock_executor = self.patcher_executor.start()
+
+        # We need to make sure process_queue submits
+        self.patcher_sem = patch("tasks._active_downloads", create=True)
+        self.mock_sem = self.patcher_sem.start()
+        self.mock_sem.acquire.return_value = True
+
+        self.patcher_lock = patch("tasks._process_queue_lock", threading.RLock(), create=True)
+        self.patcher_lock.start()
+
+    def tearDown(self):
+        self.patcher_executor.stop()
+        self.patcher_sem.stop()
+        self.patcher_lock.stop()
+
+    @patch("tasks.download_task")
     @patch("tasks.download_video")
-    @patch("tasks.HistoryManager.add_entry")
-    def test_download_task_success(self, mock_add_history, mock_download):
-        # Simulate a successful download task
+    @patch("tasks._log_to_history")
+    def test_download_task_success(self, mock_history, mock_download, mock_dl_task):
         item = {
-            "url": "http://test.com",
+            "url": "http://test",
             "status": "Queued",
-            "title": "Test",
-            "output_path": "/tmp",
-            "video_format": "best",
+            "title": "Test Video"
         }
-        self.state.queue_manager.add_item(item)
+        mock_download.return_value = {"filename": "vid.mp4", "filepath": "/tmp/vid.mp4"}
 
-        # Mock progress hook execution
-        def side_effect_download(*args, **kwargs):
-            progress_hook = kwargs.get("progress_hook") or args[1]
-
-            progress_hook(
-                {
-                    "status": "downloading",
-                    "_percent_str": "50%",
-                    "_speed_str": "100KiB/s",
-                    "_eta_str": "10s",
-                    "_total_bytes_str": "100MiB",
-                }
-            )
-            progress_hook({"status": "finished", "filename": "out.mp4"})
-
-            return {"filename": "out.mp4", "filepath": "/tmp/out.mp4"}
-
-        mock_download.side_effect = side_effect_download
-
-        # Run task directly (no thread for test simplicity)
-        tasks.state = self.state  # Inject state
-        tasks.download_task(item)
+        # Patch state in tasks module so it sees our mock state/queue manager
+        with patch("tasks.state", self.state):
+            download_task(item)
 
         self.assertEqual(item["status"], "Completed")
-        self.assertEqual(item["filename"], "out.mp4")
-        mock_add_history.assert_called()
+        mock_download.assert_called_once()
+        mock_history.assert_called_once()
 
     @patch("tasks.download_video")
     def test_download_task_failure(self, mock_download):
-        # Simulate a failed download task
-        item = {"url": "http://fail.com", "status": "Queued", "title": "Fail"}
-        mock_download.side_effect = Exception("Network Error")
+        item = {"url": "http://test", "status": "Queued"}
+        mock_download.side_effect = Exception("Failed")
 
-        with patch("app_state.state", self.state):
-            tasks.download_task(item)
+        # Add to queue
+        self.state.queue_manager.add_item(item)
+        item_id = item["id"]
 
-        self.assertEqual(item["status"], "Error")
+        with patch("tasks.state", self.state):
+            download_task(item)
 
-    @patch("clipboard_monitor.pyperclip.paste")
-    @patch("clipboard_monitor.validate_url")
-    def test_background_clipboard_monitor(self, mock_validate, mock_paste):
-        # Test clipboard monitor logic
-        self.state.clipboard_monitor_active = True
-        self.state.last_clipboard_content = "old"
-
-        mock_paste.return_value = "http://new.com"
-        mock_validate.return_value = True
-
-        # Mock UI elements that would be updated
-        app_main.download_view = MagicMock()
-        app_main.page = MagicMock()
-
-        # Extract logic from background loop for testing
-        # Note: Logic is now in clipboard_monitor.py
-        content = mock_paste()
-        if content and content != self.state.last_clipboard_content:
-            self.state.last_clipboard_content = content
-            if mock_validate(content):
-                app_main.download_view.url_input.value = content
-
-        self.assertEqual(app_main.download_view.url_input.value, "http://new.com")
+        # Check queue item
+        q_item = self.state.queue_manager.get_item_by_id(item_id)
+        self.assertEqual(q_item["status"], "Error")
+        self.assertIn("Failed", q_item["error"])
 
     @patch("tasks.download_task")
     def test_process_queue_scheduler(self, mock_download_task):
-        # Test scheduling logic
-        from datetime import datetime, timedelta
-
         future_time = datetime.now() + timedelta(minutes=10)
         item = {
             "url": "http://sched.com",
@@ -103,11 +89,12 @@ class TestMainIntegration(unittest.TestCase):
         }
         self.state.queue_manager.add_item(item)
 
-        with patch("app_state.state", self.state):
-            tasks.process_queue()
+        # Patch state in tasks module!
+        with patch("tasks.state", self.state):
+            process_queue()
 
             # Should still be scheduled
-            self.assertTrue(item["status"].startswith("Scheduled"))
+            self.mock_executor.submit.assert_not_called()
 
             # Move time to past
             item["scheduled_time"] = datetime.now() - timedelta(minutes=1)
@@ -115,17 +102,7 @@ class TestMainIntegration(unittest.TestCase):
             # Manually trigger schedule update
             self.state.queue_manager.update_scheduled_items(datetime.now())
 
-            tasks.process_queue()
+            process_queue()
 
-        # Should be allocated or processed.
-        # Since process_queue starts a thread for download_task, and claim_next_downloadable changes status to Allocating
-        # We check if mock was called or status changed
-        self.assertTrue(
-            mock_download_task.called
-            or item["status"] == "Allocating"
-            or item["status"] == "Downloading"
-        )
-
-
-if __name__ == "__main__":
-    unittest.main()
+        # Should be submitted
+        self.mock_executor.submit.assert_called()

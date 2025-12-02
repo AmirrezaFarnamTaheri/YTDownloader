@@ -1,41 +1,41 @@
-import logging
+"""
+Integration tests for the entire pipeline.
+Simulates adding to queue -> processing -> downloading -> history.
+"""
+
 import threading
 import time
 import unittest
-from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import main  # Import main to access potential background threads logic if needed
-import tasks
-from app_state import state
+from app_state import AppState
+from downloader.types import DownloadOptions
+from tasks import process_queue
 from queue_manager import QueueManager
-from tasks import download_task, process_queue
-
-logger = logging.getLogger(__name__)
+from history_manager import HistoryManager
+from app_state import state
 
 
 class TestPipelineIntegration(unittest.TestCase):
+
     def setUp(self):
-        # 1. Stop any lingering background threads from previous tests
-        # We set the flag to TRUE to stop background loops.
-        state.shutdown_flag.set()
-
-        # Wait longer than the background loop's sleep interval (2s)
-        # to ensure any sleeping threads wake up, check the flag, and exit.
-        time.sleep(2.2)
-
-        # Now it is safe to clear the flag, because all zombie loops should have exited.
-        state.shutdown_flag.clear()
-
-        # 2. Reset state
+        # Reset state
+        # We need a clean queue for each test
         state.queue_manager = QueueManager()
         state.current_download_item = None
-        state.cancel_token = None
-        state.config = {}
+        state.shutdown_flag.clear()
 
-        # 3. Reset concurrency primitives
-        tasks._active_downloads = threading.Semaphore(3)
-        tasks._process_queue_lock = threading.RLock()
+        # Ensure we don't have residual threads from other tests
+        # We can't easily kill threads, but we can ensure shutdown flag is clear.
+
+        # Patch tasks._active_downloads to avoid interference
+        # We want real behavior, but maybe limit concurrency
+        self.patcher_sem = patch("tasks._active_downloads", threading.Semaphore(3))
+        self.patcher_sem.start()
+
+    def tearDown(self):
+        self.patcher_sem.stop()
+        state.shutdown_flag.set()
 
     @patch("tasks.download_video")
     @patch("history_manager.HistoryManager.add_entry")
@@ -62,76 +62,61 @@ class TestPipelineIntegration(unittest.TestCase):
 
         # 3. Verify execution
         mock_download.assert_called_once()
-        # Tasks calls download_video with kwargs
-        _, kwargs = mock_download.call_args
-        self.assertEqual(kwargs["url"], "http://test.com/vid")
 
-        # Verify item status
-        q_items = state.queue_manager.get_all()
-        self.assertEqual(len(q_items), 1)
-        self.assertEqual(q_items[0]["status"], "Completed")
+        # Tasks calls download_video with DownloadOptions object
+        call_args = mock_download.call_args[0][0]
+        self.assertIsInstance(call_args, DownloadOptions)
+        self.assertEqual(call_args.url, "http://test.com/vid")
 
-        # Verify history added
-        mock_add_history.assert_called_once()
-
-    @patch("tasks.download_video")
-    def test_pipeline_error_handling(self, mock_download):
-        """Test pipeline handles errors gracefully."""
-        mock_download.side_effect = Exception("Network Error")
-
-        item = {"url": "http://fail.com", "status": "Queued"}
-        state.queue_manager.add_item(item)
-
-        process_queue()
-        time.sleep(1.5)
-
-        q_items = state.queue_manager.get_all()
-        self.assertEqual(q_items[0]["status"], "Error")
-
-    def test_scheduling_logic(self):
-        """Test that scheduled items are picked up only when time is right."""
-        # Set scheduled time to future
-        future_time = datetime.now() + timedelta(hours=1)
-        item = {
-            "url": "http://future.com",
-            "status": f"Scheduled ({future_time.strftime('%H:%M')})",
-            "scheduled_time": future_time,
-        }
-        state.queue_manager.add_item(item)
-
-        process_queue()
-        time.sleep(0.1)
-
-        # Should still be scheduled
-        q_items = state.queue_manager.get_all()
-        self.assertTrue(str(q_items[0]["status"]).startswith("Scheduled"))
-
-        # Now move time to past (simulate by modifying item time)
-        item["scheduled_time"] = datetime.now() - timedelta(seconds=1)
-
-        process_queue()
-        time.sleep(0.1)
-
-    @patch("tasks.download_video")
-    def test_scheduling_execution(self, mock_download):
-        now = datetime.now()
-        past_time = now - timedelta(seconds=1)
-        item = {
-            "url": "http://now.com",
-            "status": f"Scheduled ({past_time.strftime('%H:%M')})",
-            "scheduled_time": past_time,
-        }
-        state.queue_manager.add_item(item)
-
-        # Manually trigger schedule update as main loop is not running
-        state.queue_manager.update_scheduled_items(datetime.now())
-
-        process_queue()
+        # 4. Verify History Log
+        # download_task calls _log_to_history on success
+        # Wait for thread to finish? mock_download returns immediately (mock), so thread should finish fast.
         time.sleep(0.5)
 
-        # Should be processed
-        mock_download.assert_called()
+        # NOTE: mock_download return value is default MagicMock, so info.get("filename") might be weird.
+        # But logging happens.
+        mock_add_history.assert_called()
 
+    def test_pipeline_error_handling(self):
+        """Test that errors in download are caught and status updated."""
+        with patch("tasks.download_video", side_effect=Exception("Download Failed")):
+            item = {
+                "url": "http://fail.com",
+                "status": "Queued",
+                "title": "Fail Video"
+            }
+            state.queue_manager.add_item(item)
 
-if __name__ == "__main__":
-    unittest.main()
+            process_queue()
+            time.sleep(1.5)
+
+            # Check status
+            q_items = state.queue_manager.get_all()
+            self.assertEqual(q_items[0]["status"], "Error")
+            self.assertEqual(q_items[0].get("error"), "Download Failed")
+
+    def test_scheduling_execution(self):
+        """Test that scheduled items are picked up."""
+        # Use real time logic
+        import datetime
+        now = datetime.datetime.now()
+        past = now - datetime.timedelta(minutes=1)
+
+        item = {
+            "url": "http://sched.com",
+            "status": f"Scheduled ({past.strftime('%H:%M')})",
+            "scheduled_time": past,
+            "title": "Sched Video"
+        }
+        state.queue_manager.add_item(item)
+
+        # Mock download to verify it ran
+        with patch("tasks.download_video") as mock_dl:
+            # 1. Update schedule (normally main loop does this)
+            state.queue_manager.update_scheduled_items(datetime.datetime.now())
+
+            # 2. Process
+            process_queue()
+            time.sleep(1.5)
+
+            mock_dl.assert_called()

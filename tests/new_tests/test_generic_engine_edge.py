@@ -1,3 +1,7 @@
+"""
+Edge case tests for GenericDownloader.
+"""
+
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -7,8 +11,10 @@ from downloader.engines.generic import download_generic
 
 
 class TestGenericEngineEdge(unittest.TestCase):
+
+    @patch("downloader.engines.generic.validate_url", return_value=True) # Mock validation
     @patch("downloader.engines.generic.requests.get")
-    def test_exhausted_retries_raises_last_error(self, mock_get):
+    def test_exhausted_retries_raises_last_error(self, mock_get, mock_validate):
         """Test that last error is raised if all retries fail."""
         # Create a mock exception
         conn_err = requests.exceptions.ConnectionError("Failed connection")
@@ -27,7 +33,3 @@ class TestGenericEngineEdge(unittest.TestCase):
                 download_generic(
                     "http://url", "/tmp", "file.mp4", MagicMock(), {}, max_retries=1
                 )
-
-
-if __name__ == "__main__":
-    unittest.main()

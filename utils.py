@@ -56,17 +56,21 @@ class CancelToken:
         Accepts an argument '_d' to be compatible with yt-dlp progress hooks (unused).
 
         Raises:
-            RuntimeError: If download is cancelled or pause timeout exceeded.
+            InterruptedError: If download is cancelled or pause timeout exceeded.
         """
         if self.cancelled:
-            raise RuntimeError("Download cancelled by user.")
+            # Change to match what tasks.py expects: InterruptedError with specific message
+            # Or make tasks.py more flexible.
+            # tasks.py checks for "Cancelled" in message OR CancelToken.cancelled property.
+            # But tests check for "Download Cancelled by user".
+            raise InterruptedError("Download Cancelled by user")
 
         if self.is_paused:
             pause_start = time.time()
             while self.is_paused:
                 time.sleep(0.5)
                 if self.cancelled:
-                    raise RuntimeError("Download cancelled by user.")
+                    raise InterruptedError("Download Cancelled by user")
 
                 # Check for timeout to prevent infinite pause
                 if self._pause_timeout > 0:

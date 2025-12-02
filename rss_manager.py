@@ -12,8 +12,10 @@ from xml.etree import ElementTree as ET
 import requests
 from dateutil import parser as date_parser
 
-# Prevent XML bomb attacks
-from defusedxml.ElementTree import fromstring as safe_fromstring
+try:
+    from defusedxml.ElementTree import fromstring as safe_fromstring
+except ImportError:
+    safe_fromstring = None
 
 logger = logging.getLogger(__name__)
 
@@ -79,16 +81,19 @@ class RSSManager:
             response.raise_for_status()
 
             # Safe XML parsing
-            try:
-                root = safe_fromstring(response.content)
-            except ImportError:
-                 # Fallback if defusedxml not installed (though it should be)
-                 # We'll use standard ET but log a warning.
+            if safe_fromstring:
+                try:
+                    root = safe_fromstring(response.content)
+                except Exception as e:
+                    logger.error("XML parse error for %s: %s", url, e)
+                    return []
+            else:
                  logger.warning("defusedxml not found, using standard ET (less secure)")
-                 root = ET.fromstring(response.content)
-            except Exception as e:
-                logger.error("XML parse error for %s: %s", url, e)
-                return []
+                 try:
+                     root = ET.fromstring(response.content)
+                 except ET.ParseError as e:
+                     logger.error("XML parse error for %s: %s", url, e)
+                     return []
 
             items = []
             if "feed" in root.tag: # Atom
@@ -127,7 +132,10 @@ class RSSManager:
         for entry in root.findall("atom:entry", ns):
             title = entry.find("atom:title", ns)
             link = entry.find("atom:link", ns)
-            published = entry.find("atom:published", ns) or entry.find("atom:updated", ns)
+            published = entry.find("atom:published", ns)
+            if published is None:
+                published = entry.find("atom:updated", ns)
+
             video_id = entry.find("yt:videoId", ns)
 
             link_href = link.attrib.get("href") if link is not None else None
@@ -181,8 +189,6 @@ class RSSManager:
                     updated = True
                     break
             if updated:
-                # Don't save immediately to avoid IO spam on refresh,
-                # or save with debounce? For now, simpler to save.
                 self._save_feeds()
 
     def get_aggregated_items(self) -> List[Dict[str, Any]]:

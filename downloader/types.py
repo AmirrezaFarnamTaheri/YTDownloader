@@ -1,0 +1,62 @@
+"""
+Configuration dataclasses for the downloader.
+"""
+
+from dataclasses import dataclass, field
+from typing import Optional, Dict, Any, Callable
+
+
+@dataclass
+class DownloadOptions:
+    """Options for controlling the download process."""
+
+    url: str
+    output_path: str = "."
+    video_format: str = "best"
+    audio_format: Optional[str] = None
+    progress_hook: Optional[Callable[[Dict[str, Any]], None]] = None
+    cancel_token: Optional[Any] = None
+    playlist: bool = False
+    sponsorblock: bool = False
+    use_aria2c: bool = False
+    gpu_accel: Optional[str] = None
+    output_template: str = "%(title)s.%(ext)s"
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    force_generic: bool = False
+    cookies_from_browser: Optional[str] = None
+    subtitle_lang: Optional[str] = None
+    subtitle_format: Optional[str] = None
+    split_chapters: bool = False
+    proxy: Optional[str] = None
+    rate_limit: Optional[str] = None
+    download_item: Optional[Dict[str, Any]] = None
+
+    def validate(self):
+        """Perform validation on the options."""
+        if self.proxy and not (self.proxy.startswith("http") or self.proxy.startswith("socks")):
+            raise ValueError("Invalid proxy URL. Must start with http/https/socks")
+
+        start_sec = self._parse_time(self.start_time)
+        end_sec = self._parse_time(self.end_time)
+
+        if start_sec < 0 or end_sec < 0:
+            raise ValueError("Time values must be non-negative")
+
+        if self.start_time and self.end_time and start_sec >= end_sec:
+            raise ValueError("Start time must be before end time")
+
+    @staticmethod
+    def _parse_time(time_str: Optional[str]) -> float:
+        """Parse HH:MM:SS to seconds."""
+        if not time_str:
+            return 0.0
+        try:
+            parts = list(map(int, time_str.split(":")))
+            if len(parts) == 3:
+                return parts[0] * 3600 + parts[1] * 60 + parts[2]
+            if len(parts) == 2:
+                return parts[0] * 60 + parts[1]
+            return float(parts[0])
+        except ValueError:
+            return 0.0

@@ -46,14 +46,28 @@ class AppState:
             logger.info("Initializing AppState singleton...")
             self._init_complete = threading.Event()
 
-        self.config = ConfigManager.load_config()
+        # Initialize core managers
+        try:
+            self.config = ConfigManager.load_config()
+            logger.info("Configuration loaded.")
+        except Exception as e:
+            logger.error(f"Failed to load config, using defaults: {e}")
+            self.config = ConfigManager.DEFAULTS.copy()
+
         self.queue_manager = QueueManager()
         self.current_download_item: Optional[Dict[str, Any]] = None
         self.cancel_token: Optional[CancelToken] = None
         self.is_paused = False
         self.video_info: Optional[Dict[str, Any]] = None
+
         self.ffmpeg_available = is_ffmpeg_available()
-        HistoryManager.init_db()
+        logger.info(f"FFmpeg available: {self.ffmpeg_available}")
+
+        try:
+            HistoryManager.init_db()
+            logger.info("History database initialized.")
+        except Exception as e:
+            logger.error(f"Failed to initialize history database: {e}")
 
         # Feature flags / States
         self.cinema_mode = False
@@ -61,7 +75,8 @@ class AppState:
         self.social_manager = SocialManager()
 
         # Instantiate SyncManager with dependencies to avoid circular imports
-        self.sync_manager = SyncManager(self.cloud_manager, self.config)
+        # Pass HistoryManager class if needed, or instance if refactored
+        self.sync_manager = SyncManager(self.cloud_manager, self.config, history_manager=HistoryManager)
 
         self.scheduled_time: Optional[time] = None
         self.clipboard_monitor_active = False
@@ -96,6 +111,12 @@ class AppState:
             self.social_manager.close()
         except Exception as e:
             logger.debug(f"Social manager cleanup error: {e}")
+
+        try:
+            if self.sync_manager:
+                self.sync_manager.stop_auto_sync()
+        except Exception as e:
+            logger.debug(f"Sync manager cleanup error: {e}")
 
         try:
             logger.debug("Closing queue manager...")
