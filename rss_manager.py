@@ -3,39 +3,83 @@ RSS Manager module for fetching and parsing RSS feeds.
 """
 
 import logging
-import xml.etree.ElementTree as ET
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from xml.etree import ElementTree as ET
 
 import requests
 from dateutil import parser as date_parser
+
+# Prevent XML bomb attacks
+from defusedxml.ElementTree import fromstring as safe_fromstring
 
 logger = logging.getLogger(__name__)
 
 
 class RSSManager:
-    """Manages RSS feed subscriptions and updates."""
+    """
+    Manages RSS feed subscriptions, fetching, and parsing.
+    Includes thread-safe operations, robust parsing (defusedxml), and timeouts.
+    """
 
     def __init__(self, config_manager):
-        self.config = config_manager
-        self.feeds = self.config.get("rss_feeds", [])
+        # Config wrapper (should be dict-like or have set/get)
+        self.config_manager = config_manager
+        # Cache feeds locally from config
+        self.feeds: List[Dict[str, str]] = self.config_manager.get("rss_feeds", [])
+        self._lock = threading.RLock()
+
+    def _save_feeds(self):
+        """Persist feeds to config."""
+        # Use config_manager's API. If it's a dict, we might need a save method?
+        # The previous code used config.set() which suggests a wrapper object.
+        # Assuming config_manager has .set() or behaves like a synced dict.
+        # If it's just a dict, we might need to trigger a save.
+        # Based on previous code: `self.config.set("rss_feeds", self.feeds)`
+        if hasattr(self.config_manager, "set"):
+            self.config_manager.set("rss_feeds", self.feeds)
+        elif hasattr(self.config_manager, "save_config"):
+            # If it's the ConfigManager CLASS (static), we might need to pass the whole dict
+            # This part depends on how ConfigManager is passed.
+            # In `main.py`, it passes `state.config` which is a dict.
+            # In `app_state.py`, `state.config` is loaded via `ConfigManager.load_config()`.
+            # So `self.config` passed here is likely a DICT.
+            # A plain dict doesn't have .set().
+            # Refactoring to assume it's a dict and we need to call ConfigManager.save_config.
+            # But simpler: let's assume the user will inject a wrapper or we import ConfigManager.
+            pass
+
+        # To be safe and compatible with the "deep audit" philosophy, let's explicitly save using the manager class
+        from config_manager import ConfigManager
+
+        # Reload current config to avoid overwriting other keys, update feeds, save
+        full_config = ConfigManager.load_config()
+        full_config["rss_feeds"] = self.feeds
+        ConfigManager.save_config(full_config)
 
     def get_feeds(self) -> List[Dict[str, str]]:
         """Return list of feeds."""
-        return self.feeds
+        with self._lock:
+            return list(self.feeds)
 
     def add_feed(self, url: str):
         """Add a new RSS feed."""
-        if not any(f["url"] == url for f in self.feeds):
-            self.feeds.append({"url": url, "name": url})  # Name will be updated later
-            self.config.set("rss_feeds", self.feeds)
-            logger.info("Added RSS feed: %s", url)
+        with self._lock:
+            if not any(f["url"] == url for f in self.feeds):
+                self.feeds.append({"url": url, "name": url})
+                self._save_feeds()
+                logger.info("Added RSS feed: %s", url)
 
     def remove_feed(self, url: str):
         """Remove an RSS feed."""
-        self.feeds = [f for f in self.feeds if f["url"] != url]
-        self.config.set("rss_feeds", self.feeds)
-        logger.info("Removed RSS feed: %s", url)
+        with self._lock:
+            initial_len = len(self.feeds)
+            self.feeds = [f for f in self.feeds if f["url"] != url]
+            if len(self.feeds) < initial_len:
+                self._save_feeds()
+                logger.info("Removed RSS feed: %s", url)
 
     def fetch_feed(self, url: str) -> List[Dict[str, Any]]:
         """Fetch and parse a single RSS feed (Instance wrapper)."""
@@ -45,26 +89,38 @@ class RSSManager:
     def parse_feed(
         url: str, instance: Optional["RSSManager"] = None
     ) -> List[Dict[str, Any]]:
-        """Fetch and parse a single RSS feed (Static implementation)."""
+        """Fetch and parse a single RSS feed safely."""
         try:
             logger.debug("Fetching RSS feed: %s", url)
-            response = requests.get(url, timeout=10)
+            # Strict timeout
+            response = requests.get(url, timeout=(5, 10))
             response.raise_for_status()
 
-            root = ET.fromstring(response.content)
+            # Safe XML parsing
+            try:
+                root = safe_fromstring(response.content)
+            except ImportError:
+                 # Fallback if defusedxml not installed (though it should be)
+                 # We'll use standard ET but log a warning.
+                 logger.warning("defusedxml not found, using standard ET (less secure)")
+                 root = ET.fromstring(response.content)
+            except Exception as e:
+                logger.error("XML parse error for %s: %s", url, e)
+                return []
 
             items = []
-            # Handle Atom vs RSS
-            if "feed" in root.tag:
+            if "feed" in root.tag: # Atom
                 RSSManager._parse_atom_feed(root, items, instance, url)
-            else:
+            else: # RSS
                 RSSManager._parse_rss_feed(root, items, instance, url)
 
-            logger.info("Fetched %d items from %s", len(items), url)
             return items
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to fetch RSS feed %s: %s", url, e)
+        except requests.RequestException as e:
+            logger.warning("Network error fetching feed %s: %s", url, e)
+            return []
+        except Exception as e:
+            logger.error("Unexpected error parsing feed %s: %s", url, e)
             return []
 
     @staticmethod
@@ -79,31 +135,29 @@ class RSSManager:
             "atom": "http://www.w3.org/2005/Atom",
             "yt": "http://www.youtube.com/xml/schemas/2015",
         }
-        # Update feed title if needed
-        title_elem = root.find("atom:title", ns)
-        if instance and title_elem is not None and title_elem.text:
-            # pylint: disable=protected-access
-            instance._update_feed_name(url, title_elem.text)
+
+        # Update feed title
+        if instance:
+            title_elem = root.find("atom:title", ns)
+            if title_elem is not None and title_elem.text:
+                instance._update_feed_name_safe(url, title_elem.text)
 
         for entry in root.findall("atom:entry", ns):
             title = entry.find("atom:title", ns)
             link = entry.find("atom:link", ns)
-            published = entry.find("atom:published", ns)
-            if published is None:
-                published = entry.find("atom:updated", ns)
-            video_id_elem = entry.find("yt:videoId", ns)
+            published = entry.find("atom:published", ns) or entry.find("atom:updated", ns)
+            video_id = entry.find("yt:videoId", ns)
 
             link_href = link.attrib.get("href") if link is not None else None
 
             if title is not None and title.text and link_href:
-                item_data = {
+                items.append({
                     "title": title.text,
                     "link": link_href,
-                    "published": (published.text if published is not None else None),
-                }
-                if video_id_elem is not None:
-                    item_data["video_id"] = video_id_elem.text
-                items.append(item_data)
+                    "published": published.text if published is not None else None,
+                    "video_id": video_id.text if video_id is not None else None,
+                    "is_video": video_id is not None
+                })
 
     @staticmethod
     def _parse_rss_feed(
@@ -114,82 +168,75 @@ class RSSManager:
     ):
         """Parse RSS 2.0 feed items."""
         channel = root.find("channel")
-        if channel is not None:
+        if channel is None:
+            return
+
+        if instance:
             title_elem = channel.find("title")
-            if instance and title_elem is not None and title_elem.text:
-                # pylint: disable=protected-access
-                instance._update_feed_name(url, title_elem.text)
+            if title_elem is not None and title_elem.text:
+                instance._update_feed_name_safe(url, title_elem.text)
 
-            for item in channel.findall("item"):
-                title = item.find("title")
-                link = item.find("link")
-                pub_date = item.find("pubDate")
+        for item in channel.findall("item"):
+            title = item.find("title")
+            link = item.find("link")
+            pub_date = item.find("pubDate")
 
-                if title is not None and title.text and link is not None and link.text:
-                    items.append(
-                        {
-                            "title": title.text,
-                            "link": link.text,
-                            "published": (
-                                pub_date.text if pub_date is not None else None
-                            ),
-                        }
-                    )
+            if title is not None and title.text and link is not None and link.text:
+                items.append({
+                    "title": title.text,
+                    "link": link.text,
+                    "published": pub_date.text if pub_date is not None else None,
+                    "is_video": False # RSS generic usually isn't video unless specific tags
+                })
 
-    def _update_feed_name(self, url: str, name: str):
-        """Update the friendly name of a feed."""
-        for feed in self.feeds:
-            if feed["url"] == url and feed["name"] == url:
-                feed["name"] = name
-                self.config.set("rss_feeds", self.feeds)
-                logger.debug("Updated feed name for %s to %s", url, name)
-                break
+    def _update_feed_name_safe(self, url: str, name: str):
+        """Update feed name thread-safely."""
+        with self._lock:
+            updated = False
+            for feed in self.feeds:
+                if feed["url"] == url and feed["name"] == url:
+                    feed["name"] = name
+                    updated = True
+                    break
+            if updated:
+                # Don't save immediately to avoid IO spam on refresh,
+                # or save with debounce? For now, simpler to save.
+                self._save_feeds()
 
     def get_aggregated_items(self) -> List[Dict[str, Any]]:
-        """Fetch all feeds and return combined, sorted items."""
+        """Fetch all feeds concurrently and return combined items."""
         all_items = []
-        for feed in self.feeds:
-            # Normalize feed entry
-            if isinstance(feed, str):
-                url = feed
-                name = feed
-            else:
-                url = feed.get("url")
-                name = feed.get("name", url)
+        feeds_snapshot = self.get_feeds()
 
-            if not url:
-                continue
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_feed = {
+                executor.submit(self.fetch_feed, f["url"]): f
+                for f in feeds_snapshot
+            }
 
-            try:
-                items = self.fetch_feed(url)
-            except Exception as e:
-                logger.error("Failed to fetch feed %s: %s", url, e)
-                continue
-
-            for item in items:
-                item["feed_name"] = name
-                # Try to parse date for sorting
+            for future in as_completed(future_to_feed):
+                feed = future_to_feed[future]
                 try:
-                    if item.get("published"):
-                        item["date_obj"] = date_parser.parse(item["published"])
-                    else:
-                        item["date_obj"] = datetime.min
-                except Exception:  # pylint: disable=broad-exception-caught
-                    item["date_obj"] = datetime.min
-                all_items.append(item)
+                    items = future.result()
+                    for item in items:
+                        item["feed_name"] = feed.get("name", feed["url"])
+                        # Parse date
+                        try:
+                            item["date_obj"] = date_parser.parse(item["published"]) if item.get("published") else datetime.min
+                        except Exception:
+                            item["date_obj"] = datetime.min
+                        all_items.append(item)
+                except Exception as e:
+                    logger.error("Feed fetch failed for %s: %s", feed["url"], e)
 
         # Sort by date descending
-        all_items.sort(key=lambda x: x["date_obj"], reverse=True)
+        all_items.sort(key=lambda x: x.get("date_obj", datetime.min), reverse=True)
         return all_items
 
     def get_all_items(self) -> List[Dict[str, Any]]:
-        """Alias for get_aggregated_items to match test/view usage."""
         return self.get_aggregated_items()
 
     @classmethod
     def get_latest_video(cls, url: str) -> Optional[Dict[str, Any]]:
-        """Get the latest video from a feed (Static)."""
         items = cls.parse_feed(url)
-        if items:
-            return items[0]
-        return None
+        return items[0] if items else None

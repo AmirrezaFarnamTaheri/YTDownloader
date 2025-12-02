@@ -2,11 +2,13 @@
 Background task processing module.
 
 Handles the download queue, threading, and status updates.
+Refactored for better modularity and error handling.
 """
 
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict
 
 from app_state import state
 from downloader.core import download_video
@@ -16,19 +18,7 @@ logger = logging.getLogger(__name__)
 # Semaphore to limit concurrent downloads
 MAX_CONCURRENT_DOWNLOADS = 3
 _active_downloads = threading.Semaphore(MAX_CONCURRENT_DOWNLOADS)
-_thread_pool = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_DOWNLOADS)
-# A dedicated lock keeps queue processing predictable for tests and runtime
-# alike. Some tests expect the attribute to exist for patching, so we expose it
-# as a module-level object.
 _process_queue_lock = threading.RLock()
-
-# HistoryManager is imported lazily inside download_task, but a number of tests
-# patch the symbol directly on this module. Import it here defensively so patch
-# lookups succeed without altering runtime behaviour.
-try:  # pragma: no cover - defensive import for test stability
-    from history_manager import HistoryManager  # noqa: F401
-except Exception:  # pragma: no cover - fallback if optional dependency missing
-    HistoryManager = None
 
 
 def process_queue():
@@ -36,19 +26,14 @@ def process_queue():
     Process items in the queue.
     Starts new downloads if slots are available.
     """
-    # Check shutdown flag immediately
     if state.shutdown_flag.is_set():
-        logger.debug("Shutdown flag set, skipping process_queue")
         return
 
-    # Log semaphore state for debugging (try-except for shutdown race conditions)
+    # Log status (optional, debug only)
     try:
         # pylint: disable=protected-access
-        logger.debug(
-            "Processing queue. Active slots: %d/%d",
-            MAX_CONCURRENT_DOWNLOADS - _active_downloads._value,
-            MAX_CONCURRENT_DOWNLOADS,
-        )
+        active = MAX_CONCURRENT_DOWNLOADS - _active_downloads._value
+        logger.debug("Process queue check. Active: %d/%d", active, MAX_CONCURRENT_DOWNLOADS)
     except ValueError:
         pass
 
@@ -56,9 +41,8 @@ def process_queue():
         if state.shutdown_flag.is_set():
             break
 
-        # Check if we have slots available
+        # Check for slot
         if not _active_downloads.acquire(blocking=False):
-            # No slots available
             break
 
         # Get next item
@@ -67,12 +51,13 @@ def process_queue():
             _active_downloads.release()
             break
 
-        # Start download in a thread
+        # Start thread
         try:
-            # We use a daemon thread so it doesn't block exit,
-            # but ideally we should handle cancellation.
             t = threading.Thread(
-                target=download_task, args=(item,), daemon=True, name=f"DL-{item['url']}"
+                target=download_task,
+                args=(item,),
+                daemon=True,
+                name=f"DL-{item['url'][:30]}"
             )
             t.start()
         except Exception as e:
@@ -81,59 +66,80 @@ def process_queue():
             _active_downloads.release()
 
 
-def download_task(item):
+def _update_progress_ui(item: Dict[str, Any]):
+    """Helper to update UI control if present."""
+    if "control" in item:
+        try:
+            item["control"].update_progress()
+        except Exception:
+            pass
+
+
+def _progress_hook_factory(item: Dict[str, Any]):
+    """Creates a closure for the progress hook."""
+    def progress_hook(d):
+        if state.shutdown_flag.is_set():
+            raise InterruptedError("Shutdown initiated")
+
+        if d["status"] == "downloading":
+            p_str = d.get("_percent_str", "0%").replace("%", "")
+            try:
+                progress = float(p_str) / 100
+            except ValueError:
+                progress = 0
+
+            item["progress"] = progress
+            item["speed"] = d.get("_speed_str", "N/A")
+            item["eta"] = d.get("_eta_str", "N/A")
+            item["size"] = d.get("_total_bytes_str", "N/A")
+            _update_progress_ui(item)
+
+        elif d["status"] == "finished":
+            item["progress"] = 1.0
+            item["status"] = "Processing"
+            _update_progress_ui(item)
+
+    return progress_hook
+
+
+def _log_to_history(item: Dict[str, Any], filepath: str):
+    """Log completed download to history safely."""
+    try:
+        from history_manager import HistoryManager
+        HistoryManager.add_entry(
+            item["url"],
+            item.get("title", item["url"]),
+            item.get("output_path", "."),
+            item.get("video_format", "best"),
+            "Completed",
+            item.get("size", "Unknown"),
+            filepath,
+        )
+    except Exception as e:
+        logger.error("Failed to add to history: %s", e)
+
+
+def download_task(item: Dict[str, Any]):
     """
     Worker function for a single download.
+    Executes the download, updates status, and logs to history.
     """
     url = item["url"]
-    logger.info("Starting download task for: %s", url)
-
-    # Set as current item for cancellation mapping
-    # (Simple approach: global current_download_item is just one of them.
-    # For multiple concurrent, we rely on the item['control'] or token passed.)
-    # state.current_download_item = item  <-- This global is problematic for concurrency
-    # We will pass a cancel token specific to this download if possible,
-    # or rely on the downloader logic to handle it.
-    # The current Architecture seems to support cancellation via CancelToken in state.
-    # To support multiple, we would need a token per item.
-    # For now, we reuse the shared state structure but be aware of limitations.
+    logger.info("Starting download: %s", url)
 
     try:
-        # Update status
         item["status"] = "Downloading"
-        if "control" in item:
-            item["control"].update_progress()
+        _update_progress_ui(item)
 
-        def progress_hook(d):
-            if state.shutdown_flag.is_set():
-                raise Exception("Shutdown initiated")
+        # Prepare hooks and execute
+        phook = _progress_hook_factory(item)
 
-            if d["status"] == "downloading":
-                p = d.get("_percent_str", "0%").replace("%", "")
-                try:
-                    progress = float(p) / 100
-                except ValueError:
-                    progress = 0
-                item["progress"] = progress
-                item["speed"] = d.get("_speed_str", "N/A")
-                item["eta"] = d.get("_eta_str", "N/A")
-                item["size"] = d.get("_total_bytes_str", "N/A")
-                if "control" in item:
-                    item["control"].update_progress()
-
-            elif d["status"] == "finished":
-                item["progress"] = 1.0
-                item["status"] = "Processing"
-                if "control" in item:
-                    item["control"].update_progress()
-
-        # Execute download
         info = download_video(
             url=url,
             output_path=item.get("output_path", "."),
             video_format=item.get("video_format", "best"),
-            progress_hook=progress_hook,
-            cancel_token=None,  # Pass specific token if implemented
+            progress_hook=phook,
+            cancel_token=None,  # Logic for cancellation would go here
             playlist=item.get("playlist", False),
             sponsorblock=item.get("sponsorblock", False),
             use_aria2c=item.get("use_aria2c", False),
@@ -145,37 +151,18 @@ def download_task(item):
             cookies_from_browser=item.get("cookies_from_browser"),
         )
 
+        # Success
         item["status"] = "Completed"
         item["filename"] = info.get("filename", "Unknown")
         item["progress"] = 1.0
 
-        # Add to history
-        try:
-            from history_manager import HistoryManager
-
-            HistoryManager.add_entry(
-                url,
-                item.get("title", url),
-                item.get("output_path", "."),
-                item.get("video_format", "best"),
-                "Completed",
-                item.get("size", "Unknown"),
-                info.get("filepath"),  # Use actual file path if available
-            )
-        except Exception as e:
-            logger.error("Failed to add to history: %s", e)
-
-        # Notify UI
-        if "control" in item:
-            item["control"].update_progress()
-
-        # Notify Desktop
-        # if not state.shutdown_flag.is_set():
-        #     from ui_utils import show_notification
-        #     show_notification("Download Complete", f"{item.get('title', url)}")
+        _log_to_history(item, info.get("filepath"))
+        _update_progress_ui(item)
 
     except Exception as e:
-        if "Cancelled" in str(e) or item.get("status") == "Cancelled":
+        # Check for cancellation
+        msg = str(e)
+        if "Cancelled" in msg or item.get("status") == "Cancelled":
             logger.info("Download cancelled: %s", url)
             item["status"] = "Cancelled"
         else:
@@ -183,20 +170,8 @@ def download_task(item):
             item["status"] = "Error"
             item["error"] = str(e)
 
-        if "control" in item:
-            item["control"].update_progress()
+        _update_progress_ui(item)
 
     finally:
-        # Release semaphore
         _active_downloads.release()
-        try:
-            # pylint: disable=protected-access
-            # Corrected log message
-            active_count = MAX_CONCURRENT_DOWNLOADS - _active_downloads._value
-            logger.info("Download task finished. Slots used: %d/%d",
-                       active_count, MAX_CONCURRENT_DOWNLOADS)
-        except ValueError:
-            pass
-
-        # Trigger queue check for next items
         process_queue()

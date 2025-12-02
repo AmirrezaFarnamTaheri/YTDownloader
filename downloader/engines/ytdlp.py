@@ -1,100 +1,118 @@
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+import os
+from typing import Any, Callable, Dict, Optional
 
 import yt_dlp
-
-from downloader.extractors.generic import GenericExtractor
-
-if TYPE_CHECKING:
-    from utils import CancelToken
 
 logger = logging.getLogger(__name__)
 
 
 class YTDLPWrapper:
-    """Wrapper around yt-dlp to handle configuration and execution."""
+    """
+    Wrapper around yt-dlp to handle configuration, execution, and error mapping.
+    Ensures consistent behavior for cancellation and progress reporting.
+    """
 
     def __init__(self, options: Dict[str, Any]):
         self.options = options.copy()
 
     @staticmethod
     def supports(url: str) -> bool:
-        """Check if yt-dlp supports the URL."""
-        # Simple check, or use yt-dlp's extractor list
-        # For now, assume yes unless it's a known unsupported type (e.g. some direct files)
-        # But core logic handles generic fallback if yt-dlp fails.
-        # We can just return True and let it fail/fallback.
+        """
+        Check if yt-dlp supports the URL.
+        """
+        # We generally assume yt-dlp supports most things, or we fail and fallback.
+        # However, we can use extractors to check.
+        # For now, simplistic check:
         return True
 
     def download(
         self,
         url: str,
-        progress_hook: Optional[Callable] = None,
+        progress_hook: Optional[Callable[[Dict[str, Any]], None]] = None,
         cancel_token: Optional[Any] = None,
-        output_path: Optional[str] = None,
-        download_item: Optional[Dict[str, Any]] = None,
-        options_override: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Execute download.
 
+        Args:
+            url: The URL to download.
+            progress_hook: Callback for progress updates.
+            cancel_token: Object to check for cancellation.
+
         Returns:
             Dict containing metadata of downloaded file.
+
+        Raises:
+            Exception: If download fails or is cancelled.
         """
         options = self.options.copy()
 
-        if options_override:
-            options.update(options_override)
-        if output_path:
-            options["outtmpl"] = output_path
-
-        # Prepare hooks
+        # Add progress hooks
         hooks = options.setdefault("progress_hooks", [])
 
-        if cancel_token:
-            # yt-dlp progress hook receives a dict 'd'
-            def check_cancel(d):
-                if cancel_token and hasattr(cancel_token, 'check'):
-                    cancel_token.check()
-                elif cancel_token and getattr(cancel_token, 'cancelled', False):
-                    raise Exception("Cancelled")
-            hooks.append(check_cancel)
+        # 1. Cancellation Hook
+        def check_cancel(d):
+            if cancel_token:
+                # Support both method check() and attribute cancelled
+                if hasattr(cancel_token, 'is_set') and cancel_token.is_set():
+                     raise InterruptedError("Download Cancelled by user")
+                if hasattr(cancel_token, 'cancelled') and cancel_token.cancelled:
+                    raise InterruptedError("Download Cancelled by user")
 
+        hooks.append(check_cancel)
+
+        # 2. Progress Hook
         if progress_hook:
             hooks.append(progress_hook)
 
-        options["progress_hooks"] = hooks
+        # 3. Logger redirection (optional, to keep stdout clean)
+        # options['logger'] = logger # This might be too verbose
 
         try:
-            logger.info(f"Starting yt-dlp download: {url}")
+            logger.info("Starting yt-dlp download: %s", url)
             with yt_dlp.YoutubeDL(options) as ydl:
                 # Extract info and download
                 info = ydl.extract_info(url, download=True)
 
-                # If playlist, info['entries'] exists.
-                # If single video, info is the video info.
+                # Handle null info (can happen in some cases)
+                if not info:
+                    raise Exception("Failed to extract video info")
 
+                # Handle Playlists
                 if "entries" in info:
-                    # It's a playlist. Return summary or first item?
-                    # Core expects a dict.
+                    # Return summary for playlist
+                    # We might want to return the first item's path or the directory?
                     return {
-                        "filename": "Playlist", # Placeholder
-                        "filepath": options.get("outtmpl", "."), # Approximation
+                        "filename": info.get("title", "Playlist"),
+                        "filepath": options.get("outtmpl", "."),
                         "title": info.get("title", "Playlist"),
-                        "entries": len(info["entries"])
+                        "entries": len(list(info["entries"])),
+                        "type": "playlist"
                     }
 
-                # Single video
+                # Handle Single Video
                 filename = ydl.prepare_filename(info)
+
+                # Check if file actually exists (sometimes prepare_filename differs from actual output)
+                # But mostly it's correct.
+
                 return {
-                    "filename": info.get("title", "Video"),
+                    "filename": os.path.basename(filename),
                     "filepath": filename,
-                    "title": info.get("title"),
+                    "title": info.get("title", "Unknown Title"),
                     "duration": info.get("duration"),
                     "thumbnail": info.get("thumbnail"),
                     "uploader": info.get("uploader"),
+                    "type": "video"
                 }
 
         except Exception as e:
-            logger.error(f"yt-dlp error: {e}")
+            # Detect cancellation to re-raise cleanly
+            msg = str(e)
+            if "Cancelled" in msg:
+                 logger.info("Download cancelled via hook.")
+                 raise InterruptedError("Download Cancelled by user") from e
+
+            logger.error("yt-dlp error for %s: %s", url, e)
             raise
