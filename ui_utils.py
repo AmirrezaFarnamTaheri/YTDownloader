@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import threading
+from pathlib import Path
 from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
@@ -91,17 +92,6 @@ def validate_proxy(proxy: str) -> bool:
     # Host can be IP, domain, or localhost
     # User/pass optional
 
-    # Regex breakdown:
-    # Scheme: ^(?:http|https|socks4|socks5)://
-    # Auth (optional): (?:[^:@]+:[^:@]+@)?
-    # Host:
-    #   Domain (multi-label): (?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}
-    #   Hostname (single-label): [a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?
-    #   Localhost: localhost
-    #   IP: \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}
-    # Port: :\d{1,5} (1-5 digits)
-    # Trailing slash (optional): /?
-
     regex = re.compile(
         r'^(?:http|https|socks4|socks5)://'
         r'(?:[^:@]+:[^:@]+@)?'
@@ -177,6 +167,21 @@ def is_ffmpeg_available() -> bool:
     thread.join(timeout=1.0)
 
     return result[0]
+
+
+def get_default_download_path() -> str:
+    """Get a safe default download path for the current platform."""
+    try:
+        # Check for Android/iOS specific
+        home = Path.home()
+        downloads = home / "Downloads"
+        if downloads.exists() and os.access(downloads, os.W_OK):
+            return str(downloads)
+        if os.access(home, os.W_OK):
+            return str(home)
+    except Exception: # pylint: disable=broad-exception-caught
+        pass
+    return "."
 
 
 def open_folder(path: str) -> bool:

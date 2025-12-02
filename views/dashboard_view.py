@@ -2,19 +2,20 @@ import flet as ft
 
 from history_manager import HistoryManager
 from theme import Theme
+from localization_manager import LocalizationManager as LM
 
 from .base_view import BaseView
 
 
 class DashboardView(BaseView):
     def __init__(self):
-        super().__init__("Dashboard", ft.Icons.DASHBOARD)
+        super().__init__(LM.get("dashboard"), ft.Icons.DASHBOARD)
         self.stats_row = ft.Row(wrap=True, spacing=20)
         self.add_control(self.stats_row)
         self.add_control(ft.Divider(color=ft.Colors.TRANSPARENT, height=20))
         self.add_control(
             ft.Text(
-                "Recent Activity",
+                LM.get("recent_activity"),
                 size=20,
                 weight=ft.FontWeight.BOLD,
                 color=Theme.TEXT_PRIMARY,
@@ -26,12 +27,8 @@ class DashboardView(BaseView):
         history = HistoryManager.get_history(limit=1000)
         total_downloads = len(history)
 
-        # Calculate Total Size if possible
-        # This would require parsing file_size string back to bytes or storing bytes in DB
-        # For now, just count.
-
         card = self._create_stat_card(
-            "Total Downloads",
+            LM.get("total_downloads"),
             str(total_downloads),
             ft.Icons.DOWNLOAD_DONE,
             Theme.PRIMARY,

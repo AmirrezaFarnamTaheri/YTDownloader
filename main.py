@@ -9,33 +9,28 @@ import logging
 import os
 import signal
 import sys
-import threading
-import time
 import traceback
+from datetime import datetime
 from contextlib import contextmanager
-from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional
 
 import flet as ft
 
 from app_state import state
-from clipboard_monitor import start_clipboard_monitor
+from app_controller import AppController
 from logger_config import setup_logging
-from tasks import process_queue
-from tasks_extended import fetch_info_task
 from theme import Theme
 from ui_manager import UIManager
-from ui_utils import validate_url
 
 # Setup logging immediately
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Global UI Manager instance
+# Global instances
 UI: Optional[UIManager] = None
 PAGE: Optional[ft.Page] = None
-active_threads: list[threading.Thread] = []
+CONTROLLER: Optional[AppController] = None
 
 
 @contextmanager
@@ -55,16 +50,14 @@ def startup_timeout(seconds=10):
             signal.alarm(0)
             signal.signal(signal.SIGALRM, old_handler)
     else:
-        # Windows fallback: we can't easily interrupt the main thread.
-        # Just log a warning for now as strict timeout is hard without a wrapper process.
+        # Windows fallback
         logger.warning("Startup timeout not enforced on Windows (platform limitation)")
         yield
 
 
-# pylint: disable=too-many-locals,too-many-statements,global-statement
 def main(pg: ft.Page):
     """Main application loop."""
-    global PAGE, UI
+    global PAGE, UI, CONTROLLER
     PAGE = pg
 
     logger.info("Initializing main UI...")
@@ -80,347 +73,40 @@ def main(pg: ft.Page):
     PAGE.theme = Theme.get_theme()
     logger.debug("Theme applied.")
 
-    # --- Pickers ---
-    file_picker = ft.FilePicker()
-    time_picker = ft.TimePicker(
-        confirm_text="Schedule",
-        error_invalid_text="Time invalid",
-        help_text="Select time for download to start",
-    )
-    PAGE.overlay.append(file_picker)
-    PAGE.overlay.append(time_picker)
-    logger.debug("Pickers initialized and added to overlay.")
-
     # Initialize UI Manager
     UI = UIManager(PAGE)
 
-    # --- Helpers ---
-
-    def on_fetch_info(url):
-        logger.info("User requested video info fetch for: %s", url)
-        if not url:
-            PAGE.open(ft.SnackBar(content=ft.Text("Please enter a URL")))
-            return
-        if not validate_url(url):
-            PAGE.open(
-                ft.SnackBar(content=ft.Text("Please enter a valid http/https URL"))
-            )
-            return
-
-        if UI.download_view:
-            UI.download_view.fetch_btn.disabled = True
-        PAGE.update()
-
-        logger.debug("Starting fetch_info_task thread...")
-        threading.Thread(
-            target=fetch_info_task, args=(url, UI.download_view, PAGE), daemon=True
-        ).start()
-
-    def get_default_download_path():
-        """Get a safe default download path for the current platform."""
-        try:
-            # Check for Android/iOS specific
-            home = Path.home()
-            downloads = home / "Downloads"
-            if downloads.exists() and os.access(downloads, os.W_OK):
-                return str(downloads)
-            if os.access(home, os.W_OK):
-                return str(home)
-        except Exception: # pylint: disable=broad-exception-caught
-            pass
-        return "."
-
-    def on_add_to_queue(data: Dict[str, Any]):
-        logger.info("User requested add to queue: %s", data.get("url"))
-        if not validate_url(data.get("url", "")):
-            PAGE.open(
-                ft.SnackBar(content=ft.Text("Please enter a valid http/https URL"))
-            )
-            return
-
-        # Rate limiting
-        if not check_rate_limit():
-            PAGE.open(
-                ft.SnackBar(
-                    content=ft.Text("Please wait before adding another download")
-                )
-            )
-            return
-
-        status = "Queued"
-        sched_dt = None
-
-        if state.scheduled_time:
-            now = datetime.now()
-            sched_dt = datetime.combine(now.date(), state.scheduled_time)
-            if sched_dt < now:
-                sched_dt += timedelta(days=1)
-            status = f"Scheduled ({sched_dt.strftime('%H:%M')})"
-            PAGE.open(
-                ft.SnackBar(
-                    content=ft.Text(
-                        f"Download scheduled for {sched_dt.strftime('%Y-%m-%d %H:%M')}"
-                    )
-                )
-            )
-
-        title = data["url"]
-        video_info = state.get_video_info(data["url"])
-        if video_info:
-            title = video_info.get("title", data["url"])
-        elif (
-            state.video_info
-            and UI.download_view
-            and data["url"] == UI.download_view.url_input.value
-        ):
-            title = state.video_info.get("title", data["url"])
-
-        item = {
-            "url": data["url"],
-            "title": title,
-            "status": status,
-            "scheduled_time": sched_dt,
-            "video_format": data["video_format"],
-            "output_path": get_default_download_path(),
-            "playlist": data["playlist"],
-            "sponsorblock": data["sponsorblock"],
-            "use_aria2c": state.config.get("use_aria2c", False),
-            "gpu_accel": state.config.get("gpu_accel", "None"),
-            "output_template": data["output_template"],
-            "start_time": data["start_time"],
-            "end_time": data["end_time"],
-            "force_generic": data["force_generic"],
-            "cookies_from_browser": data.get("cookies_from_browser"),
-        }
-        state.queue_manager.add_item(item)
-        state.scheduled_time = None
-
-        UI.update_queue_view()
-
-        if status == "Queued":
-            PAGE.open(ft.SnackBar(content=ft.Text("Added to queue")))
-
-    def on_cancel_item(item):
-        logger.info("User requested cancel for item: %s", item.get("title", "Unknown"))
-        item_id = item.get("id")
-        if item_id:
-            state.queue_manager.cancel_item(item_id)
-        else:
-            # Fallback for old items (shouldn't happen with new logic)
-            item["status"] = "Cancelled"
-            item["progress"] = 0
-            item["speed"] = ""
-            item["eta"] = ""
-            item["size"] = ""
-
-        if "control" in item:
-            item["control"].update_progress()
-
-        state.queue_manager.notify_workers()
-
-    def on_remove_item(item):
-        state.queue_manager.remove_item(item)
-        UI.update_queue_view()
-
-    def on_reorder_item(item, direction):
-        q = state.queue_manager.get_all()
-        # Find index by ID instead of object reference if possible
-        idx = -1
-        item_id = item.get("id")
-
-        if item_id:
-            for i, x in enumerate(q):
-                if x.get("id") == item_id:
-                    idx = i
-                    break
-        else:
-            if item in q:
-                idx = q.index(item)
-
-        if idx != -1:
-            new_idx = idx + direction
-            if 0 <= new_idx < len(q):
-                state.queue_manager.swap_items(idx, new_idx)
-                UI.update_queue_view()
-
-    def on_retry_item(item):
-        item_id = item.get("id")
-        if not item_id:
-            # Fallback for older items without an ID
-            item["status"] = "Queued"
-            item["speed"] = ""
-            item["eta"] = ""
-            item["size"] = ""
-            item["progress"] = 0
-        else:
-            # Use the new QueueManager method to handle the update atomically
-            state.queue_manager.update_item_status(
-                item_id,
-                "Queued",
-                updates={"speed": "", "eta": "", "size": "", "progress": 0},
-            )
-
-        UI.update_queue_view()
-
-    def on_batch_file_result(e: ft.FilePickerResultEvent):
-        if not e.files:
-            return
-
-        path = e.files[0].path
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                urls = [line.strip() for line in f if line.strip()]
-
-            max_batch = 100
-            if len(urls) > max_batch:
-                PAGE.open(
-                    ft.SnackBar(
-                        content=ft.Text(
-                            f"Batch import limited to {max_batch} URLs. Imported first {max_batch}."
-                        )
-                    )
-                )
-                urls = urls[:max_batch]
-
-            dl_path = get_default_download_path()
-            count = 0
-            for url in urls:
-                if not url:
-                    continue
-                item = {
-                    "url": url,
-                    "title": url,
-                    "status": "Queued",
-                    "scheduled_time": None,
-                    "video_format": "best",
-                    "output_path": dl_path,
-                    "playlist": False,
-                    "sponsorblock": False,
-                    "use_aria2c": state.config.get("use_aria2c", False),
-                    "gpu_accel": state.config.get("gpu_accel", "None"),
-                    "output_template": "%(title)s.%(ext)s",
-                    "start_time": None,
-                    "end_time": None,
-                    "force_generic": False,
-                    "cookies_from_browser": None,
-                }
-                state.queue_manager.add_item(item)
-                count += 1
-
-            UI.update_queue_view()
-            PAGE.open(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
-
-        except Exception as ex:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to import batch file: %s", ex, exc_info=True)
-            PAGE.open(ft.SnackBar(content=ft.Text(f"Failed to import: {ex}")))
-
-    def on_batch_import():
-        file_picker.pick_files(allow_multiple=False, allowed_extensions=["txt", "csv"])
-
-    def on_time_picked(e):
-        if e.value:
-            state.scheduled_time = e.value
-            PAGE.open(
-                ft.SnackBar(
-                    content=ft.Text(
-                        f"Next download will be scheduled at {e.value.strftime('%H:%M')}"
-                    )
-                )
-            )
-
-    def on_schedule(e):
-        # pylint: disable=unused-argument
-        PAGE.open(time_picker)
-
-    # Wire up pickers
-    file_picker.on_result = on_batch_file_result
-    time_picker.on_change = on_time_picked
-
-    # Rate limiting
-    last_add_time = [0.0]
-    add_rate_limit_seconds = 0.5
-
-    def check_rate_limit():
-        # pylint: disable=reimported,import-outside-toplevel
-        import time as time_mod
-        now = time_mod.time()
-        if now - last_add_time[0] < add_rate_limit_seconds:
-            return False
-        last_add_time[0] = now
-        return True
-
-    def on_toggle_clipboard(active):
-        state.clipboard_monitor_active = active
-        msg = "Clipboard Monitor Enabled" if active else "Clipboard Monitor Disabled"
-        PAGE.open(ft.SnackBar(content=ft.Text(msg)))
+    # Initialize Controller
+    CONTROLLER = AppController(PAGE, UI)
 
     # --- Views Initialization via UIManager ---
-
+    # Wire callbacks to Controller methods
     main_view = UI.initialize_views(
-        on_fetch_info_callback=on_fetch_info,
-        on_add_to_queue_callback=on_add_to_queue,
-        on_batch_import_callback=on_batch_import,
-        on_schedule_callback=on_schedule,
-        on_cancel_item_callback=on_cancel_item,
-        on_remove_item_callback=on_remove_item,
-        on_reorder_item_callback=on_reorder_item,
-        on_retry_item_callback=on_retry_item,
-        on_toggle_clipboard_callback=on_toggle_clipboard
+        on_fetch_info_callback=CONTROLLER.on_fetch_info,
+        on_add_to_queue_callback=CONTROLLER.on_add_to_queue,
+        on_batch_import_callback=CONTROLLER.on_batch_import,
+        on_schedule_callback=CONTROLLER.on_schedule,
+        on_cancel_item_callback=CONTROLLER.on_cancel_item,
+        on_remove_item_callback=CONTROLLER.on_remove_item,
+        on_reorder_item_callback=CONTROLLER.on_reorder_item,
+        on_retry_item_callback=CONTROLLER.on_retry_item,
+        on_toggle_clipboard_callback=CONTROLLER.on_toggle_clipboard,
     )
 
     PAGE.add(main_view)
     logger.info("Main view added to page.")
 
-    # --- Background Logic ---
-
-    def background_loop():
-        """
-        Background loop for queue processing.
-        Waits for signals from QueueManager instead of busy-waiting.
-        """
-        logger.info("Background loop started.")
-        while not state.shutdown_flag.is_set():
-            try:
-                # Wait for work or timeout (to check shutdown flag)
-                # wait_for_items returns True if notified, False if timeout
-                state.queue_manager.wait_for_items(timeout=2.0)
-
-                # Check shutdown immediately after wake
-                if state.shutdown_flag.is_set():
-                    break
-
-                # Check scheduled items
-                if state.queue_manager.update_scheduled_items(datetime.now()) > 0:
-                    UI.update_queue_view()
-
-                # Process queue
-                process_queue()
-
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.error("Error in background_loop: %s", e, exc_info=True)
-                time.sleep(1)  # Prevent tight loop on error
-        logger.info("Background loop stopped.")
-
-    # Start Clipboard Monitor
-    start_clipboard_monitor(PAGE, UI.download_view)
+    # Start Background Services
+    CONTROLLER.start_background_loop()
+    CONTROLLER.start_clipboard_monitor()
 
     def cleanup_on_disconnect(e):
         # pylint: disable=unused-argument
         logger.info("Page disconnected, cleaning up...")
-        state.cleanup()
-        for thread in active_threads:
-            if thread.is_alive():
-                thread.join(timeout=2.0)
-        logger.info("Cleanup complete")
+        CONTROLLER.cleanup()
 
     PAGE.on_disconnect = cleanup_on_disconnect
     PAGE.on_close = cleanup_on_disconnect
-
-    bg_thread = threading.Thread(
-        target=background_loop, daemon=True, name="BackgroundLoop"
-    )
-    active_threads.append(bg_thread)
-    bg_thread.start()
 
 
 def global_crash_handler(exctype, value, tb):

@@ -1,5 +1,6 @@
 import flet as ft
 from theme import Theme
+from localization_manager import LocalizationManager as LM
 
 class DownloadInputCard(ft.Container):
     def __init__(
@@ -76,7 +77,7 @@ class DownloadInputCard(ft.Container):
 
         time_row = ft.Row(
             [
-                ft.Text("Time Range:", color=Theme.TEXT_MUTED),
+                ft.Text(LM.get("time_range_label"), color=Theme.TEXT_MUTED),
                 self.time_start,
                 ft.Text("-"),
                 self.time_end,

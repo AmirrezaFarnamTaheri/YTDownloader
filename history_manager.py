@@ -46,6 +46,7 @@ class HistoryManager:
         Returns a raw connection object which should be used in a with block or closed manually.
         """
         db_file = HistoryManager._resolve_db_file()
+        logger.debug("Getting DB connection for: %s", db_file)
 
         # Ensure directory exists (redundant check for robustness)
         try:
@@ -54,6 +55,7 @@ class HistoryManager:
         except OSError:
             # Fallback to local if home is not writable
             if db_file != Path("history.db"):
+                logger.warning("DB directory not writable, falling back to local history.db")
                 db_file = Path("history.db")
 
         conn = sqlite3.connect(str(db_file), timeout=timeout)
@@ -131,7 +133,7 @@ class HistoryManager:
                 )
 
                 conn.commit()
-                logger.info("History database initialized.")
+                logger.info("History database initialized successfully.")
                 return
 
             except sqlite3.OperationalError as e:
@@ -170,6 +172,7 @@ class HistoryManager:
     ):
         """Add a new entry to the history."""
         # pylint: disable=too-many-arguments
+        logger.debug("Adding history entry for: %s", url)
         HistoryManager._validate_input(url, title or "", output_path or "")
 
         retry_count = 0
@@ -194,6 +197,7 @@ class HistoryManager:
                     )
                 )
                 conn.commit()
+                logger.info("History entry added for: %s", title or url)
                 return
 
             except sqlite3.OperationalError as e:
@@ -223,6 +227,7 @@ class HistoryManager:
     @staticmethod
     def get_history_paginated(offset: int = 0, limit: int = 50) -> Dict[str, Any]:
         """Retrieve history entries with pagination."""
+        logger.debug("Fetching history (offset=%d, limit=%d)", offset, limit)
         conn = None
         entries = []
         total = 0
@@ -242,6 +247,7 @@ class HistoryManager:
             )
             rows = cursor.fetchall()
             entries = [dict(row) for row in rows]
+            logger.debug("Retrieved %d history entries", len(entries))
 
         except Exception as e: # pylint: disable=broad-exception-caught
             logger.error("Error retrieving history: %s", e)
@@ -269,6 +275,7 @@ class HistoryManager:
     @staticmethod
     def clear_history():
         """Clear all history."""
+        logger.info("Clearing all history...")
         try:
             # Replaced direct sqlite3.connect with _get_connection for consistency
             conn = HistoryManager._get_connection()

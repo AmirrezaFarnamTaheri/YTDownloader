@@ -196,7 +196,11 @@ class QueueManager:
                 token = self._cancel_tokens.get(item_id)
                 if token:
                     token.cancel()
-                    del self._cancel_tokens[item_id]
+                    # Do not delete from token map yet, tasks.py cleans up?
+                    # No, tasks.py unregisters on finally.
+                    # But if we remove the item from queue, tasks.py might not find it if it looks it up.
+                    # Actually tasks.py holds the item object.
+                    # Safe to remove from queue list.
 
                 self._queue.remove(target)
                 removed = True
@@ -301,10 +305,9 @@ class QueueManager:
             # Update status if in queue but not running yet
             for item in self._queue:
                 if item.get("id") == item_id:
-                    if item["status"] in [
-                        "Queued", "Allocating", "Downloading", "Processing"
-                    ]:
-                        item["status"] = "Cancelled"
+                    # If it is 'Allocating', it might be picked up by a thread momentarily.
+                    # Cancellation token will handle it if registered, or status check in tasks.py
+                    item["status"] = "Cancelled"
                     break
 
         self._notify_listeners_safe()

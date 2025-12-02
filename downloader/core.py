@@ -8,6 +8,7 @@ including format selection, cancellation, and progress reporting.
 import logging
 import os
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -32,11 +33,38 @@ def _sanitize_output_path(output_path: str) -> str:
             return str(Path.cwd())
 
         path = Path(output_path).resolve()
+
+        # Verify write permissions
+        if path.exists():
+            if not os.access(path, os.W_OK):
+                logger.warning("No write permission for path '%s', falling back to temp", path)
+                return tempfile.gettempdir()
+        else:
+            # Try to create it, if fails, fallback
+            try:
+                os.makedirs(path, exist_ok=True)
+            except OSError:
+                 logger.warning("Cannot create path '%s', falling back to temp", path)
+                 return tempfile.gettempdir()
+
         return str(path)
     except Exception as e:
         logger.warning("Failed to sanitize path '%s': %s", output_path, e)
         return "."
 
+def _check_disk_space(output_path: str, min_mb: int = 100):
+    """Check if there is sufficient disk space."""
+    try:
+        usage = shutil.disk_usage(output_path)
+        free_mb = usage.free / (1024 * 1024)
+        if free_mb < min_mb:
+            logger.warning("Low disk space: %.2f MB free", free_mb)
+            # We don't block, but we log loud
+            return False
+        return True
+    except Exception as e:
+        logger.error("Failed to check disk space: %s", e)
+        return True # Assume ok if check fails
 
 def download_video(options: DownloadOptions) -> Dict[str, Any]:
     """
@@ -70,6 +98,8 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
         except OSError as e:
             logger.error("Failed to create output directory: %s", e)
             raise ValueError(f"Invalid output directory: {e}") from e
+
+    _check_disk_space(output_path)
 
     # 3a. Check for Telegram
     if TelegramExtractor.is_telegram_url(options.url):

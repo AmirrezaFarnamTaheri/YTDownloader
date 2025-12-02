@@ -13,6 +13,7 @@ import flet as ft
 from config_manager import ConfigManager
 from rss_manager import RSSManager
 from views.base_view import BaseView
+from localization_manager import LocalizationManager as LM
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +22,13 @@ class RSSView(BaseView):
     """View for managing and viewing RSS feeds."""
 
     def __init__(self, config):
-        super().__init__("RSS Feeds", ft.Icons.RSS_FEED)
+        super().__init__(LM.get("rss"), ft.Icons.RSS_FEED)
         self.config = config
         self.rss_manager = RSSManager(config)
         self.feed_list = ft.ListView(expand=True, spacing=10, padding=20)
         self.items_list = ft.ListView(expand=True, spacing=10, padding=20)
         self.rss_input = ft.TextField(
-            label="RSS Feed URL", expand=True, on_submit=self.add_rss
+            label=LM.get("rss_feed_url"), expand=True, on_submit=self.add_rss
         )
 
         self.tabs = ft.Tabs(
@@ -35,7 +36,7 @@ class RSSView(BaseView):
             animation_duration=300,
             tabs=[
                 ft.Tab(
-                    text="Feeds",
+                    text=LM.get("feeds"),
                     icon=ft.Icons.RSS_FEED,
                     content=ft.Column(
                         [
@@ -43,7 +44,9 @@ class RSSView(BaseView):
                                 [
                                     self.rss_input,
                                     ft.IconButton(
-                                        icon=ft.Icons.ADD, on_click=self.add_rss
+                                        icon=ft.Icons.ADD,
+                                        tooltip=LM.get("add_feed"),
+                                        on_click=self.add_rss
                                     ),
                                     ft.IconButton(
                                         icon=ft.Icons.REFRESH,
@@ -59,7 +62,7 @@ class RSSView(BaseView):
                     ),
                 ),
                 ft.Tab(
-                    text="Latest Items",
+                    text=LM.get("latest_items"),
                     icon=ft.Icons.NEW_RELEASES,
                     content=self.items_list,
                 ),
@@ -89,7 +92,7 @@ class RSSView(BaseView):
 
         if not normalized_feeds:
             self.feed_list.controls.append(
-                ft.Text("No RSS feeds added.", italic=True)
+                ft.Text(LM.get("no_rss_feeds"), italic=True)
             )
         else:
             for feed in normalized_feeds:
@@ -174,7 +177,7 @@ class RSSView(BaseView):
         items = self.rss_manager.get_all_items()
         self.items_list.controls.clear()
         if not items:
-            self.items_list.controls.append(ft.Text("No items found."))
+            self.items_list.controls.append(ft.Text(LM.get("no_items_found")))
         else:
             for item in items:
                 self.items_list.controls.append(

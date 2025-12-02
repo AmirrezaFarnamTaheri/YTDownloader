@@ -2,31 +2,32 @@ import flet as ft
 
 from config_manager import ConfigManager
 from theme import Theme
+from localization_manager import LocalizationManager as LM
 
 from .base_view import BaseView
 
 
 class SettingsView(BaseView):
     def __init__(self, config):
-        super().__init__("Settings", ft.Icons.SETTINGS)
+        super().__init__(LM.get("settings"), ft.Icons.SETTINGS)
         self.config = config
 
         self.proxy_input = ft.TextField(
-            label="Proxy",
+            label=LM.get("proxy"),
             value=self.config.get("proxy", ""),
             border_color=Theme.BORDER,
             border_radius=8,
             bgcolor=Theme.BG_CARD,
         )
         self.rate_limit_input = ft.TextField(
-            label="Rate Limit (e.g. 5M)",
+            label=LM.get("rate_limit"),
             value=self.config.get("rate_limit", ""),
             border_color=Theme.BORDER,
             border_radius=8,
             bgcolor=Theme.BG_CARD,
         )
         self.output_template_input = ft.TextField(
-            label="Output Template",
+            label=LM.get("output_template"),
             value=self.config.get("output_template", "%(title)s.%(ext)s"),
             border_color=Theme.BORDER,
             border_radius=8,
@@ -34,12 +35,12 @@ class SettingsView(BaseView):
         )
 
         self.use_aria2c_cb = ft.Checkbox(
-            label="Use Aria2c Accelerator",
+            label=LM.get("use_aria2c"),
             value=self.config.get("use_aria2c", False),
             fill_color=Theme.PRIMARY,
         )
         self.gpu_accel_dd = ft.Dropdown(
-            label="GPU Acceleration",
+            label=LM.get("gpu_acceleration"),
             options=[
                 ft.dropdown.Option("None"),
                 ft.dropdown.Option("auto"),
@@ -54,11 +55,11 @@ class SettingsView(BaseView):
 
         # Theme Toggle
         self.theme_mode_dd = ft.Dropdown(
-            label="Theme Mode",
+            label=LM.get("theme_mode"),
             options=[
-                ft.dropdown.Option("Dark"),
-                ft.dropdown.Option("Light"),
-                ft.dropdown.Option("System"),
+                ft.dropdown.Option("Dark", LM.get("dark")),
+                ft.dropdown.Option("Light", LM.get("light")),
+                ft.dropdown.Option("System", LM.get("system")),
             ],
             value=self.config.get("theme_mode", "Dark"),
             border_color=Theme.BORDER,
@@ -68,7 +69,7 @@ class SettingsView(BaseView):
         )
 
         self.save_btn = ft.ElevatedButton(
-            "Save Configuration",
+            LM.get("save_settings"),
             on_click=self.save_settings,
             bgcolor=Theme.PRIMARY,
             color=ft.Colors.WHITE,
@@ -81,7 +82,7 @@ class SettingsView(BaseView):
         self.add_control(ft.Divider(height=20, color=ft.Colors.TRANSPARENT))
         self.add_control(
             ft.Text(
-                "Performance",
+                LM.get("performance"),
                 size=18,
                 weight=ft.FontWeight.W_600,
                 color=Theme.TEXT_PRIMARY,
@@ -92,7 +93,7 @@ class SettingsView(BaseView):
         self.add_control(ft.Divider(height=20, color=ft.Colors.TRANSPARENT))
         self.add_control(
             ft.Text(
-                "Appearance",
+                LM.get("appearance"),
                 size=18,
                 weight=ft.FontWeight.W_600,
                 color=Theme.TEXT_PRIMARY,
@@ -122,4 +123,4 @@ class SettingsView(BaseView):
         self.config["theme_mode"] = self.theme_mode_dd.value
         ConfigManager.save_config(self.config)
         if self.page:
-            self.page.open(ft.SnackBar(content=ft.Text("Settings saved successfully!")))
+            self.page.open(ft.SnackBar(content=ft.Text(LM.get("settings_saved"))))

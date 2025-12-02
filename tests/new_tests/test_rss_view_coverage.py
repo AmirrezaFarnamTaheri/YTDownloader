@@ -4,7 +4,7 @@ import flet as ft
 import pytest
 
 from views.rss_view import RSSView
-
+from localization_manager import LocalizationManager
 
 def test_rss_view_tab_change():
     """Test tab switching logic."""
@@ -50,6 +50,13 @@ def test_rss_view_fetch_task_empty():
     """Test fetch task with no items."""
     view = RSSView({"rss_feeds": ["http://empty.com"]})
     view.update = MagicMock()
+
+    # Pre-load "no_items_found" so we know what to expect
+    # Since LocalizationManager uses a dict, we can mock it or assume default keys if not loaded
+    # But for robustness, let's just match the key or the English string if loaded.
+    # In tests, LM might not load en.json unless called.
+
+    LocalizationManager._strings = {"no_items_found": "No items found."}
 
     with patch("rss_manager.RSSManager.parse_feed", return_value=[]):
         view._fetch_feeds_task()

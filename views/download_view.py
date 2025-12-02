@@ -17,6 +17,7 @@ from views.base_view import BaseView
 from views.components.download_input import DownloadInputCard
 from views.components.download_preview import DownloadPreviewCard
 from theme import Theme
+from localization_manager import LocalizationManager as LM
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class DownloadView(BaseView):
         on_schedule: Callable,
         app_state: AppState,
     ):
-        super().__init__("New Download", ft.Icons.DOWNLOAD)
+        super().__init__(LM.get("new_download"), ft.Icons.DOWNLOAD)
         self.on_fetch_info = on_fetch_info
         self.on_add_to_queue = on_add_to_queue
         self.on_batch_import = on_batch_import
@@ -51,8 +52,8 @@ class DownloadView(BaseView):
         # --- Controls ---
         # 1. URL Input
         self.url_input = ft.TextField(
-            label="Video URL",
-            hint_text="https://youtube.com/watch?v=...",
+            label=LM.get("video_url_label"),
+            hint_text=LM.get("url_placeholder"),
             expand=True,
             autofocus=True,
             border_radius=8,
@@ -62,7 +63,7 @@ class DownloadView(BaseView):
         )
 
         self.fetch_btn = ft.ElevatedButton(
-            "Fetch Info",
+            LM.get("fetch_info"),
             icon=ft.Icons.SEARCH,
             on_click=self._on_fetch_click,
             style=ft.ButtonStyle(
@@ -75,12 +76,12 @@ class DownloadView(BaseView):
 
         # 2. Basic Options
         self.video_format_dd = ft.Dropdown(
-            label="Format",
+            label=LM.get("format"),
             width=180,
             border_radius=8,
             options=[
-                ft.dropdown.Option("best", "Best Quality"),
-                ft.dropdown.Option("audio", "Audio Only (MP3)"),
+                ft.dropdown.Option("best", LM.get("best_quality")),
+                ft.dropdown.Option("audio", LM.get("audio_only")),
                 ft.dropdown.Option("4k", "4K (2160p)"),
                 ft.dropdown.Option("1440p", "1440p"),
                 ft.dropdown.Option("1080p", "1080p"),
@@ -92,7 +93,7 @@ class DownloadView(BaseView):
         )
 
         self.audio_format_dd = ft.Dropdown(
-            label="Audio Stream",
+            label=LM.get("audio_stream"),
             width=180,
             border_radius=8,
             visible=False,
@@ -100,7 +101,7 @@ class DownloadView(BaseView):
         )
 
         self.subtitle_dd = ft.Dropdown(
-            label="Subtitles",
+            label=LM.get("subtitles"),
             width=180,
             border_radius=8,
             options=[
@@ -117,13 +118,13 @@ class DownloadView(BaseView):
         )
 
         # 3. Switches & Checkboxes
-        self.playlist_cb = ft.Checkbox(label="Playlist", value=False)
-        self.sponsorblock_cb = ft.Checkbox(label="SponsorBlock", value=False)
-        self.force_generic_cb = ft.Checkbox(label="Force Generic", value=False)
+        self.playlist_cb = ft.Checkbox(label=LM.get("playlist"), value=False)
+        self.sponsorblock_cb = ft.Checkbox(label=LM.get("sponsorblock"), value=False)
+        self.force_generic_cb = ft.Checkbox(label=LM.get("force_generic"), value=False)
 
         # 4. Advanced (Time / Cookies)
         self.time_start = ft.TextField(
-            label="Start (HH:MM:SS)",
+            label=LM.get("time_start"),
             width=140,
             disabled=True,
             border_radius=8,
@@ -131,7 +132,7 @@ class DownloadView(BaseView):
             bgcolor=Theme.Surface.INPUT,
         )
         self.time_end = ft.TextField(
-            label="End (HH:MM:SS)",
+            label=LM.get("time_end"),
             width=140,
             disabled=True,
             border_radius=8,
@@ -140,7 +141,7 @@ class DownloadView(BaseView):
         )
 
         self.cookies_dd = ft.Dropdown(
-            label="Browser Cookies",
+            label=LM.get("browser_cookies"),
             width=200,
             border_radius=8,
             options=[
@@ -155,7 +156,7 @@ class DownloadView(BaseView):
 
         # 5. Main Actions
         self.add_btn = ft.ElevatedButton(
-            "Add to Queue",
+            LM.get("add_to_queue"),
             icon=ft.Icons.ADD,
             on_click=self._on_add_click,
             disabled=True,
@@ -181,12 +182,12 @@ class DownloadView(BaseView):
         header = ft.Row(
             [
                 ft.Column([
-                    ft.Text("New Download", style=ft.TextThemeStyle.HEADLINE_MEDIUM, weight=ft.FontWeight.BOLD),
-                    ft.Text("Enter a URL to start downloading", style=ft.TextThemeStyle.BODY_MEDIUM, color=Theme.Text.SECONDARY),
+                    ft.Text(LM.get("new_download"), theme_style=ft.TextThemeStyle.HEADLINE_MEDIUM, weight=ft.FontWeight.BOLD),
+                    ft.Text(LM.get("enter_url_desc"), theme_style=ft.TextThemeStyle.BODY_MEDIUM, color=Theme.Text.SECONDARY),
                 ], spacing=2),
                 ft.Row([
-                    ft.IconButton(ft.Icons.FILE_UPLOAD, tooltip="Batch Import", on_click=lambda _: self.on_batch_import()),
-                    ft.IconButton(ft.Icons.SCHEDULE, tooltip="Schedule", on_click=lambda e: self.on_schedule(e)),
+                    ft.IconButton(ft.Icons.FILE_UPLOAD, tooltip=LM.get("batch_import"), on_click=lambda _: self.on_batch_import()),
+                    ft.IconButton(ft.Icons.SCHEDULE, tooltip=LM.get("schedule_download"), on_click=lambda e: self.on_schedule(e)),
                 ])
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -230,11 +231,11 @@ class DownloadView(BaseView):
                 [
                     url_row,
                     ft.Divider(height=20, color="transparent"),
-                    ft.Text("Options", weight=ft.FontWeight.BOLD),
+                    ft.Text(LM.get("options"), weight=ft.FontWeight.BOLD),
                     options_row,
                     switches_row,
                     ft.Divider(height=10, color="transparent"),
-                    ft.Text("Advanced", weight=ft.FontWeight.BOLD),
+                    ft.Text(LM.get("advanced_options"), weight=ft.FontWeight.BOLD),
                     ft.Row([time_row], wrap=True),
                 ],
                 spacing=10
@@ -263,7 +264,7 @@ class DownloadView(BaseView):
         if sys.platform in ("win32", "linux", "darwin"):
             footer.controls.append(
                 ft.TextButton(
-                    "Open Downloads Folder",
+                    LM.get("open_downloads_folder"),
                     icon=ft.Icons.FOLDER_OPEN,
                     on_click=lambda _: self._open_downloads_folder()
                 )
@@ -299,7 +300,7 @@ class DownloadView(BaseView):
             self.update()
             self.on_fetch_info(url)
         else:
-            self.url_input.error_text = "URL is required"
+            self.url_input.error_text = LM.get("url_required")
             self.update()
 
     def _on_add_click(self, e):
