@@ -59,10 +59,6 @@ class CancelToken:
             InterruptedError: If download is cancelled or pause timeout exceeded.
         """
         if self.cancelled:
-            # Change to match what tasks.py expects: InterruptedError with specific message
-            # Or make tasks.py more flexible.
-            # tasks.py checks for "Cancelled" in message OR CancelToken.cancelled property.
-            # But tests check for "Download Cancelled by user".
             raise InterruptedError("Download Cancelled by user")
 
         if self.is_paused:

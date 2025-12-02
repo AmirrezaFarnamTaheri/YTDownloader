@@ -34,8 +34,9 @@ class TestMainLogic(unittest.TestCase):
         # Patch executor
         self.patcher_executor = patch("tasks._executor")
 
-        # Patch active_downloads semaphore mock
-        self.patcher_sem = patch("tasks._active_downloads", create=True)
+        # Patch submission throttle semaphore mock
+        # Note: tasks.py now uses _submission_throttle but has legacy alias _active_downloads
+        self.patcher_sem = patch("tasks._submission_throttle", create=True)
 
         self.patcher_lock = patch("tasks._process_queue_lock", threading.RLock(), create=True)
 

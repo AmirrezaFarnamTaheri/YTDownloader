@@ -302,12 +302,15 @@ class QueueManager:
                 logger.info("Cancelling item ID: %s", item_id)
                 token.cancel()
 
-            # Update status if in queue but not running yet
+            # Update status only if in non-terminal state
             for item in self._queue:
                 if item.get("id") == item_id:
-                    # If it is 'Allocating', it might be picked up by a thread momentarily.
-                    # Cancellation token will handle it if registered, or status check in tasks.py
-                    item["status"] = "Cancelled"
+                    # Prevent overwriting terminal statuses like 'Completed', 'Error', 'Cancelled'
+                    # If it's already 'Cancelled', no harm done.
+                    # 'Allocating', 'Downloading', 'Processing', 'Queued' are cancellable.
+                    if item.get("status") in ["Queued", "Allocating", "Downloading", "Processing"]:
+                        logger.info("Setting status to Cancelled for item ID: %s", item_id)
+                        item["status"] = "Cancelled"
                     break
 
         self._notify_listeners_safe()

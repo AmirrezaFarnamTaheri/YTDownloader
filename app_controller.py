@@ -4,12 +4,10 @@ Handles application logic, callbacks, and bridging between UI and backend.
 """
 
 import logging
-import os
 import threading
 import time
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, Any, Optional
+from datetime import datetime
+from typing import Dict, Any
 
 import flet as ft
 
@@ -20,6 +18,11 @@ from tasks_extended import fetch_info_task
 from ui_manager import UIManager
 from ui_utils import validate_url, get_default_download_path
 
+# Helpers
+from rate_limiter import RateLimiter
+from batch_importer import BatchImporter
+from download_scheduler import DownloadScheduler
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,14 +30,18 @@ class AppController:
     """
     Controller for the main application.
     Manages interactions between the UI (View) and the Backend (Model/Logic).
+    Refactored to delegate responsibilities.
     """
 
     def __init__(self, page: ft.Page, ui_manager: UIManager):
         self.page = page
         self.ui = ui_manager
         self.active_threads: list[threading.Thread] = []
-        self._last_add_time = [0.0]
-        self._add_rate_limit_seconds = 0.5
+
+        # Delegates
+        self.rate_limiter = RateLimiter(0.5)
+        self.batch_importer = BatchImporter(state.queue_manager, state.config)
+        self.scheduler = DownloadScheduler()
 
         # Initialize Pickers
         self.file_picker = ft.FilePicker()
@@ -81,10 +88,8 @@ class AppController:
         while not state.shutdown_flag.is_set():
             try:
                 # Wait for work or timeout (to check shutdown flag)
-                # wait_for_items returns True if notified, False if timeout
                 state.queue_manager.wait_for_items(timeout=2.0)
 
-                # Check shutdown immediately after wake
                 if state.shutdown_flag.is_set():
                     break
 
@@ -97,7 +102,7 @@ class AppController:
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Error in background_loop: %s", e, exc_info=True)
-                time.sleep(1)  # Prevent tight loop on error
+                time.sleep(1)
         logger.info("Background loop stopped.")
 
     # --- Callbacks ---
@@ -135,7 +140,7 @@ class AppController:
             return
 
         # Rate limiting
-        if not self._check_rate_limit():
+        if not self.rate_limiter.check():
             self.page.open(
                 ft.SnackBar(
                     content=ft.Text("Please wait before adding another download")
@@ -143,15 +148,9 @@ class AppController:
             )
             return
 
-        status = "Queued"
-        sched_dt = None
-
-        if state.scheduled_time:
-            now = datetime.now()
-            sched_dt = datetime.combine(now.date(), state.scheduled_time)
-            if sched_dt < now:
-                sched_dt += timedelta(days=1)
-            status = f"Scheduled ({sched_dt.strftime('%H:%M')})"
+        # Scheduling
+        status, sched_dt = self.scheduler.prepare_schedule(state.scheduled_time)
+        if sched_dt:
             self.page.open(
                 ft.SnackBar(
                     content=ft.Text(
@@ -203,15 +202,10 @@ class AppController:
         if item_id:
             state.queue_manager.cancel_item(item_id)
         else:
-            # Fallback for old items (shouldn't happen with new logic)
             item["status"] = "Cancelled"
             item["progress"] = 0
-            item["speed"] = ""
-            item["eta"] = ""
-            item["size"] = ""
-
-        if "control" in item:
-            item["control"].update_progress()
+            if "control" in item:
+                item["control"].update_progress()
 
         state.queue_manager.notify_workers()
 
@@ -245,21 +239,12 @@ class AppController:
     def on_retry_item(self, item: Dict[str, Any]):
         """Callback to retry a failed/cancelled item."""
         item_id = item.get("id")
-        if not item_id:
-            # Fallback for older items without an ID
-            item["status"] = "Queued"
-            item["speed"] = ""
-            item["eta"] = ""
-            item["size"] = ""
-            item["progress"] = 0
-        else:
-            # Use the new QueueManager method to handle the update atomically
+        if item_id:
             state.queue_manager.update_item_status(
                 item_id,
                 "Queued",
                 updates={"speed": "", "eta": "", "size": "", "progress": 0},
             )
-
         self.ui.update_queue_view()
 
     def on_batch_file_result(self, e: ft.FilePickerResultEvent):
@@ -269,45 +254,7 @@ class AppController:
 
         path = e.files[0].path
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                urls = [line.strip() for line in f if line.strip()]
-
-            max_batch = 100
-            if len(urls) > max_batch:
-                self.page.open(
-                    ft.SnackBar(
-                        content=ft.Text(
-                            f"Batch import limited to {max_batch} URLs. Imported first {max_batch}."
-                        )
-                    )
-                )
-                urls = urls[:max_batch]
-
-            dl_path = get_default_download_path()
-            count = 0
-            for url in urls:
-                if not url:
-                    continue
-                item = {
-                    "url": url,
-                    "title": url,
-                    "status": "Queued",
-                    "scheduled_time": None,
-                    "video_format": "best",
-                    "output_path": dl_path,
-                    "playlist": False,
-                    "sponsorblock": False,
-                    "use_aria2c": state.config.get("use_aria2c", False),
-                    "gpu_accel": state.config.get("gpu_accel", "None"),
-                    "output_template": "%(title)s.%(ext)s",
-                    "start_time": None,
-                    "end_time": None,
-                    "force_generic": False,
-                    "cookies_from_browser": None,
-                }
-                state.queue_manager.add_item(item)
-                count += 1
-
+            count = self.batch_importer.import_from_file(path)
             self.ui.update_queue_view()
             self.page.open(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
 
@@ -343,11 +290,3 @@ class AppController:
         state.clipboard_monitor_active = active
         msg = "Clipboard Monitor Enabled" if active else "Clipboard Monitor Disabled"
         self.page.open(ft.SnackBar(content=ft.Text(msg)))
-
-    def _check_rate_limit(self) -> bool:
-        """Check if enough time has passed since the last add operation."""
-        now = time.time()
-        if now - self._last_add_time[0] < self._add_rate_limit_seconds:
-            return False
-        self._last_add_time[0] = now
-        return True

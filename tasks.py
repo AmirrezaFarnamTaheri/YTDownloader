@@ -23,17 +23,15 @@ _executor = ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="DLWo
 _active_count = 0
 _active_count_lock = threading.Lock()
 
-# For testing purposes, we expose semaphores/locks if needed,
-# but tests are patching _active_count logic now or mocking the executor/thread.
-# However, legacy tests might expect `_active_downloads` semaphore.
-# We simulate it for backward compat in tests if patching `tasks._active_downloads`
-# Since we use executor, we don't strictly need a semaphore, but the tests rely on it.
-# Let's keep it as a legacy artifact for tests or map it to executor?
-# Ideally, we update code to not use it, but tests inject it.
-# To satisfy `TestMainLogic.test_process_queue_busy`, we should expose something tests can patch.
-_active_downloads = threading.Semaphore(MAX_WORKERS)
+# Throttle submission to executor to avoid flooding it with "Allocating" tasks
+# that sit in the executor queue and can't be easily cancelled.
+# We limit the number of submitted-but-not-finished tasks to MAX_WORKERS.
+_submission_throttle = threading.Semaphore(MAX_WORKERS)
 # And lock
 _process_queue_lock = threading.RLock()
+
+# Compatibility alias for tests (legacy)
+_active_downloads = _submission_throttle
 
 
 def process_queue():
@@ -46,20 +44,19 @@ def process_queue():
     if state.shutdown_flag.is_set():
         return
 
-    # Use the lock tests expect, even if purely for compatibility
     with _process_queue_lock:
         while True:
             if state.shutdown_flag.is_set():
                 break
 
-            # Use semaphore for limiting (compatible with tests patching it)
-            if not _active_downloads.acquire(blocking=False):
+            # Use semaphore for limiting
+            if not _submission_throttle.acquire(blocking=False):
                 break
 
             # Claim item
             item = state.queue_manager.claim_next_downloadable()
             if not item:
-                _active_downloads.release()
+                _submission_throttle.release()
                 break
 
             with _active_count_lock:
@@ -73,7 +70,7 @@ def process_queue():
                 logger.error("Failed to submit task: %s", e)
                 with _active_count_lock:
                     _active_count -= 1
-                _active_downloads.release()
+                _submission_throttle.release()
 
                 state.queue_manager.update_item_status(
                      item.get("id"),
@@ -87,7 +84,7 @@ def _wrapped_download_task(item):
     try:
         download_task(item)
     finally:
-        _active_downloads.release()
+        _submission_throttle.release()
         with _active_count_lock:
             _active_count -= 1
 
@@ -114,9 +111,8 @@ def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
         if state.shutdown_flag.is_set():
             raise InterruptedError("Shutdown initiated")
 
-        # Check cancellation frequently
-        if cancel_token.cancelled:
-            raise InterruptedError("Download Cancelled by user")
+        # Check cancellation and pause state via token check
+        cancel_token.check()
 
         status = d.get("status")
 

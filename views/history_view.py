@@ -80,6 +80,9 @@ class HistoryView(BaseView):
         )
 
     def clear_history(self, e):
+        # Create dialog instance first
+        dlg = ft.AlertDialog(modal=True)
+
         def close_dlg(e):
             self.page.close(dlg)
 
@@ -88,15 +91,14 @@ class HistoryView(BaseView):
             self.load()
             self.page.close(dlg)
 
-        dlg = ft.AlertDialog(
-            modal=True,
-            title=ft.Text(LM.get("confirm_clear_history")),
-            actions=[
-                ft.TextButton(LM.get("yes"), on_click=confirm_clear),
-                ft.TextButton(LM.get("no"), on_click=close_dlg),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
+        # Configure dialog
+        dlg.title = ft.Text(LM.get("confirm_clear_history"))
+        dlg.actions = [
+            ft.TextButton(LM.get("yes"), on_click=confirm_clear),
+            ft.TextButton(LM.get("no"), on_click=close_dlg),
+        ]
+        dlg.actions_alignment = ft.MainAxisAlignment.END
+
         self.page.open(dlg)
 
     def open_folder_safe(self, path):
