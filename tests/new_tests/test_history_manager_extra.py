@@ -60,6 +60,8 @@ class TestHistoryManagerExtra(unittest.TestCase):
 
         with patch("history_manager.HistoryManager.DB_RETRY_DELAY", 0.001):
             with self.assertRaises(sqlite3.OperationalError):
-                HistoryManager.add_entry("url", "title", "path", "fmt", "status", "size")
+                HistoryManager.add_entry(
+                    "url", "title", "path", "fmt", "status", "size"
+                )
 
         self.assertEqual(mock_cursor.execute.call_count, 3)

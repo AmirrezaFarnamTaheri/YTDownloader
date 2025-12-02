@@ -7,21 +7,20 @@ import logging
 import threading
 import time
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
 import flet as ft
 
 from app_state import state
+from batch_importer import BatchImporter
 from clipboard_monitor import start_clipboard_monitor
+from download_scheduler import DownloadScheduler
+# Helpers
+from rate_limiter import RateLimiter
 from tasks import process_queue
 from tasks_extended import fetch_info_task
 from ui_manager import UIManager
-from ui_utils import validate_url, get_default_download_path
-
-# Helpers
-from rate_limiter import RateLimiter
-from batch_importer import BatchImporter
-from download_scheduler import DownloadScheduler
+from ui_utils import get_default_download_path, validate_url
 
 logger = logging.getLogger(__name__)
 

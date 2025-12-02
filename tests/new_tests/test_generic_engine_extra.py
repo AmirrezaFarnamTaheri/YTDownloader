@@ -13,7 +13,9 @@ from downloader.engines.generic import download_generic
 
 class TestGenericEngineExtra(unittest.TestCase):
 
-    @patch("downloader.engines.generic.validate_url", return_value=True) # Mock validation
+    @patch(
+        "downloader.engines.generic.validate_url", return_value=True
+    )  # Mock validation
     @patch("downloader.engines.generic.requests.get")
     def test_progress_update_logic(self, mock_get, mock_validate):
         """Test that progress updates trigger correctly."""

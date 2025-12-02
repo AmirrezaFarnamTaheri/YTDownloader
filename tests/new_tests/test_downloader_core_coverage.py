@@ -21,21 +21,19 @@ class TestDownloaderCoreCoverage(unittest.TestCase):
 
     @patch("pathlib.Path.mkdir")
     @patch("downloader.core.GenericDownloader.download")
-    def test_force_generic_success(
-        self, mock_download, mock_mkdir
-    ):
+    def test_force_generic_success(self, mock_download, mock_mkdir):
         # Mock what download returns
         mock_download.return_value = {
             "filename": "TestVideo.mp4",
             "filepath": "/tmp/TestVideo.mp4",
-            "url": "http://test.com/v.mp4"
+            "url": "http://test.com/v.mp4",
         }
 
         options = DownloadOptions(
             url="http://test.com",
             output_path="/tmp",
             progress_hook=self.hook,
-            force_generic=True
+            force_generic=True,
         )
         download_video(options)
 
@@ -86,7 +84,7 @@ class TestDownloaderCoreCoverage(unittest.TestCase):
             url="http://yt.com",
             progress_hook=self.hook,
             start_time="00:00:10",
-            end_time="00:00:20"
+            end_time="00:00:20",
         )
         download_video(options)
 
@@ -101,11 +99,7 @@ class TestDownloaderCoreCoverage(unittest.TestCase):
         mock_instance = MockWrapper.return_value
         mock_state.ffmpeg_available = True
 
-        options = DownloadOptions(
-            url="u",
-            progress_hook=self.hook,
-            gpu_accel="vulkan"
-        )
+        options = DownloadOptions(url="u", progress_hook=self.hook, gpu_accel="vulkan")
         download_video(options)
 
         args, kwargs = MockWrapper.call_args
@@ -116,25 +110,17 @@ class TestDownloaderCoreCoverage(unittest.TestCase):
 
     def test_invalid_time_range(self):
         options = DownloadOptions(
-            url="u",
-            start_time="00:00:20",
-            end_time="00:00:10" # Start > End
+            url="u", start_time="00:00:20", end_time="00:00:10"  # Start > End
         )
         with self.assertRaises(ValueError):
             download_video(options)
 
     def test_negative_time(self):
-        options = DownloadOptions(
-            url="u",
-            start_time="-5"
-        )
+        options = DownloadOptions(url="u", start_time="-5")
         with self.assertRaises(ValueError):
             download_video(options)
 
     def test_invalid_proxy(self):
-        options = DownloadOptions(
-            url="u",
-            proxy="ftp://proxy"
-        )
+        options = DownloadOptions(url="u", proxy="ftp://proxy")
         with self.assertRaises(ValueError):
             download_video(options)

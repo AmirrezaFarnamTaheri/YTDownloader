@@ -1,8 +1,8 @@
 import flet as ft
 
 from config_manager import ConfigManager
-from theme import Theme
 from localization_manager import LocalizationManager as LM
+from theme import Theme
 
 from .base_view import BaseView
 

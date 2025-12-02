@@ -17,7 +17,14 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     @patch("downloader.engines.generic.validate_url")
     @patch("os.path.isdir")
     def test_download_generic_success(
-        self, mock_isdir, mock_validate_url, mock_exists, mock_getsize, mock_file, mock_get, mock_head
+        self,
+        mock_isdir,
+        mock_validate_url,
+        mock_exists,
+        mock_getsize,
+        mock_file,
+        mock_get,
+        mock_head,
     ):
         mock_validate_url.return_value = True
         mock_isdir.return_value = True
@@ -62,7 +69,14 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     @patch("downloader.engines.generic.validate_url")
     @patch("os.path.isdir")
     def test_download_generic_resume_success(
-        self, mock_isdir, mock_validate_url, mock_exists, mock_getsize, mock_file, mock_get, mock_head
+        self,
+        mock_isdir,
+        mock_validate_url,
+        mock_exists,
+        mock_getsize,
+        mock_file,
+        mock_get,
+        mock_head,
     ):
         mock_validate_url.return_value = True
         mock_isdir.return_value = True
@@ -103,7 +117,14 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     @patch("downloader.engines.generic.validate_url")
     @patch("os.path.isdir")
     def test_download_generic_resume_fail_restart(
-        self, mock_isdir, mock_validate_url, mock_exists, mock_getsize, mock_file, mock_get, mock_head
+        self,
+        mock_isdir,
+        mock_validate_url,
+        mock_exists,
+        mock_getsize,
+        mock_file,
+        mock_get,
+        mock_head,
     ):
         mock_validate_url.return_value = True
         mock_isdir.return_value = True
@@ -136,7 +157,16 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     @patch("downloader.engines.generic.validate_url")
     @patch("os.path.isdir")
     @patch("os.path.exists")
-    def test_download_generic_retry(self, mock_exists, mock_isdir, mock_validate_url, mock_sleep, mock_file, mock_get, mock_head):
+    def test_download_generic_retry(
+        self,
+        mock_exists,
+        mock_isdir,
+        mock_validate_url,
+        mock_sleep,
+        mock_file,
+        mock_get,
+        mock_head,
+    ):
         mock_validate_url.return_value = True
         mock_isdir.return_value = True
         mock_exists.return_value = False
@@ -175,7 +205,15 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     @patch("downloader.engines.generic.validate_url")
     @patch("os.path.isdir")
     @patch("os.path.exists")
-    def test_download_generic_max_retries_exceeded(self, mock_exists, mock_isdir, mock_validate_url, mock_sleep, mock_get, mock_head):
+    def test_download_generic_max_retries_exceeded(
+        self,
+        mock_exists,
+        mock_isdir,
+        mock_validate_url,
+        mock_sleep,
+        mock_get,
+        mock_head,
+    ):
         mock_validate_url.return_value = True
         mock_isdir.return_value = True
         mock_exists.return_value = False
@@ -201,7 +239,9 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
     @patch("downloader.engines.generic.validate_url")
     @patch("os.path.isdir")
     @patch("os.path.exists")
-    def test_download_generic_cancellation(self, mock_exists, mock_isdir, mock_validate_url, mock_file, mock_get, mock_head):
+    def test_download_generic_cancellation(
+        self, mock_exists, mock_isdir, mock_validate_url, mock_file, mock_get, mock_head
+    ):
         mock_validate_url.return_value = True
         mock_isdir.return_value = True
         mock_exists.return_value = False
@@ -222,7 +262,12 @@ class TestGenericDownloaderCoverage(unittest.TestCase):
 
         with self.assertRaises(InterruptedError) as cm:
             download_generic(
-                "http://url", "/tmp", "file.mp4", MagicMock(), cancel_token=token, max_retries=3
+                "http://url",
+                "/tmp",
+                "file.mp4",
+                MagicMock(),
+                cancel_token=token,
+                max_retries=3,
             )
 
         self.assertEqual(str(cm.exception), "Download Cancelled by user")

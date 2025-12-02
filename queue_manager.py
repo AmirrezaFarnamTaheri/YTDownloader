@@ -106,7 +106,7 @@ class QueueManager:
         for listener in listeners:
             try:
                 listener()
-            except Exception as e: # pylint: disable=broad-exception-caught
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Error in queue listener: %s", e)
 
     def add_item(self, item: Dict[str, Any]):
@@ -129,7 +129,7 @@ class QueueManager:
             logger.info(
                 "Adding item to queue: %s (ID: %s)",
                 item.get("title", item.get("url")),
-                item["id"]
+                item["id"],
             )
             self._queue.append(item)
 
@@ -140,10 +140,7 @@ class QueueManager:
         self._notify_listeners_safe()
 
     def update_item_status(
-        self,
-        item_id: str,
-        status: str,
-        updates: Optional[Dict[str, Any]] = None
+        self, item_id: str, status: str, updates: Optional[Dict[str, Any]] = None
     ):
         """
         Atomically update an item's status and other fields.
@@ -308,8 +305,15 @@ class QueueManager:
                     # Prevent overwriting terminal statuses like 'Completed', 'Error', 'Cancelled'
                     # If it's already 'Cancelled', no harm done.
                     # 'Allocating', 'Downloading', 'Processing', 'Queued' are cancellable.
-                    if item.get("status") in ["Queued", "Allocating", "Downloading", "Processing"]:
-                        logger.info("Setting status to Cancelled for item ID: %s", item_id)
+                    if item.get("status") in [
+                        "Queued",
+                        "Allocating",
+                        "Downloading",
+                        "Processing",
+                    ]:
+                        logger.info(
+                            "Setting status to Cancelled for item ID: %s", item_id
+                        )
                         item["status"] = "Cancelled"
                     break
 

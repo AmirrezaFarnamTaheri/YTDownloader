@@ -76,7 +76,7 @@ class Theme:
                 on_secondary=Theme.BG_DARK,
                 on_background=Theme.TEXT_PRIMARY,
                 on_surface=Theme.TEXT_PRIMARY,
-                surface_tint=ft.Colors.TRANSPARENT, # Removing tint for cleaner look
+                surface_tint=ft.Colors.TRANSPARENT,  # Removing tint for cleaner look
                 outline=Theme.BORDER,
                 inverse_surface=Theme.TEXT_PRIMARY,
                 on_inverse_surface=Theme.BG_DARK,
@@ -121,5 +121,5 @@ class Theme:
             ),
             content_padding=15,
             prefix_icon=prefix_icon,
-            is_dense=True, # Improved density
+            is_dense=True,  # Improved density
         )

@@ -81,7 +81,7 @@ class AppLayout:
             on_change=self._on_nav_change,
             bgcolor=Theme.Surface.BG,
             # Add leading/trailing logic support for mobile collapse
-            extended=True
+            extended=True,
         )
 
         # Clipboard Monitor Toggle
@@ -177,7 +177,7 @@ class AppLayout:
             self.rail.label_type = ft.NavigationRailLabelType.NONE
             self.sidebar.width = 70
             self.logo_text.visible = False
-            self.clipboard_switch.label = "" # Hide label
+            self.clipboard_switch.label = ""  # Hide label
             self.clipboard_switch.tooltip = "Clipboard Monitor"
         else:
             self.rail.extended = True

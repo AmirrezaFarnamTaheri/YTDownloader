@@ -8,12 +8,11 @@ import time
 import unittest
 from unittest.mock import MagicMock, patch
 
-from app_state import AppState
+from app_state import AppState, state
 from downloader.types import DownloadOptions
-from tasks import process_queue
-from queue_manager import QueueManager
 from history_manager import HistoryManager
-from app_state import state
+from queue_manager import QueueManager
+from tasks import process_queue
 
 
 class TestPipelineIntegration(unittest.TestCase):
@@ -81,11 +80,7 @@ class TestPipelineIntegration(unittest.TestCase):
     def test_pipeline_error_handling(self):
         """Test that errors in download are caught and status updated."""
         with patch("tasks.download_video", side_effect=Exception("Download Failed")):
-            item = {
-                "url": "http://fail.com",
-                "status": "Queued",
-                "title": "Fail Video"
-            }
+            item = {"url": "http://fail.com", "status": "Queued", "title": "Fail Video"}
             state.queue_manager.add_item(item)
 
             process_queue()
@@ -100,6 +95,7 @@ class TestPipelineIntegration(unittest.TestCase):
         """Test that scheduled items are picked up."""
         # Use real time logic
         import datetime
+
         now = datetime.datetime.now()
         past = now - datetime.timedelta(minutes=1)
 
@@ -107,7 +103,7 @@ class TestPipelineIntegration(unittest.TestCase):
             "url": "http://sched.com",
             "status": f"Scheduled ({past.strftime('%H:%M')})",
             "scheduled_time": past,
-            "title": "Sched Video"
+            "title": "Sched Video",
         }
         state.queue_manager.add_item(item)
 

@@ -177,9 +177,7 @@ class SyncManager:
                     return str(obj)
 
                 config_str = json.dumps(
-                    config_data,
-                    indent=2,
-                    default=default_serializer
+                    config_data, indent=2, default=default_serializer
                 )
                 zf.writestr("config.json", config_str)
 
@@ -200,13 +198,13 @@ class SyncManager:
 
                     if os.path.exists(db_path_str):
                         zf.write(db_path_str, "history.db")
-                except Exception as e: # pylint: disable=broad-exception-caught
+                except Exception as e:  # pylint: disable=broad-exception-caught
                     logger.warning("Could not include history.db in export: %s", e)
 
             logger.info("Export completed")
         except Exception as e:
             logger.error("Export failed: %s", e)
-            raise # Raise so UI can show error
+            raise  # Raise so UI can show error
 
     def import_data(self, import_path: str):
         """Imports data from a zip file."""
@@ -266,7 +264,9 @@ class SyncManager:
                             os.rename(temp_db, target_db_path)
                         else:
                             # This case happens if os.remove failed.
-                            logger.error("Failed to replace database file, it may be locked.")
+                            logger.error(
+                                "Failed to replace database file, it may be locked."
+                            )
 
                     finally:
                         # Clean up the temp file if it still exists
@@ -274,7 +274,11 @@ class SyncManager:
                             try:
                                 os.remove(temp_db)
                             except OSError as e:
-                                logger.error("Failed to clean up temporary DB file %s: %s", temp_db, e)
+                                logger.error(
+                                    "Failed to clean up temporary DB file %s: %s",
+                                    temp_db,
+                                    e,
+                                )
 
             logger.info("Import completed")
         except Exception as e:

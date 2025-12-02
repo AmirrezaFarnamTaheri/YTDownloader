@@ -33,7 +33,7 @@ class TestHistoryManager(unittest.TestCase):
         mock_conn.cursor.return_value = mock_cursor
 
         # Mock fetchone for COUNT
-        mock_cursor.fetchone.return_value = [5] # Total count
+        mock_cursor.fetchone.return_value = [5]  # Total count
 
         # Mock fetchall for SELECT
         mock_cursor.fetchall.return_value = [

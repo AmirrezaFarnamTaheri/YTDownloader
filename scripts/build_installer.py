@@ -99,9 +99,7 @@ def build_installer():
     output_name = (
         "StreamCatch.exe"
         if os.name == "nt"
-        else "StreamCatch"
-        if sys.platform == "darwin"
-        else "streamcatch"
+        else "StreamCatch" if sys.platform == "darwin" else "streamcatch"
     )
 
     cmd = [
@@ -118,13 +116,13 @@ def build_installer():
 
     cmd.extend(
         [
-        # Enable LTO if stable, otherwise disable for speed/memory
-        # "--lto=no",
-        # Flet often needs explicit data for assets
-        f"--include-data-dir={root / 'assets'}=assets",
-        f"--include-data-dir={root / 'locales'}=locales",
-        f"--output-dir={dist_dir}",
-        f"--output-filename={output_name}",
+            # Enable LTO if stable, otherwise disable for speed/memory
+            # "--lto=no",
+            # Flet often needs explicit data for assets
+            f"--include-data-dir={root / 'assets'}=assets",
+            f"--include-data-dir={root / 'locales'}=locales",
+            f"--output-dir={dist_dir}",
+            f"--output-filename={output_name}",
         ]
     )
 

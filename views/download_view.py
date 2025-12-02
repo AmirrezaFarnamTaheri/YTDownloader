@@ -13,11 +13,11 @@ from typing import Callable, Optional
 import flet as ft
 
 from app_state import AppState
+from localization_manager import LocalizationManager as LM
+from theme import Theme
 from views.base_view import BaseView
 from views.components.download_input import DownloadInputCard
 from views.components.download_preview import DownloadPreviewCard
-from theme import Theme
-from localization_manager import LocalizationManager as LM
 
 logger = logging.getLogger(__name__)
 
@@ -181,14 +181,35 @@ class DownloadView(BaseView):
         # Header
         header = ft.Row(
             [
-                ft.Column([
-                    ft.Text(LM.get("new_download"), theme_style=ft.TextThemeStyle.HEADLINE_MEDIUM, weight=ft.FontWeight.BOLD),
-                    ft.Text(LM.get("enter_url_desc"), theme_style=ft.TextThemeStyle.BODY_MEDIUM, color=Theme.Text.SECONDARY),
-                ], spacing=2),
-                ft.Row([
-                    ft.IconButton(ft.Icons.FILE_UPLOAD, tooltip=LM.get("batch_import"), on_click=lambda _: self.on_batch_import()),
-                    ft.IconButton(ft.Icons.SCHEDULE, tooltip=LM.get("schedule_download"), on_click=lambda e: self.on_schedule(e)),
-                ])
+                ft.Column(
+                    [
+                        ft.Text(
+                            LM.get("new_download"),
+                            theme_style=ft.TextThemeStyle.HEADLINE_MEDIUM,
+                            weight=ft.FontWeight.BOLD,
+                        ),
+                        ft.Text(
+                            LM.get("enter_url_desc"),
+                            theme_style=ft.TextThemeStyle.BODY_MEDIUM,
+                            color=Theme.Text.SECONDARY,
+                        ),
+                    ],
+                    spacing=2,
+                ),
+                ft.Row(
+                    [
+                        ft.IconButton(
+                            ft.Icons.FILE_UPLOAD,
+                            tooltip=LM.get("batch_import"),
+                            on_click=lambda _: self.on_batch_import(),
+                        ),
+                        ft.IconButton(
+                            ft.Icons.SCHEDULE,
+                            tooltip=LM.get("schedule_download"),
+                            on_click=lambda e: self.on_schedule(e),
+                        ),
+                    ]
+                ),
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
@@ -197,7 +218,7 @@ class DownloadView(BaseView):
         url_row = ft.Row(
             [self.url_input, self.fetch_btn],
             spacing=10,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
         # Options Grid
@@ -217,13 +238,10 @@ class DownloadView(BaseView):
         switches_row = ft.Row(
             [self.playlist_cb, self.sponsorblock_cb, self.force_generic_cb],
             wrap=True,
-            spacing=20
+            spacing=20,
         )
 
-        time_row = ft.Row(
-            [self.time_start, self.time_end],
-            spacing=10
-        )
+        time_row = ft.Row([self.time_start, self.time_end], spacing=10)
 
         # Input Card Container
         input_container = ft.Container(
@@ -238,7 +256,7 @@ class DownloadView(BaseView):
                     ft.Text(LM.get("advanced_options"), weight=ft.FontWeight.BOLD),
                     ft.Row([time_row], wrap=True),
                 ],
-                spacing=10
+                spacing=10,
             ),
             bgcolor=Theme.Surface.CARD,
             padding=20,
@@ -247,16 +265,13 @@ class DownloadView(BaseView):
             shadow=ft.BoxShadow(
                 blur_radius=10,
                 color=ft.Colors.with_opacity(0.1, ft.Colors.BLACK),
-            )
+            ),
         )
 
         # Actions
         actions_bar = ft.Row(
-            [
-                ft.Container(expand=True),
-                self.add_btn
-            ],
-            alignment=ft.MainAxisAlignment.END
+            [ft.Container(expand=True), self.add_btn],
+            alignment=ft.MainAxisAlignment.END,
         )
 
         # Footer Actions (Desktop Only)
@@ -266,7 +281,7 @@ class DownloadView(BaseView):
                 ft.TextButton(
                     LM.get("open_downloads_folder"),
                     icon=ft.Icons.FOLDER_OPEN,
-                    on_click=lambda _: self._open_downloads_folder()
+                    on_click=lambda _: self._open_downloads_folder(),
                 )
             )
 
@@ -282,13 +297,13 @@ class DownloadView(BaseView):
                         ft.Divider(color="transparent", height=10),
                         actions_bar,
                         ft.Divider(),
-                        footer
+                        footer,
                     ],
                     scroll=ft.ScrollMode.AUTO,
                     spacing=15,
                 ),
                 padding=20,
-                expand=True
+                expand=True,
             )
         ]
 
@@ -314,7 +329,9 @@ class DownloadView(BaseView):
             "url": self.url_input.value,
             "video_format": self.video_format_dd.value,
             "audio_format": self.audio_format_dd.value,
-            "subtitle_lang": self.subtitle_dd.value if self.subtitle_dd.value != "None" else None,
+            "subtitle_lang": (
+                self.subtitle_dd.value if self.subtitle_dd.value != "None" else None
+            ),
             "playlist": self.playlist_cb.value,
             "sponsorblock": self.sponsorblock_cb.value,
             "force_generic": self.force_generic_cb.value,
@@ -347,7 +364,7 @@ class DownloadView(BaseView):
                 opts = []
                 for s in info["video_streams"]:
                     label = f"{s.get('resolution', '?')} {s.get('ext','')} {s.get('filesize_str','')}"
-                    opts.append(ft.dropdown.Option(s['format_id'], label))
+                    opts.append(ft.dropdown.Option(s["format_id"], label))
                 if opts:
                     self.video_format_dd.options = opts
                     self.video_format_dd.value = opts[0].key
@@ -355,8 +372,8 @@ class DownloadView(BaseView):
             if "audio_streams" in info:
                 opts = []
                 for s in info["audio_streams"]:
-                     label = f"{s.get('abr','?')}k {s.get('ext','')}"
-                     opts.append(ft.dropdown.Option(s['format_id'], label))
+                    label = f"{s.get('abr','?')}k {s.get('ext','')}"
+                    opts.append(ft.dropdown.Option(s["format_id"], label))
                 if opts:
                     self.audio_format_dd.options = opts
                     self.audio_format_dd.value = opts[0].key
@@ -379,8 +396,10 @@ class DownloadView(BaseView):
         self.update_video_info(info)
 
     def _open_downloads_folder(self):
-        from ui_utils import open_folder
         from pathlib import Path
+
+        from ui_utils import open_folder
+
         try:
             path = Path.home() / "Downloads"
             open_folder(str(path))

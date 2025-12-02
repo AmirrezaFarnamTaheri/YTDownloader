@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Configuration file path with fallback
 try:
     CONFIG_FILE = Path.home() / ".streamcatch" / "config.json"
-except Exception: # pylint: disable=broad-exception-caught
+except Exception:  # pylint: disable=broad-exception-caught
     CONFIG_FILE = Path("config.json")
 
 
@@ -104,7 +104,7 @@ class ConfigManager:
                 except OSError:
                     pass
                 return config
-            except Exception as e: # pylint: disable=broad-exception-caught
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Failed to load config: %s", e)
                 return config
 
@@ -130,7 +130,7 @@ class ConfigManager:
                 dir=str(config_path.parent),
                 prefix=".config_tmp_",
                 suffix=".json",
-                text=True
+                text=True,
             )
             # Security: Set restrictive permissions
             os.chmod(temp_path, 0o600)

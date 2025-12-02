@@ -16,9 +16,7 @@ class TestDownloaderCoreExtra(unittest.TestCase):
         # Using _parse_time in types.py logic indirectly via validate
         # Or mock it if needed, but integration is better.
         options = DownloadOptions(
-            url="http://url",
-            start_time="-10:00",
-            end_time="00:20"
+            url="http://url", start_time="-10:00", end_time="00:20"
         )
 
         # DownloadOptions.validate uses _parse_time which returns 0.0 on error?
@@ -34,9 +32,6 @@ class TestDownloaderCoreExtra(unittest.TestCase):
     @patch("downloader.core.YTDLPWrapper.download")
     def test_proxy_warning(self, mock_download):
         """Test invalid proxy format raises ValueError."""
-        options = DownloadOptions(
-            url="http://url",
-            proxy="invalid_proxy_format"
-        )
+        options = DownloadOptions(url="http://url", proxy="invalid_proxy_format")
         with self.assertRaises(ValueError):
             download_video(options)

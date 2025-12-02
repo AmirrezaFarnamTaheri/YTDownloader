@@ -54,11 +54,11 @@ class YTDLPWrapper:
 
         # Handle path override
         if output_path and "outtmpl" in options:
-             # Basic replacement if outtmpl starts with old path?
-             # Or just assume caller handled options before passing here.
-             # Ideally options already has correct path.
-             # If output_path is passed, we might need to update outtmpl if it was just a filename template.
-             pass
+            # Basic replacement if outtmpl starts with old path?
+            # Or just assume caller handled options before passing here.
+            # Ideally options already has correct path.
+            # If output_path is passed, we might need to update outtmpl if it was just a filename template.
+            pass
 
         # Add progress hooks
         hooks = options.setdefault("progress_hooks", [])
@@ -67,9 +67,9 @@ class YTDLPWrapper:
         def check_cancel(d):
             if cancel_token:
                 # Support both method check() and attribute cancelled
-                if hasattr(cancel_token, 'is_set') and cancel_token.is_set():
-                     raise InterruptedError("Download Cancelled by user")
-                if hasattr(cancel_token, 'cancelled') and cancel_token.cancelled:
+                if hasattr(cancel_token, "is_set") and cancel_token.is_set():
+                    raise InterruptedError("Download Cancelled by user")
+                if hasattr(cancel_token, "cancelled") and cancel_token.cancelled:
                     raise InterruptedError("Download Cancelled by user")
 
         hooks.append(check_cancel)
@@ -99,7 +99,7 @@ class YTDLPWrapper:
                         "filepath": options.get("outtmpl", "."),
                         "title": info.get("title", "Playlist"),
                         "entries": len(list(info["entries"])),
-                        "type": "playlist"
+                        "type": "playlist",
                     }
 
                 # Handle Single Video
@@ -115,7 +115,7 @@ class YTDLPWrapper:
                     "duration": info.get("duration"),
                     "thumbnail": info.get("thumbnail"),
                     "uploader": info.get("uploader"),
-                    "type": "video"
+                    "type": "video",
                 }
 
         except Exception as e:

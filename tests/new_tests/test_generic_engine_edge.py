@@ -12,7 +12,9 @@ from downloader.engines.generic import download_generic
 
 class TestGenericEngineEdge(unittest.TestCase):
 
-    @patch("downloader.engines.generic.validate_url", return_value=True) # Mock validation
+    @patch(
+        "downloader.engines.generic.validate_url", return_value=True
+    )  # Mock validation
     @patch("downloader.engines.generic.requests.get")
     def test_exhausted_retries_raises_last_error(self, mock_get, mock_validate):
         """Test that last error is raised if all retries fail."""

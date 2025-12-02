@@ -47,10 +47,22 @@ class TestUIExtended(unittest.TestCase):
         view.update = MagicMock()
 
         # Mock instance method instead of static parse_feed if used that way
-        view.rss_manager.get_all_items = MagicMock(return_value=[
-            {"title": "Video 1", "link": "http://v1", "published": "2023-01-01", "feed_name": "F1"},
-            {"title": "Video 2", "link": "http://v2", "published": "2023-01-02", "feed_name": "F2"},
-        ])
+        view.rss_manager.get_all_items = MagicMock(
+            return_value=[
+                {
+                    "title": "Video 1",
+                    "link": "http://v1",
+                    "published": "2023-01-01",
+                    "feed_name": "F1",
+                },
+                {
+                    "title": "Video 2",
+                    "link": "http://v2",
+                    "published": "2023-01-02",
+                    "feed_name": "F2",
+                },
+            ]
+        )
 
         # Directly call the fetch task to avoid threading wait
         view._fetch_feeds_task()

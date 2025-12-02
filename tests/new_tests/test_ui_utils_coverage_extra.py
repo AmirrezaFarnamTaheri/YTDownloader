@@ -27,7 +27,9 @@ def test_open_folder_not_exist():
 
 def test_open_folder_platforms():
     """Test platform specific calls."""
-    with patch("os.path.exists", return_value=True), patch("os.path.isdir", return_value=True):
+    with patch("os.path.exists", return_value=True), patch(
+        "os.path.isdir", return_value=True
+    ):
         # Windows
         with patch("platform.system", return_value="Windows"):
             with patch("os.startfile", create=True) as mock_start:
