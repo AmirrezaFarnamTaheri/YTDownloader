@@ -38,8 +38,14 @@ def setup_logging():
 
     log_files = [Path("ytdownloader.log"), home_log]
 
-    # Deduplicate paths if home == local
-    log_files = list(set(log_files))
+    # Deduplicate paths while preserving order
+    seen = set()
+    ordered_unique_log_files = []
+    for log_file in log_files:
+        if log_file not in seen:
+            seen.add(log_file)
+            ordered_unique_log_files.append(log_file)
+    log_files = ordered_unique_log_files
 
     for log_file in log_files:
         try:

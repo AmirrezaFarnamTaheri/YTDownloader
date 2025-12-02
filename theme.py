@@ -43,6 +43,8 @@ class Theme:
     # --- Subclasses for Usage ---
     class Surface:
         BG = "#1E293B"
+        CARD = "#1E293B"
+        INPUT = "#020617"
 
     class Primary:
         MAIN = "#818CF8"

@@ -99,7 +99,11 @@ class TelegramExtractor:
             if not title:
                 # Fallback title from URL ID
                 parts = url.strip("/").split("/")
-                title = f"Telegram_{parts[-1]}" if parts else "Telegram_Media"
+                last_part = parts[-1] if parts else ""
+                if last_part:
+                    title = f"Telegram_{last_part}"
+                else:
+                    title = "Telegram_Media"
 
             # Sanitize Title
             title = TelegramExtractor.TITLE_SANITIZE_PATTERN.sub("", title)

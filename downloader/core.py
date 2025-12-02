@@ -57,6 +57,7 @@ def download_video(
     url: str,
     output_path: str = ".",
     video_format: str = "best",
+    audio_format: Optional[str] = None,
     progress_hook: Optional[Callable[[Dict[str, Any]], None]] = None,
     cancel_token: Optional[Any] = None,
     playlist: bool = False,
@@ -73,7 +74,6 @@ def download_video(
     split_chapters: bool = False,
     proxy: Optional[str] = None,
     rate_limit: Optional[str] = None,
-    **kwargs: Any,  # Accept extra arguments for compatibility (e.g. download_item)
 ) -> Dict[str, Any]:
     """
     Downloads a video/audio from the given URL using yt-dlp or generic fallback.
@@ -152,10 +152,14 @@ def download_video(
     if video_format == "audio":
         ydl_opts["format"] = "bestaudio/best"
         if ffmpeg_available:
+            audio_ext = "mp3"
+            if audio_format and audio_format in ["m4a", "wav", "flac", "opus"]:
+                audio_ext = audio_format
+
             ydl_opts["postprocessors"].append(
                 {
                     "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
+                    "preferredcodec": audio_ext,
                     "preferredquality": "192",
                 }
             )

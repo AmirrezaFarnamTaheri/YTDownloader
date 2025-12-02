@@ -2,7 +2,7 @@
 Background task processing module.
 
 Handles the download queue, threading, and status updates.
-Refactored for better modularity and error handling.
+Refactored to use ThreadPoolExecutor and per-task CancelTokens.
 """
 
 import logging
@@ -12,58 +12,62 @@ from typing import Any, Dict
 
 from app_state import state
 from downloader.core import download_video
+from utils import CancelToken
 
 logger = logging.getLogger(__name__)
 
-# Semaphore to limit concurrent downloads
-MAX_CONCURRENT_DOWNLOADS = 3
-_active_downloads = threading.Semaphore(MAX_CONCURRENT_DOWNLOADS)
-_process_queue_lock = threading.RLock()
-
+# Executor for managing download threads
+MAX_WORKERS = 3
+_executor = ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="DLWorker")
+_active_count = 0
+_active_count_lock = threading.Lock()
 
 def process_queue():
     """
     Process items in the queue.
-    Starts new downloads if slots are available.
+    Submits new downloads to the executor if slots are available.
     """
+    global _active_count
+
     if state.shutdown_flag.is_set():
         return
-
-    # Log status (optional, debug only)
-    try:
-        # pylint: disable=protected-access
-        active = MAX_CONCURRENT_DOWNLOADS - _active_downloads._value
-        logger.debug("Process queue check. Active: %d/%d", active, MAX_CONCURRENT_DOWNLOADS)
-    except ValueError:
-        pass
 
     while True:
         if state.shutdown_flag.is_set():
             break
 
-        # Check for slot
-        if not _active_downloads.acquire(blocking=False):
-            break
+        # Check capacity
+        with _active_count_lock:
+            if _active_count >= MAX_WORKERS:
+                break
 
-        # Get next item
-        item = state.queue_manager.claim_next_downloadable()
-        if not item:
-            _active_downloads.release()
-            break
+        # Check for item without claiming yet (optimization)
+        # But queue_manager.claim_next_downloadable() is atomic, so we just try.
 
-        # Start thread
+        # Try to claim
+        # We need to ensure we don't over-submit.
+        # If we claim, we increment active count immediately.
+
+        with _active_count_lock:
+            if _active_count >= MAX_WORKERS:
+                break
+
+            # Optimistically claim
+            item = state.queue_manager.claim_next_downloadable()
+            if not item:
+                break
+
+            _active_count += 1
+
+        # Submit to executor
         try:
-            t = threading.Thread(
-                target=download_task,
-                args=(item,),
-                daemon=True,
-                name=f"DL-{item['url'][:30]}"
-            )
-            t.start()
+            _executor.submit(download_task, item)
         except Exception as e:
-            logger.error("Failed to start download thread: %s", e)
+            logger.error("Failed to submit task: %s", e)
+            with _active_count_lock:
+                _active_count -= 1
             item["status"] = "Error"
-            _active_downloads.release()
+            item["error"] = "Failed to start"
 
 
 def _update_progress_ui(item: Dict[str, Any]):
@@ -75,11 +79,15 @@ def _update_progress_ui(item: Dict[str, Any]):
             pass
 
 
-def _progress_hook_factory(item: Dict[str, Any]):
+def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
     """Creates a closure for the progress hook."""
     def progress_hook(d):
         if state.shutdown_flag.is_set():
             raise InterruptedError("Shutdown initiated")
+
+        # Check cancellation frequently
+        if cancel_token.cancelled:
+            raise InterruptedError("Download Cancelled by user")
 
         if d["status"] == "downloading":
             p_str = d.get("_percent_str", "0%").replace("%", "")
@@ -124,22 +132,31 @@ def download_task(item: Dict[str, Any]):
     Worker function for a single download.
     Executes the download, updates status, and logs to history.
     """
+    global _active_count
+
     url = item["url"]
-    logger.info("Starting download: %s", url)
+    item_id = item.get("id")
+
+    # Create and register CancelToken
+    cancel_token = CancelToken()
+    if item_id:
+        state.queue_manager.register_cancel_token(item_id, cancel_token)
+
+    logger.info("Starting download task: %s", url)
 
     try:
         item["status"] = "Downloading"
         _update_progress_ui(item)
 
         # Prepare hooks and execute
-        phook = _progress_hook_factory(item)
+        phook = _progress_hook_factory(item, cancel_token)
 
         info = download_video(
             url=url,
             output_path=item.get("output_path", "."),
             video_format=item.get("video_format", "best"),
             progress_hook=phook,
-            cancel_token=None,  # Logic for cancellation would go here
+            cancel_token=cancel_token,
             playlist=item.get("playlist", False),
             sponsorblock=item.get("sponsorblock", False),
             use_aria2c=item.get("use_aria2c", False),
@@ -162,7 +179,7 @@ def download_task(item: Dict[str, Any]):
     except Exception as e:
         # Check for cancellation
         msg = str(e)
-        if "Cancelled" in msg or item.get("status") == "Cancelled":
+        if "Cancelled" in msg or item.get("status") == "Cancelled" or cancel_token.cancelled:
             logger.info("Download cancelled: %s", url)
             item["status"] = "Cancelled"
         else:
@@ -173,5 +190,17 @@ def download_task(item: Dict[str, Any]):
         _update_progress_ui(item)
 
     finally:
-        _active_downloads.release()
-        process_queue()
+        # Cleanup
+        if item_id:
+            state.queue_manager.unregister_cancel_token(item_id)
+
+        with _active_count_lock:
+            _active_count -= 1
+
+        # Trigger next check in main loop
+        # We need to wake up the background loop in main.py to process more items
+        try:
+             with state.queue_manager._has_work:
+                 state.queue_manager._has_work.notify_all()
+        except Exception:
+            pass

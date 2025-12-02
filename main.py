@@ -2,6 +2,7 @@
 Main application entry point.
 
 Initializes the UI, logging, and starts the main event loop.
+Refactored for event-driven queue processing and cleaner architecture.
 """
 
 import logging
@@ -118,6 +119,7 @@ def main(pg: ft.Page):
     def get_default_download_path():
         """Get a safe default download path for the current platform."""
         try:
+            # Check for Android/iOS specific (not implemented here but good to have hooks)
             home = Path.home()
             downloads = home / "Downloads"
             if downloads.exists() and os.access(downloads, os.W_OK):
@@ -197,13 +199,19 @@ def main(pg: ft.Page):
 
         if status == "Queued":
             PAGE.open(ft.SnackBar(content=ft.Text("Added to queue")))
-        process_queue()
+
+        # Trigger processing (redundant with Event, but harmless)
+        # process_queue() # Removed, background loop handles it
 
     def on_cancel_item(item):
         logger.info("User requested cancel for item: %s", item.get("title", "Unknown"))
-        item["status"] = "Cancelled"
-        if state.current_download_item == item and state.cancel_token:
-            state.cancel_token.cancel()
+        item_id = item.get("id")
+        if item_id:
+            state.queue_manager.cancel_item(item_id)
+        else:
+            # Fallback for old items (shouldn't happen with new logic)
+            item["status"] = "Cancelled"
+
         if "control" in item:
             item["control"].update_progress()
 
@@ -225,8 +233,14 @@ def main(pg: ft.Page):
         item["speed"] = ""
         item["eta"] = ""
         item["size"] = ""
+        item["progress"] = 0
         UI.update_queue_view()
-        process_queue()
+        # Notify background loop
+        try:
+             with state.queue_manager._has_work:
+                 state.queue_manager._has_work.notify_all()
+        except Exception:
+            pass
 
     def on_batch_file_result(e: ft.FilePickerResultEvent):
         if not e.files:
@@ -275,7 +289,6 @@ def main(pg: ft.Page):
 
             UI.update_queue_view()
             PAGE.open(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
-            process_queue()
 
         except Exception as ex:
             logger.error("Failed to import batch file: %s", ex, exc_info=True)
@@ -340,14 +353,27 @@ def main(pg: ft.Page):
     # --- Background Logic ---
 
     def background_loop():
-        """Background loop for queue processing."""
+        """
+        Background loop for queue processing.
+        Waits for signals from QueueManager instead of busy-waiting.
+        """
         logger.info("Background loop started.")
         while not state.shutdown_flag.is_set():
-            time.sleep(2)
             try:
+                # Wait for work or timeout (to check shutdown flag)
+                # wait_for_items returns True if notified, False if timeout
+                state.queue_manager.wait_for_items(timeout=2.0)
+
+                # Check scheduled items
+                if state.queue_manager.update_scheduled_items(datetime.now()) > 0:
+                    UI.update_queue_view()
+
+                # Process queue
                 process_queue()
+
             except Exception as e:
-                logger.error("Error in process_queue: %s", e, exc_info=True)
+                logger.error("Error in background_loop: %s", e, exc_info=True)
+                time.sleep(1) # Prevent tight loop on error
         logger.info("Background loop stopped.")
 
     # Start Clipboard Monitor

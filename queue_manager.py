@@ -1,11 +1,15 @@
 """
 Queue Manager module for handling download tasks.
+Refactored for robustness, event-driven architecture, and better cancellation support.
 """
 
 import logging
 import threading
+import uuid
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional
+
+from utils import CancelToken
 
 logger = logging.getLogger(__name__)
 
@@ -27,19 +31,28 @@ class QueueManager:
         self._queue: List[Dict[str, Any]] = []
         # Re-entrant lock for queue operations
         self._lock = threading.RLock()
+
+        # Condition variable for background workers to wait on
+        self._has_work = threading.Condition(self._lock)
+
+        # Listeners for UI updates
         self._listeners: List[Callable[[], None]] = []
         self._listeners_lock = threading.Lock()
+
+        # Map item IDs to their active CancelTokens
+        self._cancel_tokens: Dict[str, CancelToken] = {}
 
     def get_all(self) -> List[Dict[str, Any]]:
         """Get a copy of the current queue."""
         with self._lock:
             return list(self._queue)
 
-    def get_item_by_index(self, index: int) -> Optional[Dict[str, Any]]:
-        """Get item by index safely."""
+    def get_item_by_id(self, item_id: str) -> Optional[Dict[str, Any]]:
+        """Get item by its unique ID."""
         with self._lock:
-            if 0 <= index < len(self._queue):
-                return self._queue[index]
+            for item in self._queue:
+                if item.get("id") == item_id:
+                    return item
         return None
 
     def add_listener(self, listener: Callable[[], None]):
@@ -75,18 +88,38 @@ class QueueManager:
             if len(self._queue) >= self.MAX_QUEUE_SIZE:
                 raise ValueError("Queue is full")
 
-            logger.info("Adding item: %s", item.get("title", item.get("url")))
+            # Ensure ID
+            if "id" not in item:
+                item["id"] = str(uuid.uuid4())
+
+            # Ensure status
+            if "status" not in item:
+                item["status"] = "Queued"
+
+            logger.info("Adding item to queue: %s (ID: %s)", item.get("title", item.get("url")), item["id"])
             self._queue.append(item)
+
+            # Notify workers that work might be available
+            self._has_work.notify_all()
 
         self._notify_listeners_safe()
 
     def remove_item(self, item: Dict[str, Any]):
-        """Remove an item from the queue."""
+        """Remove an item from the queue and cancel it if running."""
         changed = False
+        item_id = item.get("id")
+
+        # First cancel if running
+        if item_id:
+            self.cancel_item(item_id)
+
         with self._lock:
             if item in self._queue:
                 self._queue.remove(item)
                 changed = True
+                # Clean up token if any (just in case cancel_item didn't catch it)
+                if item_id in self._cancel_tokens:
+                    del self._cancel_tokens[item_id]
 
         if changed:
             self._notify_listeners_safe()
@@ -117,6 +150,9 @@ class QueueManager:
                         item["scheduled_time"] = None
                         updated += 1
 
+            if updated > 0:
+                self._has_work.notify_all()
+
         if updated:
             self._notify_listeners_safe()
         return updated
@@ -145,3 +181,41 @@ class QueueManager:
                     item["_allocated_at"] = now
                     return item
         return None
+
+    def wait_for_items(self, timeout: float = 2.0) -> bool:
+        """
+        Wait until an item is added or status changes to Queued.
+        Returns True if notified, False if timed out.
+        """
+        with self._has_work:
+            return self._has_work.wait(timeout)
+
+    # --- Cancellation Handling ---
+
+    def register_cancel_token(self, item_id: str, token: CancelToken):
+        """Register a cancel token for a running download."""
+        with self._lock:
+            self._cancel_tokens[item_id] = token
+
+    def unregister_cancel_token(self, item_id: str):
+        """Unregister a cancel token (e.g. when finished)."""
+        with self._lock:
+            if item_id in self._cancel_tokens:
+                del self._cancel_tokens[item_id]
+
+    def cancel_item(self, item_id: str):
+        """Request cancellation of a specific item."""
+        with self._lock:
+            token = self._cancel_tokens.get(item_id)
+            if token:
+                logger.info("Cancelling item ID: %s", item_id)
+                token.cancel()
+
+            # Update status if in queue but not running yet
+            for item in self._queue:
+                if item.get("id") == item_id:
+                    if item["status"] in ["Queued", "Allocating", "Downloading"]:
+                        item["status"] = "Cancelled"
+                    break
+
+        self._notify_listeners_safe()
