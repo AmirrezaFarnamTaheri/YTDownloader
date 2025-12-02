@@ -47,10 +47,13 @@ class GenericDownloader:
         if not filename:
             filename = "downloaded_file"
 
-        # Sanitize filename (Path Traversal Protection)
+        # Sanitize filename (Path Traversal Protection + General Safety)
         # Remove null bytes, directory separators, and control chars
         filename = os.path.basename(filename)
-        filename = "".join(c for c in filename if c.isalnum() or c in "._- ")
+        # More robust sanitization: remove known invalid characters on Windows/Unix
+        invalid_chars = r'<>:"/\\|?*' + ''.join(map(chr, range(32)))
+        filename = "".join(c for c in filename if c not in invalid_chars)
+
         return filename
 
     @staticmethod
@@ -133,8 +136,12 @@ class GenericDownloader:
             if not filename:
                 filename = os.path.basename(url.split("?")[0]) or "downloaded_file"
 
-        # Sanitize filename again just in case
+        # Sanitize filename again just in case (e.g. if filename came from arg)
         filename = os.path.basename(filename)
+        # Robust sanitization
+        invalid_chars = r'<>:"/\\|?*' + ''.join(map(chr, range(32)))
+        filename = "".join(c for c in filename if c not in invalid_chars)
+
         final_path = os.path.join(output_path, filename)
 
         # Ensure final path is inside output path (Path Traversal check)
@@ -225,9 +232,6 @@ class GenericDownloader:
                                     last_update_time = current_time
 
                                     # Periodic flush to disk for data integrity
-                                    # Not on every chunk to avoid performance kill,
-                                    # but maybe on update interval?
-                                    # Python buffering handles this mostly, but os.fsync ensures persistence.
                                     try:
                                         f.flush()
                                         os.fsync(f.fileno())

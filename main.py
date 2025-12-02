@@ -9,6 +9,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 import traceback
 from datetime import datetime
 from contextlib import contextmanager
@@ -35,13 +36,49 @@ CONTROLLER: Optional[AppController] = None
 
 @contextmanager
 def startup_timeout(seconds=10):
-    """Context manager for timeout on startup operations."""
+    """Context manager for timeout on startup operations.
+    Thread-based implementation compatible with Windows.
+    """
 
-    def timeout_handler(signum, frame):
-        # pylint: disable=unused-argument
-        raise TimeoutError(f"Operation timed out after {seconds} seconds")
+    # Simple container for result/exception
+    result = {"completed": False, "exception": None}
 
-    if os.name != "nt":  # signal.alarm not available on Windows
+    def target(func, *args, **kwargs):
+        try:
+            func(*args, **kwargs)
+            result["completed"] = True
+        except Exception as e:
+             result["exception"] = e
+
+    # This context manager is tricky because 'yield' gives control back to caller.
+    # To timeout the caller's block, we'd need to run the caller's block in a thread.
+    # But usually the caller's block IS the main thread initialization.
+    # On Windows, we can't interrupt the main thread easily without signals.
+
+    # Alternative: Use a timer thread that kills the process if not cancelled?
+    # That's drastic but "TimeoutError" implies we give up.
+
+    timer = None
+    if os.name == "nt":
+        def kill_on_timeout():
+            # If we reach here, timeout happened
+            logger.error(f"Startup timed out after {seconds} seconds (Windows fallback). Exiting.")
+            # We can't raise exception in main thread, so we exit.
+            os._exit(1) # pylint: disable=protected-access
+
+        timer = threading.Timer(seconds, kill_on_timeout)
+        timer.start()
+        try:
+            yield
+        finally:
+            if timer:
+                timer.cancel()
+    else:
+        # Unix-like systems use signal
+        def timeout_handler(signum, frame):
+            # pylint: disable=unused-argument
+            raise TimeoutError(f"Operation timed out after {seconds} seconds")
+
         old_handler = signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(seconds)
         try:
@@ -49,10 +86,6 @@ def startup_timeout(seconds=10):
         finally:
             signal.alarm(0)
             signal.signal(signal.SIGALRM, old_handler)
-    else:
-        # Windows fallback
-        logger.warning("Startup timeout not enforced on Windows (platform limitation)")
-        yield
 
 
 def main(pg: ft.Page):
@@ -153,9 +186,14 @@ def global_crash_handler(exctype, value, tb):
         print("=" * 60 + "\n", file=sys.stderr)
 
         if os.name == "nt":
-            import ctypes  # pylint: disable=import-outside-toplevel
-            msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
-            ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
+            # Only show message box if we have a UI or are not headless?
+            # We can't easily detect headless, but we can try catch
+            try:
+                import ctypes  # pylint: disable=import-outside-toplevel
+                msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
+                ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
+            except Exception:
+                pass
     except Exception:  # pylint: disable=broad-exception-caught
         pass
 

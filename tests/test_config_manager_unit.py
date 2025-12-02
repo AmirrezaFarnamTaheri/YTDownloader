@@ -30,14 +30,11 @@ class TestConfigManager(unittest.TestCase):
         # Check permissions
         mock_chmod.assert_called_with("/tmp/test_config.json", 0o600)
 
-    def test_validate_config(self):
-        # Valid config
-        ConfigManager._validate_config({"theme_mode": "System"})
-
-        # Invalid type
+    def test_save_config_validation(self):
+        # Invalid type should raise ValueError
         with self.assertRaises(ValueError):
-            ConfigManager._validate_config([])
+            ConfigManager.save_config([])
 
-        # Invalid field type
+        # Invalid field type should raise ValueError
         with self.assertRaises(ValueError):
-            ConfigManager._validate_config({"use_aria2c": "True"})
+            ConfigManager.save_config({"use_aria2c": "True"})

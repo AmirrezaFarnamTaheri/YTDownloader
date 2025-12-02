@@ -83,14 +83,21 @@ class TestGetVideoInfo(unittest.TestCase):
         self.assertEqual(info["title"], "No Subtitles Video")
         self.assertEqual(len(info["subtitles"]), 0)
 
+    @patch("downloader.info.GenericExtractor.get_metadata")
+    @patch("downloader.info.TelegramExtractor.get_metadata")
     @patch("downloader.info.yt_dlp.YoutubeDL")
-    def test_get_video_info_download_error(self, mock_youtube_dl):
+    def test_get_video_info_download_error(self, mock_youtube_dl, mock_tg, mock_generic):
         """Test handling of download errors during info fetching."""
         mock_instance = MagicMock()
         mock_youtube_dl.return_value.__enter__.return_value = mock_instance
         mock_instance.extract_info.side_effect = yt_dlp.utils.DownloadError(
             "Video not found"
         )
+
+        # Ensure fallbacks return None too
+        mock_tg.return_value = None
+        mock_generic.return_value = None
+
         result = get_video_info("https://www.youtube.com/watch?v=invalid")
         self.assertIsNone(result)
 

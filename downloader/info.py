@@ -2,7 +2,7 @@ import logging
 import os
 import signal
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 import yt_dlp
 
@@ -44,15 +44,23 @@ def get_video_info(
     # 1. Check for Telegram URL explicitly first (faster)
     if TelegramExtractor.is_telegram_url(url):
         logger.info("Detected Telegram URL. Attempting to scrape...")
-        # Since extract now requires output_path and performs download,
-        # we can't use it for pure info fetching easily unless we refactor extraction logic.
-        # However, for info fetching, we might just want metadata.
-        # But generic/telegram extractors are tied to download currently.
-        # Let's skip for now or mock output path if we accept download overhead (bad).
-
-        # Correct approach: Separate extraction from download in Extractors.
-        # For now, we fall back to yt-dlp which might fail, then generic.
-        pass
+        info = TelegramExtractor.get_metadata(url)
+        if info:
+            # Map to standard structure
+            return {
+                "title": info.get("title", "Unknown"),
+                "thumbnail": info.get("thumbnail"),
+                "duration": "N/A",
+                "subtitles": {},
+                "video_streams": [{
+                    "format_id": "telegram_direct",
+                    "ext": "mp4",
+                    "resolution": "Unknown",
+                    "filesize": None
+                }],
+                "audio_streams": [],
+                "original_url": url,
+            }
 
     try:
         ydl_opts: Dict[str, Any] = {
@@ -88,14 +96,22 @@ def get_video_info(
                 logger.debug(
                     "yt-dlp returned Generic extractor with no formats. Trying GenericExtractor fallback."
                 )
-                # GenericExtractor.extract performs download. We just want info (HEAD).
-                # We can call GenericDownloader.download with a dry-run flag or just HEAD?
-                # But GenericDownloader.download actually downloads.
-                # For get_video_info, we probably just want to know if it exists and filename/size.
-                # We can replicate GenericDownloader logic here or refactor.
-                # For safety, let's skip automatic generic fallback for INFO fetching to avoid accidental large downloads.
-                # Or use a dummy output path?
-                pass
+                generic_info = GenericExtractor.get_metadata(url)
+                if generic_info:
+                     return {
+                        "title": generic_info.get("title"),
+                        "thumbnail": None,
+                        "duration": "N/A",
+                        "subtitles": {},
+                        "video_streams": [{
+                            "format_id": "direct",
+                            "ext": "unknown",
+                            "filesize": generic_info.get("filesize"),
+                            "resolution": "N/A"
+                        }],
+                        "audio_streams": [],
+                        "original_url": url,
+                     }
 
             # Process yt-dlp info
             subtitles: Dict[str, List[str]] = {}
@@ -185,9 +201,25 @@ def get_video_info(
             return result
 
     except yt_dlp.utils.DownloadError as e:
-        logger.warning(f"yt-dlp failed: {e}.")
-        # We removed GenericExtractor fallback here because extract() requires output_path and performs download.
-        # This fixes the test failure where call to extract() raised TypeError.
+        logger.warning(f"yt-dlp failed: {e}. Trying Generic/Telegram fallback.")
+
+        # Fallback for when yt-dlp fails (e.g. unknown service)
+        generic_info = GenericExtractor.get_metadata(url)
+        if generic_info:
+                return {
+                "title": generic_info.get("title"),
+                "thumbnail": None,
+                "duration": "N/A",
+                "subtitles": {},
+                "video_streams": [{
+                    "format_id": "direct",
+                    "ext": "unknown",
+                    "filesize": generic_info.get("filesize"),
+                    "resolution": "N/A"
+                }],
+                "audio_streams": [],
+                "original_url": url,
+                }
         return None
     except Exception as e:
         logger.error(f"Unexpected error while fetching video info: {e}", exc_info=True)

@@ -51,6 +51,13 @@ class DownloadOptions:
         """Parse HH:MM:SS to seconds."""
         if not time_str:
             return 0.0
+
+        # First try direct float conversion
+        try:
+            return float(time_str)
+        except ValueError:
+            pass
+
         try:
             parts = list(map(int, time_str.split(":")))
             if len(parts) == 3:

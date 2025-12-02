@@ -245,23 +245,36 @@ class SyncManager:
 
                     # Write to temp then move
                     temp_db = target_db_path + ".tmp"
-                    with open(temp_db, "wb") as f_out:
-                        with zf.open("history.db") as f_in:
-                            shutil.copyfileobj(f_in, f_out)
 
-                    # Atomic replacement (try)
-                    if os.path.exists(target_db_path):
-                        try:
-                            os.remove(target_db_path)
-                        except OSError:
-                            logger.warning(
-                                "Could not remove existing DB, import might be incomplete if locked"
-                            )
-                            # If we can't delete, we can't replace.
-                            # Just leave the .tmp file? Or try to overwrite?
+                    try:
+                        with open(temp_db, "wb") as f_out:
+                            with zf.open("history.db") as f_in:
+                                shutil.copyfileobj(f_in, f_out)
 
-                    if not os.path.exists(target_db_path):
-                        os.rename(temp_db, target_db_path)
+                        # Atomic replacement (try)
+                        if os.path.exists(target_db_path):
+                            try:
+                                os.remove(target_db_path)
+                            except OSError:
+                                logger.warning(
+                                    "Could not remove existing DB, import might be incomplete if locked"
+                                )
+                                # If we can't delete, we can't replace.
+                                # Just leave the .tmp file? Or try to overwrite?
+
+                        if not os.path.exists(target_db_path):
+                            os.rename(temp_db, target_db_path)
+                        else:
+                            # This case happens if os.remove failed.
+                            logger.error("Failed to replace database file, it may be locked.")
+
+                    finally:
+                        # Clean up the temp file if it still exists
+                        if os.path.exists(temp_db):
+                            try:
+                                os.remove(temp_db)
+                            except OSError as e:
+                                logger.error("Failed to clean up temporary DB file %s: %s", temp_db, e)
 
             logger.info("Import completed")
         except Exception as e:
