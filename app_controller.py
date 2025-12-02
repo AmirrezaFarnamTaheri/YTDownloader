@@ -254,9 +254,14 @@ class AppController:
 
         path = e.files[0].path
         try:
-            count = self.batch_importer.import_from_file(path)
+            count, truncated = self.batch_importer.import_from_file(path)
             self.ui.update_queue_view()
-            self.page.open(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
+
+            msg = f"Imported {count} URLs"
+            if truncated:
+                msg += " (Truncated to limit of 100)"
+
+            self.page.open(ft.SnackBar(content=ft.Text(msg)))
 
         except Exception as ex:  # pylint: disable=broad-exception-caught
             logger.error("Failed to import batch file: %s", ex, exc_info=True)

@@ -65,6 +65,9 @@ class TelegramExtractor:
                      download_url = og_vid.get("content")
 
             if download_url:
+                from urllib.parse import urljoin
+                # Normalize protocol-relative and relative paths
+                download_url = urljoin(url, download_url)
                 return {
                     "title": title,
                     "description": description,

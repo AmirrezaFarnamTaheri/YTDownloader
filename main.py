@@ -59,17 +59,19 @@ def startup_timeout(seconds=10):
     # That's drastic but "TimeoutError" implies we give up.
 
     timer = None
+    timed_out = {"flag": False}
     if os.name == "nt":
-        def kill_on_timeout():
-            # If we reach here, timeout happened
-            logger.error(f"Startup timed out after {seconds} seconds (Windows fallback). Exiting.")
-            # We can't raise exception in main thread, so we exit.
-            os._exit(1) # pylint: disable=protected-access
+        def mark_timeout():
+            logger.error(f"Startup timed out after {seconds} seconds (Windows fallback).")
+            timed_out["flag"] = True
 
-        timer = threading.Timer(seconds, kill_on_timeout)
+        timer = threading.Timer(seconds, mark_timeout)
+        timer.daemon = True  # Ensure timer doesn't block exit
         timer.start()
         try:
             yield
+            if timed_out["flag"]:
+                raise TimeoutError(f"Operation timed out after {seconds} seconds")
         finally:
             if timer:
                 timer.cancel()

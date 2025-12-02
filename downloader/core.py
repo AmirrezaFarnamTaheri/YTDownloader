@@ -189,7 +189,11 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
             "4k": 2160, "1440p": 1440, "1080p": 1080, "720p": 720, "480p": 480
         }
         h = height_map.get(options.video_format, 1080)
-        ydl_opts["format"] = f"bestvideo[height>={h}]+bestaudio/best"
+        # Fix logic: user wants resolution R, which typically means "up to R" or "closest to R".
+        # However, yt-dlp "height>=R" means "at least R". Usually users selecting "1080p" want max 1080p.
+        # So "height<=R" is safer to avoid pulling 4k when 1080p is asked.
+        # But we want the BEST up to that.
+        ydl_opts["format"] = f"bestvideo[height<={h}]+bestaudio/best"
 
     if not ffmpeg_available and options.video_format != "audio":
         ydl_opts["format"] = "best"

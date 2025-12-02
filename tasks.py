@@ -82,7 +82,8 @@ def process_queue():
 def _wrapped_download_task(item):
     """Wrapper to ensure semaphore release."""
     try:
-        download_task(item)
+        if not state.shutdown_flag.is_set():
+            download_task(item)
     finally:
         _submission_throttle.release()
         with _active_count_lock:

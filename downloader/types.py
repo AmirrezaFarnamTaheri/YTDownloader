@@ -48,22 +48,27 @@ class DownloadOptions:
 
     @staticmethod
     def _parse_time(time_str: Optional[str]) -> float:
-        """Parse HH:MM:SS to seconds."""
+        """
+        Parse time string (HH:MM:SS or seconds) to seconds.
+        Raises ValueError for invalid formats.
+        """
         if not time_str:
             return 0.0
 
-        # First try direct float conversion
         try:
-            return float(time_str)
-        except ValueError:
-            pass
+            # Try direct float conversion for seconds
+            if ":" not in time_str:
+                return float(time_str)
 
-        try:
+            # Parse HH:MM:SS format
             parts = list(map(int, time_str.split(":")))
             if len(parts) == 3:
-                return parts[0] * 3600 + parts[1] * 60 + parts[2]
+                return float(parts[0] * 3600 + parts[1] * 60 + parts[2])
             if len(parts) == 2:
-                return parts[0] * 60 + parts[1]
-            return float(parts[0])
-        except ValueError:
-            return 0.0
+                return float(parts[0] * 60 + parts[1])
+            if len(parts) == 1:
+                return float(parts[0])
+
+            raise ValueError(f"Invalid time format: {time_str}")
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Could not parse time string: {time_str}") from e

@@ -52,7 +52,10 @@ class GenericDownloader:
         filename = os.path.basename(filename)
         # More robust sanitization: remove known invalid characters on Windows/Unix
         invalid_chars = r'<>:"/\\|?*' + ''.join(map(chr, range(32)))
-        filename = "".join(c for c in filename if c not in invalid_chars)
+        filename = "".join(c for c in filename if c not in invalid_chars).strip()
+
+        if not filename:
+            filename = "downloaded_file"
 
         return filename
 
