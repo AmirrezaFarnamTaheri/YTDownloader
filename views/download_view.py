@@ -58,6 +58,7 @@ class DownloadView(BaseView):
             border_radius=8,
             on_submit=lambda e: self._on_fetch_click(e),
             prefix_icon=ft.Icons.LINK,
+            bgcolor=Theme.Surface.INPUT,
         )
 
         self.fetch_btn = ft.ElevatedButton(
@@ -87,6 +88,7 @@ class DownloadView(BaseView):
                 ft.dropdown.Option("480p", "480p"),
             ],
             value="best",
+            bgcolor=Theme.Surface.INPUT,
         )
 
         self.audio_format_dd = ft.Dropdown(
@@ -94,6 +96,7 @@ class DownloadView(BaseView):
             width=180,
             border_radius=8,
             visible=False,
+            bgcolor=Theme.Surface.INPUT,
         )
 
         self.subtitle_dd = ft.Dropdown(
@@ -110,6 +113,7 @@ class DownloadView(BaseView):
                 ft.dropdown.Option("auto", "Auto-generated"),
             ],
             value="None",
+            bgcolor=Theme.Surface.INPUT,
         )
 
         # 3. Switches & Checkboxes
@@ -123,14 +127,16 @@ class DownloadView(BaseView):
             width=140,
             disabled=True,
             border_radius=8,
-            text_size=12
+            text_size=12,
+            bgcolor=Theme.Surface.INPUT,
         )
         self.time_end = ft.TextField(
             label="End (HH:MM:SS)",
             width=140,
             disabled=True,
             border_radius=8,
-            text_size=12
+            text_size=12,
+            bgcolor=Theme.Surface.INPUT,
         )
 
         self.cookies_dd = ft.Dropdown(
@@ -144,6 +150,7 @@ class DownloadView(BaseView):
                 ft.dropdown.Option("edge", "Edge"),
             ],
             value="None",
+            bgcolor=Theme.Surface.INPUT,
         )
 
         # 5. Main Actions
@@ -232,10 +239,14 @@ class DownloadView(BaseView):
                 ],
                 spacing=10
             ),
-            bgcolor=Theme.Surface.BG,
+            bgcolor=Theme.Surface.CARD,
             padding=20,
             border_radius=12,
             border=ft.border.all(1, Theme.Divider.COLOR),
+            shadow=ft.BoxShadow(
+                blur_radius=10,
+                color=ft.Colors.with_opacity(0.1, ft.Colors.BLACK),
+            )
         )
 
         # Actions
@@ -252,7 +263,7 @@ class DownloadView(BaseView):
         if sys.platform in ("win32", "linux", "darwin"):
             footer.controls.append(
                 ft.TextButton(
-                    "Open Downloads",
+                    "Open Downloads Folder",
                     icon=ft.Icons.FOLDER_OPEN,
                     on_click=lambda _: self._open_downloads_folder()
                 )

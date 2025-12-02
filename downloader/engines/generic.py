@@ -217,22 +217,18 @@ class GenericDownloader:
         return {}
 
 
-# Legacy wrapper for compatibility
+# Legacy wrapper for compatibility (removed download_item)
 def download_generic(
     url: str,
     output_path: str,
     filename: Optional[str],
     progress_hook: Callable,
-    download_item: Dict[str, Any],
     cancel_token: Optional[Any] = None,
     max_retries: int = 3,
 ):
     """
     Legacy wrapper for GenericDownloader.download.
     """
-    def hook_wrapper(d):
-        progress_hook(d, download_item)
-
     return GenericDownloader.download(
-        url, output_path, hook_wrapper, cancel_token, max_retries, filename
+        url, output_path, progress_hook, cancel_token, max_retries, filename
     )

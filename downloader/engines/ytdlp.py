@@ -82,7 +82,6 @@ class YTDLPWrapper:
                 # Handle Playlists
                 if "entries" in info:
                     # Return summary for playlist
-                    # We might want to return the first item's path or the directory?
                     return {
                         "filename": info.get("title", "Playlist"),
                         "filepath": options.get("outtmpl", "."),
@@ -110,7 +109,7 @@ class YTDLPWrapper:
         except Exception as e:
             # Detect cancellation to re-raise cleanly
             msg = str(e)
-            if "Cancelled" in msg:
+            if "Cancelled" in msg or "Interrupted" in msg:
                  logger.info("Download cancelled via hook.")
                  raise InterruptedError("Download Cancelled by user") from e
 

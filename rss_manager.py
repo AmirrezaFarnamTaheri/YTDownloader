@@ -33,31 +33,13 @@ class RSSManager:
 
     def _save_feeds(self):
         """Persist feeds to config."""
-        # Use config_manager's API. If it's a dict, we might need a save method?
-        # The previous code used config.set() which suggests a wrapper object.
-        # Assuming config_manager has .set() or behaves like a synced dict.
-        # If it's just a dict, we might need to trigger a save.
-        # Based on previous code: `self.config.set("rss_feeds", self.feeds)`
-        if hasattr(self.config_manager, "set"):
-            self.config_manager.set("rss_feeds", self.feeds)
-        elif hasattr(self.config_manager, "save_config"):
-            # If it's the ConfigManager CLASS (static), we might need to pass the whole dict
-            # This part depends on how ConfigManager is passed.
-            # In `main.py`, it passes `state.config` which is a dict.
-            # In `app_state.py`, `state.config` is loaded via `ConfigManager.load_config()`.
-            # So `self.config` passed here is likely a DICT.
-            # A plain dict doesn't have .set().
-            # Refactoring to assume it's a dict and we need to call ConfigManager.save_config.
-            # But simpler: let's assume the user will inject a wrapper or we import ConfigManager.
-            pass
-
-        # To be safe and compatible with the "deep audit" philosophy, let's explicitly save using the manager class
         from config_manager import ConfigManager
 
-        # Reload current config to avoid overwriting other keys, update feeds, save
-        full_config = ConfigManager.load_config()
-        full_config["rss_feeds"] = self.feeds
-        ConfigManager.save_config(full_config)
+        with self._lock:
+            # Reload current config to avoid overwriting other keys, update feeds, save
+            full_config = ConfigManager.load_config()
+            full_config["rss_feeds"] = self.feeds
+            ConfigManager.save_config(full_config)
 
     def get_feeds(self) -> List[Dict[str, str]]:
         """Return list of feeds."""
