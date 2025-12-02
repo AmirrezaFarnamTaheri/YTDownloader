@@ -31,6 +31,7 @@ class DownloadOptions:
     proxy: Optional[str] = None
     rate_limit: Optional[str] = None
     download_item: Optional[Dict[str, Any]] = None
+    filename: Optional[str] = None
 
     def validate(self):
         """Perform validation on the options."""

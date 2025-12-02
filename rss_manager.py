@@ -105,7 +105,7 @@ class RSSManager:
                     logger.warning("XML parse error for %s: %s", url, e)
                     return []
 
-            items = []
+            items: List[Dict[str, Any]] = []
             if "feed" in root.tag:  # Atom
                 RSSManager._parse_atom_feed(root, items, instance, url)
             else:  # RSS

@@ -187,8 +187,9 @@ class GenericDownloader:
         final_path = os.path.join(output_path, filename)
 
         # Ensure final path is inside output path (Path Traversal check)
-        if not os.path.commonpath([final_path, output_path]) == output_path:
-            # Should be covered by basename, but extra safety
+        final_dir = os.path.dirname(os.path.abspath(final_path))
+        base_dir = os.path.abspath(output_path)
+        if os.path.commonpath([final_dir, base_dir]) != base_dir:
             raise ValueError("Detected path traversal attempt in filename")
 
         headers = {

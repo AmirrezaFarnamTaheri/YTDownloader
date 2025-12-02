@@ -58,9 +58,8 @@ class DownloadPreviewCard(ft.Container):
 
         self.title_text.value = info.get("title", "Unknown Title")
         self.thumbnail.src = info.get("thumbnail", "")
-        self.duration_text.value = info.get("duration_string") or str(
-            info.get("duration", "")
-        )
+        duration = info.get("duration_string") or info.get("duration")
+        self.duration_text.value = str(duration) if duration else ""
         self.author_text.value = info.get("uploader", "Unknown Channel")
 
         self.visible = True

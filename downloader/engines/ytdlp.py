@@ -83,7 +83,8 @@ class YTDLPWrapper:
 
         try:
             logger.info("Starting yt-dlp download: %s", url)
-            with yt_dlp.YoutubeDL(options) as ydl:
+            # mypy: options is dict[str, Any], but YoutubeDL expects _Params | None
+            with yt_dlp.YoutubeDL(options) as ydl:  # type: ignore[arg-type]
                 # Extract info and download
                 info = ydl.extract_info(url, download=True)
 

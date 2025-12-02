@@ -128,41 +128,47 @@ def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
     """Creates a closure for the progress hook."""
 
     def progress_hook(d):
-        if state.shutdown_flag.is_set():
-            raise InterruptedError("Shutdown initiated")
+        try:
+            if state.shutdown_flag.is_set():
+                raise InterruptedError("Shutdown initiated")
 
-        # Check cancellation and pause state via token check
-        cancel_token.check()
+            # Check cancellation and pause state via token check
+            cancel_token.check()
 
-        status = d.get("status")
+            status = d.get("status")
 
-        if status == "downloading":
-            p_raw = d.get("_percent_str", "0%")
-            # Defensive coding
-            if not isinstance(p_raw, str):
-                p_raw = "0%"
+            if status == "downloading":
+                p_raw = d.get("_percent_str", "0%")
+                # Defensive coding
+                if not isinstance(p_raw, str):
+                    p_raw = "0%"
 
-            p_str = p_raw.replace("%", "")
-            try:
-                progress = float(p_str) / 100.0
-            except (ValueError, TypeError):
-                progress = 0.0
+                p_str = p_raw.replace("%", "")
+                try:
+                    progress = float(p_str) / 100.0
+                except (ValueError, TypeError):
+                    progress = 0.0
 
-            # Atomic-ish local update (UI reads from this dict reference)
-            item["progress"] = progress
-            item["speed"] = d.get("_speed_str", "") or "N/A"
-            item["eta"] = d.get("_eta_str", "") or "N/A"
-            item["size"] = d.get("_total_bytes_str", "") or "N/A"
-            _update_progress_ui(item)
+                # Atomic-ish local update (UI reads from this dict reference)
+                item["progress"] = progress
+                item["speed"] = d.get("_speed_str", "") or "N/A"
+                item["eta"] = d.get("_eta_str", "") or "N/A"
+                item["size"] = d.get("_total_bytes_str", "") or "N/A"
+                _update_progress_ui(item)
 
-        elif status == "finished":
-            item["progress"] = 1.0
-            item["status"] = "Processing"
-            _update_progress_ui(item)
+            elif status == "finished":
+                item["progress"] = 1.0
+                item["status"] = "Processing"
+                _update_progress_ui(item)
 
-        else:
-            # Ignore other statuses or unknown
-            pass
+            else:
+                # Ignore other statuses or unknown
+                pass
+        except InterruptedError:
+            # Re-raise cancellation to stop download promptly
+            raise
+        except Exception as e:
+            logger.warning("Progress hook error ignored: %s", e)
 
     return progress_hook
 
@@ -174,11 +180,11 @@ def _log_to_history(item: Dict[str, Any], filepath: str):
 
         HistoryManager.add_entry(
             item["url"],
-            item.get("title", item["url"]),
-            item.get("output_path", "."),
-            item.get("video_format", "best"),
+            str(item.get("title", item["url"])),
+            str(item.get("output_path", ".")),
+            str(item.get("video_format", "best")),
             "Completed",
-            item.get("size", "Unknown"),
+            str(item.get("size", "Unknown")),
             filepath,
         )
     except Exception as e:
@@ -246,11 +252,12 @@ def download_task(item: Dict[str, Any]):
     except Exception as e:
         # Check for cancellation
         msg = str(e)
-        if (
+        is_cancelled = (
             "Cancelled" in msg
             or item.get("status") == "Cancelled"
-            or cancel_token.cancelled
-        ):
+            or (cancel_token is not None and hasattr(cancel_token, "cancelled") and cancel_token.cancelled)
+        )
+        if is_cancelled:
             logger.info("Download cancelled: %s", url)
 
             # Ensure status is definitely cancelled and reset progress

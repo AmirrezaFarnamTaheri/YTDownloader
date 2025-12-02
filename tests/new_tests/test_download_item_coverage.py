@@ -34,7 +34,7 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
             ("https://youtube.com/v/123", ft.Icons.ONDEMAND_VIDEO),
             ("https://t.me/channel/123", ft.Icons.TELEGRAM),
             ("https://x.com/user/status/123", ft.Icons.ALTERNATE_EMAIL),
-            ("https://instagram.com/p/123", ft.Icons.CAMERA_ALT),
+            ("https://instagram.com/p/123", ft.Icons.PHOTO_CAMERA),
             ("http://other.com", ft.Icons.INSERT_DRIVE_FILE),
         ]
 

@@ -65,7 +65,7 @@ class TelegramExtractor:
                     download_url = og_vid.get("content")
 
             if download_url:
-                from urllib.parse import urljoin
+                from urllib.parse import urljoin, urlparse
 
                 # Normalize whitespace
                 download_url = (download_url or "").strip()
@@ -77,15 +77,22 @@ class TelegramExtractor:
                 else:
                     # Normalize relative paths against the page URL
                     download_url = urljoin(base, download_url)
-                return {
-                    "title": title,
-                    "description": description,
-                    "thumbnail": thumbnail,
-                    "webpage_url": url,
-                    "direct_url": download_url,
-                    "extractor": "telegram",
-                    "duration": 0,  # Unknown
-                }
+
+                # Validate final scheme to avoid javascript:, data:, etc.
+                parsed = urlparse(download_url)
+                if parsed.scheme not in ("http", "https"):
+                    download_url = None
+
+                if download_url:
+                    return {
+                        "title": title,
+                        "description": description,
+                        "thumbnail": thumbnail,
+                        "webpage_url": url,
+                        "direct_url": download_url,
+                        "extractor": "telegram",
+                        "duration": 0,  # Unknown
+                    }
             return None
 
         except Exception as e:
@@ -112,12 +119,24 @@ class TelegramExtractor:
             download_url = metadata["direct_url"]
             logger.info("Found media URL: %s", download_url)
 
-            # Sanitize filename
+            # Sanitize filename robustly
             url_path = urlparse(url).path
             # Get the last part of the path, e.g., '123' from '/channel/123'
             file_id = url_path.strip("/").split("/")[-1]
-            # Basic sanitization
-            safe_file_id = "".join(c for c in file_id if c.isalnum() or c in ("_", "-"))
+            # Remove control chars and invalid filesystem chars
+            invalid_chars = r'<>:"/\\|?*' + "".join(map(chr, range(32)))
+            safe_file_id = "".join(c for c in (file_id or "") if c.isalnum() or c in ("_", "-"))
+            safe_file_id = "".join(c for c in safe_file_id if c not in invalid_chars).strip()
+            # Neutralize traversal-like names and problematic leading/trailing dots/spaces
+            if safe_file_id in {".", ".."}:
+                safe_file_id = "media"
+            safe_file_id = safe_file_id.strip(" .")
+            while ".." in safe_file_id:
+                safe_file_id = safe_file_id.replace("..", "-")
+            # Avoid Windows reserved device names
+            reserved = {"CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"}
+            if (safe_file_id.split(".")[0].upper() or "") in reserved:
+                safe_file_id = f"_{safe_file_id}" if safe_file_id else "media"
             filename = f"telegram_{safe_file_id or 'media'}.mp4"
 
             # Delegate to GenericDownloader

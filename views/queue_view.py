@@ -34,6 +34,43 @@ class QueueView(BaseView):
         )
         self.add_control(self.queue_list)
         self._item_controls = {}  # Cache controls by item id
+        self.selected_index = -1
+
+    def select_item(self, index: int):
+        """Highlight selected item."""
+        if not self._item_controls:
+            return
+
+        items = self.queue_manager.get_all()
+        if not items:
+            return
+
+        # Clamp index
+        if index < 0: index = 0
+        if index >= len(items): index = len(items) - 1
+
+        self.selected_index = index
+
+        # Update UI selection state
+        # We need to iterate through controls and set is_selected
+        # This is a bit inefficient for large lists but functional for now
+        for i, item in enumerate(items):
+            ctrl = item.get("control")
+            if ctrl:
+                is_sel = (i == self.selected_index)
+                if ctrl.is_selected != is_sel:
+                    ctrl.is_selected = is_sel
+                    # Rebuild the view content for selection style
+                    ctrl.view.bgcolor = (
+                        ft.Colors.with_opacity(0.1, Theme.PRIMARY) if is_sel else Theme.BG_CARD
+                    )
+                    ctrl.view.update()
+
+    def get_selected_item(self):
+        items = self.queue_manager.get_all()
+        if 0 <= self.selected_index < len(items):
+            return items[self.selected_index]
+        return None
 
     def rebuild(self):
         # logger.debug("Rebuilding QueueView...")

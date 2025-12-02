@@ -84,6 +84,11 @@ class AppState:
         self.clipboard_monitor_active = False
         self.last_clipboard_content = ""
         self.shutdown_flag = threading.Event()
+
+        # New Feature Flags
+        self.high_contrast = self.config.get("high_contrast", False)
+        self.compact_mode = self.config.get("compact_mode", False)
+
         self._video_info_cache: Dict[str, Dict[str, Any]] = {}  # URL -> info
         self._video_info_max_size = 50  # Limit cache size
 

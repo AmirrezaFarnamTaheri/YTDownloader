@@ -100,6 +100,10 @@ class UIManager:
         self.page.on_resize = self._on_page_resize
         self._on_page_resize(None)
 
+        # Apply initial settings
+        if state.compact_mode:
+            self.app_layout.set_compact_mode(True)
+
         return self.app_layout.view
 
     def navigate_to(self, index: int):
