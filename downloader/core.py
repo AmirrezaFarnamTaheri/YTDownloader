@@ -74,6 +74,7 @@ def download_video(
     split_chapters: bool = False,
     proxy: Optional[str] = None,
     rate_limit: Optional[str] = None,
+    download_item: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Downloads a video/audio from the given URL using yt-dlp or generic fallback.
@@ -152,17 +153,23 @@ def download_video(
     if video_format == "audio":
         ydl_opts["format"] = "bestaudio/best"
         if ffmpeg_available:
-            audio_ext = "mp3"
-            if audio_format and audio_format in ["m4a", "wav", "flac", "opus"]:
-                audio_ext = audio_format
+            # Whitelist supported codecs
+            allowed_codecs = {"mp3", "m4a", "wav", "flac", "opus"}
+            codec = (audio_format or "mp3").lower()
+            if codec not in allowed_codecs:
+                codec = "mp3"
 
             ydl_opts["postprocessors"].append(
                 {
                     "key": "FFmpegExtractAudio",
-                    "preferredcodec": audio_ext,
-                    "preferredquality": "192",
+                    "preferredcodec": codec,
+                    "preferredquality": "192" if codec in {"mp3", "m4a", "opus"} else None,
                 }
             )
+            # Remove None values
+            ydl_opts["postprocessors"][-1] = {
+                k: v for k, v in ydl_opts["postprocessors"][-1].items() if v is not None
+            }
     elif video_format in ["4k", "1440p", "1080p", "720p", "480p"]:
         height_map = {
             "4k": 2160, "1440p": 1440, "1080p": 1080, "720p": 720, "480p": 480
@@ -213,7 +220,13 @@ def download_video(
 
     wrapper = YTDLPWrapper(ydl_opts)
     try:
-        return wrapper.download(url, progress_hook, cancel_token)
+        return wrapper.download(
+            url,
+            progress_hook,
+            cancel_token,
+            download_item=download_item,
+            output_path=output_path
+        )
     except Exception as e:
         logger.error("yt-dlp download failed: %s", e)
         raise

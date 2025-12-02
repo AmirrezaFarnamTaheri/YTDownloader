@@ -192,16 +192,21 @@ class RSSManager:
 
         with ThreadPoolExecutor(max_workers=5) as executor:
             future_to_feed = {
-                executor.submit(self.fetch_feed, f["url"]): f
+                # Ensure we pass the URL string, not the dict, if it's a list of dicts
+                executor.submit(self.fetch_feed, f["url"] if isinstance(f, dict) else f): f
                 for f in feeds_snapshot
             }
 
             for future in as_completed(future_to_feed):
                 feed = future_to_feed[future]
+                # Handle string feed input gracefully if tests push strings
+                feed_url = feed["url"] if isinstance(feed, dict) else feed
+                feed_name = feed.get("name", feed_url) if isinstance(feed, dict) else feed_url
+
                 try:
                     items = future.result()
                     for item in items:
-                        item["feed_name"] = feed.get("name", feed["url"])
+                        item["feed_name"] = feed_name
                         # Parse date
                         try:
                             item["date_obj"] = date_parser.parse(item["published"]) if item.get("published") else datetime.min
@@ -209,7 +214,7 @@ class RSSManager:
                             item["date_obj"] = datetime.min
                         all_items.append(item)
                 except Exception as e:
-                    logger.error("Feed fetch failed for %s: %s", feed["url"], e)
+                    logger.error("Feed fetch failed for %s: %s", feed_url, e)
 
         # Sort by date descending
         all_items.sort(key=lambda x: x.get("date_obj", datetime.min), reverse=True)

@@ -25,6 +25,7 @@ class Theme:
     BG_CARD = "#1E293B"  # Slate 800
     BG_HOVER = "#334155"  # Slate 700
     BG_INPUT = "#020617"  # Slate 950
+    BG_SURFACE_VARIANT = "#1E293B"
 
     # Text
     TEXT_PRIMARY = "#F8FAFC"  # Slate 50
@@ -69,12 +70,13 @@ class Theme:
                 secondary=Theme.ACCENT,
                 background=Theme.BG_DARK,
                 surface=Theme.BG_CARD,
+                surface_variant=Theme.BG_SURFACE_VARIANT,
                 error=Theme.ERROR,
                 on_primary=Theme.BG_DARK,
                 on_secondary=Theme.BG_DARK,
                 on_background=Theme.TEXT_PRIMARY,
                 on_surface=Theme.TEXT_PRIMARY,
-                surface_tint=Theme.PRIMARY,
+                surface_tint=ft.Colors.TRANSPARENT, # Removing tint for cleaner look
                 outline=Theme.BORDER,
                 inverse_surface=Theme.TEXT_PRIMARY,
                 on_inverse_surface=Theme.BG_DARK,
@@ -92,7 +94,10 @@ class Theme:
                 thumb_color=Theme.BG_HOVER,
                 radius=4,
                 thickness=6,
-            )
+                interactive=True,
+            ),
+            # Standardize font (optional, if custom fonts were included)
+            # font_family="Roboto",
         )
 
     @staticmethod
@@ -116,4 +121,5 @@ class Theme:
             ),
             content_padding=15,
             prefix_icon=prefix_icon,
+            is_dense=True, # Improved density
         )

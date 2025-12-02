@@ -73,6 +73,11 @@ class ConfigManager:
 
         if config_path.exists():
             try:
+                # Check for empty file first
+                if config_path.stat().st_size == 0:
+                     logger.warning("Config file is empty, using defaults")
+                     return config
+
                 with open(config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     ConfigManager._validate_config(data)
@@ -85,8 +90,10 @@ class ConfigManager:
                     config_path.rename(backup)
                 except OSError:
                     pass
+                return config # Explicitly return defaults
             except Exception as e:
                 logger.error("Failed to load config: %s", e)
+                return config
 
         return config
 
@@ -98,15 +105,14 @@ class ConfigManager:
         config_path = ConfigManager._resolve_config_file()
         ConfigManager._validate_config(config)
 
+        temp_path = None
+
         try:
             # Ensure parent dir exists
             if not config_path.parent.exists():
                 config_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Atomic write via temp file
-            # On Windows, we can't open a NamedTemporaryFile and then rename it while open.
-            # So we use mkstemp, close it, write to it, close, then rename.
-
             fd, temp_path = tempfile.mkstemp(
                 dir=str(config_path.parent),
                 prefix=".config_tmp_",
@@ -124,11 +130,19 @@ class ConfigManager:
                 Path(temp_path).replace(config_path)
                 logger.info("Configuration saved.")
 
-            except Exception:
-                # Cleanup if failed
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
-                raise
+            except Exception as e:
+                # Close fd if still open? os.fdopen closes it on exit block.
+                # But if error happens inside block, it closes.
+                raise e
 
         except Exception as e:
             logger.error("Failed to save config: %s", e)
+            raise # Re-raise for tests to catch
+
+        finally:
+            # Cleanup if failed and temp file still exists
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    pass

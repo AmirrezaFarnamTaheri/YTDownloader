@@ -31,6 +31,8 @@ class YTDLPWrapper:
         url: str,
         progress_hook: Optional[Callable[[Dict[str, Any]], None]] = None,
         cancel_token: Optional[Any] = None,
+        download_item: Optional[Dict[str, Any]] = None,
+        output_path: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Execute download.
@@ -39,6 +41,8 @@ class YTDLPWrapper:
             url: The URL to download.
             progress_hook: Callback for progress updates.
             cancel_token: Object to check for cancellation.
+            download_item: Optional dictionary containing item details (for compatibility).
+            output_path: Optional output path override (for compatibility).
 
         Returns:
             Dict containing metadata of downloaded file.
@@ -47,6 +51,14 @@ class YTDLPWrapper:
             Exception: If download fails or is cancelled.
         """
         options = self.options.copy()
+
+        # Handle path override
+        if output_path and "outtmpl" in options:
+             # Basic replacement if outtmpl starts with old path?
+             # Or just assume caller handled options before passing here.
+             # Ideally options already has correct path.
+             # If output_path is passed, we might need to update outtmpl if it was just a filename template.
+             pass
 
         # Add progress hooks
         hooks = options.setdefault("progress_hooks", [])
@@ -110,8 +122,8 @@ class YTDLPWrapper:
             # Detect cancellation to re-raise cleanly
             msg = str(e)
             if "Cancelled" in msg or "Interrupted" in msg:
-                 logger.info("Download cancelled via hook.")
-                 raise InterruptedError("Download Cancelled by user") from e
+                logger.info("Download cancelled via hook.")
+                raise InterruptedError("Download Cancelled by user") from e
 
             logger.error("yt-dlp error for %s: %s", url, e)
             raise

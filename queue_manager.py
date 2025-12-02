@@ -55,6 +55,30 @@ class QueueManager:
                     return item
         return None
 
+    def get_item_by_index(self, index: int) -> Optional[Dict[str, Any]]:
+        """Get item by its index in the queue."""
+        with self._lock:
+            if 0 <= index < len(self._queue):
+                return self._queue[index]
+        return None
+
+    def any_downloading(self) -> bool:
+        """Check if any items are currently in a downloading or active state."""
+        return self.any_in_status(["Downloading", "Allocating", "Processing"])
+
+    def any_in_status(self, status: str | List[str]) -> bool:
+        """Check if any items match the given status(es)."""
+        if isinstance(status, str):
+            statuses = {status}
+        else:
+            statuses = set(status)
+
+        with self._lock:
+            for item in self._queue:
+                if item.get("status") in statuses:
+                    return True
+        return False
+
     def add_listener(self, listener: Callable[[], None]):
         """Add a listener callback for queue changes."""
         with self._listeners_lock:
@@ -100,29 +124,63 @@ class QueueManager:
             self._queue.append(item)
 
             # Notify workers that work might be available
+            # Must acquire the condition lock (which is self._lock)
             self._has_work.notify_all()
 
         self._notify_listeners_safe()
 
+    def update_item_status(self, item_id: str, status: str, updates: Optional[Dict[str, Any]] = None):
+        """
+        Atomically update an item's status and other fields.
+        """
+        updated = False
+        with self._lock:
+            for item in self._queue:
+                if item.get("id") == item_id:
+                    item["status"] = status
+                    if updates:
+                        item.update(updates)
+                    updated = True
+                    break
+
+            if updated and status == "Queued":
+                self._has_work.notify_all()
+
+        if updated:
+            self._notify_listeners_safe()
+
     def remove_item(self, item: Dict[str, Any]):
-        """Remove an item from the queue and cancel it if running."""
-        changed = False
+        """
+        Remove an item from the queue and cancel it if running.
+        Atomic operation.
+        """
         item_id = item.get("id")
 
-        # First cancel if running
-        if item_id:
-            self.cancel_item(item_id)
+        # If no ID (legacy), fallback to old method
+        if not item_id:
+            with self._lock:
+                if item in self._queue:
+                    self._queue.remove(item)
+                    self._notify_listeners_safe()
+            return
 
         with self._lock:
-            if item in self._queue:
-                self._queue.remove(item)
-                changed = True
-                # Clean up token if any (just in case cancel_item didn't catch it)
-                if item_id in self._cancel_tokens:
+            # Find actual item object in queue (in case 'item' is a copy)
+            target = None
+            for q_item in self._queue:
+                if q_item.get("id") == item_id:
+                    target = q_item
+                    break
+
+            if target:
+                # Cancel if running
+                token = self._cancel_tokens.get(item_id)
+                if token:
+                    token.cancel()
                     del self._cancel_tokens[item_id]
 
-        if changed:
-            self._notify_listeners_safe()
+                self._queue.remove(target)
+                self._notify_listeners_safe()
 
     def swap_items(self, index1: int, index2: int):
         """Swap two items in the queue."""
@@ -187,6 +245,7 @@ class QueueManager:
         Wait until an item is added or status changes to Queued.
         Returns True if notified, False if timed out.
         """
+        # _has_work uses _lock, so we are essentially doing "with _lock: wait()"
         with self._has_work:
             return self._has_work.wait(timeout)
 
@@ -214,7 +273,7 @@ class QueueManager:
             # Update status if in queue but not running yet
             for item in self._queue:
                 if item.get("id") == item_id:
-                    if item["status"] in ["Queued", "Allocating", "Downloading"]:
+                    if item["status"] in ["Queued", "Allocating", "Downloading", "Processing"]:
                         item["status"] = "Cancelled"
                     break
 
