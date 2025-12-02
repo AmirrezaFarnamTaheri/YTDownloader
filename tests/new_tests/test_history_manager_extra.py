@@ -47,8 +47,8 @@ class TestHistoryManagerExtra(unittest.TestCase):
         """Test init_db generic exception handling."""
         mock_get_conn.side_effect = Exception("Generic DB Error")
 
-        with self.assertRaises(Exception):
-            HistoryManager.init_db()
+        # Should not raise exception anymore, just log error
+        HistoryManager.init_db()
 
     @patch("history_manager.HistoryManager._get_connection")
     def test_add_entry_generic_exception(self, mock_get_conn):

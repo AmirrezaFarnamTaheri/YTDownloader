@@ -82,6 +82,35 @@ class DownloadView(BaseView):
             value="best",
         )
 
+        # Additional Format Options
+        self.audio_format_dd = ft.Dropdown(
+            label="Audio Stream",
+            width=150,
+            options=[ft.dropdown.Option("best", "Best Audio")],
+            value="best",
+            visible=False,  # Hidden by default until info fetched
+        )
+
+        self.subtitle_dd = ft.Dropdown(
+            label="Subtitles",
+            width=150,
+            options=[
+                ft.dropdown.Option("None", "None"),
+                ft.dropdown.Option("en", "English"),
+                ft.dropdown.Option("es", "Spanish"),
+                ft.dropdown.Option("fr", "French"),
+                ft.dropdown.Option("de", "German"),
+                ft.dropdown.Option("it", "Italian"),
+                ft.dropdown.Option("ja", "Japanese"),
+                ft.dropdown.Option("ko", "Korean"),
+                ft.dropdown.Option("pt", "Portuguese"),
+                ft.dropdown.Option("ru", "Russian"),
+                ft.dropdown.Option("zh", "Chinese"),
+                ft.dropdown.Option("auto", "Auto-generated"),
+            ],
+            value="None",
+        )
+
         self.playlist_cb = ft.Checkbox(label="Playlist", value=False)
         self.sponsorblock_cb = ft.Checkbox(label="SponsorBlock", value=False)
         self.force_generic_cb = ft.Checkbox(label="Force Generic", value=False)
@@ -97,7 +126,7 @@ class DownloadView(BaseView):
             label="Browser Cookies",
             width=200,
             options=[
-                ft.dropdown.Option(None, "None"),
+                ft.dropdown.Option("None", "None"),
                 ft.dropdown.Option("chrome", "Chrome"),
                 ft.dropdown.Option("firefox", "Firefox"),
                 ft.dropdown.Option("edge", "Edge"),
@@ -106,7 +135,7 @@ class DownloadView(BaseView):
                 ft.dropdown.Option("vivaldi", "Vivaldi"),
                 ft.dropdown.Option("safari", "Safari"),
             ],
-            value=None,
+            value="None",
         )
 
         self.add_btn = ft.ElevatedButton(
@@ -243,6 +272,8 @@ class DownloadView(BaseView):
         data = {
             "url": self.url_input.value,
             "video_format": self.video_format_dd.value,
+            "audio_format": self.audio_format_dd.value,  # Add audio format
+            "subtitle_lang": self.subtitle_dd.value if self.subtitle_dd.value != "None" else None,
             "playlist": self.playlist_cb.value,
             "sponsorblock": self.sponsorblock_cb.value,
             "force_generic": self.force_generic_cb.value,
@@ -252,6 +283,10 @@ class DownloadView(BaseView):
             "cookies_from_browser": cookies,
         }
         self.on_add_to_queue(data)
+
+    def update_info(self, info: Optional[dict]):
+        """Alias for update_video_info (compatibility)."""
+        self.update_video_info(info)
 
     def update_video_info(self, info: Optional[dict]):
         """Update the UI with fetched video info."""
@@ -264,6 +299,32 @@ class DownloadView(BaseView):
             self.time_start.disabled = False
             self.time_end.disabled = False
 
+            # Populate Formats (Video)
+            if "video_streams" in info:
+                options = []
+                for stream in info["video_streams"]:
+                    label = f"{stream.get('resolution', 'Unknown')} - {stream.get('ext', '')}"
+                    if stream.get('filesize'):
+                        label += f" ({stream['filesize'] / 1024 / 1024:.2f} MB)"
+                    options.append(ft.dropdown.Option(stream['format_id'], label))
+                if options:
+                    self.video_format_dd.options = options
+                    self.video_format_dd.value = options[0].key
+
+            # Populate Formats (Audio)
+            if "audio_streams" in info:
+                 options = []
+                 for stream in info["audio_streams"]:
+                     label = f"{stream.get('abr', 'Unknown')}kbps - {stream.get('ext', '')}"
+                     options.append(ft.dropdown.Option(stream['format_id'], label))
+                 if options:
+                     self.audio_format_dd.options = options
+                     self.audio_format_dd.value = options[0].key
+                     self.audio_format_dd.visible = True
+            else:
+                 self.audio_format_dd.visible = False
+
+
             # Auto-detect if it looks like a playlist
             if info.get("_type") == "playlist" or "entries" in info:
                 self.playlist_cb.value = True
@@ -272,8 +333,13 @@ class DownloadView(BaseView):
             self.add_btn.disabled = True
             self.time_start.disabled = True
             self.time_end.disabled = True
+            self.audio_format_dd.visible = False
 
         self.update()
+
+    def open_download_folder(self, e=None):
+        """Opens the downloads folder in file explorer (Public)."""
+        self._open_downloads_folder()
 
     def _open_downloads_folder(self):
         """Opens the downloads folder in file explorer."""
@@ -281,5 +347,9 @@ class DownloadView(BaseView):
         from pathlib import Path
 
         # Try to resolve default path again or from config if we had one
-        path = Path.home() / "Downloads"
-        open_folder(str(path))
+        try:
+            path = Path.home() / "Downloads"
+            open_folder(str(path))
+        except Exception as e:
+            logger.error("Failed to open downloads folder: %s", e)
+            self.page.open(ft.SnackBar(ft.Text(f"Failed to open folder: {e}"), bgcolor=ft.Colors.ERROR))

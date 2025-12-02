@@ -149,9 +149,25 @@ class RSSManager:
         """Fetch all feeds and return combined, sorted items."""
         all_items = []
         for feed in self.feeds:
-            items = self.fetch_feed(feed["url"])
+            # Normalize feed entry
+            if isinstance(feed, str):
+                url = feed
+                name = feed
+            else:
+                url = feed.get("url")
+                name = feed.get("name", url)
+
+            if not url:
+                continue
+
+            try:
+                items = self.fetch_feed(url)
+            except Exception as e:
+                logger.error("Failed to fetch feed %s: %s", url, e)
+                continue
+
             for item in items:
-                item["feed_name"] = feed.get("name", feed["url"])
+                item["feed_name"] = name
                 # Try to parse date for sorting
                 try:
                     if item.get("published"):
@@ -165,6 +181,10 @@ class RSSManager:
         # Sort by date descending
         all_items.sort(key=lambda x: x["date_obj"], reverse=True)
         return all_items
+
+    def get_all_items(self) -> List[Dict[str, Any]]:
+        """Alias for get_aggregated_items to match test/view usage."""
+        return self.get_aggregated_items()
 
     @classmethod
     def get_latest_video(cls, url: str) -> Optional[Dict[str, Any]]:

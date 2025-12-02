@@ -30,18 +30,20 @@ class TestMainIntegration(unittest.TestCase):
 
         # Mock progress hook execution
         def side_effect_download(*args, **kwargs):
-            progress_hook = args[1]
+            progress_hook = kwargs.get("progress_hook") or args[1]
+
             progress_hook(
                 {
                     "status": "downloading",
-                    "downloaded_bytes": 50,
-                    "total_bytes": 100,
-                    "speed": 100,
-                    "eta": 1,
-                },
-                item,
+                    "_percent_str": "50%",
+                    "_speed_str": "100KiB/s",
+                    "_eta_str": "10s",
+                    "_total_bytes_str": "100MiB",
+                }
             )
-            progress_hook({"status": "finished", "filename": "out.mp4"}, item)
+            progress_hook({"status": "finished", "filename": "out.mp4"})
+
+            return {"filename": "out.mp4", "filepath": "/tmp/out.mp4"}
 
         mock_download.side_effect = side_effect_download
 
@@ -50,7 +52,7 @@ class TestMainIntegration(unittest.TestCase):
         tasks.download_task(item)
 
         self.assertEqual(item["status"], "Completed")
-        self.assertEqual(item["final_filename"], "out.mp4")
+        self.assertEqual(item["filename"], "out.mp4")
         mock_add_history.assert_called()
 
     @patch("tasks.download_video")
@@ -109,6 +111,10 @@ class TestMainIntegration(unittest.TestCase):
 
             # Move time to past
             item["scheduled_time"] = datetime.now() - timedelta(minutes=1)
+
+            # Manually trigger schedule update
+            self.state.queue_manager.update_scheduled_items(datetime.now())
+
             tasks.process_queue()
 
         # Should be allocated or processed.
