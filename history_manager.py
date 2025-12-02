@@ -87,39 +87,67 @@ class HistoryManager:
         """Initialize the history database table and perform migrations."""
         logger.info("Initializing history database...")
 
-        conn = None
-        try:
-            conn = HistoryManager._get_connection()
-            cursor = conn.cursor()
+        retry_count = 0
+        last_error = None
 
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    url TEXT NOT NULL,
-                    title TEXT,
-                    output_path TEXT,
-                    format_str TEXT,
-                    status TEXT,
-                    timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
-                    file_size TEXT,
-                    file_path TEXT
+        while retry_count < HistoryManager.MAX_DB_RETRIES:
+            conn = None
+            try:
+                conn = HistoryManager._get_connection()
+                cursor = conn.cursor()
+
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        url TEXT NOT NULL,
+                        title TEXT,
+                        output_path TEXT,
+                        format_str TEXT,
+                        status TEXT,
+                        timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                        file_size TEXT,
+                        file_path TEXT
+                    )
+                    """
                 )
-                """
-            )
 
-            # Ensure indexes
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_history_status ON history(status)")
+                # Migration Check: file_path column
+                # Get current columns
+                cursor.execute("PRAGMA table_info(history)")
+                columns = [row[1] for row in cursor.fetchall()]
 
-            conn.commit()
-            logger.info("History database initialized.")
+                if "file_path" not in columns:
+                    logger.info("Migrating DB: Adding file_path column")
+                    cursor.execute("ALTER TABLE history ADD COLUMN file_path TEXT")
 
-        except Exception as e:
-            logger.error("Failed to init history DB: %s", e)
-        finally:
-            if conn:
-                conn.close()
+                # Ensure indexes
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_history_status ON history(status)")
+
+                conn.commit()
+                logger.info("History database initialized.")
+                return
+
+            except sqlite3.OperationalError as e:
+                last_error = e
+                if "locked" in str(e).lower():
+                    retry_count += 1
+                    logger.warning("DB locked during init, retrying (%d/%d)...", retry_count, HistoryManager.MAX_DB_RETRIES)
+                    time.sleep(HistoryManager.DB_RETRY_DELAY)
+                    continue
+                logger.error("Failed to init history DB: %s", e)
+                raise e # Re-raise other operational errors
+            except Exception as e:
+                logger.error("Failed to init history DB (General): %s", e)
+                raise # Re-raise for visibility
+            finally:
+                if conn:
+                    conn.close()
+
+        # If we exhausted retries
+        if last_error:
+            raise last_error
 
     @staticmethod
     def add_entry(
@@ -135,6 +163,8 @@ class HistoryManager:
         HistoryManager._validate_input(url, title or "", output_path or "")
 
         retry_count = 0
+        last_error = None
+
         while retry_count < HistoryManager.MAX_DB_RETRIES:
             conn = None
             try:
@@ -154,18 +184,24 @@ class HistoryManager:
                 return
 
             except sqlite3.OperationalError as e:
+                last_error = e
                 if "locked" in str(e).lower():
                     retry_count += 1
+                    logger.warning("DB locked during add_entry, retrying (%d/%d)...", retry_count, HistoryManager.MAX_DB_RETRIES)
                     time.sleep(HistoryManager.DB_RETRY_DELAY)
                     continue
                 logger.error("DB Error in add_entry: %s", e)
-                break
+                break # Don't retry non-locked errors indefinitely
             except Exception as e:
                 logger.error("Error in add_entry: %s", e)
-                break
+                raise e # Re-raise
             finally:
                 if conn:
                     conn.close()
+
+        # Raise if exhausted
+        if retry_count >= HistoryManager.MAX_DB_RETRIES and last_error:
+             raise last_error
 
     @staticmethod
     def get_history_paginated(offset: int = 0, limit: int = 50) -> Dict[str, Any]:
@@ -205,6 +241,15 @@ class HistoryManager:
         }
 
     @staticmethod
+    def get_history(limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Simple retrieval of recent history.
+        Wrapper around paginated method for backward compatibility/ease of use.
+        """
+        result = HistoryManager.get_history_paginated(offset=0, limit=limit)
+        return result.get("entries", [])
+
+    @staticmethod
     def clear_history():
         """Clear all history."""
         try:
@@ -216,3 +261,4 @@ class HistoryManager:
             logger.info("History cleared.")
         except Exception as e:
             logger.error("Failed to clear history: %s", e)
+            raise e # Raise to satisfy tests expecting errors on failure

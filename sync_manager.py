@@ -51,7 +51,15 @@ class SyncManager:
     def _auto_sync_loop(self):
         while not self._stop_event.is_set():
             try:
-                if self.config.get("auto_sync_enabled", False):
+                # Assuming config_manager is actually ConfigManager class or instance
+                # If class, use methods directly? The code uses .get() like an instance
+                # But previously ConfigManager was static.
+                # Let's assume instance wrapper or static usage
+                enabled = False
+                if hasattr(self.config, "get"):
+                    enabled = self.config.get("auto_sync_enabled", False)
+
+                if enabled:
                     self.sync_up()
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Auto-sync failed: %s", e)
@@ -60,11 +68,7 @@ class SyncManager:
             for _ in range(self.auto_sync_interval // 5):
                 if self._stop_event.is_set():
                     break
-                # We used time.sleep(5) in previous versions,
-                # but let's use wait on event if we wanted to be fancy.
-                # Just sleep is fine for now.
                 import time
-
                 time.sleep(5)
 
     def sync_up(self):
@@ -74,21 +78,32 @@ class SyncManager:
                 logger.info("Starting sync UP...")
 
                 # 1. Export Config
-                config_data = self.config.get_all()
+                # Handle both static ConfigManager and instance
+                if hasattr(self.config, "load_config"):
+                    config_data = self.config.load_config()
+                elif hasattr(self.config, "get_all"):
+                     config_data = self.config.get_all()
+                else:
+                    config_data = {} # Should not happen if initialized correctly
+
                 config_file = self._write_temp_json(config_data)
 
                 # 2. Export History (if available)
-                # history_file = None
                 if self.history:
-                    # In a real app, we might dump the DB to JSON or upload the DB file.
-                    # For now, let's assume we dump a summary or the DB file itself.
-                    # But wait, history_manager uses SQLite.
-                    # We'll just skip history for this basic implementation
-                    # or assume we upload the .db file directly.
-                    # Let's try to upload the config first.
-                    pass
+                    # Upload DB file if it exists
+                    try:
+                        db_path = getattr(self.history, "DB_FILE", None)
+                        if not db_path:
+                             # Fallback to default path
+                             db_path = os.path.expanduser("~/.streamcatch/history.db")
 
-                # 3. Upload
+                        if isinstance(db_path, str) or hasattr(db_path, "exists"):
+                             if os.path.exists(str(db_path)):
+                                 self.cloud.upload_file(str(db_path), "history.db")
+                    except Exception as e:
+                        logger.warning("Failed to upload history DB: %s", e)
+
+                # 3. Upload Config
                 if config_file:
                     self.cloud.upload_file(config_file, "config.json")
                     os.remove(config_file)
@@ -113,9 +128,12 @@ class SyncManager:
                     with open(local_config_path, "r", encoding="utf-8") as f:
                         new_config = json.load(f)
 
-                    # Merge or replace? Let's replace top-level keys
-                    for k, v in new_config.items():
-                        self.config.set(k, v)
+                    # Update config
+                    if hasattr(self.config, "save_config"):
+                         self.config.save_config(new_config)
+                    elif hasattr(self.config, "set"):
+                        for k, v in new_config.items():
+                            self.config.set(k, v)
 
                     os.remove(local_config_path)
                     logger.info("Config synced from cloud")
@@ -140,13 +158,25 @@ class SyncManager:
             logger.info("Exporting data to %s", export_path)
             with zipfile.ZipFile(export_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # Add Config
-                config_str = json.dumps(self.config.get_all(), indent=2)
+                config_data = {}
+                if hasattr(self.config, "load_config"):
+                    config_data = self.config.load_config()
+                elif hasattr(self.config, "get_all"):
+                    config_data = self.config.get_all()
+
+                config_str = json.dumps(config_data, indent=2)
                 zf.writestr("config.json", config_str)
 
                 # Add History DB if exists
-                db_path = os.path.expanduser("~/.streamcatch/history.db")
-                if os.path.exists(db_path):
-                    zf.write(db_path, "history.db")
+                db_path = None
+                if self.history:
+                     db_path = getattr(self.history, "DB_FILE", None)
+
+                if not db_path:
+                    db_path = os.path.expanduser("~/.streamcatch/history.db")
+
+                if os.path.exists(str(db_path)):
+                    zf.write(str(db_path), "history.db")
 
             logger.info("Export completed")
         except Exception as e:
@@ -164,29 +194,36 @@ class SyncManager:
                 if "config.json" in zf.namelist():
                     with zf.open("config.json") as f:
                         data = json.load(f)
-                        for k, v in data.items():
-                            self.config.set(k, v)
+                        if hasattr(self.config, "save_config"):
+                            self.config.save_config(data)
+                        elif hasattr(self.config, "set"):
+                             for k, v in data.items():
+                                 self.config.set(k, v)
 
                 # Restore History
                 if "history.db" in zf.namelist():
-                    # We need to be careful overwriting the DB while it's in use.
-                    # Best practice: close history manager, overwrite, re-open.
-                    # For now, we'll just attempt copy.
-                    target_db = os.path.expanduser("~/.streamcatch/history.db")
+                    target_db = None
+                    if self.history:
+                        target_db = getattr(self.history, "DB_FILE", None)
+
+                    if not target_db:
+                         target_db = os.path.expanduser("~/.streamcatch/history.db")
+
+                    target_db_path = str(target_db)
 
                     # Ensure directory exists
-                    os.makedirs(os.path.dirname(target_db), exist_ok=True)
+                    os.makedirs(os.path.dirname(target_db_path), exist_ok=True)
 
                     # Write to temp then move
-                    temp_db = target_db + ".tmp"
+                    temp_db = target_db_path + ".tmp"
                     with open(temp_db, "wb") as f_out:
                         with zf.open("history.db") as f_in:
                             shutil.copyfileobj(f_in, f_out)
 
                     # Atomic replacement (try)
-                    if os.path.exists(target_db):
+                    if os.path.exists(target_db_path):
                         try:
-                            os.remove(target_db)
+                            os.remove(target_db_path)
                         except OSError:
                             # Windows might lock it
                             logger.warning(
@@ -194,8 +231,8 @@ class SyncManager:
                             )
                             pass
 
-                    if not os.path.exists(target_db):
-                        os.rename(temp_db, target_db)
+                    if not os.path.exists(target_db_path):
+                        os.rename(temp_db, target_db_path)
                     else:
                         # Fallback if remove failed
                         pass

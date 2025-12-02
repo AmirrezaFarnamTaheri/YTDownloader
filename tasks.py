@@ -36,23 +36,11 @@ def process_queue():
         if state.shutdown_flag.is_set():
             break
 
-        # Check capacity
+        # Atomically check capacity and claim an item
         with _active_count_lock:
             if _active_count >= MAX_WORKERS:
                 break
 
-        # Check for item without claiming yet (optimization)
-        # But queue_manager.claim_next_downloadable() is atomic, so we just try.
-
-        # Try to claim
-        # We need to ensure we don't over-submit.
-        # If we claim, we increment active count immediately.
-
-        with _active_count_lock:
-            if _active_count >= MAX_WORKERS:
-                break
-
-            # Optimistically claim
             item = state.queue_manager.claim_next_downloadable()
             if not item:
                 break
@@ -66,8 +54,13 @@ def process_queue():
             logger.error("Failed to submit task: %s", e)
             with _active_count_lock:
                 _active_count -= 1
-            item["status"] = "Error"
-            item["error"] = "Failed to start"
+
+            # Use atomic update
+            state.queue_manager.update_item_status(
+                 item.get("id"),
+                 "Error",
+                 {"error": "Failed to start"}
+            )
 
 
 def _update_progress_ui(item: Dict[str, Any]):
@@ -89,23 +82,30 @@ def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
         if cancel_token.cancelled:
             raise InterruptedError("Download Cancelled by user")
 
-        if d["status"] == "downloading":
+        status = d.get("status")
+
+        if status == "downloading":
             p_str = d.get("_percent_str", "0%").replace("%", "")
             try:
                 progress = float(p_str) / 100
-            except ValueError:
+            except (ValueError, TypeError):
                 progress = 0
 
+            # Atomic-ish local update (UI reads from this dict reference)
             item["progress"] = progress
             item["speed"] = d.get("_speed_str", "N/A")
             item["eta"] = d.get("_eta_str", "N/A")
             item["size"] = d.get("_total_bytes_str", "N/A")
             _update_progress_ui(item)
 
-        elif d["status"] == "finished":
+        elif status == "finished":
             item["progress"] = 1.0
             item["status"] = "Processing"
             _update_progress_ui(item)
+
+        else:
+             # Ignore other statuses or unknown
+             pass
 
     return progress_hook
 
@@ -145,7 +145,7 @@ def download_task(item: Dict[str, Any]):
     logger.info("Starting download task: %s", url)
 
     try:
-        item["status"] = "Downloading"
+        state.queue_manager.update_item_status(item_id, "Downloading")
         _update_progress_ui(item)
 
         # Prepare hooks and execute
@@ -166,13 +166,18 @@ def download_task(item: Dict[str, Any]):
             end_time=item.get("end_time"),
             force_generic=item.get("force_generic", False),
             cookies_from_browser=item.get("cookies_from_browser"),
+            download_item=item # Pass item for advanced callbacks/debugging
         )
 
         # Success
-        item["status"] = "Completed"
-        item["filename"] = info.get("filename", "Unknown")
-        item["progress"] = 1.0
-
+        state.queue_manager.update_item_status(
+            item_id,
+            "Completed",
+            {
+                "filename": info.get("filename", "Unknown"),
+                "progress": 1.0
+            }
+        )
         _log_to_history(item, info.get("filepath"))
         _update_progress_ui(item)
 
@@ -181,11 +186,25 @@ def download_task(item: Dict[str, Any]):
         msg = str(e)
         if "Cancelled" in msg or item.get("status") == "Cancelled" or cancel_token.cancelled:
             logger.info("Download cancelled: %s", url)
-            item["status"] = "Cancelled"
+
+            # Ensure status is definitely cancelled and reset progress
+            state.queue_manager.update_item_status(
+                item_id,
+                "Cancelled",
+                {
+                    "progress": 0,
+                    "speed": "",
+                    "eta": "",
+                    "size": ""
+                }
+            )
         else:
             logger.error("Download failed: %s", e, exc_info=True)
-            item["status"] = "Error"
-            item["error"] = str(e)
+            state.queue_manager.update_item_status(
+                item_id,
+                "Error",
+                {"error": str(e)}
+            )
 
         _update_progress_ui(item)
 
@@ -200,6 +219,7 @@ def download_task(item: Dict[str, Any]):
         # Trigger next check in main loop
         # We need to wake up the background loop in main.py to process more items
         try:
+             # Use the public condition variable (must acquire lock)
              with state.queue_manager._has_work:
                  state.queue_manager._has_work.notify_all()
         except Exception:

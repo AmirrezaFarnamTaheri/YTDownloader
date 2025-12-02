@@ -200,9 +200,6 @@ def main(pg: ft.Page):
         if status == "Queued":
             PAGE.open(ft.SnackBar(content=ft.Text("Added to queue")))
 
-        # Trigger processing (redundant with Event, but harmless)
-        # process_queue() # Removed, background loop handles it
-
     def on_cancel_item(item):
         logger.info("User requested cancel for item: %s", item.get("title", "Unknown"))
         item_id = item.get("id")
@@ -211,9 +208,20 @@ def main(pg: ft.Page):
         else:
             # Fallback for old items (shouldn't happen with new logic)
             item["status"] = "Cancelled"
+            item["progress"] = 0
+            item["speed"] = ""
+            item["eta"] = ""
+            item["size"] = ""
 
         if "control" in item:
             item["control"].update_progress()
+
+        # Nudge background loop so it can allocate next items promptly
+        try:
+            with state.queue_manager._has_work:
+                state.queue_manager._has_work.notify_all()
+        except Exception:
+            pass
 
     def on_remove_item(item):
         state.queue_manager.remove_item(item)
@@ -221,26 +229,43 @@ def main(pg: ft.Page):
 
     def on_reorder_item(item, direction):
         q = state.queue_manager.get_all()
-        if item in q:
-            idx = q.index(item)
+        # Find index by ID instead of object reference if possible
+        idx = -1
+        item_id = item.get("id")
+
+        if item_id:
+            for i, x in enumerate(q):
+                 if x.get("id") == item_id:
+                     idx = i
+                     break
+        else:
+             if item in q:
+                 idx = q.index(item)
+
+        if idx != -1:
             new_idx = idx + direction
             if 0 <= new_idx < len(q):
                 state.queue_manager.swap_items(idx, new_idx)
                 UI.update_queue_view()
 
     def on_retry_item(item):
-        item["status"] = "Queued"
-        item["speed"] = ""
-        item["eta"] = ""
-        item["size"] = ""
-        item["progress"] = 0
+        item_id = item.get("id")
+        if not item_id:
+            # Fallback for older items without an ID
+            item["status"] = "Queued"
+            item["speed"] = ""
+            item["eta"] = ""
+            item["size"] = ""
+            item["progress"] = 0
+        else:
+            # Use the new QueueManager method to handle the update atomically
+            state.queue_manager.update_item_status(
+                item_id,
+                "Queued",
+                updates={"speed": "", "eta": "", "size": "", "progress": 0},
+            )
+
         UI.update_queue_view()
-        # Notify background loop
-        try:
-             with state.queue_manager._has_work:
-                 state.queue_manager._has_work.notify_all()
-        except Exception:
-            pass
 
     def on_batch_file_result(e: ft.FilePickerResultEvent):
         if not e.files:
@@ -363,6 +388,10 @@ def main(pg: ft.Page):
                 # Wait for work or timeout (to check shutdown flag)
                 # wait_for_items returns True if notified, False if timeout
                 state.queue_manager.wait_for_items(timeout=2.0)
+
+                # Check shutdown immediately after wake
+                if state.shutdown_flag.is_set():
+                    break
 
                 # Check scheduled items
                 if state.queue_manager.update_scheduled_items(datetime.now()) > 0:

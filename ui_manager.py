@@ -39,6 +39,9 @@ class UIManager:
         self.views_list: List[BaseView] = []
         self.app_layout: Optional[AppLayout] = None
 
+        # Track current view index
+        self.current_view_index = 0
+
     def initialize_views(self,
                          on_fetch_info_callback,
                          on_add_to_queue_callback,
@@ -101,6 +104,7 @@ class UIManager:
         """Navigate to the specified view index."""
         if 0 <= index < len(self.views_list):
             logger.debug("Navigating to view index: %d", index)
+            self.current_view_index = index
             view = self.views_list[index]
             self.app_layout.set_content(view)
 
@@ -115,13 +119,15 @@ class UIManager:
             self.page.update()
 
     def _on_page_resize(self, e):
-        """Handle page resize events for responsive layout."""
-        # Example responsive logic: switch between rail and bottom bar if needed
-        # For now, we just ensure the layout adjusts
-        if self.page.width < 600:
-             # Could switch to bottom navigation in future
-             pass
-        pass
+        """
+        Handle page resize events for responsive layout.
+        Mobile breakpoints (approx): < 800px width.
+        """
+        is_mobile = self.page.width < 800
+
+        if self.app_layout:
+             # Use the dedicated method in AppLayout
+             self.app_layout.set_sidebar_collapsed(is_mobile)
 
     def update_queue_view(self):
         """Rebuild queue view if it exists."""

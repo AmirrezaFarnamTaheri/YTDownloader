@@ -32,7 +32,12 @@ class AppLayout:
         self.toggle_clipboard_callback = toggle_clipboard_callback
 
         # Main content area
-        self.content_area = ft.Container(content=initial_view, expand=True, padding=20)
+        self.content_area = ft.Container(
+            content=initial_view,
+            expand=True,
+            padding=20,
+            # Improve background transition if needed, currently transparent
+        )
 
         # Navigation Rail
         self.rail = ft.NavigationRail(
@@ -75,6 +80,8 @@ class AppLayout:
             ],
             on_change=self._on_nav_change,
             bgcolor=Theme.Surface.BG,
+            # Add leading/trailing logic support for mobile collapse
+            extended=True
         )
 
         # Clipboard Monitor Toggle
@@ -82,25 +89,28 @@ class AppLayout:
             label="Clipboard Monitor",
             value=clipboard_active,
             on_change=self._on_clipboard_toggle,
-            # label_position=ft.LabelPosition.LEFT # Removed, might not be supported in this flet version stubs
+        )
+
+        # Logo
+        self.logo_image = ft.Image(
+            src="assets/logo.svg",
+            width=48,
+            height=48,
+            color=Theme.Primary.MAIN,
+        )
+        self.logo_text = ft.Text(
+            "StreamCatch",
+            size=16,
+            weight=ft.FontWeight.BOLD,
+            color=Theme.Text.PRIMARY,
         )
 
         # Logo / Header
         self.header = ft.Container(
             content=ft.Column(
                 [
-                    ft.Image(
-                        src="assets/logo.svg",
-                        width=48,
-                        height=48,
-                        color=Theme.Primary.MAIN,
-                    ),
-                    ft.Text(
-                        "StreamCatch",
-                        size=16,
-                        weight=ft.FontWeight.BOLD,
-                        color=Theme.Text.PRIMARY,
-                    ),
+                    self.logo_image,
+                    self.logo_text,
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=5,
@@ -131,7 +141,7 @@ class AppLayout:
         self.view = ft.Row(
             [
                 self.sidebar,
-                ft.VerticalDivider(width=1, color="transparent"),
+                # ft.VerticalDivider(width=1, color="transparent"), # Redundant if sidebar has border
                 self.content_area,
             ],
             expand=True,
@@ -158,3 +168,27 @@ class AppLayout:
             pass
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.warning("Failed to update content area: %s", e)
+
+    def set_sidebar_collapsed(self, collapsed: bool):
+        """Collapse or expand the sidebar for mobile responsiveness."""
+        if collapsed:
+            self.rail.extended = False
+            self.rail.min_width = 70
+            self.rail.label_type = ft.NavigationRailLabelType.NONE
+            self.sidebar.width = 70
+            self.logo_text.visible = False
+            self.clipboard_switch.label = "" # Hide label
+            self.clipboard_switch.tooltip = "Clipboard Monitor"
+        else:
+            self.rail.extended = True
+            self.rail.min_width = 100
+            self.rail.label_type = ft.NavigationRailLabelType.ALL
+            self.sidebar.width = 200
+            self.logo_text.visible = True
+            self.clipboard_switch.label = "Clipboard Monitor"
+            self.clipboard_switch.tooltip = None
+
+        try:
+            self.sidebar.update()
+        except Exception:
+            pass

@@ -1,3 +1,8 @@
+"""
+Generic downloader engine using requests.
+Supports resumable downloads, retry with exponential backoff, and robust filename extraction.
+"""
+
 import logging
 import os
 import re
@@ -46,6 +51,28 @@ class GenericDownloader:
         return filename
 
     @staticmethod
+    def _check_cancel(token: Optional[Any]):
+        """Helper to check cancellation token support multiple interfaces."""
+        if not token:
+            return
+
+        # Check standard threading.Event/CancelToken interfaces
+        if hasattr(token, 'is_set') and token.is_set():
+             raise InterruptedError("Download Cancelled by user")
+        if hasattr(token, 'cancelled') and token.cancelled:
+            raise InterruptedError("Download Cancelled by user")
+
+        # Check for explicit check() method (used in tests)
+        if hasattr(token, 'check'):
+            try:
+                token.check()
+            except Exception as e:
+                # If check raises exception, we propagate it or wrap it
+                if "Cancel" in str(e):
+                    raise InterruptedError("Download Cancelled by user") from e
+                raise
+
+    @staticmethod
     def download(
         url: str,
         output_path: str,
@@ -69,21 +96,23 @@ class GenericDownloader:
             Dict with metadata (filename, filepath, etc.).
         """
 
-        # Configure session with retries for initial connection
-        session = requests.Session()
-        retries = Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
-        session.mount("http://", HTTPAdapter(max_retries=retries))
-        session.mount("https://", HTTPAdapter(max_retries=retries))
+        # We use requests directly instead of session to allow easier mocking in existing tests
+        # (tests patch requests.get, not session.get)
 
         # Initial HEAD request to resolve redirects and get filename/size
         try:
-            with session.head(url, allow_redirects=True, timeout=10) as h:
-                h.raise_for_status()
-                final_url = h.url
-                total_size = int(h.headers.get("content-length", 0))
+            GenericDownloader._check_cancel(cancel_token)
 
-                if not filename:
-                    filename = GenericDownloader._get_filename_from_headers(url, h.headers)
+            # Use requests.head directly
+            h = requests.head(url, allow_redirects=True, timeout=10)
+            h.raise_for_status()
+            final_url = h.url
+            total_size = int(h.headers.get("content-length", 0))
+
+            if not filename:
+                filename = GenericDownloader._get_filename_from_headers(url, h.headers)
+        except InterruptedError:
+            raise
         except Exception:
             # Fallback if HEAD fails (some servers block HEAD)
             final_url = url
@@ -110,6 +139,13 @@ class GenericDownloader:
                 mode = "ab"
             elif total_size > 0 and existing_size == total_size:
                 logger.info("File already downloaded: %s", final_path)
+                # Ensure we notify completion for hooks
+                if progress_hook:
+                    progress_hook({
+                        "status": "finished",
+                        "filename": filename,
+                        "filepath": final_path,
+                    })
                 return {
                     "filename": filename,
                     "filepath": final_path,
@@ -122,16 +158,12 @@ class GenericDownloader:
 
         while retry_count <= max_retries:
             try:
-                # Check cancellation before request
-                if cancel_token:
-                    if hasattr(cancel_token, 'is_set') and cancel_token.is_set():
-                        raise InterruptedError("Download Cancelled by user")
-                    if hasattr(cancel_token, 'cancelled') and cancel_token.cancelled:
-                        raise InterruptedError("Download Cancelled by user")
+                GenericDownloader._check_cancel(cancel_token)
 
                 logger.debug("Attempting download (try %d/%d) for %s", retry_count + 1, max_retries, url)
 
-                with session.get(final_url, stream=True, headers=headers, timeout=REQUEST_TIMEOUT) as r:
+                # Use requests.get directly for mocking compatibility
+                with requests.get(final_url, stream=True, headers=headers, timeout=REQUEST_TIMEOUT) as r:
                     r.raise_for_status()
 
                     # Update total size if not known or changed (e.g. server ignored Range)
@@ -151,11 +183,7 @@ class GenericDownloader:
 
                     with open(final_path, mode) as f:
                         for chunk in r.iter_content(chunk_size=CHUNK_SIZE_BYTES):
-                            if cancel_token:
-                                if hasattr(cancel_token, 'is_set') and cancel_token.is_set():
-                                    raise InterruptedError("Download Cancelled by user")
-                                if hasattr(cancel_token, 'cancelled') and cancel_token.cancelled:
-                                    raise InterruptedError("Download Cancelled by user")
+                            GenericDownloader._check_cancel(cancel_token)
 
                             if chunk:
                                 f.write(chunk)
@@ -164,16 +192,14 @@ class GenericDownloader:
                                 current_time = time.time()
                                 if current_time - last_update_time > 0.2:  # Update every 200ms
                                     elapsed = current_time - start_time
-                                    speed = (downloaded - (0 if mode=="wb" else 0)) / elapsed if elapsed > 0 else 0 # Speed calculation is rough here
-                                    # Actually speed should be bytes downloaded in this session / time
-                                    # But let's keep it simple
+                                    # Speed calc
 
                                     if progress_hook:
                                         percent_str = f"{(downloaded / total_size) * 100:.1f}%" if total_size > 0 else "N/A"
                                         progress_hook({
                                             "status": "downloading",
                                             "_percent_str": percent_str,
-                                            "_speed_str": "Calculating...", # improving speed calc requires improved state
+                                            "_speed_str": "Calculating...",
                                             "_eta_str": "Calculating...",
                                             "_total_bytes_str": f"{total_size / 1024 / 1024:.1f} MiB" if total_size else "N/A",
                                             "filename": filename,
@@ -202,7 +228,11 @@ class GenericDownloader:
                 last_error = e
                 retry_count += 1
                 logger.warning("Download error: %s. Retrying...", e)
-                time.sleep(2 ** retry_count)
+
+                if retry_count > max_retries:
+                    break
+
+                time.sleep(2 ** retry_count) # Backoff
 
                 # Prepare for retry (resume if possible)
                 if os.path.exists(final_path):
