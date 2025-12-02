@@ -68,6 +68,21 @@ class SettingsView(BaseView):
             on_change=self._on_theme_change,
         )
 
+        # High Contrast
+        self.high_contrast_cb = ft.Checkbox(
+            label="High Contrast Mode",
+            value=self.config.get("high_contrast", False),
+            fill_color=Theme.PRIMARY,
+            on_change=self._on_high_contrast_change,
+        )
+
+        # Compact Mode
+        self.compact_mode_cb = ft.Checkbox(
+            label="Compact Mode (Requires Restart)",
+            value=self.config.get("compact_mode", False),
+            fill_color=Theme.PRIMARY,
+        )
+
         self.save_btn = ft.ElevatedButton(
             LM.get("save_settings"),
             on_click=self.save_settings,
@@ -100,6 +115,8 @@ class SettingsView(BaseView):
             )
         )
         self.add_control(self.theme_mode_dd)
+        self.add_control(self.high_contrast_cb)
+        self.add_control(self.compact_mode_cb)
         self.add_control(ft.Divider(height=20, color=Theme.BORDER))
         self.add_control(self.save_btn)
 
@@ -114,6 +131,21 @@ class SettingsView(BaseView):
                 self.page.theme_mode = ft.ThemeMode.SYSTEM
             self.page.update()
 
+    def _on_high_contrast_change(self, e):
+        if self.page:
+            self.page.theme = Theme.get_high_contrast_theme() if e.control.value else Theme.get_theme()
+        
+            # Also re-apply theme mode
+            mode = self.theme_mode_dd.value
+            if mode == "Dark":
+                self.page.theme_mode = ft.ThemeMode.DARK
+            elif mode == "Light":
+                self.page.theme_mode = ft.ThemeMode.LIGHT
+            else:
+                self.page.theme_mode = ft.ThemeMode.SYSTEM
+        
+            self.page.update()
+
     def save_settings(self, e):
         self.config["proxy"] = self.proxy_input.value
         self.config["rate_limit"] = self.rate_limit_input.value
@@ -121,6 +153,8 @@ class SettingsView(BaseView):
         self.config["use_aria2c"] = self.use_aria2c_cb.value
         self.config["gpu_accel"] = self.gpu_accel_dd.value
         self.config["theme_mode"] = self.theme_mode_dd.value
+        self.config["high_contrast"] = self.high_contrast_cb.value
+        self.config["compact_mode"] = self.compact_mode_cb.value
         ConfigManager.save_config(self.config)
         if self.page:
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("settings_saved"))))

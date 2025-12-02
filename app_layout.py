@@ -148,6 +148,28 @@ class AppLayout:
             spacing=0,
         )
 
+    def set_compact_mode(self, enabled: bool):
+        """Enable or disable Compact Mode."""
+        if enabled:
+            self.sidebar.visible = False
+            # Compact navigation bar? Or just hide sidebar and rely on keyboard?
+            # For now, let's implement a minimal vertical bar (NavigationRail only) if compact,
+            # but the request implies "Widget" style.
+            # "Compact Mode: 'Widget' style floating window."
+            # This suggests potentially resizing the window and hiding most UI.
+            # For this step, we will hide the text labels and make sidebar very thin.
+            self.set_sidebar_collapsed(True)
+            self.sidebar.width = 60
+            self.rail.min_width = 60
+            self.header.visible = False
+            self.content_area.padding = 10
+        else:
+            self.sidebar.visible = True
+            self.set_sidebar_collapsed(False)
+            self.header.visible = True
+            self.content_area.padding = 20
+        self.view.update()
+
     def _on_nav_change(self, e):
         index = e.control.selected_index
         logger.info("Navigation changed to index: %d", index)

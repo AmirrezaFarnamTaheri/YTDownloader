@@ -1,0 +1,34 @@
+name: Determine Version
+
+on:
+  workflow_call:
+    inputs:
+      tag_name:
+        required: false
+        type: string
+    outputs:
+      version:
+        description: "The derived version string"
+        value: ${{ jobs.version.outputs.version }}
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Calculate Version
+        id: get_version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+             VERSION="${GITHUB_REF#refs/tags/v}"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+             VERSION="${GITHUB_REF#refs/tags/}"
+          elif [[ -n "${{ inputs.tag_name }}" ]]; then
+             VERSION="${{ inputs.tag_name }}"
+          else
+             VERSION="dev-${GITHUB_RUN_NUMBER}"
+          fi
+          # Sanitize spaces
+          VERSION="${VERSION// /}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT

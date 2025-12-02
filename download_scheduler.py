@@ -5,7 +5,7 @@ Download scheduler logic.
 from datetime import datetime
 from datetime import time as dt_time
 from datetime import timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 
 class DownloadScheduler:
@@ -14,7 +14,7 @@ class DownloadScheduler:
     @staticmethod
     def prepare_schedule(
         scheduled_time: Optional[dt_time],
-    ) -> tuple[str, Optional[datetime]]:
+    ) -> Tuple[str, Optional[datetime]]:
         """
         Calculate status and scheduled datetime based on desired time.
         """

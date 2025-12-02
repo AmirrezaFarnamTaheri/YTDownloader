@@ -17,7 +17,16 @@ class Page:
     def clean(self) -> None: ...
     def window_destroy(self) -> None: ...
 
-class Control: ...
+class Control:
+    visible: bool
+    disabled: bool
+    width: Any
+    height: Any
+    expand: Any
+    opacity: Any
+    tooltip: Any
+    data: Any
+    def update(self) -> None: ...
 
 class Container(Control):
     def __init__(
@@ -31,6 +40,8 @@ class Container(Control):
         width: Any = None,
         height: Any = None,
         border: Any = None,
+        on_click: Any = None,
+        ink: bool = False,
     ): ...
 
 class Column(Control):
@@ -58,6 +69,7 @@ class Row(Control):
     ): ...
 
 class Text(Control):
+    value: str
     def __init__(
         self,
         value: Any = None,
@@ -67,6 +79,11 @@ class Text(Control):
         overflow: Any = None,
         max_lines: Any = None,
         text_align: Any = None,
+        selectable: bool = False,
+        no_wrap: bool = False,
+        font_family: Any = None,
+        style: Any = None,
+        theme_style: Any = None,
     ): ...
 
 class Icon(Control):
@@ -105,6 +122,10 @@ class TimePicker(Control):
     ): ...
 
 class NavigationRail(Control):
+    extended: bool
+    min_width: Any
+    min_extended_width: Any
+    label_type: Any
     def __init__(
         self,
         selected_index: Any = None,
@@ -127,12 +148,15 @@ class VerticalDivider(Control):
     def __init__(self, width: Any = None, thickness: Any = None, color: Any = None): ...
 
 class Switch(Control):
+    label: str
+    value: bool
     def __init__(
         self,
         label: Any = None,
         value: bool = False,
         on_change: Any = None,
         active_color: Any = None,
+        tooltip: Any = None,
     ): ...
 
 class IconButton(Control):
@@ -150,8 +174,15 @@ class Divider(Control):
     ): ...
 
 class Image(Control):
+    src: str
     def __init__(
-        self, src: Any = None, width: Any = None, height: Any = None, color: Any = None
+        self,
+        src: Any = None,
+        width: Any = None,
+        height: Any = None,
+        color: Any = None,
+        fit: Any = None,
+        border_radius: Any = None,
     ): ...
 
 class LinearGradient:
@@ -159,6 +190,207 @@ class LinearGradient:
 
 class BorderSide:
     def __init__(self, width: Any = None, color: Any = None): ...
+
+class TextField(Control):
+    value: str
+    def __init__(
+        self,
+        label: Any = None,
+        value: Any = None,
+        text_align: Any = None,
+        width: Any = None,
+        height: Any = None,
+        multiline: bool = False,
+        read_only: bool = False,
+        on_change: Any = None,
+        on_submit: Any = None,
+        password: bool = False,
+        can_reveal_password: bool = False,
+        keyboard_type: Any = None,
+        border: Any = None,
+        filled: bool = False,
+        hint_text: Any = None,
+        prefix_icon: Any = None,
+        suffix: Any = None,
+        expand: Any = None,
+        dense: bool = False,
+        content_padding: Any = None,
+        autofocus: bool = False,
+        border_radius: Any = None,
+        bgcolor: Any = None,
+        disabled: bool = False,
+        text_size: Any = None,
+    ): ...
+
+class Dropdown(Control):
+    options: list[dropdown.Option]
+    value: Any
+    def __init__(
+        self,
+        label: Any = None,
+        value: Any = None,
+        options: Any = None,
+        on_change: Any = None,
+        width: Any = None,
+        height: Any = None,
+        border: Any = None,
+        filled: bool = False,
+        expand: Any = None,
+        dense: bool = False,
+        content_padding: Any = None,
+        hint_text: Any = None,
+        border_radius: Any = None,
+        bgcolor: Any = None,
+        visible: bool = True,
+    ): ...
+
+class ElevatedButton(Control):
+    def __init__(
+        self,
+        text: str = "",
+        icon: Any = None,
+        on_click: Any = None,
+        style: Any = None,
+        disabled: bool = False,
+        content: Any = None,
+        width: Any = None,
+        height: Any = None,
+        expand: Any = None,
+    ): ...
+
+class ButtonStyle:
+    def __init__(
+        self,
+        color: Any = None,
+        bgcolor: Any = None,
+        padding: Any = None,
+        shape: Any = None,
+        elevation: Any = None,
+    ): ...
+
+class RoundedRectangleBorder:
+    def __init__(self, radius: Any = None): ...
+
+class Checkbox(Control):
+    value: bool
+    def __init__(
+        self,
+        label: Any = None,
+        value: bool = False,
+        on_change: Any = None,
+    ): ...
+
+class dropdown:
+    class Option:
+        key: Any
+        text: str
+        def __init__(self, key: Any, text: Any = None): ...
+
+class ImageFit:
+    COVER: Any
+    CONTAIN: Any
+
+class TextTheme:
+    def __init__(self, body_medium: Any = None, title_medium: Any = None): ...
+
+class TextStyle:
+    def __init__(self, color: Any = None, size: Any = None, weight: Any = None): ...
+
+class ScrollbarTheme:
+    def __init__(
+        self,
+        thumb_color: Any = None,
+        track_color: Any = None,
+        radius: Any = None,
+        thickness: Any = None,
+        interactive: bool = True,
+    ): ...
+
+class InputDecorationTheme:
+    def __init__(
+        self,
+        border: Any = None,
+        focused_border: Any = None,
+        label_style: Any = None,
+        hint_style: Any = None,
+    ): ...
+
+class OutlineInputBorder:
+    def __init__(self, border_side: Any = None, border_radius: Any = None): ...
+
+class Tabs(Control):
+    def __init__(
+        self,
+        tabs: Any = None,
+        selected_index: int = 0,
+        on_change: Any = None,
+        expand: Any = None,
+    ): ...
+
+class Tab(Control):
+    def __init__(
+        self,
+        text: str = "",
+        icon: Any = None,
+        content: Any = None,
+    ): ...
+
+class ListView(Control):
+    def __init__(
+        self,
+        expand: Any = None,
+        spacing: Any = None,
+        padding: Any = None,
+        auto_scroll: bool = False,
+        controls: Any = None,
+    ): ...
+
+class FloatingActionButton(Control):
+    def __init__(
+        self,
+        icon: Any = None,
+        on_click: Any = None,
+        bgcolor: Any = None,
+        content: Any = None,
+    ): ...
+
+class AlertDialog(Control):
+    def __init__(
+        self,
+        title: Any = None,
+        content: Any = None,
+        actions: Any = None,
+        actions_alignment: Any = None,
+        modal: bool = False,
+        on_dismiss: Any = None,
+    ): ...
+
+class TextButton(Control):
+    def __init__(
+        self,
+        text: str = "",
+        on_click: Any = None,
+    ): ...
+
+class Stack(Control):
+    def __init__(
+        self,
+        controls: Any = None,
+        expand: Any = None,
+    ): ...
+
+class ProgressRing(Control):
+    def __init__(
+        self,
+        width: Any = None,
+        height: Any = None,
+        stroke_width: Any = None,
+        color: Any = None,
+    ): ...
+
+class InputBorder:
+    NONE: Any
+    OUTLINE: Any
 
 # Relaxed types
 Colors: Any
@@ -184,6 +416,9 @@ class Theme:
         color_scheme: Any = None,
         visual_density: Any = None,
         page_transitions: Any = None,
+        scrollbar_theme: Any = None,
+        text_theme: Any = None,
+        input_decoration_theme: Any = None,
     ): ...
 
 class ColorScheme:
@@ -200,6 +435,9 @@ class ColorScheme:
         on_surface: Any = None,
         surface_tint: Any = None,
         outline: Any = None,
+        inverse_surface: Any = None,
+        on_inverse_surface: Any = None,
+        surface_variant: Any = None,
     ): ...
 
 class VisualDensity:

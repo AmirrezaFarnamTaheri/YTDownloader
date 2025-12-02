@@ -100,7 +100,7 @@ class DownloadItemControl:
             icon_data = ft.Icons.ALTERNATE_EMAIL
             icon_color = ft.Colors.WHITE
         elif "instagram" in url:
-            icon_data = ft.Icons.CAMERA_ALT
+            icon_data = ft.Icons.PHOTO_CAMERA
             icon_color = ft.Colors.PINK_400
 
         if self.item.get("is_audio"):

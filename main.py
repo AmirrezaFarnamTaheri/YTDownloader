@@ -108,8 +108,50 @@ def main(pg: ft.Page):
     PAGE.bgcolor = Theme.BG_DARK
 
     # Apply Theme
-    PAGE.theme = Theme.get_theme()
+    if state.high_contrast:
+        PAGE.theme = Theme.get_high_contrast_theme()
+    else:
+        PAGE.theme = Theme.get_theme()
     logger.debug("Theme applied.")
+
+    # Keyboard Handling
+    def on_keyboard(e: ft.KeyboardEvent):
+        if not UI or not UI.queue_view:
+            return
+
+        # Only handle if Queue view is active or globally desired
+        # Current logic doesn't strictly track active view in UI manager publicly,
+        # but we can assume these shortcuts work globally or check visible state if needed.
+
+        # J / K Navigation
+        if e.key == "J": # Next
+            idx = UI.queue_view.selected_index + 1
+            UI.queue_view.select_item(idx)
+        elif e.key == "K": # Prev
+            idx = UI.queue_view.selected_index - 1
+            UI.queue_view.select_item(idx)
+
+        # Delete
+        elif e.key == "Delete":
+            item = UI.queue_view.get_selected_item()
+            if item and CONTROLLER:
+                CONTROLLER.on_remove_item(item)
+                # Adjust selection if needed is handled by remove?
+                # Ideally we move selection up one.
+                UI.queue_view.select_item(UI.queue_view.selected_index)
+
+        # Space (Pause/Resume or Global Pause)
+        elif e.key == " ": # Space
+            # For now, maybe pause everything? Or selected?
+            # Implemented: Pause/Resume selected if active
+            item = UI.queue_view.get_selected_item()
+            if item:
+                # Toggle logic... but wait, we only have Cancel/Remove/Retry exposed easily.
+                # Pausing individual downloads isn't fully supported by the engine yet (only cancel).
+                # So we won't implement Space for now to avoid confusion.
+                pass
+
+    PAGE.on_keyboard_event = on_keyboard
 
     # Initialize UI Manager
     UI = UIManager(PAGE)

@@ -62,6 +62,42 @@ class Theme:
         ERROR = "#EF4444"
 
     @staticmethod
+    def get_high_contrast_theme() -> ft.Theme:
+        """Returns the High Contrast Theme object."""
+        return ft.Theme(
+            color_scheme=ft.ColorScheme(
+                primary=ft.Colors.YELLOW_400,
+                secondary=ft.Colors.CYAN_400,
+                background=ft.Colors.BLACK,
+                surface=ft.Colors.GREY_900,
+                surface_variant=ft.Colors.GREY_800,
+                error=ft.Colors.RED_500,
+                on_primary=ft.Colors.BLACK,
+                on_secondary=ft.Colors.BLACK,
+                on_background=ft.Colors.WHITE,
+                on_surface=ft.Colors.WHITE,
+                surface_tint=ft.Colors.TRANSPARENT,
+                outline=ft.Colors.WHITE,
+                inverse_surface=ft.Colors.WHITE,
+                on_inverse_surface=ft.Colors.BLACK,
+            ),
+            visual_density=ft.VisualDensity.COMFORTABLE,
+            page_transitions=ft.PageTransitionsTheme(
+                android=ft.PageTransitionTheme.ZOOM,
+                ios=ft.PageTransitionTheme.CUPERTINO,
+                macos=ft.PageTransitionTheme.CUPERTINO,
+                linux=ft.PageTransitionTheme.ZOOM,
+                windows=ft.PageTransitionTheme.ZOOM,
+            ),
+            scrollbar_theme=ft.ScrollbarTheme(
+                thumb_color=ft.Colors.WHITE,
+                radius=0,
+                thickness=10,
+                interactive=True,
+            ),
+        )
+
+    @staticmethod
     def get_theme() -> ft.Theme:
         """Returns the Flet Theme object configured with application colors."""
         return ft.Theme(

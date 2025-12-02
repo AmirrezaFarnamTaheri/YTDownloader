@@ -18,16 +18,23 @@ on:
 env:
   FLET_VERSION: "0.28.3"
   PYTHON_VERSION: "3.12"
-  # Clean version string (remove spaces)
-  APP_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.0.0' }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  version:
+    uses: ./.github/workflows/get-version.yml
+
   # ===========================================================================
   # Android APK Build
   # ===========================================================================
   build-android:
     name: Build Android APK
+    needs: version
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     if: ${{ github.event.inputs.build_android != 'false' }}
 
     steps:
@@ -38,14 +45,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: Cache pip packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        cache: 'pip'
 
     - name: Install Flet
       run: |
@@ -66,7 +66,7 @@ jobs:
     - name: Build APK with Flet
       run: |
         # Use --build-version to inject version into the app bundle
-        flet build apk --verbose --build-version "${{ env.APP_VERSION }}"
+        flet build apk --verbose --build-version "${{ needs.version.outputs.version }}"
 
     - name: Find and verify APK
       id: find_apk
@@ -93,8 +93,10 @@ jobs:
   # ===========================================================================
   build-ios:
     name: Build iOS IPA
+    needs: version
     # Pinned to macos-14 to support Xcode 15.4 which is required for Flutter
     runs-on: macos-14
+    timeout-minutes: 60
     if: ${{ github.event.inputs.build_ios != 'false' }}
 
     steps:
@@ -105,14 +107,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: Cache pip packages
-      uses: actions/cache@v4
-      with:
-        path: ~/Library/Caches/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        cache: 'pip'
 
     - name: Install Flet
       run: |
@@ -155,7 +150,7 @@ jobs:
       run: |
         # Build xcarchive (no code signing required for archive)
         # Use --build-version to inject version into the app bundle
-        flet build ipa --verbose --build-version "${{ env.APP_VERSION }}"
+        flet build ipa --verbose --build-version "${{ needs.version.outputs.version }}"
       continue-on-error: true
 
     - name: Find iOS artifacts
@@ -207,7 +202,7 @@ jobs:
   # ===========================================================================
   release:
     name: Create Release
-    needs: [build-android, build-ios]
+    needs: [version, build-android, build-ios]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:

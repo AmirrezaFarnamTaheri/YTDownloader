@@ -34,6 +34,52 @@ class QueueView(BaseView):
         )
         self.add_control(self.queue_list)
         self._item_controls = {}  # Cache controls by item id
+        self.selected_index = -1
+
+    def select_item(self, index: int):
+        """Highlight selected item safely and efficiently."""
+        items = self.queue_manager.get_all()
+        if not items:
+            self.selected_index = -1
+            return
+
+        # Clamp index to current list
+        index = max(0, min(index, len(items) - 1))
+
+        # Track old/new indices
+        old_index = self.selected_index
+        new_index = index
+        self.selected_index = new_index
+
+        # Helper to (re)style a single item if control exists
+        def _apply_selection(i: int, selected: bool):
+            try:
+                item = items[i]
+            except IndexError:
+                return  # Queue changed between reads
+            ctrl = item.get("control")
+            if not ctrl:
+                return
+            if getattr(ctrl, "is_selected", None) == selected:
+                return
+            ctrl.is_selected = selected
+            # Update container background only
+            if hasattr(ctrl, "view"):
+                ctrl.view.bgcolor = (
+                    ft.Colors.with_opacity(0.1, Theme.PRIMARY) if selected else Theme.BG_CARD
+                )
+                ctrl.view.update()
+
+        # Update only changed rows
+        if old_index != -1 and old_index != new_index and old_index < len(items):
+            _apply_selection(old_index, False)
+        _apply_selection(new_index, True)
+
+    def get_selected_item(self):
+        items = self.queue_manager.get_all()
+        if 0 <= self.selected_index < len(items):
+            return items[self.selected_index]
+        return None
 
     def rebuild(self):
         # logger.debug("Rebuilding QueueView...")

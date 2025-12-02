@@ -116,7 +116,11 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
     if options.force_generic or not YTDLPWrapper.supports(options.url):
         logger.info("Using GenericDownloader (force=%s)", options.force_generic)
         return GenericDownloader.download(
-            options.url, output_path, options.progress_hook, options.cancel_token
+            options.url,
+            output_path,
+            options.progress_hook,
+            options.cancel_token,
+            filename=options.filename,
         )
 
     # 4. Configure yt-dlp options
