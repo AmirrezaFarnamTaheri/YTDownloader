@@ -3,7 +3,6 @@ History manager for persistent storage of download history.
 """
 
 import logging
-import os
 import sqlite3
 import time
 from datetime import datetime
@@ -18,10 +17,10 @@ try:
     # Ensure directory exists immediately if possible
     try:
         if not DB_FILE.parent.exists():
-             DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+            DB_FILE.parent.mkdir(parents=True, exist_ok=True)
     except OSError:
         pass
-except Exception:
+except Exception: # pylint: disable=broad-exception-caught
     DB_FILE = Path("history.db")
 
 
@@ -79,7 +78,9 @@ class HistoryManager:
             raise ValueError("URL too long")
 
         # Prevent null bytes
-        if "\x00" in url or (title and "\x00" in title) or (output_path and "\x00" in output_path):
+        if "\x00" in url or (title and "\x00" in title) or (
+            output_path and "\x00" in output_path
+        ):
             raise ValueError("Null bytes not allowed")
 
     @staticmethod
@@ -122,8 +123,12 @@ class HistoryManager:
                     cursor.execute("ALTER TABLE history ADD COLUMN file_path TEXT")
 
                 # Ensure indexes
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_history_status ON history(status)")
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)"
+                )
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_history_status ON history(status)"
+                )
 
                 conn.commit()
                 logger.info("History database initialized.")
@@ -133,7 +138,11 @@ class HistoryManager:
                 last_error = e
                 if "locked" in str(e).lower():
                     retry_count += 1
-                    logger.warning("DB locked during init, retrying (%d/%d)...", retry_count, HistoryManager.MAX_DB_RETRIES)
+                    logger.warning(
+                        "DB locked during init, retrying (%d/%d)...",
+                        retry_count,
+                        HistoryManager.MAX_DB_RETRIES
+                    )
                     time.sleep(HistoryManager.DB_RETRY_DELAY)
                     continue
                 logger.error("Failed to init history DB: %s", e)
@@ -160,6 +169,7 @@ class HistoryManager:
         file_path: Optional[str] = None,
     ):
         """Add a new entry to the history."""
+        # pylint: disable=too-many-arguments
         HistoryManager._validate_input(url, title or "", output_path or "")
 
         retry_count = 0
@@ -178,7 +188,10 @@ class HistoryManager:
                     (url, title, output_path, format_str, status, timestamp, file_size, file_path)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (url, title, output_path, format_str, status, timestamp, file_size, file_path)
+                    (
+                        url, title, output_path, format_str, status,
+                        timestamp, file_size, file_path
+                    )
                 )
                 conn.commit()
                 return
@@ -187,7 +200,11 @@ class HistoryManager:
                 last_error = e
                 if "locked" in str(e).lower():
                     retry_count += 1
-                    logger.warning("DB locked during add_entry, retrying (%d/%d)...", retry_count, HistoryManager.MAX_DB_RETRIES)
+                    logger.warning(
+                        "DB locked during add_entry, retrying (%d/%d)...",
+                        retry_count,
+                        HistoryManager.MAX_DB_RETRIES
+                    )
                     time.sleep(HistoryManager.DB_RETRY_DELAY)
                     continue
                 logger.error("DB Error in add_entry: %s", e)
@@ -201,7 +218,7 @@ class HistoryManager:
 
         # Raise if exhausted
         if retry_count >= HistoryManager.MAX_DB_RETRIES and last_error:
-             raise last_error
+            raise last_error
 
     @staticmethod
     def get_history_paginated(offset: int = 0, limit: int = 50) -> Dict[str, Any]:
@@ -226,7 +243,7 @@ class HistoryManager:
             rows = cursor.fetchall()
             entries = [dict(row) for row in rows]
 
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-exception-caught
             logger.error("Error retrieving history: %s", e)
         finally:
             if conn:
@@ -253,11 +270,15 @@ class HistoryManager:
     def clear_history():
         """Clear all history."""
         try:
-            db_file = HistoryManager._resolve_db_file()
-            # Use isolation_level=None for autocommit/VACUUM support
-            with sqlite3.connect(str(db_file), isolation_level=None) as conn:
+            # Replaced direct sqlite3.connect with _get_connection for consistency
+            conn = HistoryManager._get_connection()
+            try:
                 conn.execute("DELETE FROM history")
+                conn.commit()
                 conn.execute("VACUUM")
+            finally:
+                conn.close()
+
             logger.info("History cleared.")
         except Exception as e:
             logger.error("Failed to clear history: %s", e)

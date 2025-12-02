@@ -1,49 +1,24 @@
+"""
+Extended robustness tests for downloader logic.
+"""
+
 import unittest
 from unittest.mock import MagicMock, patch
 
-import yt_dlp
-
 from downloader.core import download_video
-from downloader.engines.generic import download_generic
-from downloader.extractors.generic import GenericExtractor
-from downloader.extractors.telegram import TelegramExtractor
-from downloader.info import get_video_info
+from downloader.types import DownloadOptions
 
 
 class TestDownloaderRobustness(unittest.TestCase):
 
     @patch("yt_dlp.YoutubeDL")
-    def test_get_video_info_success(self, mock_ydl):
-        mock_instance = mock_ydl.return_value.__enter__.return_value
-        mock_instance.extract_info.return_value = {
-            "title": "Test Video",
-            "duration_string": "10:00",
-            "thumbnail": "http://thumb.com",
-            "formats": [
-                {"format_id": "1", "ext": "mp4", "vcodec": "h264", "acodec": "aac"}
-            ],
-        }
-
-        info = get_video_info("http://youtube.com/watch?v=123")
-        self.assertIsNotNone(info)
-        self.assertEqual(info["title"], "Test Video")
-
-    @patch("yt_dlp.YoutubeDL")
-    def test_get_video_info_download_error_fallback(self, mock_ydl):
-        # Simulate yt-dlp error
-        mock_instance = mock_ydl.return_value.__enter__.return_value
-        mock_instance.extract_info.side_effect = yt_dlp.utils.DownloadError("Fail")
-
-        # Mock generic extractor fallback
-        with patch("downloader.info.GenericExtractor.extract") as mock_generic:
-            mock_generic.return_value = {
-                "title": "Fallback Generic",
-                "video_streams": [],
-            }
-
-            info = get_video_info("http://broken.com")
-            self.assertIsNotNone(info)
-            self.assertEqual(info["title"], "Fallback Generic")
+    def test_download_video_invalid_args(self, mock_ydl):
+        # Invalid url type - TypeError is raised by 'in' operator in TelegramExtractor check if url is int
+        # OR by logger formatting.
+        # Let's expect TypeError as that's what happens when int is passed to string operations
+        with self.assertRaises(TypeError):
+            options = DownloadOptions(url=123)
+            download_video(options)
 
     @patch("yt_dlp.YoutubeDL")
     def test_download_video_force_generic(self, mock_ydl):
@@ -55,7 +30,13 @@ class TestDownloaderRobustness(unittest.TestCase):
         # It uses GenericDownloader.download
         with patch("downloader.core.GenericDownloader.download") as mock_download:
 
-            download_video("http://url.com", mock_hook, item, force_generic=True)
+            options = DownloadOptions(
+                url="http://url.com",
+                progress_hook=mock_hook,
+                download_item=item,
+                force_generic=True
+            )
+            download_video(options)
 
             mock_download.assert_called()
             mock_ydl.assert_not_called()
@@ -78,18 +59,20 @@ class TestDownloaderRobustness(unittest.TestCase):
                 "video_streams": [{"url": "http://t.me/v", "ext": "mp4"}],
             }
 
-            download_video("https://t.me/123", mock_hook, item)
+            options = DownloadOptions(
+                url="https://t.me/123",
+                progress_hook=mock_hook,
+                download_item=item
+            )
 
-            # mock_extract.assert_called() # Core calls is_telegram_url then GenericDownloader?
-            # Core logic:
-            # if force_generic or not supports:
-            #    if "t.me": pass (does nothing special yet, just logs?)
-            #    return GenericDownloader.download(...)
+            download_video(options)
 
-            # So extract is NOT called in core.py.
-            mock_download.assert_called()
-            mock_ydl.assert_not_called()
+            mock_extract.assert_called()
 
+    @patch("downloader.core.YTDLPWrapper")
+    def test_download_video_exception(self, mock_wrapper):
+        mock_wrapper.return_value.download.side_effect = Exception("Downloader failed")
 
-if __name__ == "__main__":
-    unittest.main()
+        options = DownloadOptions(url="http://fail.com")
+        with self.assertRaises(Exception):
+            download_video(options)

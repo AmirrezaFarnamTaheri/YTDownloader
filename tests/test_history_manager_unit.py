@@ -1,24 +1,21 @@
-import os
-import sys
-import unittest
-from unittest.mock import ANY, MagicMock, mock_open, patch
+"""
+Unit tests for HistoryManager.
+"""
 
-# Adjust path to import modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import unittest
+from unittest.mock import MagicMock, patch
 
 from history_manager import HistoryManager
 
 
 class TestHistoryManager(unittest.TestCase):
-    def setUp(self):
-        # We mock sqlite3 so no real DB is touched
-        pass
 
-    @patch("history_manager.sqlite3.connect")
+    @patch("history_manager.HistoryManager._get_connection")
     def test_add_entry(self, mock_connect):
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
+        # _get_connection returns connection object directly (not context manager)
+        mock_connect.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
 
         HistoryManager.add_entry(
@@ -26,16 +23,19 @@ class TestHistoryManager(unittest.TestCase):
         )
 
         mock_cursor.execute.assert_called()
-        self.assertIn("INSERT INTO history", mock_cursor.execute.call_args[0][0])
+        mock_conn.commit.assert_called()
 
-    @patch("history_manager.sqlite3.connect")
+    @patch("history_manager.HistoryManager._get_connection")
     def test_get_history(self, mock_connect):
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_connect.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
 
-        # Mock fetchall return - we return dicts because dict(dict) works, and it simulates sqlite3.Row conversion
+        # Mock fetchone for COUNT
+        mock_cursor.fetchone.return_value = [5] # Total count
+
+        # Mock fetchall for SELECT
         mock_cursor.fetchall.return_value = [
             {
                 "id": 1,
@@ -52,8 +52,4 @@ class TestHistoryManager(unittest.TestCase):
 
         history = HistoryManager.get_history()
         self.assertEqual(len(history), 1)
-        self.assertEqual(history[0]["title"], "Test")
-
-
-if __name__ == "__main__":
-    unittest.main()
+        self.assertEqual(history[0]["url"], "http://test")

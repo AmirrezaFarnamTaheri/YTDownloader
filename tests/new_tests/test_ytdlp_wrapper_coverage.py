@@ -58,13 +58,13 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
             wrapper.download("http://url", progress_hook=MagicMock(), output_path="/tmp")
 
 
-    @patch("downloader.engines.ytdlp.GenericExtractor.extract")
+    @patch("downloader.extractors.generic.GenericExtractor.extract")
     @patch("yt_dlp.YoutubeDL")
     def test_fallback_success(self, mock_ydl, mock_extract):
         # YTDLPWrapper no longer implements fallback logic inside itself directly
         pass
 
-    @patch("downloader.engines.ytdlp.GenericExtractor.extract")
+    @patch("downloader.extractors.generic.GenericExtractor.extract")
     @patch("yt_dlp.YoutubeDL")
     def test_fallback_failed(self, mock_ydl, mock_extract):
          pass

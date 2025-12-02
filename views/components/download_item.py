@@ -1,4 +1,9 @@
-from typing import Any, Dict, Optional
+"""
+Download Item Control module.
+Represents a single download item in the queue UI.
+"""
+
+from typing import Any, Dict
 
 import flet as ft
 
@@ -6,6 +11,10 @@ from theme import Theme
 
 
 class DownloadItemControl:
+    """
+    Control for displaying a single download item.
+    """
+    # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         item: Dict[str, Any],
@@ -15,6 +24,7 @@ class DownloadItemControl:
         on_retry: Any = None,
         is_selected: bool = False,
     ):
+        # pylint: disable=too-many-arguments
         self.item = item
         self.on_cancel = on_cancel
         self.on_remove = on_remove
@@ -23,6 +33,7 @@ class DownloadItemControl:
         self.is_selected = is_selected
 
         # Pre-bind callbacks to avoid creating new lambdas each time
+        # pylint: disable=unnecessary-lambda
         self._cancel_handler = lambda e: self.on_cancel(self.item)
         self._remove_handler = lambda e: self.on_remove(self.item)
         self._retry_handler = lambda e: (
@@ -66,6 +77,7 @@ class DownloadItemControl:
         self.view = self.build()
 
     def build(self):
+        """Build the UI view for the item."""
         bg_color = (
             Theme.BG_CARD
             if not self.is_selected
@@ -148,6 +160,7 @@ class DownloadItemControl:
         )
 
     def _update_actions(self):
+        """Update action buttons based on item status."""
         status = self.item.get("status", "Queued")
         actions = []
 
@@ -235,11 +248,12 @@ class DownloadItemControl:
         self.item = None
 
     def update_progress(self):
+        """Update progress bar and status text."""
         status = self.item["status"]
         self.status_text.value = status
 
         # Dynamic colors
-        if status == "Error" or status == "Cancelled":
+        if status in ("Error", "Cancelled"):
             self.progress_bar.color = Theme.ERROR
             self.status_text.color = Theme.ERROR
             self.progress_bar.value = 0
@@ -257,7 +271,11 @@ class DownloadItemControl:
 
         # Update Details Text
         if "speed" in self.item and status in ["Downloading", "Processing"]:
-            self.details_text.value = f"{self.item.get('size', '')} • {self.item.get('speed', '')} • ETA: {self.item.get('eta', '')}"
+            self.details_text.value = (
+                f"{self.item.get('size', '')} • "
+                f"{self.item.get('speed', '')} • "
+                f"ETA: {self.item.get('eta', '')}"
+            )
         elif status.startswith("Scheduled"):
             self.details_text.value = (
                 f"Scheduled for {self.item.get('scheduled_time', '')}"

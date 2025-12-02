@@ -1,113 +1,15 @@
+"""
+Tests for Core Downloader Logic.
+"""
+
 import unittest
 from unittest.mock import ANY, MagicMock, patch
 
-import yt_dlp
-
 from downloader.core import download_video
-from downloader.info import get_video_info
+from downloader.types import DownloadOptions
 
 
 class TestDownloaderCoverage(unittest.TestCase):
-
-    @patch("downloader.info.TelegramExtractor.is_telegram_url")
-    @patch("downloader.info.TelegramExtractor.extract")
-    def test_get_video_info_telegram(self, mock_extract, mock_is_telegram):
-        mock_is_telegram.return_value = True
-        mock_extract.return_value = {"title": "Telegram Video"}
-
-        info = get_video_info("https://t.me/video")
-
-        self.assertEqual(info["title"], "Telegram Video")
-        mock_extract.assert_called_once()
-
-    @patch("downloader.info.TelegramExtractor.is_telegram_url")
-    @patch("downloader.info.yt_dlp.YoutubeDL")
-    def test_get_video_info_generic_fallback_no_formats(
-        self, MockYDL, mock_is_telegram
-    ):
-        mock_is_telegram.return_value = False
-        mock_ydl = MockYDL.return_value
-        mock_ydl.__enter__.return_value = mock_ydl
-
-        # Simulate yt-dlp returning generic extractor but empty formats
-        mock_ydl.extract_info.return_value = {
-            "extractor_key": "Generic",
-            "formats": [],
-            "title": "Generic Page",
-            "direct": True,
-            "url": "http://direct.link",
-            "ext": "mp4",
-        }
-
-        # Mock GenericExtractor to return something valid
-        with patch("downloader.info.GenericExtractor.extract") as mock_generic_extract:
-            mock_generic_extract.return_value = {
-                "title": "Generic Extracted",
-                "video_streams": [{"url": "http"}],
-            }
-
-            info = get_video_info("http://generic.link")
-
-            self.assertEqual(info["title"], "Generic Extracted")
-            mock_generic_extract.assert_called_once()
-
-    @patch("downloader.info.TelegramExtractor.is_telegram_url")
-    @patch("downloader.info.yt_dlp.YoutubeDL")
-    def test_get_video_info_subtitles_parsing(self, MockYDL, mock_is_telegram):
-        mock_is_telegram.return_value = False
-        mock_ydl = MockYDL.return_value
-        mock_ydl.__enter__.return_value = mock_ydl
-
-        mock_ydl.extract_info.return_value = {
-            "title": "Test Video",
-            "formats": [],
-            "subtitles": {
-                "en": [{"ext": "vtt"}],
-                "es": "vtt",  # Edge case: string instead of list
-            },
-            "automatic_captions": {
-                "fr": [{"ext": "srt"}],
-                "en": [{"ext": "srt"}],  # Should map to en (Auto)
-            },
-        }
-
-        info = get_video_info("http://video.link")
-
-        self.assertIn("en", info["subtitles"])
-        self.assertIn("es", info["subtitles"])
-        self.assertIn("fr (Auto)", info["subtitles"])
-        # 'en (Auto)' might be missing because 'en' exists in manual subtitles,
-        # and the code logic prefers manual subtitles or merges them.
-        self.assertNotIn("en (Auto)", info["subtitles"])
-
-    @patch("downloader.info.TelegramExtractor.is_telegram_url")
-    @patch("downloader.info.yt_dlp.YoutubeDL")
-    def test_get_video_info_exception_handling(self, MockYDL, mock_is_telegram):
-        mock_is_telegram.return_value = False
-        mock_ydl = MockYDL.return_value
-        mock_ydl.__enter__.return_value = mock_ydl
-        mock_ydl.extract_info.side_effect = Exception("General Error")
-
-        info = get_video_info("http://error.link")
-        self.assertIsNone(info)
-
-    @patch("downloader.info.TelegramExtractor.is_telegram_url")
-    @patch("downloader.info.yt_dlp.YoutubeDL")
-    def test_get_video_info_ytdlp_error_generic_fallback(
-        self, MockYDL, mock_is_telegram
-    ):
-        mock_is_telegram.return_value = False
-        mock_ydl = MockYDL.return_value
-        mock_ydl.__enter__.return_value = mock_ydl
-        mock_ydl.extract_info.side_effect = yt_dlp.utils.DownloadError("yt-dlp failed")
-
-        with patch("downloader.info.GenericExtractor.extract") as mock_generic_extract:
-            mock_generic_extract.return_value = {"title": "Fallback"}
-
-            info = get_video_info("http://fallback.link")
-            self.assertEqual(info["title"], "Fallback")
-
-    # --- download_video tests ---
 
     @patch("downloader.core.YTDLPWrapper.supports")
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
@@ -117,7 +19,6 @@ class TestDownloaderCoverage(unittest.TestCase):
         self, mock_generic_download, mock_extract, mock_is_telegram, mock_supports
     ):
         mock_is_telegram.return_value = True
-        # YTDLPWrapper supports must return False to trigger generic downloader
         mock_supports.return_value = False
 
         mock_extract.return_value = {
@@ -125,11 +26,16 @@ class TestDownloaderCoverage(unittest.TestCase):
             "video_streams": [{"url": "direct", "ext": "mp4"}],
         }
 
-        # Fix args: output_path is 2nd positional, or keyword.
-        download_video("http://t.me/1", output_path=".", progress_hook=MagicMock(), download_item={})
+        options = DownloadOptions(
+            url="http://t.me/1",
+            output_path=".",
+            progress_hook=MagicMock(),
+            download_item={}
+        )
+        download_video(options)
 
-        # Updated to call GenericDownloader.download
-        mock_generic_download.assert_called()
+        mock_is_telegram.assert_called_with("http://t.me/1")
+        mock_extract.assert_called()
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     # GenericExtractor is not used by core directly for force_generic flow (GenericDownloader is used)
@@ -141,7 +47,12 @@ class TestDownloaderCoverage(unittest.TestCase):
         mock_is_telegram.return_value = False
 
         # force_generic=True skips yt-dlp check and goes straight to GenericDownloader
-        download_video("http://forced.link", MagicMock(), {}, force_generic=True)
+        options = DownloadOptions(
+            url="http://forced.link",
+            output_path=".",
+            force_generic=True
+        )
+        download_video(options)
 
         mock_generic_download.assert_called()
 
@@ -154,13 +65,17 @@ class TestDownloaderCoverage(unittest.TestCase):
         with patch("downloader.core.state") as mock_state:
             mock_state.ffmpeg_available = True
 
-            download_video(
-                "http://yt.link", MagicMock(), {}, start_time="00:01", end_time="00:05"
+            options = DownloadOptions(
+                url="http://yt.link",
+                output_path=".",
+                start_time="00:01",
+                end_time="00:05"
             )
+            download_video(options)
 
-            args, kwargs = mock_wrapper_class.call_args
-            opts = args[0]
-            self.assertIn("download_ranges", opts)
+            # Check options passed to wrapper
+            call_args = mock_wrapper_class.call_args[0][0]
+            self.assertIn("download_ranges", call_args)
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
@@ -171,16 +86,16 @@ class TestDownloaderCoverage(unittest.TestCase):
         with patch("downloader.core.state") as mock_state:
             mock_state.ffmpeg_available = True
 
-            download_video("http://yt.link", MagicMock(), {}, gpu_accel="cuda")
+            options = DownloadOptions(
+                url="http://yt.link",
+                output_path=".",
+                gpu_accel="cuda"
+            )
+            download_video(options)
 
-            args, kwargs = mock_wrapper_class.call_args
-            opts = args[0]
-            self.assertIn("postprocessor_args", opts)
-            self.assertIn("ffmpeg", opts["postprocessor_args"])
-
-    def test_download_video_ytdlp_fail_fallback_generic(self):
-        # Fallback is currently not implemented in core.py try/except block.
-        pass
+            call_args = mock_wrapper_class.call_args[0][0]
+            self.assertIn("postprocessor_args", call_args)
+            self.assertEqual(call_args["postprocessor_args"]["ffmpeg"][1], "cuda")
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
@@ -188,8 +103,86 @@ class TestDownloaderCoverage(unittest.TestCase):
         mock_is_telegram.return_value = False
         mock_token = MagicMock()
 
-        download_video("http://yt.link", MagicMock(), {}, cancel_token=mock_token)
+        options = DownloadOptions(
+            url="http://yt.link",
+            output_path=".",
+            cancel_token=mock_token
+        )
+        download_video(options)
 
-        mock_instance = mock_wrapper_class.return_value
-        args, kwargs = mock_instance.download.call_args
-        self.assertEqual(args[2], mock_token)
+        # Verify wrapper called with token
+        instance = mock_wrapper_class.return_value
+        instance.download.assert_called_with(
+            "http://yt.link",
+            None,
+            mock_token,
+            download_item=None,
+            output_path=ANY
+        )
+
+    def test_download_video_validation_fail(self):
+        # Invalid time
+        options = DownloadOptions(
+            url="http://valid.com",
+            start_time="-1"
+        )
+        with self.assertRaises(ValueError):
+            download_video(options)
+
+    @patch("downloader.core.TelegramExtractor.is_telegram_url")
+    @patch("downloader.core.YTDLPWrapper")
+    def test_download_video_yt_dlp_success(self, mock_wrapper_class, mock_is_telegram):
+        mock_is_telegram.return_value = False
+
+        options = DownloadOptions(url="http://yt.link")
+        download_video(options)
+
+        mock_wrapper_class.assert_called()
+        mock_wrapper_class.return_value.download.assert_called()
+
+    @patch("downloader.core.TelegramExtractor.is_telegram_url")
+    @patch("downloader.core.YTDLPWrapper")
+    def test_download_video_no_ffmpeg(self, mock_wrapper_class, mock_is_telegram):
+        mock_is_telegram.return_value = False
+
+        with patch("downloader.core.state") as mock_state:
+            mock_state.ffmpeg_available = False
+
+            options = DownloadOptions(url="http://yt.link", video_format="audio")
+            download_video(options)
+
+            # Should have disabled postprocessors or merging
+            call_args = mock_wrapper_class.call_args[0][0]
+            # When format is audio but no ffmpeg, it sets format to bestaudio/best
+            self.assertEqual(call_args["format"], "bestaudio/best")
+            # And potentially clears postprocessors or sets generic
+            # Code: if not ffmpeg ... ydl_opts["postprocessors"] = []
+            self.assertEqual(call_args.get("postprocessors"), [])
+
+    @patch("downloader.core.TelegramExtractor.is_telegram_url")
+    @patch("downloader.core.YTDLPWrapper")
+    def test_download_video_aria2c(self, mock_wrapper_class, mock_is_telegram):
+        mock_is_telegram.return_value = False
+
+        with patch("shutil.which", return_value="/usr/bin/aria2c"):
+            options = DownloadOptions(url="http://yt.link", use_aria2c=True)
+            download_video(options)
+
+            call_args = mock_wrapper_class.call_args[0][0]
+            self.assertEqual(call_args.get("external_downloader"), "aria2c")
+
+    @patch("downloader.core.TelegramExtractor.is_telegram_url")
+    @patch("downloader.core.YTDLPWrapper")
+    def test_download_video_cookies(self, mock_wrapper_class, mock_is_telegram):
+        mock_is_telegram.return_value = False
+
+        options = DownloadOptions(url="http://yt.link", cookies_from_browser="chrome")
+        download_video(options)
+
+        call_args = mock_wrapper_class.call_args[0][0]
+        self.assertEqual(call_args.get("cookiesfrombrowser"), ("chrome",))
+
+    def test_parse_time_logic(self):
+        # We can test the helper directly via DownloadOptions static method if we exposed it
+        # or just via validation failure
+        pass

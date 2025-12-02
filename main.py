@@ -15,7 +15,7 @@ import traceback
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 
 import flet as ft
 
@@ -119,18 +119,18 @@ def main(pg: ft.Page):
     def get_default_download_path():
         """Get a safe default download path for the current platform."""
         try:
-            # Check for Android/iOS specific (not implemented here but good to have hooks)
+            # Check for Android/iOS specific
             home = Path.home()
             downloads = home / "Downloads"
             if downloads.exists() and os.access(downloads, os.W_OK):
                 return str(downloads)
             if os.access(home, os.W_OK):
                 return str(home)
-        except Exception:
+        except Exception: # pylint: disable=broad-exception-caught
             pass
         return "."
 
-    def on_add_to_queue(data):
+    def on_add_to_queue(data: Dict[str, Any]):
         logger.info("User requested add to queue: %s", data.get("url"))
         if not validate_url(data.get("url", "")):
             PAGE.open(
@@ -216,12 +216,7 @@ def main(pg: ft.Page):
         if "control" in item:
             item["control"].update_progress()
 
-        # Nudge background loop so it can allocate next items promptly
-        try:
-            with state.queue_manager._has_work:
-                state.queue_manager._has_work.notify_all()
-        except Exception:
-            pass
+        state.queue_manager.notify_workers()
 
     def on_remove_item(item):
         state.queue_manager.remove_item(item)
@@ -235,12 +230,12 @@ def main(pg: ft.Page):
 
         if item_id:
             for i, x in enumerate(q):
-                 if x.get("id") == item_id:
-                     idx = i
-                     break
+                if x.get("id") == item_id:
+                    idx = i
+                    break
         else:
-             if item in q:
-                 idx = q.index(item)
+            if item in q:
+                idx = q.index(item)
 
         if idx != -1:
             new_idx = idx + direction
@@ -315,7 +310,7 @@ def main(pg: ft.Page):
             UI.update_queue_view()
             PAGE.open(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
 
-        except Exception as ex:
+        except Exception as ex:  # pylint: disable=broad-exception-caught
             logger.error("Failed to import batch file: %s", ex, exc_info=True)
             PAGE.open(ft.SnackBar(content=ft.Text(f"Failed to import: {ex}")))
 
@@ -346,6 +341,7 @@ def main(pg: ft.Page):
     add_rate_limit_seconds = 0.5
 
     def check_rate_limit():
+        # pylint: disable=reimported,import-outside-toplevel
         import time as time_mod
         now = time_mod.time()
         if now - last_add_time[0] < add_rate_limit_seconds:
@@ -400,9 +396,9 @@ def main(pg: ft.Page):
                 # Process queue
                 process_queue()
 
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Error in background_loop: %s", e, exc_info=True)
-                time.sleep(1) # Prevent tight loop on error
+                time.sleep(1)  # Prevent tight loop on error
         logger.info("Background loop stopped.")
 
     # Start Clipboard Monitor
@@ -447,13 +443,13 @@ def global_crash_handler(exctype, value, tb):
         log_path.parent.mkdir(parents=True, exist_ok=True)
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(crash_report)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         # Fallback
         log_path = Path("crash.log")
         try:
-             with open(log_path, "a", encoding="utf-8") as f:
+            with open(log_path, "a", encoding="utf-8") as f:
                 f.write(crash_report)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
     # Also write to local
@@ -461,7 +457,7 @@ def global_crash_handler(exctype, value, tb):
         local_crash = Path("streamcatch_crash.log")
         with open(local_crash, "w", encoding="utf-8") as f:
             f.write(crash_report)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass
 
     try:
@@ -471,10 +467,10 @@ def global_crash_handler(exctype, value, tb):
         print("=" * 60 + "\n", file=sys.stderr)
 
         if os.name == "nt":
-            import ctypes
+            import ctypes  # pylint: disable=import-outside-toplevel
             msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
             ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass
 
     sys.exit(1)

@@ -71,11 +71,12 @@ class TestUIUtilsCoverage(unittest.TestCase):
         mock_which.return_value = None
         self.assertFalse(ui_utils.is_ffmpeg_available())
 
+    @patch("os.path.isdir")
     @patch("os.path.exists")
     @patch("os.path.expanduser")
     @patch("subprocess.Popen")
     @patch("os.startfile", create=True)
-    def test_open_folder(self, mock_startfile, mock_popen, mock_expand, mock_exists):
+    def test_open_folder(self, mock_startfile, mock_popen, mock_expand, mock_exists, mock_isdir):
         # Path empty
         self.assertFalse(ui_utils.open_folder(None))
 
@@ -83,9 +84,11 @@ class TestUIUtilsCoverage(unittest.TestCase):
 
         # Path not exists
         mock_exists.return_value = False
+        mock_isdir.return_value = False
         self.assertFalse(ui_utils.open_folder("/path/to/folder"))
 
         mock_exists.return_value = True
+        mock_isdir.return_value = True
 
         # Windows
         with patch("platform.system", return_value="Windows"):
@@ -95,12 +98,12 @@ class TestUIUtilsCoverage(unittest.TestCase):
         # Darwin
         with patch("platform.system", return_value="Darwin"):
             self.assertTrue(ui_utils.open_folder("/path/to/folder"))
-            mock_popen.assert_called_with(["open", "/path/to/folder"])
+            mock_popen.assert_called_with(["open", "/path/to/folder"], stdout=ANY, stderr=ANY)
 
         # Linux
         with patch("platform.system", return_value="Linux"):
             self.assertTrue(ui_utils.open_folder("/path/to/folder"))
-            mock_popen.assert_called_with(["xdg-open", "/path/to/folder"])
+            mock_popen.assert_called_with(["xdg-open", "/path/to/folder"], stdout=ANY, stderr=ANY)
 
         # Exception handling
         with patch("platform.system", return_value="Linux"):

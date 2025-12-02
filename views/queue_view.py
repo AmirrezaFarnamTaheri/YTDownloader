@@ -2,7 +2,7 @@ import logging
 
 import flet as ft
 
-from components import DownloadItemControl
+from views.components.download_item import DownloadItemControl
 from theme import Theme
 
 from .base_view import BaseView

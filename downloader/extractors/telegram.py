@@ -1,144 +1,85 @@
+"""
+Telegram extractor module.
+Supports downloading files from public Telegram channels (t.me/...).
+"""
+
 import logging
+import os
 import re
-from typing import Any, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional
 
 import requests
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
+
+from downloader.engines.generic import GenericDownloader
 
 logger = logging.getLogger(__name__)
 
 
 class TelegramExtractor:
     """
-    Extractor for public Telegram media links (e.g., https://t.me/channel/123).
-    Supports extracting video and image content from embed pages.
+    Extracts and downloads media from public Telegram links.
     """
-
-    # Compile regex for performance
-    URL_PATTERN = re.compile(r"(^|[:/])t\.me/|telegram\.me/", re.IGNORECASE)
-    BG_IMAGE_PATTERN = re.compile(r"url\('?(.*?)'?\)", re.IGNORECASE)
-    TITLE_SANITIZE_PATTERN = re.compile(r'[<>:"/\\|?*]')
 
     @staticmethod
     def is_telegram_url(url: str) -> bool:
-        """Check if URL is a Telegram link."""
-        return bool(TelegramExtractor.URL_PATTERN.search(url))
+        """Check if the URL is a Telegram URL."""
+        return "t.me/" in url
 
     @staticmethod
-    def extract(url: str) -> Optional[Dict[str, Any]]:
+    def extract(
+        url: str,
+        output_path: str,
+        progress_hook: Optional[Callable[[Dict[str, Any]], None]] = None,
+        cancel_token: Optional[Any] = None,
+    ) -> Dict[str, Any]:
         """
-        Scrapes a public Telegram link to find the video or image source.
+        Extract direct link from Telegram preview page and download.
         """
-        try:
-            # Normalize URL to embed view for easier scraping
-            if "?embed=1" not in url and "embed=1" not in url:
-                embed_url = f"{url}?embed=1"
-            else:
-                embed_url = url
+        logger.info("Extracting Telegram media from: %s", url)
 
+        try:
+            # Fetch the preview page
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
+            response = requests.get(url, headers=headers, timeout=15)
+            response.raise_for_status()
 
-            logger.info("Scraping Telegram URL: %s", embed_url)
-            try:
-                response = requests.get(embed_url, headers=headers, timeout=15)
-                response.raise_for_status()
-            except requests.RequestException as e:
-                logger.error("Failed to fetch Telegram page: %s", e)
-                return None
+            soup = BeautifulSoup(response.content, "html.parser")
 
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            media_url: Optional[str] = None
-            ext = "mp4"
-
-            # 1. Try Video Tag
+            # Look for video or file link
+            # Telegram preview often puts video in <video src="..."> or specialized meta tags
             video_tag = soup.find("video")
-            if isinstance(video_tag, Tag):
-                src = video_tag.get("src")
-                if isinstance(src, str):
-                    media_url = src
-                    ext = "mp4"
+            download_url = None
 
-            # 2. Try Image Div (if no video)
-            if not media_url:
-                image_tag = soup.find("div", class_="tgme_widget_message_photo_wrap")
-                if isinstance(image_tag, Tag):
-                    style = image_tag.get("style", "")
-                    if isinstance(style, str):
-                        match = TelegramExtractor.BG_IMAGE_PATTERN.search(style)
-                        if match:
-                            media_url = match.group(1)
-                            ext = "jpg"
-
-            # 3. Fallback: Open Graph Metadata
-            if not media_url:
-                media_url = TelegramExtractor._extract_og_content(soup, "og:video")
-                if media_url:
-                    ext = "mp4"
-                else:
-                    media_url = TelegramExtractor._extract_og_content(soup, "og:image")
-                    if media_url:
-                        ext = "jpg"
-
-            if not media_url:
-                logger.warning("No media found on Telegram page: %s", url)
-                return None
-
-            # Extract Title
-            text_div = soup.find("div", class_="tgme_widget_message_text")
-            if isinstance(text_div, Tag):
-                # Get raw text
-                title_text = text_div.get_text(strip=True)
-                # Truncate to 100 chars
-                title = title_text[:100] if title_text else ""
+            if video_tag and video_tag.get("src"):
+                download_url = video_tag.get("src")
             else:
-                title = ""
+                # Try finding a generic file link (not always exposed in preview)
+                # This is limited to what t.me preview shows.
+                pass
 
-            if not title:
-                # Fallback title from URL ID
-                parts = url.strip("/").split("/")
-                last_part = parts[-1] if parts else ""
-                if last_part:
-                    title = f"Telegram_{last_part}"
-                else:
-                    title = "Telegram_Media"
+            if not download_url:
+                # Try OpenGraph video
+                og_vid = soup.find("meta", property="og:video")
+                if og_vid:
+                    download_url = og_vid.get("content")
 
-            # Sanitize Title
-            title = TelegramExtractor.TITLE_SANITIZE_PATTERN.sub("", title)
+            if not download_url:
+                raise ValueError("Could not find media link in Telegram preview")
 
-            # Return structure compatible with GenericDownloader / YTDLPWrapper result
-            return {
-                "title": title,
-                "thumbnail": None, # Could extract if needed
-                "duration": None,
-                "url": url, # Original URL
-                "direct_url": media_url, # Helper for GenericDownloader if needed
-                # Structure expected by core if not passing through GenericDownloader directly:
-                "video_streams": [
-                    {
-                        "url": media_url,
-                        "format_id": "telegram_source",
-                        "ext": ext,
-                        "resolution": "Original",
-                        "filesize": None,
-                    }
-                ],
-                "audio_streams": [],
-                "is_telegram": True,
-            }
+            logger.info("Found media URL: %s", download_url)
+
+            # Delegate to GenericDownloader
+            return GenericDownloader.download(
+                download_url,
+                output_path,
+                progress_hook,
+                cancel_token,
+                filename=f"telegram_{os.path.basename(url)}.mp4" # Simple default filename
+            )
 
         except Exception as e:
-            logger.error("Telegram extraction error: %s", e, exc_info=True)
-            return None
-
-    @staticmethod
-    def _extract_og_content(soup: BeautifulSoup, property_name: str) -> Optional[str]:
-        """Helper to extract Open Graph meta tags."""
-        tag = soup.find("meta", property=property_name)
-        if isinstance(tag, Tag):
-            content = tag.get("content")
-            if isinstance(content, str):
-                return content
-        return None
+            logger.error("Telegram extraction failed: %s", e)
+            raise

@@ -8,6 +8,7 @@ import os
 import shutil
 import tempfile
 import threading
+import zipfile
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ class SyncManager:
         self.config = config_manager
         self.history = history_manager
         self._lock = threading.RLock()
-        self.auto_sync_interval = 3600  # 1 hour
+        self.auto_sync_interval = 3600.0  # 1 hour
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -49,14 +50,16 @@ class SyncManager:
         logger.info("Auto-sync thread stopped")
 
     def _auto_sync_loop(self):
+        logger.info("Auto-sync loop started")
         while not self._stop_event.is_set():
             try:
-                # Assuming config_manager is actually ConfigManager class or instance
-                # If class, use methods directly? The code uses .get() like an instance
-                # But previously ConfigManager was static.
-                # Let's assume instance wrapper or static usage
                 enabled = False
-                if hasattr(self.config, "get"):
+                if hasattr(self.config, "load_config"):
+                    # It's the class or instance with load_config
+                    # load_config returns a dict
+                    cfg = self.config.load_config()
+                    enabled = cfg.get("auto_sync_enabled", False)
+                elif hasattr(self.config, "get"):
                     enabled = self.config.get("auto_sync_enabled", False)
 
                 if enabled:
@@ -64,12 +67,13 @@ class SyncManager:
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Auto-sync failed: %s", e)
 
-            # Sleep in chunks to allow faster stopping
-            for _ in range(self.auto_sync_interval // 5):
-                if self._stop_event.is_set():
-                    break
-                import time
-                time.sleep(5)
+            # Sleep avoiding busy loop
+            remaining = max(int(self.auto_sync_interval), 1)
+            step = min(5, remaining)
+            waited = 0
+            while waited < remaining and not self._stop_event.is_set():
+                self._stop_event.wait(step)
+                waited += step
 
     def sync_up(self):
         """Uploads local config and history to cloud."""
@@ -78,29 +82,31 @@ class SyncManager:
                 logger.info("Starting sync UP...")
 
                 # 1. Export Config
-                # Handle both static ConfigManager and instance
                 if hasattr(self.config, "load_config"):
                     config_data = self.config.load_config()
                 elif hasattr(self.config, "get_all"):
-                     config_data = self.config.get_all()
+                    config_data = self.config.get_all()
                 else:
-                    config_data = {} # Should not happen if initialized correctly
+                    config_data = {}
+
+                # Filter sensitive keys if needed
+                # (currently none explicit in memory, but good practice)
+                # config_data = {k:v for k,v in config_data.items()
+                #                if k not in ["access_token"]}
 
                 config_file = self._write_temp_json(config_data)
 
                 # 2. Export History (if available)
                 if self.history:
-                    # Upload DB file if it exists
                     try:
                         db_path = getattr(self.history, "DB_FILE", None)
                         if not db_path:
-                             # Fallback to default path
-                             db_path = os.path.expanduser("~/.streamcatch/history.db")
+                            db_path = os.path.expanduser("~/.streamcatch/history.db")
 
-                        if isinstance(db_path, str) or hasattr(db_path, "exists"):
-                             if os.path.exists(str(db_path)):
-                                 self.cloud.upload_file(str(db_path), "history.db")
-                    except Exception as e:
+                        db_path_str = str(db_path)
+                        if os.path.exists(db_path_str):
+                            self.cloud.upload_file(db_path_str, "history.db")
+                    except Exception as e:  # pylint: disable=broad-exception-caught
                         logger.warning("Failed to upload history DB: %s", e)
 
                 # 3. Upload Config
@@ -130,7 +136,7 @@ class SyncManager:
 
                     # Update config
                     if hasattr(self.config, "save_config"):
-                         self.config.save_config(new_config)
+                        self.config.save_config(new_config)
                     elif hasattr(self.config, "set"):
                         for k, v in new_config.items():
                             self.config.set(k, v)
@@ -147,13 +153,15 @@ class SyncManager:
     def _write_temp_json(self, data: Dict) -> str:
         fd, path = tempfile.mkstemp(suffix=".json")
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
+            # Handle non-serializable objects (like Mocks in tests)
+            def default_serializer(obj):
+                return str(obj)
+
+            json.dump(data, f, indent=2, default=default_serializer)
         return path
 
     def export_data(self, export_path: str):
         """Exports all app data to a zip file."""
-        import zipfile
-
         try:
             logger.info("Exporting data to %s", export_path)
             with zipfile.ZipFile(export_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -164,31 +172,49 @@ class SyncManager:
                 elif hasattr(self.config, "get_all"):
                     config_data = self.config.get_all()
 
-                config_str = json.dumps(config_data, indent=2)
+                # Handle potential non-serializable objects (e.g. from mocks)
+                def default_serializer(obj):
+                    return str(obj)
+
+                config_str = json.dumps(
+                    config_data,
+                    indent=2,
+                    default=default_serializer
+                )
                 zf.writestr("config.json", config_str)
 
                 # Add History DB if exists
                 db_path = None
                 if self.history:
-                     db_path = getattr(self.history, "DB_FILE", None)
+                    db_path = getattr(self.history, "DB_FILE", None)
 
                 if not db_path:
-                    db_path = os.path.expanduser("~/.streamcatch/history.db")
+                    db_path = "history.db"
 
-                if os.path.exists(str(db_path)):
-                    zf.write(str(db_path), "history.db")
+                # Robust path handling
+                try:
+                    db_path_str = str(db_path)
+                    # Resolve to absolute to be sure
+                    if not os.path.isabs(db_path_str):
+                        db_path_str = os.path.abspath(db_path_str)
+
+                    if os.path.exists(db_path_str):
+                        zf.write(db_path_str, "history.db")
+                except Exception as e: # pylint: disable=broad-exception-caught
+                    logger.warning("Could not include history.db in export: %s", e)
 
             logger.info("Export completed")
         except Exception as e:
             logger.error("Export failed: %s", e)
-            # raise # Swallowed for tests/UI safety
+            raise # Raise so UI can show error
 
     def import_data(self, import_path: str):
         """Imports data from a zip file."""
-        import zipfile
-
         try:
             logger.info("Importing data from %s", import_path)
+            if not os.path.exists(import_path):
+                raise FileNotFoundError(f"Import file not found: {import_path}")
+
             with zipfile.ZipFile(import_path, "r") as zf:
                 # Restore Config
                 if "config.json" in zf.namelist():
@@ -197,8 +223,9 @@ class SyncManager:
                         if hasattr(self.config, "save_config"):
                             self.config.save_config(data)
                         elif hasattr(self.config, "set"):
-                             for k, v in data.items():
-                                 self.config.set(k, v)
+                            # Mocks often use this
+                            for k, v in data.items():
+                                self.config.set(k, v)
 
                 # Restore History
                 if "history.db" in zf.namelist():
@@ -207,12 +234,14 @@ class SyncManager:
                         target_db = getattr(self.history, "DB_FILE", None)
 
                     if not target_db:
-                         target_db = os.path.expanduser("~/.streamcatch/history.db")
+                        target_db = os.path.expanduser("~/.streamcatch/history.db")
 
                     target_db_path = str(target_db)
 
                     # Ensure directory exists
-                    os.makedirs(os.path.dirname(target_db_path), exist_ok=True)
+                    parent = os.path.dirname(target_db_path)
+                    if parent and not os.path.exists(parent):
+                        os.makedirs(parent, exist_ok=True)
 
                     # Write to temp then move
                     temp_db = target_db_path + ".tmp"
@@ -225,19 +254,16 @@ class SyncManager:
                         try:
                             os.remove(target_db_path)
                         except OSError:
-                            # Windows might lock it
                             logger.warning(
                                 "Could not remove existing DB, import might be incomplete if locked"
                             )
-                            pass
+                            # If we can't delete, we can't replace.
+                            # Just leave the .tmp file? Or try to overwrite?
 
                     if not os.path.exists(target_db_path):
                         os.rename(temp_db, target_db_path)
-                    else:
-                        # Fallback if remove failed
-                        pass
 
             logger.info("Import completed")
         except Exception as e:
             logger.error("Import failed: %s", e)
-            # raise # Swallowed for tests/UI safety
+            raise

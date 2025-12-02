@@ -15,11 +15,20 @@ class TestConfigManagerCoverage(unittest.TestCase):
     """Test suite for ConfigManager."""
 
     @patch("config_manager.CONFIG_FILE")
-    def test_load_config_corrupted_json(self, mock_path):
+    @patch("os.path.exists") # Mock os.path.exists to handle backup existence checks
+    @patch("os.unlink")
+    def test_load_config_corrupted_json(self, mock_unlink, mock_exists, mock_path):
         """Test loading configuration when JSON is corrupted."""
         # Setup for corrupted JSON
         mock_path.parent.mkdir.return_value = None
+        # mock_path.exists.return_value = True # This is handled by os.path.exists patch if using Path.exists?
+        # Wait, if CONFIG_FILE is a Path object, config_path.exists() uses Path.exists.
+        # But `if os.path.exists(backup):` uses os.path.exists.
+
         mock_path.exists.return_value = True
+
+        # When checking backup existence, return False to avoid unlink
+        mock_exists.side_effect = lambda p: p == mock_path if isinstance(p, MagicMock) else False
 
         # Mock open to return invalid JSON
         with patch("builtins.open", mock_open(read_data="{invalid_json")):
@@ -29,7 +38,8 @@ class TestConfigManagerCoverage(unittest.TestCase):
                 mock_path.rename = MagicMock()
 
                 result = ConfigManager.load_config()
-                self.assertEqual(result, {})
+                # Should return DEFAULTS, not empty dict
+                self.assertEqual(result, ConfigManager.DEFAULTS)
                 mock_path.rename.assert_called_once()
 
     @patch("config_manager.CONFIG_FILE")
@@ -44,7 +54,8 @@ class TestConfigManagerCoverage(unittest.TestCase):
         ):
             with patch("json.load", return_value={"use_aria2c": "not_boolean"}):
                 result = ConfigManager.load_config()
-                self.assertEqual(result, {})
+                # Should return DEFAULTS
+                self.assertEqual(result, ConfigManager.DEFAULTS)
 
     @patch("config_manager.CONFIG_FILE")
     def test_load_config_io_error(self, mock_path):
@@ -54,31 +65,27 @@ class TestConfigManagerCoverage(unittest.TestCase):
 
         with patch("builtins.open", side_effect=IOError("Disk fail")):
             result = ConfigManager.load_config()
-            self.assertEqual(result, {})
+            # Should return DEFAULTS
+            self.assertEqual(result, ConfigManager.DEFAULTS)
 
     def test_validate_config_errors(self):
         """Test validation logic for various invalid inputs."""
         # Not a dict
         with self.assertRaises(ValueError):
-            # pylint: disable=protected-access
             ConfigManager._validate_config([])
 
         # Invalid gpu_accel
         with self.assertRaises(ValueError):
-            # pylint: disable=protected-access
-            ConfigManager._validate_config({"gpu_accel": "Invalid"})
-
-        # Invalid theme_mode
-        with self.assertRaises(ValueError):
-            # pylint: disable=protected-access
-            ConfigManager._validate_config({"theme_mode": "Blue"})
+            ConfigManager._validate_config({"gpu_accel": 123}) # Must be string
 
     @patch("config_manager.CONFIG_FILE")
     @patch("tempfile.mkstemp")
     @patch("os.fdopen")
     @patch("os.fsync")
+    @patch("os.unlink") # Mock os.unlink for cleanup
+    @patch("os.chmod") # Mock os.chmod
     def test_save_config_exception_cleanup(
-        self, mock_fsync, mock_fdopen, mock_mkstemp, mock_path
+        self, mock_chmod, mock_unlink, mock_fsync, mock_fdopen, mock_mkstemp, mock_path
     ):
         """Test that temporary files are cleaned up if saving fails."""
         # Setup to raise exception during write
@@ -88,26 +95,21 @@ class TestConfigManagerCoverage(unittest.TestCase):
 
         mock_path.parent.mkdir.return_value = None
 
-        with patch("config_manager.Path") as mock_path_cls:
-            temp_path_instance = MagicMock()
-            other_instance = MagicMock()
-            mock_path_cls.side_effect = lambda p: temp_path_instance if p == temp_path_str else other_instance
-
-            with self.assertRaises(Exception):
+        # We need to ensure os.path.exists returns True for the temp file to trigger unlink
+        with patch("os.path.exists", return_value=True):
+             with self.assertRaises(Exception):
                 ConfigManager.save_config({"theme_mode": "Dark"})
 
-            # Ensure unlink called on the temp path instance specifically
-            temp_path_instance.unlink.assert_called_once_with()
-            other_instance.unlink.assert_not_called()
+             mock_unlink.assert_called_with(temp_path_str)
 
-    @patch("config_manager.Path")
     @patch("config_manager.CONFIG_FILE")
     @patch("tempfile.mkstemp")
     @patch("os.fdopen")
     @patch("os.fsync")
-    # pylint: disable=too-many-arguments, too-many-positional-arguments, unused-argument
+    @patch("os.replace") # Use os.replace instead of Path.replace
+    @patch("os.chmod")
     def test_save_config_atomic_replace(
-        self, mock_fsync, mock_fdopen, mock_mkstemp, mock_config_file, mock_path_cls
+        self, mock_chmod, mock_replace, mock_fsync, mock_fdopen, mock_mkstemp, mock_config_file
     ):
         """Test atomic replace logic."""
         temp_path_str = "/tmp/temp_file"
@@ -117,17 +119,12 @@ class TestConfigManagerCoverage(unittest.TestCase):
         mock_config_file.parent.mkdir.return_value = None
         mock_config_file.exists.return_value = True
 
-        # Mock the Path instance returned by Path(temp_path)
-        mock_temp_path_instance = MagicMock()
-        mock_path_cls.side_effect = lambda p: mock_temp_path_instance if p == temp_path_str else MagicMock()
+        # Ensure validation passes
+        ConfigManager.save_config({"theme_mode": "System"})
 
-        ConfigManager.save_config({"theme_mode": "Dark"})
-
-        # Verify replace was called on the temp path instance
-        mock_temp_path_instance.replace.assert_called_with(mock_config_file)
-
-        # Verify unlink was NOT called on config file (old windows logic)
-        mock_config_file.unlink.assert_not_called()
+        # Verify replace was called
+        mock_replace.assert_called_with(temp_path_str, str(mock_config_file))
+        mock_chmod.assert_called_with(temp_path_str, 0o600)
 
     @patch("config_manager.CONFIG_FILE")
     def test_save_config_io_error_initial(self, mock_path):

@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from downloader.core import download_video
+from downloader.types import DownloadOptions
 
 
 class TestFeatureVerification(unittest.TestCase):
@@ -13,7 +14,13 @@ class TestFeatureVerification(unittest.TestCase):
         def hook(d, i):
             pass
 
-        download_video("http://example.com", output_path=".", progress_hook=hook, download_item=item)
+        options = DownloadOptions(
+            url="http://example.com",
+            output_path=".",
+            progress_hook=hook,
+            download_item=item
+        )
+        download_video(options)
 
         mock_download.assert_called()
 
@@ -30,9 +37,14 @@ class TestFeatureVerification(unittest.TestCase):
         with patch("downloader.core.state") as mock_state:
             mock_state.ffmpeg_available = True
 
-            download_video(
-                url="http://example.com", progress_hook=hook, download_item=item, start_time="00:01:00", end_time="00:02:00"
+            options = DownloadOptions(
+                url="http://example.com",
+                progress_hook=hook,
+                download_item=item,
+                start_time="00:01:00",
+                end_time="00:02:00"
             )
+            download_video(options)
 
             args, kwargs = mock_wrapper_class.call_args
             opts = args[0]
@@ -49,7 +61,13 @@ class TestFeatureVerification(unittest.TestCase):
         def hook(d):
             pass
 
-        download_video(url="http://example.com", progress_hook=hook, download_item=item, use_aria2c=True)
+        options = DownloadOptions(
+            url="http://example.com",
+            progress_hook=hook,
+            download_item=item,
+            use_aria2c=True
+        )
+        download_video(options)
 
         args, kwargs = mock_wrapper_class.call_args
         opts = args[0]
@@ -68,7 +86,13 @@ class TestFeatureVerification(unittest.TestCase):
         with patch("downloader.core.state") as mock_state:
             mock_state.ffmpeg_available = True
 
-            download_video(url="http://example.com", progress_hook=hook, download_item=item, gpu_accel="cuda")
+            options = DownloadOptions(
+                url="http://example.com",
+                progress_hook=hook,
+                download_item=item,
+                gpu_accel="cuda"
+            )
+            download_video(options)
 
             args, kwargs = mock_wrapper_class.call_args
             opts = args[0]
