@@ -134,6 +134,16 @@ class SettingsView(BaseView):
     def _on_high_contrast_change(self, e):
         if self.page:
             self.page.theme = Theme.get_high_contrast_theme() if e.control.value else Theme.get_theme()
+        
+            # Also re-apply theme mode
+            mode = self.theme_mode_dd.value
+            if mode == "Dark":
+                self.page.theme_mode = ft.ThemeMode.DARK
+            elif mode == "Light":
+                self.page.theme_mode = ft.ThemeMode.LIGHT
+            else:
+                self.page.theme_mode = ft.ThemeMode.SYSTEM
+        
             self.page.update()
 
     def save_settings(self, e):
