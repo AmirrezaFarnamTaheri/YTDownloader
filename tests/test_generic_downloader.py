@@ -61,7 +61,7 @@ class TestTelegramExtractor(unittest.TestCase):
         # Let's verify failure.
 
         with self.assertRaises(ValueError):
-             TelegramExtractor.extract(url, output_path="/tmp")
+            TelegramExtractor.extract(url, output_path="/tmp")
 
 
 class TestGenericExtractor(unittest.TestCase):

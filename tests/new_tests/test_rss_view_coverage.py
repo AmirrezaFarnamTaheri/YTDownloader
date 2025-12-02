@@ -3,8 +3,9 @@ from unittest.mock import MagicMock, patch
 import flet as ft
 import pytest
 
-from views.rss_view import RSSView
 from localization_manager import LocalizationManager
+from views.rss_view import RSSView
+
 
 def test_rss_view_tab_change():
     """Test tab switching logic."""

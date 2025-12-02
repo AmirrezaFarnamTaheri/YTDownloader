@@ -14,9 +14,7 @@ from downloader.engines.ytdlp import YTDLPWrapper
 class TestYTDLPWrapperExtra(unittest.TestCase):
 
     @patch("downloader.engines.ytdlp.yt_dlp.YoutubeDL")
-    def test_fallback_filename_already_has_extension(
-        self, mock_ydl
-    ):
+    def test_fallback_filename_already_has_extension(self, mock_ydl):
         """Test simple download success path."""
         wrapper = YTDLPWrapper({})
 

@@ -1,14 +1,20 @@
 """
 Download scheduler logic.
 """
-from datetime import datetime, timedelta, time as dt_time
-from typing import Optional, Dict, Any
+
+from datetime import datetime
+from datetime import time as dt_time
+from datetime import timedelta
+from typing import Any, Dict, Optional
+
 
 class DownloadScheduler:
     """Helper for scheduling downloads."""
 
     @staticmethod
-    def prepare_schedule(scheduled_time: Optional[dt_time]) -> tuple[str, Optional[datetime]]:
+    def prepare_schedule(
+        scheduled_time: Optional[dt_time],
+    ) -> tuple[str, Optional[datetime]]:
         """
         Calculate status and scheduled datetime based on desired time.
         """

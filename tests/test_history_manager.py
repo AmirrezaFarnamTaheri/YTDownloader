@@ -40,7 +40,9 @@ class TestHistoryManager(unittest.TestCase):
 
         conn = sqlite3.connect(self.db_file)
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='history'")
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='history'"
+        )
         self.assertIsNotNone(cursor.fetchone())
         conn.close()
 

@@ -36,6 +36,7 @@ class TestHistoryManagerRobustness(unittest.TestCase):
 
         # Simulate locked DB
         import sqlite3
+
         mock_cursor.execute.side_effect = sqlite3.OperationalError("database is locked")
 
         with patch("history_manager.HistoryManager.DB_RETRY_DELAY", 0.001):

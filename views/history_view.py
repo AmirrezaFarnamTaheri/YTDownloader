@@ -3,9 +3,9 @@ import logging
 import flet as ft
 
 from history_manager import HistoryManager
+from localization_manager import LocalizationManager as LM
 from theme import Theme
 from ui_utils import open_folder
-from localization_manager import LocalizationManager as LM
 
 from .base_view import BaseView
 

@@ -1,12 +1,16 @@
 """
 Batch importer for download items.
 """
+
 import logging
 from typing import List, Optional
+
 import flet as ft
+
 from ui_utils import get_default_download_path
 
 logger = logging.getLogger(__name__)
+
 
 class BatchImporter:
     """Handles importing URLs from files."""
@@ -15,20 +19,20 @@ class BatchImporter:
         self.queue_manager = queue_manager
         self.config = config
 
-    def import_from_file(self, filepath: str) -> int:
+    def import_from_file(self, filepath: str) -> tuple[int, bool]:
         """
         Import URLs from a text file.
-        Returns the number of items imported.
+        Returns a tuple of (number of items imported, whether the list was truncated).
         """
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 urls = [line.strip() for line in f if line.strip()]
 
             max_batch = 100
+            truncated = False
             if len(urls) > max_batch:
                 urls = urls[:max_batch]
-                # Caller should handle notifying user about limit if needed,
-                # or we can return a tuple (count, truncated)
+                truncated = True
 
             dl_path = get_default_download_path()
             count = 0
@@ -54,7 +58,7 @@ class BatchImporter:
                 }
                 self.queue_manager.add_item(item)
                 count += 1
-            return count
+            return count, truncated
 
         except Exception as ex:
             logger.error("Failed to import batch file: %s", ex, exc_info=True)

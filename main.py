@@ -11,15 +11,15 @@ import signal
 import sys
 import threading
 import traceback
-from datetime import datetime
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import flet as ft
 
-from app_state import state
 from app_controller import AppController
+from app_state import state
 from logger_config import setup_logging
 from theme import Theme
 from ui_manager import UIManager
@@ -48,7 +48,7 @@ def startup_timeout(seconds=10):
             func(*args, **kwargs)
             result["completed"] = True
         except Exception as e:
-             result["exception"] = e
+            result["exception"] = e
 
     # This context manager is tricky because 'yield' gives control back to caller.
     # To timeout the caller's block, we'd need to run the caller's block in a thread.
@@ -59,20 +59,25 @@ def startup_timeout(seconds=10):
     # That's drastic but "TimeoutError" implies we give up.
 
     timer = None
+    timed_out = {"flag": False}
     if os.name == "nt":
-        def kill_on_timeout():
-            # If we reach here, timeout happened
-            logger.error(f"Startup timed out after {seconds} seconds (Windows fallback). Exiting.")
-            # We can't raise exception in main thread, so we exit.
-            os._exit(1) # pylint: disable=protected-access
 
-        timer = threading.Timer(seconds, kill_on_timeout)
+        def mark_timeout():
+            logger.error(
+                f"Startup timed out after {seconds} seconds (Windows fallback)."
+            )
+            timed_out["flag"] = True
+
+        timer = threading.Timer(seconds, mark_timeout)
+        timer.daemon = True  # Ensure timer doesn't block exit
         timer.start()
         try:
             yield
         finally:
             if timer:
                 timer.cancel()
+            if timed_out["flag"]:
+                raise TimeoutError(f"Operation timed out after {seconds} seconds")
     else:
         # Unix-like systems use signal
         def timeout_handler(signum, frame):
@@ -190,6 +195,7 @@ def global_crash_handler(exctype, value, tb):
             # We can't easily detect headless, but we can try catch
             try:
                 import ctypes  # pylint: disable=import-outside-toplevel
+
                 msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
                 ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
             except Exception:

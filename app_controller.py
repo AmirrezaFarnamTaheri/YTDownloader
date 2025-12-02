@@ -7,21 +7,20 @@ import logging
 import threading
 import time
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
 import flet as ft
 
 from app_state import state
+from batch_importer import BatchImporter
 from clipboard_monitor import start_clipboard_monitor
+from download_scheduler import DownloadScheduler
+# Helpers
+from rate_limiter import RateLimiter
 from tasks import process_queue
 from tasks_extended import fetch_info_task
 from ui_manager import UIManager
-from ui_utils import validate_url, get_default_download_path
-
-# Helpers
-from rate_limiter import RateLimiter
-from batch_importer import BatchImporter
-from download_scheduler import DownloadScheduler
+from ui_utils import get_default_download_path, validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -254,9 +253,14 @@ class AppController:
 
         path = e.files[0].path
         try:
-            count = self.batch_importer.import_from_file(path)
+            count, truncated = self.batch_importer.import_from_file(path)
             self.ui.update_queue_view()
-            self.page.open(ft.SnackBar(content=ft.Text(f"Imported {count} URLs")))
+
+            msg = f"Imported {count} URLs"
+            if truncated:
+                msg += " (Truncated to limit of 100)"
+
+            self.page.open(ft.SnackBar(content=ft.Text(msg)))
 
         except Exception as ex:  # pylint: disable=broad-exception-caught
             logger.error("Failed to import batch file: %s", ex, exc_info=True)

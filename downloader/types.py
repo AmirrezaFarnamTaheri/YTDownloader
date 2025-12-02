@@ -3,7 +3,7 @@ Configuration dataclasses for the downloader.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, Callable
+from typing import Any, Callable, Dict, Optional
 
 
 @dataclass
@@ -34,7 +34,9 @@ class DownloadOptions:
 
     def validate(self):
         """Perform validation on the options."""
-        if self.proxy and not (self.proxy.startswith("http") or self.proxy.startswith("socks")):
+        if self.proxy and not (
+            self.proxy.startswith("http") or self.proxy.startswith("socks")
+        ):
             raise ValueError("Invalid proxy URL. Must start with http/https/socks")
 
         start_sec = self._parse_time(self.start_time)
@@ -48,22 +50,26 @@ class DownloadOptions:
 
     @staticmethod
     def _parse_time(time_str: Optional[str]) -> float:
-        """Parse HH:MM:SS to seconds."""
+        """
+        Parse time string (HH:MM:SS or seconds) to seconds.
+        Raises ValueError for invalid formats.
+        """
         if not time_str:
             return 0.0
 
-        # First try direct float conversion
         try:
+            # First, try to parse as a simple number (seconds).
             return float(time_str)
         except ValueError:
-            pass
+            # If that fails, try to parse HH:MM:SS format.
+            try:
+                parts = list(map(int, time_str.split(":")))
+                if len(parts) == 3:
+                    return float(parts[0] * 3600 + parts[1] * 60 + parts[2])
+                if len(parts) == 2:
+                    return float(parts[0] * 60 + parts[1])
 
-        try:
-            parts = list(map(int, time_str.split(":")))
-            if len(parts) == 3:
-                return parts[0] * 3600 + parts[1] * 60 + parts[2]
-            if len(parts) == 2:
-                return parts[0] * 60 + parts[1]
-            return float(parts[0])
-        except ValueError:
-            return 0.0
+                # Any other number of parts is invalid for HH:MM:SS format.
+                raise ValueError(f"Invalid time format: {time_str}")
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"Could not parse time string: {time_str}") from e

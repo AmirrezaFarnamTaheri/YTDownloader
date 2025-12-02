@@ -16,7 +16,9 @@ class TestConfigManager(unittest.TestCase):
     @patch("os.fdopen", new_callable=mock_open)
     @patch("os.fsync")
     @patch("os.chmod")
-    def test_save_config(self, mock_chmod, mock_fsync, mock_fdopen, mock_mkstemp, mock_replace):
+    def test_save_config(
+        self, mock_chmod, mock_fsync, mock_fdopen, mock_mkstemp, mock_replace
+    ):
         # Mock tempfile creation
         mock_mkstemp.return_value = (999, "/tmp/test_config.json")
 

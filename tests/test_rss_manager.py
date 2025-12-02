@@ -25,7 +25,7 @@ class TestRSSManager(unittest.TestCase):
         # RSSManager now uses response.text, not response.content
         mock_response.text = xml_content
         # Set apparent_encoding
-        mock_response.apparent_encoding = 'utf-8'
+        mock_response.apparent_encoding = "utf-8"
         mock_response.raise_for_status.return_value = None
         mock_get.return_value = mock_response
 

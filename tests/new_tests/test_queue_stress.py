@@ -5,9 +5,12 @@ Stress tests for queue concurrency.
 import threading
 import time
 import uuid
+
 import pytest
+
 from queue_manager import QueueManager
 from utils import CancelToken
+
 
 def test_queue_stress_add_remove():
     """Stress test adding and removing items concurrently."""
@@ -23,7 +26,7 @@ def test_queue_stress_add_remove():
                 count += 1
                 time.sleep(0.001)
             except ValueError:
-                time.sleep(0.01) # Queue full
+                time.sleep(0.01)  # Queue full
 
     def remover():
         while not stop_event.is_set():
@@ -54,6 +57,7 @@ def test_queue_stress_add_remove():
     # Queue should be in valid state (no half-added items, etc)
     # Since we use RLock, it should be fine.
     assert len(qm.get_all()) >= 0
+
 
 def test_queue_stress_listeners():
     """Stress test listeners update."""

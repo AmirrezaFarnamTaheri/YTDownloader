@@ -1,6 +1,6 @@
+import os
 import unittest
 from unittest.mock import MagicMock, patch
-import os
 
 import flet as ft
 
@@ -26,7 +26,7 @@ class TestViews(unittest.TestCase):
         on_fetch = MagicMock()
         on_add = MagicMock()
         view = DownloadView(on_fetch, on_add, MagicMock(), MagicMock(), self.state)
-        view._Control__page = MagicMock() # Mock page for update calls
+        view._Control__page = MagicMock()  # Mock page for update calls
 
         self.assertIsNotNone(view)
         # Check if controls are accessible directly or via components
@@ -57,7 +57,7 @@ class TestViews(unittest.TestCase):
             "duration_string": "10:00",
             "thumbnail": "http://thumb.com",
             "uploader": "Channel",
-            "_type": "video"
+            "_type": "video",
         }
         view.update_video_info(info)
 

@@ -9,6 +9,8 @@ from unittest.mock import ANY, MagicMock, patch
 
 import flet as ft
 
+from main import global_crash_handler, main
+
 # We need to mock setup_logging BEFORE importing main, because main calls it at module level
 # But we can't easily do that with standard import unless we use patch.dict or similar on sys.modules
 # OR we verify it was called by inspecting the side effects if possible.
@@ -26,7 +28,6 @@ import flet as ft
 # So checking `mock_setup_logging.assert_called()` inside `test_main_function` is wrong if we expect `main()` to call it.
 # `main()` does NOT call it. It's called when module loads.
 
-from main import main, global_crash_handler
 
 
 class TestMainIntegration(unittest.TestCase):
@@ -47,9 +48,7 @@ class TestMainIntegration(unittest.TestCase):
     @patch("main.state", new_callable=MagicMock)
     @patch("app_layout.AppLayout")
     @patch("flet.app")
-    def test_main_function(
-        self, mock_flet_app, mock_app_layout, mock_state
-    ):
+    def test_main_function(self, mock_flet_app, mock_app_layout, mock_state):
         # Mock sys.argv
         with patch.object(sys, "argv", ["main.py"]):
             # We need to pass a Mock page to main

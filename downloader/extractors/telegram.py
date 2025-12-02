@@ -35,7 +35,7 @@ class TelegramExtractor:
         """
         logger.info("Extracting Telegram metadata from: %s", url)
         try:
-             # Fetch the preview page
+            # Fetch the preview page
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
@@ -60,11 +60,23 @@ class TelegramExtractor:
             if video_tag and video_tag.get("src"):
                 download_url = video_tag.get("src")
             else:
-                 og_vid = soup.find("meta", property="og:video")
-                 if og_vid:
-                     download_url = og_vid.get("content")
+                og_vid = soup.find("meta", property="og:video")
+                if og_vid:
+                    download_url = og_vid.get("content")
 
             if download_url:
+                from urllib.parse import urljoin
+
+                # Normalize whitespace
+                download_url = (download_url or "").strip()
+                # Ensure base URL ends with a slash to correctly resolve relative paths
+                base = url if url.endswith("/") else url + "/"
+                # Handle protocol-relative URLs explicitly
+                if download_url.startswith("//"):
+                    download_url = "https:" + download_url
+                else:
+                    # Normalize relative paths against the page URL
+                    download_url = urljoin(base, download_url)
                 return {
                     "title": title,
                     "description": description,
@@ -72,7 +84,7 @@ class TelegramExtractor:
                     "webpage_url": url,
                     "direct_url": download_url,
                     "extractor": "telegram",
-                    "duration": 0 # Unknown
+                    "duration": 0,  # Unknown
                 }
             return None
 
@@ -103,9 +115,9 @@ class TelegramExtractor:
             # Sanitize filename
             url_path = urlparse(url).path
             # Get the last part of the path, e.g., '123' from '/channel/123'
-            file_id = url_path.strip('/').split('/')[-1]
+            file_id = url_path.strip("/").split("/")[-1]
             # Basic sanitization
-            safe_file_id = "".join(c for c in file_id if c.isalnum() or c in ('_','-'))
+            safe_file_id = "".join(c for c in file_id if c.isalnum() or c in ("_", "-"))
             filename = f"telegram_{safe_file_id or 'media'}.mp4"
 
             # Delegate to GenericDownloader
@@ -114,7 +126,7 @@ class TelegramExtractor:
                 output_path,
                 progress_hook,
                 cancel_token,
-                filename=filename
+                filename=filename,
             )
 
         except Exception as e:
