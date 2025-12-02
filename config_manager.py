@@ -14,11 +14,9 @@ from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
-# Configuration file path with fallback for mobile/sandboxed environments
+# Configuration file path with fallback
 try:
     CONFIG_FILE = Path.home() / ".streamcatch" / "config.json"
-    # Test if we can resolve/access home
-    _ = CONFIG_FILE.parent
 except Exception:
     CONFIG_FILE = Path("config.json")
 
@@ -26,169 +24,111 @@ except Exception:
 class ConfigManager:
     """Manages application configuration with validation and atomic writes."""
 
-    # Configuration schema for validation
-    VALID_KEYS = {
-        "proxy",
-        "rate_limit",
-        "output_template",
-        "use_aria2c",
-        "gpu_accel",
-        "theme_mode",
-        "language",
-        # Feature-specific keys
-        "rss_feeds",
+    # Defaults and validation schema
+    DEFAULTS = {
+        "theme_mode": "System",
+        "language": "en",
+        "output_template": "%(title)s.%(ext)s",
+        "use_aria2c": False,
+        "gpu_accel": "None",
+        "rss_feeds": [],
     }
+
+    @staticmethod
+    def _resolve_config_file() -> Path:
+        """Resolve and return the correct config file path."""
+        global CONFIG_FILE
+        try:
+            if not CONFIG_FILE.parent.exists():
+                CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+            return CONFIG_FILE
+        except OSError:
+            # Fallback to local
+            return Path("config.json")
 
     @staticmethod
     def _validate_config(config: Dict[str, Any]) -> None:
         """
         Validate configuration data.
-
-        Args:
-            config: Configuration dictionary to validate
-
-        Raises:
-            ValueError: If configuration is invalid
         """
         if not isinstance(config, dict):
-            logger.error("Invalid config type: %s", type(config))
             raise ValueError("Configuration must be a dictionary")
 
-        # Validate known keys
-        for key in config.keys():
-            if key not in ConfigManager.VALID_KEYS:
-                logger.warning("Unknown configuration key: %s", key)
-
-        # Validate specific values
+        # Type checking for known keys
         if "use_aria2c" in config and not isinstance(config["use_aria2c"], bool):
             raise ValueError("use_aria2c must be a boolean")
 
-        if "gpu_accel" in config:
-            # Normalize valid values for check if needed or just check against list
-            # The UI might send lowercase, so we might want to be permissive here
-            # or normalize it before saving.
-            # However, for validation, let's accept strict case or allow case-insensitivity
-            # if we normalize later. But save_config calls validate first.
-            # Let's fix the validation to allow "auto" (lowercase) as well.
-            valid_accels = ("None", "Auto", "auto", "cuda", "vulkan")
-            if config["gpu_accel"] not in valid_accels:
-                logger.error("Invalid gpu_accel value: %s", config["gpu_accel"])
-                raise ValueError(f"Invalid gpu_accel value: {config['gpu_accel']}")
-
-        if "theme_mode" in config and config["theme_mode"] not in (
-            "Dark",
-            "Light",
-            "System",
-        ):
-            logger.error("Invalid theme_mode value: %s", config["theme_mode"])
-            raise ValueError(f"Invalid theme_mode value: {config['theme_mode']}")
+        if "rss_feeds" in config and not isinstance(config["rss_feeds"], list):
+            raise ValueError("rss_feeds must be a list")
 
     @staticmethod
     def load_config() -> Dict[str, Any]:
         """
         Load configuration from file with error recovery.
-
-        Returns:
-            Configuration dictionary (empty if file doesn't exist or is corrupted)
         """
-        global CONFIG_FILE
-        logger.info("Loading configuration from %s", CONFIG_FILE)
+        config_path = ConfigManager._resolve_config_file()
+        logger.info("Loading config from %s", config_path)
 
-        # Ensure directory exists (if using home path)
-        try:
-            CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            logger.warning("Could not create config dir: %s – using fallback path", e)
-            # Switch to local path if home creation fails
-            if CONFIG_FILE.parent != Path("."):
-                CONFIG_FILE = Path("config.json")
-                logger.info("Switched to fallback config file: %s", CONFIG_FILE)
+        config = ConfigManager.DEFAULTS.copy()
 
-        if CONFIG_FILE.exists():
+        if config_path.exists():
             try:
-                with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     ConfigManager._validate_config(data)
-                    logger.info(
-                        "Configuration loaded successfully: keys=%s", list(data.keys())
-                    )
-                    return data
-            except json.JSONDecodeError as e:
-                logger.warning(
-                    "Configuration file corrupted, using defaults: %s", e, exc_info=True
-                )
-                # Attempt to backup corrupted file
-                backup_path = CONFIG_FILE.with_suffix(".json.corrupt")
+                    config.update(data)
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning("Config corrupted/invalid (%s), using defaults", e)
+                # Optional: backup corrupted file
                 try:
-                    CONFIG_FILE.rename(backup_path)
-                    logger.info("Corrupted config backed up to %s", backup_path)
+                    backup = config_path.with_suffix(".json.bak")
+                    config_path.rename(backup)
                 except OSError:
                     pass
-                return {}
-            except ValueError as e:
-                logger.warning(
-                    "Configuration validation failed, using defaults: %s",
-                    e,
-                    exc_info=True,
-                )
-                return {}
-            except IOError as e:
-                logger.info("No existing config file, will create on save: %s", e)
-                return {}
+            except Exception as e:
+                logger.error("Failed to load config: %s", e)
 
-        logger.info("No configuration file found, using defaults")
-        return {}
+        return config
 
     @staticmethod
     def save_config(config: Dict[str, Any]) -> None:
         """
         Save configuration to file with atomic write operation.
-
-        Args:
-            config: Configuration dictionary to save
-
-        Raises:
-            ValueError: If configuration is invalid
-            IOError: If save operation fails
         """
-        logger.debug(
-            "Persisting configuration to %s with keys=%s",
-            CONFIG_FILE,
-            list(config.keys()),
-        )
-
-        # Validate before saving
+        config_path = ConfigManager._resolve_config_file()
         ConfigManager._validate_config(config)
 
         try:
-            CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+            # Ensure parent dir exists
+            if not config_path.parent.exists():
+                config_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Atomic write: write to temp file, then rename
-            # This prevents corruption if program crashes during write
+            # Atomic write via temp file
+            # On Windows, we can't open a NamedTemporaryFile and then rename it while open.
+            # So we use mkstemp, close it, write to it, close, then rename.
+
             fd, temp_path = tempfile.mkstemp(
-                dir=CONFIG_FILE.parent, prefix=".config_tmp_", suffix=".json"
+                dir=str(config_path.parent),
+                prefix=".config_tmp_",
+                suffix=".json",
+                text=True
             )
 
             try:
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     json.dump(config, f, indent=2)
                     f.flush()
-                    os.fsync(f.fileno())  # Force write to disk
+                    os.fsync(f.fileno())
 
-                # Atomically move the temporary file to the final destination.
-                # .replace() will overwrite the destination if it exists, providing
-                # an atomic update on both POSIX and Windows.
-                Path(temp_path).replace(CONFIG_FILE)
-                logger.info("Configuration saved successfully")
+                # Atomic replace
+                Path(temp_path).replace(config_path)
+                logger.info("Configuration saved.")
 
             except Exception:
-                # Cleanup temp file on error
-                try:
-                    Path(temp_path).unlink()
-                except OSError:
-                    pass
+                # Cleanup if failed
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
                 raise
 
-        except IOError as e:
-            logger.error("Failed to save config: %s", e, exc_info=True)
-            raise
+        except Exception as e:
+            logger.error("Failed to save config: %s", e)

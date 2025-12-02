@@ -19,26 +19,16 @@ class QueueManager:
     - "Queued" -> "Allocating" -> "Downloading" -> "Error"
     - "Queued" -> "Allocating" -> "Downloading" -> "Cancelled"
     - "Scheduled (HH:MM)" -> "Queued" (when time reached)
-
-    Status Descriptions:
-    - Queued: Waiting to be downloaded
-    - Scheduled (HH:MM): Scheduled for later execution
-    - Allocating: Claimed by a worker (transitional state)
-    - Downloading: Currently downloading
-    - Processing: Post-processing (FFmpeg, SponsorBlock, etc.)
-    - Completed: Successfully finished
-    - Cancelled: User cancelled
-    - Error: Failed with error
     """
 
-    # Maximum queue size to prevent memory exhaustion
     MAX_QUEUE_SIZE = 1000
 
     def __init__(self):
-        logger.debug("Initializing QueueManager instance %s", id(self))
         self._queue: List[Dict[str, Any]] = []
-        self._lock = threading.Lock()
+        # Re-entrant lock for queue operations
+        self._lock = threading.RLock()
         self._listeners: List[Callable[[], None]] = []
+        self._listeners_lock = threading.Lock()
 
     def get_all(self) -> List[Dict[str, Any]]:
         """Get a copy of the current queue."""
@@ -50,85 +40,44 @@ class QueueManager:
         with self._lock:
             if 0 <= index < len(self._queue):
                 return self._queue[index]
-        logger.warning(
-            "QueueManager: Index %d out of bounds (Size: %d)", index, len(self._queue)
-        )
         return None
 
     def add_listener(self, listener: Callable[[], None]):
         """Add a listener callback for queue changes."""
-        with self._lock:
+        with self._listeners_lock:
             if listener not in self._listeners:
                 self._listeners.append(listener)
-                logger.debug(
-                    "Queue listener added. Total listeners: %d", len(self._listeners)
-                )
 
     def remove_listener(self, listener: Callable[[], None]):
         """Remove a listener callback."""
-        with self._lock:
+        with self._listeners_lock:
             if listener in self._listeners:
                 self._listeners.remove(listener)
-                logger.debug(
-                    "Queue listener removed. Total listeners: %d", len(self._listeners)
-                )
 
     def _notify_listeners_safe(self):
-        """
-        Helper to notify listeners.
-        It safely copies the listener list under lock (if needed) or relies on the fact
-        that we are calling it outside the lock but need to be careful about concurrency.
-
-        Current strategy:
-        1. Acquire lock briefly to copy listeners.
-        2. Iterate over copy and call them.
-        """
-        listeners = []
-        with self._lock:
+        """Notify listeners safely without holding the queue lock."""
+        # Snapshot listeners
+        with self._listeners_lock:
             listeners = list(self._listeners)
-
-        if listeners:
-            # logger.debug("Notifying %d queue listeners", len(listeners)) # Noisy
-            pass
 
         for listener in listeners:
             try:
                 listener()
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.error(
-                    "Error in queue listener (non-critical): %s", e, exc_info=True
-                )
-                # Don't propagate listener errors
+            except Exception as e:
+                logger.error("Error in queue listener: %s", e)
 
     def add_item(self, item: Dict[str, Any]):
-        """
-        Add an item to the queue.
-
-        Raises:
-            ValueError: If queue is at maximum capacity.
-        """
-        if not item or not isinstance(item, dict):
-            logger.error("Attempted to add invalid item to queue (not a dict)")
-            raise ValueError("Item must be a non-empty dictionary")
+        """Add an item to the queue."""
+        if not isinstance(item, dict):
+            raise ValueError("Item must be a dictionary")
 
         with self._lock:
             if len(self._queue) >= self.MAX_QUEUE_SIZE:
-                error_msg = (
-                    f"Queue is full (max {self.MAX_QUEUE_SIZE} items). "
-                    "Please clear some items first."
-                )
-                logger.error(error_msg)
-                raise ValueError(error_msg)
+                raise ValueError("Queue is full")
 
-            logger.info(
-                "Adding item to queue: %s (Title: %s, Status: %s) [QM: %s]",
-                item.get("url"),
-                item.get("title"),
-                item.get("status"),
-                id(self),
-            )
+            logger.info("Adding item: %s", item.get("title", item.get("url")))
             self._queue.append(item)
-            logger.debug("Queue size after add: %d", len(self._queue))
+
         self._notify_listeners_safe()
 
     def remove_item(self, item: Dict[str, Any]):
@@ -136,20 +85,9 @@ class QueueManager:
         changed = False
         with self._lock:
             if item in self._queue:
-                logger.info(
-                    "Removing item from queue: %s (Status: %s)",
-                    item.get("url"),
-                    item.get("status"),
-                )
                 self._queue.remove(item)
                 changed = True
-                logger.debug("Queue size after remove: %d", len(self._queue))
-            else:
-                logger.warning(
-                    "Attempted to remove item not in queue: %s (Title: %s)",
-                    item.get("url"),
-                    item.get("title"),
-                )
+
         if changed:
             self._notify_listeners_safe()
 
@@ -158,99 +96,52 @@ class QueueManager:
         changed = False
         with self._lock:
             if 0 <= index1 < len(self._queue) and 0 <= index2 < len(self._queue):
-                logger.debug(
-                    "Swapping queue items at indices %d and %d", index1, index2
-                )
                 self._queue[index1], self._queue[index2] = (
                     self._queue[index2],
                     self._queue[index1],
                 )
                 changed = True
+
         if changed:
             self._notify_listeners_safe()
 
-    # NOTE: find_next_downloadable was removed as it's deprecated and could cause race conditions.
-    # Always use claim_next_downloadable() for atomic claim operations.
-
-    def update_scheduled_items(self, now) -> int:
-        """
-        Update all items whose scheduled time has been reached.
-
-        This transitions items from "Scheduled (HH:MM)" -> "Queued" when their
-        scheduled_time is in the past, while keeping all mutations localized
-        inside QueueManager to avoid external locking on its internals.
-
-        Args:
-            now: Current datetime (typically `datetime.now()`).
-
-        Returns:
-            int: Number of items that were updated.
-        """
+    def update_scheduled_items(self, now: datetime) -> int:
+        """Transition scheduled items to Queued if time reached."""
         updated = 0
         with self._lock:
             for item in self._queue:
-                if item.get("scheduled_time") and str(
-                    item.get("status", "")
-                ).startswith("Scheduled"):
+                status = str(item.get("status", ""))
+                if status.startswith("Scheduled") and item.get("scheduled_time"):
                     if now >= item["scheduled_time"]:
-                        logger.info(
-                            "Scheduled time reached for item: %s", item.get("title")
-                        )
                         item["status"] = "Queued"
                         item["scheduled_time"] = None
                         updated += 1
+
         if updated:
             self._notify_listeners_safe()
         return updated
 
     def claim_next_downloadable(self) -> Optional[Dict[str, Any]]:
         """
-        Atomically find the next 'Queued' item and mark it as 'Allocated' (or 'Downloading').
-        This prevents race conditions where multiple threads might pick the same item.
-
-        Also cleans up stale "Allocating" items that have been stuck for too long.
+        Atomically claim the next 'Queued' item.
+        Also cleans up stale 'Allocating' items.
         """
         with self._lock:
-            # First, check for stale "Allocating" items (stuck for > 60 seconds)
-            stale_timeout = timedelta(seconds=60)
             now = datetime.now()
-
+            # Cleanup stale items (older than 60s)
+            stale_threshold = timedelta(seconds=60)
             for item in self._queue:
                 if item["status"] == "Allocating":
-                    allocated_time = item.get("_allocated_at")
-                    if allocated_time:
-                        if now - allocated_time > stale_timeout:
-                            logger.warning(
-                                "Found stale 'Allocating' item, resetting to Queued: %s",
-                                item.get("title", item["url"]),
-                            )
-                            item["status"] = "Queued"
-                            item.pop("_allocated_at", None)
+                    allocated_at = item.get("_allocated_at")
+                    if allocated_at and (now - allocated_at > stale_threshold):
+                        logger.warning("Resetting stale item: %s", item.get("title"))
+                        item["status"] = "Queued"
+                        item.pop("_allocated_at", None)
 
-            # Now find next queued item
-            for _i, item in enumerate(self._queue):
+            # Find next
+            for item in self._queue:
                 if item["status"] == "Queued":
-                    logger.info(
-                        "Claiming next downloadable item: %s from QM %s",
-                        item.get("title", item.get("url")),
-                        id(self),
-                    )
-                    item["status"] = "Allocating"  # Temporary status
+                    item["status"] = "Allocating"
                     item["_allocated_at"] = now
                     return item
-
-            # logger.debug("No downloadable items found in queue") # Too noisy
         return None
-
-    def any_in_status(self, status: str) -> bool:
-        """Check if any item has the given status."""
-        with self._lock:
-            return any(item["status"] == status for item in self._queue)
-
-    def any_downloading(self) -> bool:
-        """Check if any item is currently downloading."""
-        with self._lock:
-            return any(
-                item["status"] in ("Downloading", "Allocating", "Processing")
-                for item in self._queue
-            )

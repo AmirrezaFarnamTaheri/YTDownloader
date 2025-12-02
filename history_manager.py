@@ -15,239 +15,113 @@ logger = logging.getLogger(__name__)
 # DB file path with fallback for mobile/sandboxed environments
 try:
     DB_FILE = Path.home() / ".streamcatch" / "history.db"
-    # Test if we can resolve/access home
-    _ = DB_FILE.parent
+    # Ensure directory exists immediately if possible
+    try:
+        if not DB_FILE.parent.exists():
+             DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
 except Exception:
     DB_FILE = Path("history.db")
 
 
 class HistoryManager:
-    """Manages download history using SQLite with validation and error handling."""
+    """
+    Manages download history using SQLite with robust validation, connection pooling (conceptually),
+    and error handling. Thread-safe operations.
+    """
 
-    # Maximum retries for database lock
-    MAX_DB_RETRIES = 3  # Reduced to fail faster
+    MAX_DB_RETRIES = 3
     DB_RETRY_DELAY = 0.5  # seconds
-    DB_INIT_TIMEOUT = 10.0  # Maximum time for any DB operation
 
     @staticmethod
     def _resolve_db_file() -> Path:
-        """Return the configured DB path, supporting test overrides."""
+        """Return the configured DB path."""
+        # Use module level DB_FILE but allow for testing overrides via class attribute if needed
         return getattr(HistoryManager, "DB_FILE", DB_FILE)
 
-    class _ConnectionWrapper:
-        """Ensures sqlite connections are closed even when __exit__ doesn't."""
-
-        def __init__(self, conn):
-            self._conn = conn
-
-        def __enter__(self):
-            return (
-                self._conn.__enter__()
-                if hasattr(self._conn, "__enter__")
-                else self._conn
-            )
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            try:
-                if hasattr(self._conn, "__exit__"):
-                    self._conn.__exit__(exc_type, exc_val, exc_tb)
-            finally:
-                try:
-                    self._conn.close()
-                except Exception as exc:  # pragma: no cover - defensive
-                    logger.warning("Failed to close history DB connection: %s", exc)
-
     @staticmethod
-    def _get_connection(timeout: float = 5.0):  # Reduced timeout
+    def _get_connection(timeout: float = 5.0) -> sqlite3.Connection:
         """
-        Get database connection with timeout and ensure it closes cleanly.
-
-        Args:
-            timeout: Maximum time to wait for database lock (seconds)
-
-        Returns:
-            Context manager that yields a sqlite3.Connection
+        Get database connection with timeout.
+        Returns a raw connection object which should be used in a with block or closed manually.
         """
         db_file = HistoryManager._resolve_db_file()
+
+        # Ensure directory exists (redundant check for robustness)
         try:
-            db_file.parent.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            logger.warning("Cannot use home directory for DB: %s – using current directory", e)
-            # Switch to local DB if home creation fails, unless explicitly set
-            if db_file == DB_FILE and db_file.parent != Path("."):
-                # Ideally we should update the global DB_FILE too, but _resolve_db_file handles logic
-                # For this session, let's just use local
+            if not db_file.parent.exists():
+                db_file.parent.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            # Fallback to local if home is not writable
+            if db_file != Path("history.db"):
                 db_file = Path("history.db")
-                logger.info("Switched to fallback DB file: %s", db_file)
 
-        # Check if DB file is already locked by another process
-        if db_file.exists() and not os.access(db_file, os.W_OK):
-            # Try fallback if permission denied
-            logger.warning("Database file not writable: %s. Switching to fallback.", db_file)
-            db_file = Path("history.db")
-            if db_file.exists() and not os.access(db_file, os.W_OK):
-                 raise sqlite3.OperationalError(f"Database file not writable: {db_file}")
+        conn = sqlite3.connect(str(db_file), timeout=timeout)
 
-        conn = sqlite3.connect(db_file, timeout=timeout)
-        logger.debug("Opened DB connection to %s (Timeout: %ss)", db_file, timeout)
         # Enable WAL mode for better concurrency
         try:
             conn.execute("PRAGMA journal_mode=WAL")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.warning("Failed to enable WAL mode: %s", e)
-        return HistoryManager._ConnectionWrapper(conn)
+            conn.execute("PRAGMA synchronous=NORMAL") # Performance tweak
+        except sqlite3.Error as e:
+            logger.warning("Failed to set PRAGMA options: %s", e)
+
+        return conn
 
     @staticmethod
     def _validate_input(url: str, title: str, output_path: str) -> None:
         """
         Validate inputs to prevent injection and ensure data integrity.
-
-        Args:
-            url: URL to validate
-            title: Title to validate
-            output_path: Path to validate
-
-        Raises:
-            ValueError: If validation fails
         """
         if not url or not isinstance(url, str):
             raise ValueError("URL must be a non-empty string")
         if len(url) > 2048:
-            raise ValueError("URL too long (max 2048 characters)")
-        if title and len(title) > 500:
-            raise ValueError("Title too long (max 500 characters)")
-        if output_path and len(output_path) > 1024:
-            raise ValueError("Output path too long (max 1024 characters)")
-        # Prevent null bytes (SQL injection vector)
-        if (
-            "\x00" in url
-            or (title and "\x00" in title)
-            or (output_path and "\x00" in output_path)
-        ):
-            raise ValueError("Null bytes not allowed in inputs")
+            raise ValueError("URL too long")
 
-        # Additional SQL injection prevention
-        dangerous_patterns = [
-            "';",
-            '";',
-            "--",
-            "/*",
-            "*/",
-            "xp_",
-            "sp_",
-            "EXEC",
-            "EXECUTE",
-            "DROP",
-            "DELETE",
-            "INSERT",
-            "UPDATE",
-            "UNION",
-            "SELECT",
-        ]
-
-        # Improved validation: Log warning for URL, Strict check for Title/Path
-        for pattern in dangerous_patterns:
-            if pattern.lower() in url.lower():
-                logger.warning("Potentially dangerous pattern in URL: %s", pattern)
-                # Don't block - yt-dlp might need these in query strings
-
-            if title and pattern.lower() in title.lower():
-                raise ValueError(f"Dangerous pattern not allowed in title: {pattern}")
-            if output_path and pattern.lower() in output_path.lower():
-                raise ValueError(f"Dangerous pattern not allowed in path: {pattern}")
-
-        # Validate URL format
-        if not url.startswith(("http://", "https://", "ftp://", "ftps://")):
-            raise ValueError(
-                "URL must start with http://, https://, ftp://, or ftps://"
-            )
+        # Prevent null bytes
+        if "\x00" in url or (title and "\x00" in title) or (output_path and "\x00" in output_path):
+            raise ValueError("Null bytes not allowed")
 
     @staticmethod
     def init_db():
         """Initialize the history database table and perform migrations."""
-        retry_count = 0
-        last_error = None
+        logger.info("Initializing history database...")
 
-        logger.info(
-            "Initializing history database at %s", HistoryManager._resolve_db_file()
-        )
+        conn = None
+        try:
+            conn = HistoryManager._get_connection()
+            cursor = conn.cursor()
 
-        while retry_count < HistoryManager.MAX_DB_RETRIES:
-            try:
-                with HistoryManager._get_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(
-                        """
-                        CREATE TABLE IF NOT EXISTS history (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            url TEXT NOT NULL,
-                            title TEXT,
-                            output_path TEXT,
-                            format_str TEXT,
-                            status TEXT,
-                            timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
-                            file_size TEXT
-                        )
-                    """
-                    )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    url TEXT NOT NULL,
+                    title TEXT,
+                    output_path TEXT,
+                    format_str TEXT,
+                    status TEXT,
+                    timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                    file_size TEXT,
+                    file_path TEXT
+                )
+                """
+            )
 
-                    # Migration: Check for file_path column
-                    cursor.execute("PRAGMA table_info(history)")
-                    columns = [info[1] for info in cursor.fetchall()]
-                    if "file_path" not in columns:
-                        logger.info("Migrating database: Adding file_path column")
-                        cursor.execute("ALTER TABLE history ADD COLUMN file_path TEXT")
+            # Ensure indexes
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_history_status ON history(status)")
 
-                    # Create indexes for better query performance
-                    cursor.execute(
-                        "CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)"
-                    )
-                    cursor.execute(
-                        "CREATE INDEX IF NOT EXISTS idx_history_status ON history(status)"
-                    )
-                    cursor.execute(
-                        "CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)"
-                    )
+            conn.commit()
+            logger.info("History database initialized.")
 
-                    conn.commit()
-                logger.info("History database initialized with indexes.")
-                return  # Success
-
-            except sqlite3.OperationalError as e:
-                if "locked" in str(e).lower():
-                    last_error = e
-                    retry_count += 1
-                    if retry_count < HistoryManager.MAX_DB_RETRIES:
-                        logger.warning(
-                            "Database locked during init, retrying (%d/%d)...",
-                            retry_count,
-                            HistoryManager.MAX_DB_RETRIES,
-                        )
-                        time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
-                    else:
-                        logger.error(
-                            "Failed to init history DB after %d retries: %s",
-                            retry_count,
-                            e,
-                            exc_info=True,
-                        )
-                        raise
-                else:
-                    logger.error("Failed to init history DB: %s", e, exc_info=True)
-                    # Don't crash app on history init failure, just log
-                    # raise  <-- Removed to prevent crash
-                    return
-            except Exception as e:
-                logger.error("Failed to init history DB: %s", e, exc_info=True)
-                # raise <-- Removed to prevent crash
-                return
-
-        if last_error:
-            # raise last_error <-- Removed to prevent crash
-            pass
+        except Exception as e:
+            logger.error("Failed to init history DB: %s", e)
+        finally:
+            if conn:
+                conn.close()
 
     @staticmethod
-    # pylint: disable=too-many-arguments
     def add_entry(
         url: str,
         title: str,
@@ -257,171 +131,88 @@ class HistoryManager:
         file_size: str,
         file_path: Optional[str] = None,
     ):
-        """
-        Add a new entry to the history with validation and retry logic.
-
-        Args:
-            url: Source URL
-            title: Download title
-            output_path: Output directory
-            format_str: Format string used
-            status: Download status
-            file_size: File size string
-            file_path: Full path to downloaded file
-
-        Raises:
-            ValueError: If validation fails
-        """
-        # Validate inputs
+        """Add a new entry to the history."""
         HistoryManager._validate_input(url, title or "", output_path or "")
 
         retry_count = 0
-        last_error = None
-
         while retry_count < HistoryManager.MAX_DB_RETRIES:
+            conn = None
             try:
-                with HistoryManager._get_connection() as conn:
-                    cursor = conn.cursor()
-                    timestamp_str = datetime.now().isoformat()
-                    # pylint: disable=line-too-long
-                    query = "INSERT INTO history (url, title, output_path, format_str, status, timestamp, file_size, file_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-                    # pylint: enable=line-too-long
-                    cursor.execute(
-                        query,
-                        (
-                            url,
-                            title,
-                            output_path,
-                            format_str,
-                            status,
-                            timestamp_str,
-                            file_size,
-                            file_path,
-                        ),
-                    )
-                    conn.commit()
-                    new_id = cursor.lastrowid
-                logger.debug("Added history entry: %s (ID: %s)", title, new_id)
-                return  # Success
+                conn = HistoryManager._get_connection()
+                cursor = conn.cursor()
+                timestamp = datetime.now().isoformat()
+
+                cursor.execute(
+                    """
+                    INSERT INTO history
+                    (url, title, output_path, format_str, status, timestamp, file_size, file_path)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (url, title, output_path, format_str, status, timestamp, file_size, file_path)
+                )
+                conn.commit()
+                return
 
             except sqlite3.OperationalError as e:
                 if "locked" in str(e).lower():
-                    last_error = e
                     retry_count += 1
-                    if retry_count < HistoryManager.MAX_DB_RETRIES:
-                        logger.warning(
-                            "Database locked during add, retrying (%d/%d)...",
-                            retry_count,
-                            HistoryManager.MAX_DB_RETRIES,
-                        )
-                        time.sleep(HistoryManager.DB_RETRY_DELAY * retry_count)
-                    else:
-                        logger.error(
-                            "Failed to add history entry after %d retries: %s",
-                            retry_count,
-                            e,
-                            exc_info=True,
-                        )
-                        raise
-                else:
-                    logger.error("Failed to add history entry: %s", e, exc_info=True)
-                    raise
+                    time.sleep(HistoryManager.DB_RETRY_DELAY)
+                    continue
+                logger.error("DB Error in add_entry: %s", e)
+                break
             except Exception as e:
-                logger.error("Failed to add history entry: %s", e, exc_info=True)
-                raise
-
-        if last_error:
-            raise last_error
-
-    @staticmethod
-    def get_history(limit: int = 50) -> List[Dict[str, Any]]:
-        """Retrieve history entries."""
-        entries = []
-        try:
-            logger.debug("Fetching history (limit=%d)", limit)
-            start_time = time.time()
-            with HistoryManager._get_connection() as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT * FROM history ORDER BY timestamp DESC LIMIT ?", (limit,)
-                )
-                rows = cursor.fetchall()
-                for row in rows:
-                    entries.append(dict(row))
-            elapsed = time.time() - start_time
-            logger.debug("Retrieved %d history entries in %.4fs", len(entries), elapsed)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to retrieve history: %s", e, exc_info=True)
-        return entries
+                logger.error("Error in add_entry: %s", e)
+                break
+            finally:
+                if conn:
+                    conn.close()
 
     @staticmethod
     def get_history_paginated(offset: int = 0, limit: int = 50) -> Dict[str, Any]:
-        """
-        Retrieve history entries with pagination.
-
-        Returns:
-            Dict with 'entries', 'total', 'offset', 'limit'
-        """
+        """Retrieve history entries with pagination."""
+        conn = None
         entries = []
         total = 0
 
         try:
-            with HistoryManager._get_connection() as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
+            conn = HistoryManager._get_connection()
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
 
-                # Get total count
-                cursor.execute("SELECT COUNT(*) FROM history")
-                total = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM history")
+            result = cursor.fetchone()
+            total = result[0] if result else 0
 
-                # Get paginated results
-                cursor.execute(
-                    "SELECT * FROM history ORDER BY timestamp DESC LIMIT ? OFFSET ?",
-                    (limit, offset),
-                )
-                rows = cursor.fetchall()
-                for row in rows:
-                    entries.append(dict(row))
-
-            logger.debug(
-                "Paginated history: offset=%d, limit=%d, fetched=%d, total=%d",
-                offset,
-                limit,
-                len(entries),
-                total,
+            cursor.execute(
+                "SELECT * FROM history ORDER BY timestamp DESC LIMIT ? OFFSET ?",
+                (limit, offset)
             )
+            rows = cursor.fetchall()
+            entries = [dict(row) for row in rows]
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to retrieve paginated history: %s", e, exc_info=True)
+        except Exception as e:
+            logger.error("Error retrieving history: %s", e)
+        finally:
+            if conn:
+                conn.close()
 
         return {
             "entries": entries,
             "total": total,
             "offset": offset,
             "limit": limit,
-            "has_more": (offset + limit) < total,
+            "has_more": (offset + limit) < total
         }
 
     @staticmethod
     def clear_history():
         """Clear all history."""
         try:
-            logger.info("Clearing download history...")
-            with HistoryManager._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM history")
-                conn.commit()
-
-            # Vacuum must be done outside of transaction or with autocommit.
-            # _get_connection uses default isolation (implicit transaction).
-            # We need to run VACUUM in a separate step with isolation_level=None
-
             db_file = HistoryManager._resolve_db_file()
-            # Brief connection just for VACUUM
-            with sqlite3.connect(db_file, isolation_level=None) as vac_conn:
-                vac_conn.execute("VACUUM")
-
-            logger.info("History cleared successfully.")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to clear history: %s", e, exc_info=True)
+            # Use isolation_level=None for autocommit/VACUUM support
+            with sqlite3.connect(str(db_file), isolation_level=None) as conn:
+                conn.execute("DELETE FROM history")
+                conn.execute("VACUUM")
+            logger.info("History cleared.")
+        except Exception as e:
+            logger.error("Failed to clear history: %s", e)

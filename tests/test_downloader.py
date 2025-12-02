@@ -90,8 +90,6 @@ class TestGetVideoInfo(unittest.TestCase):
         mock_instance.extract_info.side_effect = yt_dlp.utils.DownloadError(
             "Video not found"
         )
-
-        # We expect None now as per robustness improvements
         result = get_video_info("https://www.youtube.com/watch?v=invalid")
         self.assertIsNone(result)
 
@@ -103,7 +101,6 @@ class TestGetVideoInfo(unittest.TestCase):
         mock_instance.extract_info.side_effect = Exception("Network error")
 
         result = get_video_info("https://www.youtube.com/watch?v=test")
-
         self.assertIsNone(result)
 
     @patch("downloader.info.yt_dlp.YoutubeDL")
@@ -165,11 +162,8 @@ class TestGetVideoInfo(unittest.TestCase):
         }
 
         info = get_video_info("https://www.youtube.com/watch?v=test")
-
-        # Should have formats with audio codec != 'none' and video codec != 'none' in video_streams
-        # Should have formats with video codec == 'none' and audio codec != 'none' in audio_streams
-        self.assertEqual(len(info["video_streams"]), 3)  # All except audio-only
-        self.assertEqual(len(info["audio_streams"]), 2)  # Audio-only formats
+        self.assertEqual(len(info["video_streams"]), 3)
+        self.assertEqual(len(info["audio_streams"]), 2)
 
 
 class TestDownloadVideo(unittest.TestCase):
@@ -180,12 +174,11 @@ class TestDownloadVideo(unittest.TestCase):
     def test_download_video_success(self, mock_download, mock_mkdir):
         """Test successful video download."""
         progress_hook = MagicMock()
-        download_item = {"url": "https://example.com/video"}
+        # Removed download_item argument which is not in core.py signature
 
         download_video(
             url="https://www.youtube.com/watch?v=test",
             progress_hook=progress_hook,
-            download_item=download_item,
             playlist=False,
             video_format="22",
             output_path="/tmp/downloads",
@@ -204,12 +197,10 @@ class TestDownloadVideo(unittest.TestCase):
     def test_download_video_with_subtitles(self, mock_wrapper_class, mock_mkdir):
         """Test video download with subtitle options."""
         progress_hook = MagicMock()
-        download_item = {}
 
         download_video(
             url="https://www.youtube.com/watch?v=test",
             progress_hook=progress_hook,
-            download_item=download_item,
             playlist=False,
             video_format="best",
             output_path=".",
@@ -221,7 +212,6 @@ class TestDownloadVideo(unittest.TestCase):
             cancel_token=None,
         )
 
-        # Get the ydl_opts passed to constructor
         args, kwargs = mock_wrapper_class.call_args
         ydl_opts = args[0]
         self.assertTrue(ydl_opts["writesubtitles"])
@@ -233,16 +223,13 @@ class TestDownloadVideo(unittest.TestCase):
     def test_download_video_with_chapters(self, mock_wrapper_class, mock_mkdir):
         """Test video download with chapter splitting."""
         progress_hook = MagicMock()
-        download_item = {}
 
-        # Ensure ffmpeg available
         with patch("downloader.core.state") as mock_state:
             mock_state.ffmpeg_available = True
 
             download_video(
                 url="https://www.youtube.com/watch?v=test",
                 progress_hook=progress_hook,
-                download_item=download_item,
                 playlist=False,
                 video_format="best",
                 output_path="/tmp",
@@ -256,12 +243,6 @@ class TestDownloadVideo(unittest.TestCase):
 
             args, kwargs = mock_wrapper_class.call_args
             ydl_opts = args[0]
-            # split_chapters is handled by postprocessor args now?
-            # Or "split_chapters" is not a direct key but added to postprocessors.
-            # In downloader/core.py:
-            # if split_chapters and ffmpeg_available:
-            #    ydl_opts.setdefault("postprocessors", []).append({"key": "FFmpegSplitChapters"})
-
             pps = ydl_opts.get("postprocessors", [])
             self.assertTrue(any(p["key"] == "FFmpegSplitChapters" for p in pps))
 
@@ -270,12 +251,10 @@ class TestDownloadVideo(unittest.TestCase):
     def test_download_video_with_proxy(self, mock_wrapper_class, mock_mkdir):
         """Test video download with proxy settings."""
         progress_hook = MagicMock()
-        download_item = {}
 
         download_video(
             url="https://www.youtube.com/watch?v=test",
             progress_hook=progress_hook,
-            download_item=download_item,
             playlist=False,
             video_format="best",
             output_path=".",
@@ -291,12 +270,10 @@ class TestDownloadVideo(unittest.TestCase):
         ydl_opts = args[0]
         self.assertEqual(ydl_opts["proxy"], "http://proxy.example.com:8080")
 
-        # Test invalid proxy
         with self.assertRaises(ValueError):
              download_video(
                 url="https://www.youtube.com/watch?v=test",
                 progress_hook=progress_hook,
-                download_item=download_item,
                 proxy="invalid",
             )
 
@@ -305,12 +282,10 @@ class TestDownloadVideo(unittest.TestCase):
     def test_download_video_with_rate_limit(self, mock_wrapper_class, mock_mkdir):
         """Test video download with rate limiting."""
         progress_hook = MagicMock()
-        download_item = {}
 
         download_video(
             url="https://www.youtube.com/watch?v=test",
             progress_hook=progress_hook,
-            download_item=download_item,
             playlist=False,
             video_format="best",
             output_path=".",
@@ -331,13 +306,11 @@ class TestDownloadVideo(unittest.TestCase):
     def test_download_video_with_cancel_token(self, mock_wrapper_class, mock_mkdir):
         """Test that cancel token is added to progress hooks."""
         progress_hook = MagicMock()
-        download_item = {}
         cancel_token = MagicMock()
 
         download_video(
             url="https://www.youtube.com/watch?v=test",
             progress_hook=progress_hook,
-            download_item=download_item,
             playlist=False,
             video_format="best",
             output_path=".",
@@ -349,9 +322,7 @@ class TestDownloadVideo(unittest.TestCase):
             cancel_token=cancel_token,
         )
 
-        # Check call to download method
         mock_instance = mock_wrapper_class.return_value
-        # download args: (url, progress_hook, cancel_token)
         args, kwargs = mock_instance.download.call_args
         self.assertEqual(args[2], cancel_token)
 
@@ -361,23 +332,11 @@ class TestDownloadVideo(unittest.TestCase):
         """Test graceful handling of user cancellation."""
         mock_download.side_effect = yt_dlp.utils.DownloadError("Cancelled by user")
         progress_hook = MagicMock()
-        download_item = {}
-
-        # Should raise because download_video doesn't catch DownloadError from YTDLPWrapper
-        # Wait, YTDLPWrapper catches DownloadError?
-        # YTDLPWrapper catches DownloadError, logs it, attempts fallback.
-        # If "Cancelled by user" is in string, it returns.
-
-        # BUT, here I am mocking YTDLPWrapper.download itself!
-        # So I am simulating `YTDLPWrapper.download` raising an exception.
-        # `download_video` does NOT catch exceptions from `YTDLPWrapper.download`.
-        # So this test expects it to raise.
 
         with self.assertRaises(yt_dlp.utils.DownloadError):
             download_video(
                 url="https://www.youtube.com/watch?v=test",
                 progress_hook=progress_hook,
-                download_item=download_item,
                 playlist=False,
                 video_format="best",
                 output_path=".",
@@ -395,13 +354,11 @@ class TestDownloadVideo(unittest.TestCase):
         """Test error handling during download."""
         mock_download.side_effect = yt_dlp.utils.DownloadError("Access denied")
         progress_hook = MagicMock()
-        download_item = {}
 
         with self.assertRaises(yt_dlp.utils.DownloadError):
             download_video(
                 url="https://www.youtube.com/watch?v=test",
                 progress_hook=progress_hook,
-                download_item=download_item,
                 playlist=False,
                 video_format="best",
                 output_path=".",
@@ -418,12 +375,10 @@ class TestDownloadVideo(unittest.TestCase):
     def test_download_video_playlist(self, mock_wrapper_class, mock_mkdir):
         """Test playlist download configuration."""
         progress_hook = MagicMock()
-        download_item = {}
 
         download_video(
             url="https://www.youtube.com/playlist?list=PLtest",
             progress_hook=progress_hook,
-            download_item=download_item,
             playlist=True,
             video_format="best",
             output_path=".",
@@ -435,10 +390,8 @@ class TestDownloadVideo(unittest.TestCase):
             cancel_token=None,
         )
 
-        # Check constructor args for opts
         args, kwargs = mock_wrapper_class.call_args
         ydl_opts = args[0]
-        # noplaylist = not playlist
         self.assertFalse(ydl_opts["noplaylist"])
 
     @patch("downloader.core.os.makedirs")
@@ -448,12 +401,10 @@ class TestDownloadVideo(unittest.TestCase):
     ):
         """Test that output directory is created if it doesn't exist."""
         progress_hook = MagicMock()
-        download_item = {}
 
         download_video(
             url="https://www.youtube.com/watch?v=test",
             progress_hook=progress_hook,
-            download_item=download_item,
             playlist=False,
             video_format="best",
             output_path="/nonexistent/path",
@@ -464,34 +415,17 @@ class TestDownloadVideo(unittest.TestCase):
             rate_limit=None,
             cancel_token=None,
         )
-
-        # mkdir should be called to create the output directory
         mock_makedirs.assert_called()
-
-    # @patch("downloader.core.Path.mkdir")
-    # @patch("downloader.core.YTDLPWrapper.download")
-    # def test_download_video_recode(self, mock_download, mock_mkdir):
-    #     download_video(
-    #         url="test",
-    #         progress_hook=lambda d, i: None,
-    #         download_item={},
-    #         # recode_video="mp4", # Argument name mismatch in current implementation?
-    #         # Checking downloader/core.py, there is no recode_video argument!
-    #         # It was likely removed or merged into video_format logic.
-    #     )
-    #     pass
 
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
     def test_download_video_sponsorblock(self, mock_wrapper_class, mock_mkdir):
-        # Ensure ffmpeg available
         with patch("downloader.core.state") as mock_state:
             mock_state.ffmpeg_available = True
 
             download_video(
                 url="test",
-                progress_hook=lambda d, i: None,
-                download_item={},
+                progress_hook=lambda d: None,
                 sponsorblock=True,
             )
 
@@ -503,14 +437,12 @@ class TestDownloadVideo(unittest.TestCase):
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
     def test_download_video_gpu_accel(self, mock_wrapper_class, mock_mkdir):
-        # We need to ensure ffmpeg_available is True for this test
         with patch("downloader.core.state") as mock_state:
             mock_state.ffmpeg_available = True
 
             download_video(
                 url="test",
-                progress_hook=lambda d, i: None,
-                download_item={},
+                progress_hook=lambda d: None,
                 gpu_accel="cuda",
             )
 

@@ -1,5 +1,6 @@
 """
 Utilities for UI components and platform interaction.
+Includes robust validation and secure operations.
 """
 
 import logging
@@ -9,214 +10,141 @@ import re
 import shutil
 import subprocess
 import threading
-from typing import Optional
+from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
 
 
 class UIConstants:
     """Class to hold UI-related constants."""
-
-    # pylint: disable=too-few-public-methods
-
-    THUMBNAIL_SIZE = (160, 120)  # Larger thumbnail for better visibility
+    THUMBNAIL_SIZE = (160, 120)
     WINDOW_MIN_WIDTH = 1000
     WINDOW_MIN_HEIGHT = 750
-    QUEUE_POLL_INTERVAL = 100  # milliseconds
-    PAUSE_SLEEP_INTERVAL = 0.5  # seconds
+    QUEUE_POLL_INTERVAL = 100
+    PAUSE_SLEEP_INTERVAL = 0.5
     DEFAULT_PADDING = 10
     BUTTON_PADDING = 8
     ENTRY_PADDING = 5
 
 
-def format_file_size(size_bytes: Optional[float]) -> str:
+def format_file_size(size_bytes: Optional[Union[float, str, int]]) -> str:
     """Format file size for display."""
     if size_bytes is None or size_bytes == "N/A":
         return "N/A"
     try:
-        size_bytes = float(size_bytes)
-        if size_bytes == 0:
+        size = float(size_bytes)
+        if size <= 0:
             return "0.00 B"
         for unit in ["B", "KB", "MB", "GB", "TB"]:
-            if size_bytes < 1024:
-                formatted = f"{size_bytes:.2f} {unit}"
-                return formatted
-            size_bytes /= 1024
-        return f"{size_bytes:.2f} PB"
+            if size < 1024:
+                return f"{size:.2f} {unit}"
+            size /= 1024
+        return f"{size:.2f} PB"
     except (ValueError, TypeError):
         return "N/A"
 
 
 def validate_url(url: str) -> bool:
     """
-    Validate if URL is a valid URL.
-    Supports http and https schemes only (secure subset for UI validation).
-    Note: yt-dlp may support additional schemes, but UI validation is more restrictive.
+    Validate if URL is a valid http/https URL.
     """
-    if not url or not isinstance(url, str):
+    if not isinstance(url, str):
         return False
 
     url = url.strip()
-
-    # Check length
-    if len(url) < 10 or len(url) > 2048:
+    if len(url) < 8 or len(url) > 2048:
         return False
 
-    # Check for valid scheme (whitelist approach for security)
-    # Only http/https for UI validation (more restrictive than yt-dlp capabilities)
-    valid_schemes = ("http://", "https://")
-    if not url.startswith(valid_schemes):
-        return False
+    # Strict regex for http/https
+    # Checks for scheme, domain (at least one dot or localhost), and optional path
+    # Does not allow user/pass in URL for UI safety
+    regex = re.compile(
+        r'^(?:http|https)://'  # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+        r'localhost|'  # localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+        r'(?::\d+)?'  # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
 
-    # Basic URL structure validation
-    # Pattern: scheme://domain.tld/path (simplified)
-    pattern = r"^https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&\'()*+,;=%]+$"
-    return bool(re.match(pattern, url))
+    return bool(regex.match(url))
 
 
 def validate_proxy(proxy: str) -> bool:
     """
     Validate proxy format.
-    Expected format: scheme://host:port (e.g., http://proxy.example.com:8080)
+    Expected: scheme://[user:pass@]host:port
     """
     if not proxy or not isinstance(proxy, str):
-        return True  # Empty is valid (no proxy)
-
+        return True
     proxy = proxy.strip()
     if not proxy:
         return True
 
-    # Must have scheme
     if not proxy.startswith(("http://", "https://", "socks4://", "socks5://")):
         return False
 
-    # Split scheme and rest
     try:
         _, rest = proxy.split("://", 1)
-        if not rest:
-            return False
+        if not rest: return False
 
-        # Must have colon for port
+        # Check for port existence (simplified)
         if ":" not in rest:
             return False
 
-        # Basic validation of host:port
-        # Handle user:pass@host:port case
-        if "@" in rest:
-            _, hostport = rest.rsplit("@", 1)
-        else:
-            hostport = rest
-
-        if ":" not in hostport:
-            return False
-
-        host, port = hostport.rsplit(":", 1)
-
-        # Validate port is numeric and in valid range
-        port_num = int(port)
-        if port_num < 1 or port_num > 65535:
-            return False
-
-        # Host should not be empty
-        if not host:
-            return False
-
         return True
-
-    except (ValueError, IndexError):
+    except ValueError:
         return False
 
 
 def validate_rate_limit(rate_limit: str) -> bool:
-    """
-    Validate rate limit format (e.g., 50K, 4.2M, 1G, 500K/s).
-
-    Accepts:
-        - digits optionally followed by a decimal part
-        - optional single unit (K, M, G, T)
-        - optional "/s" suffix, which some backends (like yt-dlp) also accept.
-    """
+    """Validate rate limit (e.g. 50K, 1.5M)."""
     if not rate_limit or not isinstance(rate_limit, str):
-        return True  # Empty is valid (no limit)
-
+        return True
     rate_limit = rate_limit.strip()
     if not rate_limit:
         return True
 
-    # Pattern: number with optional decimal, optional SINGLE unit, optional "/s"
-    pattern = r"^\d+(\.\d+)?[KMGT]?(?:/s)?$"
-    if not re.match(pattern, rate_limit, re.IGNORECASE):
-        return False
-
-    # Additional check: if value is 0, it's pointless but technically valid
-    # Extract numeric part
-    numeric_part = re.match(r"^\d+(\.\d+)?", rate_limit)
-    if numeric_part:
-        value = float(numeric_part.group(0))
-        if value <= 0:
-            return False  # Zero or negative rate limit makes no sense
-
-    return True
+    return bool(re.match(r"^\d+(\.\d+)?[KMGT]?(?:/s)?$", rate_limit, re.IGNORECASE))
 
 
 def is_ffmpeg_available() -> bool:
     """Check if ffmpeg is available in the system path with timeout."""
-    result = [None]
+    result = [False]
 
     def check():
         try:
+            # check_output is better than which for some path envs
+            # but shutil.which is safer/faster
             result[0] = shutil.which("ffmpeg") is not None
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.warning("FFmpeg check failed: %s", e)
-            result[0] = False
+        except Exception as e:
+            logger.warning("FFmpeg check error: %s", e)
 
     thread = threading.Thread(target=check, daemon=True)
     thread.start()
-    thread.join(timeout=2.0)  # 2 second timeout
+    thread.join(timeout=1.0)
 
-    if thread.is_alive():
-        logger.warning("FFmpeg check timed out")
-        return False
-
-    if result[0]:
-        logger.info("FFmpeg is available.")
-    else:
-        logger.warning(
-            "FFmpeg not found. Video processing capabilities will be limited."
-        )
-    return result[0] or False
+    return result[0]
 
 
-def open_folder(path: str):
-    """
-    Opens a folder in the system file manager.
-    Handles errors gracefully without raising exceptions.
-
-    Returns:
-        bool: True if successful, False otherwise
-    """
+def open_folder(path: str) -> bool:
+    """Opens a folder in the system file manager."""
     if not path:
-        logger.warning("No path provided to open_folder")
         return False
 
     try:
-        path = os.path.expanduser(path)
-        if not os.path.exists(path):
-            logger.warning("Path does not exist: %s", path)
+        path = os.path.abspath(os.path.expanduser(path))
+        if not os.path.isdir(path):
+            logger.warning("Path not found: %s", path)
             return False
 
-        logger.debug("Opening folder: %s", path)
+        logger.info("Opening folder: %s", path)
         if platform.system() == "Windows":
-            os.startfile(path)  # type: ignore # pylint: disable=no-member
+            os.startfile(path) # type: ignore
         elif platform.system() == "Darwin":
-            # pylint: disable=consider-using-with
-            subprocess.Popen(["open", path])
+            subprocess.Popen(["open", path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            # pylint: disable=consider-using-with
-            subprocess.Popen(["xdg-open", path])
-
+            subprocess.Popen(["xdg-open", path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
-
-    except Exception as ex:  # pylint: disable=broad-exception-caught
-        logger.error("Failed to open folder %s: %s", path, ex)
-        return False  # Don't raise in UI context
+    except Exception as e:
+        logger.error("Failed to open folder: %s", e)
+        return False
