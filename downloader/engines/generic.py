@@ -7,7 +7,7 @@ import logging
 import os
 import re
 import time
-from typing import Any, Callable, Dict, Optional, Mapping
+from typing import Any, Callable, Dict, Mapping, Optional
 
 import requests
 
