@@ -36,6 +36,7 @@ class DownloadInputCard(ft.Container):
         self.content = self._build_content()
 
     def _build_content(self):
+        # Platform Icons - Wrap on small screens
         platform_icons = ft.Row(
             [
                 ft.Icon(
@@ -57,14 +58,19 @@ class DownloadInputCard(ft.Container):
             alignment=ft.MainAxisAlignment.CENTER,
             spacing=20,
             opacity=0.7,
+            wrap=True,
         )
 
+        # Options Row - Use wrap for responsiveness
         options_row = ft.Row(
             [
                 self.video_format_dd,
                 self.cookies_dd,
             ],
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            wrap=True,
+            spacing=10,
+            run_spacing=10,
+            alignment=ft.MainAxisAlignment.START,
         )
 
         checkboxes_row = ft.Row(
@@ -75,6 +81,8 @@ class DownloadInputCard(ft.Container):
             ],
             alignment=ft.MainAxisAlignment.START,
             wrap=True,
+            spacing=20,
+            run_spacing=10,
         )
 
         time_row = ft.Row(
@@ -85,16 +93,23 @@ class DownloadInputCard(ft.Container):
                 self.time_end,
             ],
             alignment=ft.MainAxisAlignment.START,
+            wrap=True,
+            spacing=5,
+            run_spacing=5,
+        )
+
+        # Main Input Row (URL + Button)
+        input_row = ft.Row(
+            [ft.Container(self.url_input, expand=True), self.fetch_btn],
+            alignment=ft.MainAxisAlignment.CENTER,
+            wrap=False,  # We want these side-by-side if possible, but URL expands
         )
 
         return ft.Column(
             [
                 platform_icons,
                 ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
-                ft.Row(
-                    [self.url_input, self.fetch_btn],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
+                input_row,
                 ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
                 options_row,
                 checkboxes_row,

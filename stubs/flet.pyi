@@ -11,6 +11,8 @@ class Page:
     overlay: list[Any]
     on_disconnect: Any
     on_close: Any
+    navigation_bar: Any
+    on_resized: Any
     def open(self, control: Any) -> None: ...
     def update(self) -> None: ...
     def add(self, *controls: Any) -> None: ...
@@ -42,6 +44,7 @@ class Container(Control):
         border: Any = None,
         on_click: Any = None,
         ink: bool = False,
+        visible: bool = True,
     ): ...
 
 class Column(Control):
@@ -66,6 +69,8 @@ class Row(Control):
         spacing: Any = None,
         alignment: Any = None,
         vertical_alignment: Any = None,
+        wrap: bool = False,
+        run_spacing: Any = None,
     ): ...
 
 class Text(Control):
@@ -101,7 +106,14 @@ class ProgressBar(Control):
     ): ...
 
 class SnackBar(Control):
-    def __init__(self, content: Any = None): ...
+    def __init__(
+        self,
+        content: Any = None,
+        action: Any = None,
+        on_action: Any = None,
+        bgcolor: Any = None,
+        open: bool = False,
+    ): ...
 
 class FilePicker(Control):
     on_result: Any
@@ -144,6 +156,25 @@ class NavigationRailDestination(Control):
         self, icon: Any = None, selected_icon: Any = None, label: Any = None
     ): ...
 
+class NavigationBar(Control):
+    def __init__(
+        self,
+        destinations: Any = None,
+        selected_index: int = 0,
+        bgcolor: Any = None,
+        on_change: Any = None,
+        height: Any = None,
+        visible: bool = True,
+    ): ...
+
+class NavigationBarDestination(Control):
+    def __init__(
+        self,
+        icon: Any = None,
+        selected_icon: Any = None,
+        label: Any = None,
+    ): ...
+
 class VerticalDivider(Control):
     def __init__(self, width: Any = None, thickness: Any = None, color: Any = None): ...
 
@@ -166,6 +197,8 @@ class IconButton(Control):
         on_click: Any = None,
         tooltip: Any = None,
         icon_color: Any = None,
+        icon_size: Any = None,
+        style: Any = None,
     ): ...
 
 class Divider(Control):
@@ -271,6 +304,9 @@ class ButtonStyle:
 class RoundedRectangleBorder:
     def __init__(self, radius: Any = None): ...
 
+class CircleBorder:
+    def __init__(self): ...
+
 class Checkbox(Control):
     value: bool
     def __init__(
@@ -370,6 +406,7 @@ class TextButton(Control):
         self,
         text: str = "",
         on_click: Any = None,
+        icon: Any = None,
     ): ...
 
 class Stack(Control):
@@ -391,6 +428,32 @@ class ProgressRing(Control):
 class InputBorder:
     NONE: Any
     OUTLINE: Any
+
+class TextThemeStyle:
+    HEADLINE_MEDIUM: Any
+    BODY_MEDIUM: Any
+
+class ScrollMode:
+    AUTO: Any
+
+class BoxShadow:
+    def __init__(
+        self,
+        spread_radius: Any = None,
+        blur_radius: Any = None,
+        color: Any = None,
+        offset: Any = None,
+        blur_style: Any = None,
+    ): ...
+
+class Offset:
+    def __init__(self, x: Any, y: Any): ...
+
+class margin:
+    @staticmethod
+    def only(left: Any = None, top: Any = None, right: Any = None, bottom: Any = None) -> Any: ...
+    @staticmethod
+    def all(value: Any) -> Any: ...
 
 # Relaxed types
 Colors: Any

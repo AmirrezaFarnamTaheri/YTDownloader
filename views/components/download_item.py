@@ -1,6 +1,7 @@
 """
 Download Item Control module.
 Represents a single download item in the queue UI.
+Refactored for responsiveness.
 """
 
 from typing import Any, Dict
@@ -33,7 +34,7 @@ class DownloadItemControl:
         self.on_retry = on_retry
         self.is_selected = is_selected
 
-        # Pre-bind callbacks to avoid creating new lambdas each time
+        # Pre-bind callbacks
         # pylint: disable=unnecessary-lambda
         self._cancel_handler = lambda e: self.on_cancel(self.item)
         self._remove_handler = lambda e: self.on_remove(self.item)
@@ -71,8 +72,10 @@ class DownloadItemControl:
             max_lines=1,
         )
 
-        # Action container will be updated dynamically
-        self.actions_row = ft.Row(spacing=5, alignment=ft.MainAxisAlignment.END)
+        # Action container
+        self.actions_row = ft.Row(
+            spacing=5, alignment=ft.MainAxisAlignment.END, wrap=True
+        )
         self._update_actions()
 
         self.view = self.build()
@@ -108,46 +111,52 @@ class DownloadItemControl:
         elif self.item.get("is_playlist"):
             icon_data = ft.Icons.PLAYLIST_PLAY
 
+        # Icon Container
+        icon_container = ft.Container(
+            content=ft.Icon(icon_data, size=28, color=icon_color),
+            width=56,
+            height=56,
+            bgcolor=(
+                ft.Colors.with_opacity(0.1, icon_color)
+                if icon_color != Theme.TEXT_SECONDARY
+                else Theme.BG_DARK
+            ),
+            border_radius=12,
+            alignment=ft.alignment.center,
+        )
+
+        # Info Column
+        info_col = ft.Column(
+            [
+                ft.Row(
+                    [self.title_text],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                self.progress_bar,
+                ft.Row(
+                    [self.status_text, self.details_text],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    wrap=True,  # Wrap details if needed
+                ),
+            ],
+            spacing=6,
+            expand=True,
+        )
+
+        # Use a Responsive Layout logic
+        # Container -> Row -> [Icon, Info(expand), Actions]
+
         return ft.Container(
             content=ft.Row(
                 [
-                    # Icon Container
-                    ft.Container(
-                        content=ft.Icon(icon_data, size=28, color=icon_color),
-                        width=56,
-                        height=56,
-                        bgcolor=(
-                            ft.Colors.with_opacity(0.1, icon_color)
-                            if icon_color != Theme.TEXT_SECONDARY
-                            else Theme.BG_DARK
-                        ),
-                        border_radius=12,
-                        alignment=ft.alignment.center,
-                    ),
-                    # Info Column
-                    ft.Column(
-                        [
-                            ft.Row(
-                                [
-                                    self.title_text,
-                                ],
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            ),
-                            self.progress_bar,
-                            ft.Row(
-                                [self.status_text, self.details_text],
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            ),
-                        ],
-                        spacing=6,
-                        expand=True,
-                    ),
-                    # Actions
-                    self.actions_row,
+                    icon_container,
+                    info_col,
+                    ft.Container(self.actions_row, padding=ft.padding.only(left=5)),
                 ],
-                spacing=15,
+                spacing=10,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            padding=15,
+            padding=10,  # Reduced padding for mobile
             bgcolor=bg_color,
             border_radius=16,
             shadow=ft.BoxShadow(

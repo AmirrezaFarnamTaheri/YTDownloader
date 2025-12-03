@@ -119,7 +119,7 @@ def _process_subtitles(info_dict: Dict[str, Any]) -> Dict[str, List[str]]:
 
 
 def _process_streams(
-    info_dict: Dict[str, Any], formats: List[Any]
+    info_dict: Dict[str, Any], formats: Optional[List[Any]]
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Process video and audio streams from yt-dlp info."""
     video_streams: List[Dict[str, Any]] = []

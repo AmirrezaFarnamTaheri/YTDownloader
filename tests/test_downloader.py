@@ -484,5 +484,5 @@ class TestDownloadVideo(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.mock.MagicMock = MagicMock  # ensure compat
+    unittest.mock.MagicMock = MagicMock  # type: ignore
     unittest.main()

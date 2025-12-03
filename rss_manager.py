@@ -15,7 +15,7 @@ from dateutil import parser as date_parser
 try:
     from defusedxml.ElementTree import fromstring as safe_fromstring
 except ImportError:
-    safe_fromstring = None
+    safe_fromstring = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class RSSManager:
                 return []
 
             # Safe XML parsing
-            if safe_fromstring:
+            if safe_fromstring is not None:
                 try:
                     root = safe_fromstring(content_text)
                 except Exception as e:
