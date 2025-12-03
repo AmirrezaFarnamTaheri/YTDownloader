@@ -1,9 +1,7 @@
 name: Build Mobile Apps (Flet)
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_call:
   workflow_dispatch:
     inputs:
       build_android:
@@ -13,7 +11,7 @@ on:
       build_ios:
         description: 'Build iOS IPA'
         type: boolean
-        default: true
+        default: false
 
 env:
   FLET_VERSION: "0.28.3"
@@ -86,7 +84,7 @@ jobs:
         name: StreamCatch-Android-APK
         path: ${{ steps.find_apk.outputs.apk_path }}
         if-no-files-found: error
-        retention-days: 30
+        retention-days: 1
 
   # ===========================================================================
   # iOS IPA Build
@@ -97,7 +95,7 @@ jobs:
     # Pinned to macos-14 to support Xcode 15.4 which is required for Flutter
     runs-on: macos-14
     timeout-minutes: 60
-    if: ${{ github.event.inputs.build_ios != 'false' }}
+    if: ${{ github.event.inputs.build_ios == 'true' }}
 
     steps:
     - name: Checkout code
@@ -186,7 +184,7 @@ jobs:
         name: StreamCatch-iOS-IPA
         path: ${{ steps.find_ios.outputs.ipa_path }}
         if-no-files-found: warn
-        retention-days: 30
+        retention-days: 1
 
     - name: Upload xcarchive Artifact
       if: steps.find_ios.outputs.artifact_type == 'xcarchive'
@@ -195,83 +193,4 @@ jobs:
         name: StreamCatch-iOS-xcarchive
         path: ${{ steps.find_ios.outputs.archive_path }}
         if-no-files-found: warn
-        retention-days: 30
-
-  # ===========================================================================
-  # Create Release
-  # ===========================================================================
-  release:
-    name: Create Release
-    needs: [version, build-android, build-ios]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: write
-
-    steps:
-    - name: Download Android APK
-      uses: actions/download-artifact@v4
-      with:
-        name: StreamCatch-Android-APK
-        path: ./android
-      continue-on-error: true
-
-    - name: Download iOS IPA
-      uses: actions/download-artifact@v4
-      with:
-        name: StreamCatch-iOS-IPA
-        path: ./ios
-      continue-on-error: true
-
-    - name: Download iOS xcarchive
-      uses: actions/download-artifact@v4
-      with:
-        name: StreamCatch-iOS-xcarchive
-        path: ./ios-archive
-      continue-on-error: true
-
-    - name: Prepare release files
-      run: |
-        mkdir -p release
-        
-        # Android APK
-        if [ -f android/*.apk ]; then
-          mv android/*.apk release/StreamCatch-Android.apk
-          echo "✅ Android APK ready"
-        else
-          echo "⚠️ No Android APK found"
-        fi
-        
-        # iOS IPA
-        if [ -f ios/*.ipa ]; then
-          mv ios/*.ipa release/StreamCatch-iOS.ipa
-          echo "✅ iOS IPA ready"
-        elif [ -f ios-archive/*.zip ]; then
-          mv ios-archive/*.zip release/StreamCatch-iOS-xcarchive.zip
-          echo "✅ iOS xcarchive ready (requires manual signing)"
-        else
-          echo "⚠️ No iOS artifacts found"
-        fi
-        
-        ls -la release/
-
-    - name: Create Release
-      uses: softprops/action-gh-release@v2
-      with:
-        files: release/*
-        generate_release_notes: true
-        body: |
-          ## Mobile Apps
-          
-          ### Android
-          - Download `StreamCatch-Android.apk` and install on your device
-          - Enable "Install from unknown sources" if prompted
-          
-          ### iOS
-          - If `.ipa` is available: Install via Xcode, Apple Configurator, or TestFlight
-          - If `.xcarchive.zip` is provided: Open in Xcode to sign and export
-          
-          ⚠️ **Note**: iOS builds require code signing. Without provisioning profiles, 
-          only the xcarchive is generated.
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        retention-days: 1

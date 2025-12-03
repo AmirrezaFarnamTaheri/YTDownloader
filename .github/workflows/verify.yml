@@ -40,17 +40,14 @@ jobs:
     - name: Check formatting with Black
       run: |
         black --check --diff .
-      continue-on-error: true
 
     - name: Check import sorting with isort
       run: |
         isort --check-only --diff .
-      continue-on-error: true
 
     - name: Run pylint
       run: |
         pylint --exit-zero --output-format=colorized *.py
-      continue-on-error: true
 
   # ===========================================================================
   # Unit Tests
@@ -130,5 +127,4 @@ jobs:
     - name: Check for vulnerabilities
       run: |
         safety check -r requirements.txt --output text
-      continue-on-error: true
 

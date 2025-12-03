@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for release (e.g. v1.0.0)'
+        required: false
+        default: ''
+
+jobs:
+  desktop:
+    uses: ./.github/workflows/build-desktop.yml
+    with:
+      tag_name: ${{ github.event.inputs.tag_name }}
+    secrets: inherit
+
+  mobile:
+    uses: ./.github/workflows/build-mobile-flet.yml
+    with:
+      build_android: true
+      build_ios: false # Disabled by default
+    secrets: inherit
+
+  publish:
+    name: Publish Release
+    needs: [desktop, mobile]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download Windows Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: StreamCatch-Windows-Installer
+        path: ./windows
+
+    - name: Download Linux Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: StreamCatch-Linux-Deb
+        path: ./linux
+
+    - name: Download macOS Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: StreamCatch-macOS-Dmg
+        path: ./macos
+
+    - name: Download Android APK
+      uses: actions/download-artifact@v4
+      with:
+        name: StreamCatch-Android-APK
+        path: ./android
+      continue-on-error: true
+
+    # iOS artifacts would be downloaded here if enabled
+
+    - name: Prepare release files
+      run: |
+        mkdir -p release
+
+        # Windows
+        mv windows/StreamCatch_Setup_v*.exe release/StreamCatch-Windows-Installer.exe 2>/dev/null || \
+        mv windows/*.exe release/StreamCatch-Windows-Installer.exe
+
+        # Linux
+        mv linux/streamcatch_*_amd64.deb release/StreamCatch-Linux-amd64.deb 2>/dev/null || \
+        mv linux/*.deb release/StreamCatch-Linux-amd64.deb
+
+        # macOS
+        mv macos/StreamCatch-*-macOS.dmg release/StreamCatch-macOS.dmg 2>/dev/null || \
+        mv macos/*.dmg release/StreamCatch-macOS.dmg
+
+        # Android
+        mv android/*.apk release/StreamCatch-Android.apk 2>/dev/null || true
+
+        echo "=== Release files ==="
+        ls -la release/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+        draft: ${{ github.event_name == 'workflow_dispatch' }}
+        generate_release_notes: true
+        files: |
+          release/StreamCatch-Windows-Installer.exe
+          release/StreamCatch-Linux-amd64.deb
+          release/StreamCatch-macOS.dmg
+          release/StreamCatch-Android.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

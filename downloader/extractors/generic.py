@@ -8,8 +8,6 @@ from typing import Any, Dict, Optional
 
 import requests
 
-from downloader.engines.generic import GenericDownloader
-
 
 class GenericExtractor:
     """
@@ -41,9 +39,3 @@ class GenericExtractor:
         except Exception:
             # Fallback
             return {"title": url, "webpage_url": url, "extractor": "generic"}
-
-    @staticmethod
-    def extract(
-        url: str, output_path: str, progress_hook=None, cancel_token=None
-    ) -> dict:
-        return GenericDownloader.download(url, output_path, progress_hook, cancel_token)
