@@ -141,7 +141,7 @@ def build_installer():
                 "--product-name=StreamCatch",
                 "--file-version=2.0.0.0",
                 "--product-version=2.0.0.0",
-                "--copyright=Copyright © 2024 Jules",
+                "--copyright=Copyright (c) 2024 Jules",
             ]
         )
     elif sys.platform == "darwin":
@@ -169,9 +169,11 @@ def build_installer():
 
     try:
         subprocess.check_call(cmd)
-        print("\n✓ Build completed successfully\n")
+        print("\n[OK] Build completed successfully\n")
     except subprocess.CalledProcessError as e:
-        print(f"\n✗ Build failed with exit code {e.returncode}\n", file=sys.stderr)
+        print(
+            f"\n[ERROR] Build failed with exit code {e.returncode}\n", file=sys.stderr
+        )
         sys.exit(1)
 
     if sys.platform == "darwin":
@@ -185,16 +187,18 @@ def build_installer():
             print("Step 3: Building Windows installer...")
             try:
                 subprocess.check_call([iscc, str(root / "installers" / "setup.iss")])
-                print("✓ Installer built in installers/output/\n")
+                print("[OK] Installer built in installers/output/\n")
             except subprocess.CalledProcessError as e:
                 print(
-                    f"✗ Installer build failed with exit code {e.returncode}\n",
+                    f"[ERROR] Installer build failed with exit code {e.returncode}\n",
                     file=sys.stderr,
                 )
                 sys.exit(1)
         else:
-            print("⚠ Inno Setup (iscc) not found. Skipping installer generation.")
-            print("⚠ Standalone executable is in dist/StreamCatch.exe\n")
+            print(
+                "[WARNING] Inno Setup (iscc) not found. Skipping installer generation."
+            )
+            print("[INFO] Standalone executable is in dist/StreamCatch.exe\n")
     else:
         print("Non-Windows platform: standalone binary built.")
         print(f"Output is in {dist_dir}/\n")
