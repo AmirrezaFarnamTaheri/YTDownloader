@@ -1,12 +1,13 @@
 """
 App Layout module.
 
-Defines the main application layout including the sidebar navigation
-and content area management.
+Defines the main application layout including the sidebar navigation,
+bottom navigation (for mobile), and content area management.
+Refactored for full responsiveness.
 """
 
 import logging
-from typing import Optional
+from typing import List, Optional
 
 import flet as ft
 
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 class AppLayout:
     """
     Main application layout component.
+    Handles responsive switching between Sidebar (Desktop) and NavigationBar (Mobile).
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -34,15 +36,28 @@ class AppLayout:
         self.page = page
         self.navigate_callback = navigate_callback
         self.toggle_clipboard_callback = toggle_clipboard_callback
+        self._current_index = 0
 
-        # Main content area
+        # Define Navigation Items
+        self.nav_items = [
+            ("Download", ft.Icons.DOWNLOAD_OUTLINED, ft.Icons.DOWNLOAD),
+            ("Queue", ft.Icons.QUEUE_MUSIC_OUTLINED, ft.Icons.QUEUE_MUSIC),
+            ("History", ft.Icons.HISTORY_OUTLINED, ft.Icons.HISTORY),
+            ("Dashboard", ft.Icons.DASHBOARD_OUTLINED, ft.Icons.DASHBOARD),
+            ("RSS Feeds", ft.Icons.RSS_FEED_OUTLINED, ft.Icons.RSS_FEED),
+            ("Settings", ft.Icons.SETTINGS_OUTLINED, ft.Icons.SETTINGS),
+        ]
+
+        # --- Components ---
+
+        # 1. Main Content Area
         self.content_area = ft.Container(
             content=initial_view,
             expand=True,
-            padding=20,
+            padding=ft.padding.all(10),  # Default smaller padding, adjusted dynamically
         )
 
-        # Navigation Rail
+        # 2. Navigation Rail (Desktop)
         self.rail = ft.NavigationRail(
             selected_index=0,
             label_type=ft.NavigationRailLabelType.ALL,
@@ -51,50 +66,50 @@ class AppLayout:
             group_alignment=-0.9,
             destinations=[
                 ft.NavigationRailDestination(
-                    icon=ft.Icons.DOWNLOAD_OUTLINED,
-                    selected_icon=ft.Icons.DOWNLOAD,
-                    label="Download",
-                ),
-                ft.NavigationRailDestination(
-                    icon=ft.Icons.QUEUE_MUSIC_OUTLINED,
-                    selected_icon=ft.Icons.QUEUE_MUSIC,
-                    label="Queue",
-                ),
-                ft.NavigationRailDestination(
-                    icon=ft.Icons.HISTORY_OUTLINED,
-                    selected_icon=ft.Icons.HISTORY,
-                    label="History",
-                ),
-                ft.NavigationRailDestination(
-                    icon=ft.Icons.DASHBOARD_OUTLINED,
-                    selected_icon=ft.Icons.DASHBOARD,
-                    label="Dashboard",
-                ),
-                ft.NavigationRailDestination(
-                    icon=ft.Icons.RSS_FEED_OUTLINED,
-                    selected_icon=ft.Icons.RSS_FEED,
-                    label="RSS Feeds",
-                ),
-                ft.NavigationRailDestination(
-                    icon=ft.Icons.SETTINGS_OUTLINED,
-                    selected_icon=ft.Icons.SETTINGS,
-                    label="Settings",
-                ),
+                    icon=icon_outlined,
+                    selected_icon=icon_filled,
+                    label=label,
+                )
+                for label, icon_outlined, icon_filled in self.nav_items
             ],
             on_change=self._on_nav_change,
             bgcolor=Theme.Surface.BG,
-            # Add leading/trailing logic support for mobile collapse
             extended=True,
         )
 
-        # Clipboard Monitor Toggle
+        # 3. Navigation Bar (Mobile)
+        # Use NavigationDestination (Flet > 0.21) or NavigationBarDestination (older)
+        # Checking Flet docs, NavigationDestination is the correct one for NavigationBar in recent versions.
+        # But the error 'Did you mean NavigationBarDestination' suggests the installed version is strict.
+        # Wait, the error message in the previous turn was:
+        # AttributeError: module 'flet' has no attribute 'NavigationDestination'. Did you mean: 'NavigationBarDestination'?
+        # This confirms I should use NavigationBarDestination for this version of Flet.
+        self.nav_bar = ft.NavigationBar(
+            selected_index=0,
+            destinations=[
+                ft.NavigationBarDestination(
+                    icon=icon_outlined,
+                    selected_icon=icon_filled,
+                    label=label,
+                )
+                for label, icon_outlined, icon_filled in self.nav_items
+            ],
+            on_change=self._on_nav_change,
+            visible=False,  # Hidden by default
+            bgcolor=Theme.Surface.BG,
+            height=70,
+        )
+
+        # Attach Nav Bar to Page
+        self.page.navigation_bar = self.nav_bar
+
+        # 4. Sidebar Container (Holds Rail + Logo + Switch)
         self.clipboard_switch = ft.Switch(
             label="Clipboard Monitor",
             value=clipboard_active,
             on_change=self._on_clipboard_toggle,
         )
 
-        # Logo
         self.logo_image = ft.Image(
             src="assets/logo.svg",
             width=48,
@@ -108,20 +123,15 @@ class AppLayout:
             color=Theme.Text.PRIMARY,
         )
 
-        # Logo / Header
         self.header = ft.Container(
             content=ft.Column(
-                [
-                    self.logo_image,
-                    self.logo_text,
-                ],
+                [self.logo_image, self.logo_text],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=5,
             ),
             padding=ft.padding.only(top=20, bottom=10),
         )
 
-        # Sidebar container
         self.sidebar = ft.Container(
             content=ft.Column(
                 [
@@ -138,9 +148,10 @@ class AppLayout:
             width=200,
             bgcolor=Theme.Surface.BG,
             border=ft.border.only(right=ft.BorderSide(1, Theme.Divider.COLOR)),
+            visible=True,  # Visible by default (Desktop)
         )
 
-        # Main Layout
+        # 5. Root View
         self.view = ft.Row(
             [
                 self.sidebar,
@@ -150,29 +161,73 @@ class AppLayout:
             spacing=0,
         )
 
-    def set_compact_mode(self, enabled: bool):
-        """Enable or disable Compact Mode."""
-        if enabled:
-            self.sidebar.visible = False
-            # Compact navigation bar? Or just hide sidebar and rely on keyboard?
-            # For now, let's implement a minimal vertical bar (NavigationRail only) if compact,
-            # but the request implies "Widget" style.
-            self.set_sidebar_collapsed(True)
-            self.sidebar.width = 60
-            self.rail.min_width = 60
-            self.header.visible = False
-            self.content_area.padding = 10  # type: ignore
+        # Setup Resize Handler
+        self.page.on_resized = self._on_resized
+        # Trigger initial check
+        self._on_resized(None)
+
+    def _on_resized(self, e):
+        """Handle screen resize events to switch layouts."""
+        width = self.page.width
+        is_mobile = width < 800
+
+        if is_mobile:
+            if self.sidebar.visible:
+                self.sidebar.visible = False
+                self.nav_bar.visible = True
+                self.content_area.padding = 10
+                self.view.update()
+                self.page.update()
         else:
-            self.sidebar.visible = True
-            self.set_sidebar_collapsed(False)
-            self.header.visible = True
-            self.content_area.padding = 20  # type: ignore
+            if not self.sidebar.visible:
+                self.sidebar.visible = True
+                self.nav_bar.visible = False
+                self.content_area.padding = 20
+                self.view.update()
+                self.page.update()
+
+    def set_compact_mode(self, enabled: bool):
+        """Enable or disable Compact Mode (Desktop specific)."""
+        # Only relevant if sidebar is visible
+        if not self.sidebar.visible:
+            return
+
+        if enabled:
+            self.rail.extended = False
+            self.rail.min_width = 70
+            self.rail.label_type = ft.NavigationRailLabelType.NONE
+            self.sidebar.width = 70
+            self.logo_text.visible = False
+            self.clipboard_switch.label = ""
+            self.clipboard_switch.tooltip = "Clipboard Monitor"
+        else:
+            self.rail.extended = True
+            self.rail.min_width = 100
+            self.rail.label_type = ft.NavigationRailLabelType.ALL
+            self.sidebar.width = 200
+            self.logo_text.visible = True
+            self.clipboard_switch.label = "Clipboard Monitor"
+            self.clipboard_switch.tooltip = None
+
         self.view.update()
 
     def _on_nav_change(self, e):
+        """Handle navigation changes from either Rail or Bar."""
         index = e.control.selected_index
+        self._current_index = index
+
+        # Sync both controls
+        self.rail.selected_index = index
+        self.nav_bar.selected_index = index
+
         logger.info("Navigation changed to index: %d", index)
         self.navigate_callback(index)
+
+        # Update UI to reflect sync
+        if self.sidebar.visible:
+            self.rail.update()
+        if self.nav_bar.visible:
+            self.nav_bar.update()
 
     def _on_clipboard_toggle(self, e):
         logger.info("Clipboard monitor toggled to: %s", e.control.value)
@@ -185,31 +240,6 @@ class AppLayout:
         try:
             self.content_area.update()
         except AssertionError:
-            # Can happen if called before adding to page
             pass
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.warning("Failed to update content area: %s", e)
-
-    def set_sidebar_collapsed(self, collapsed: bool):
-        """Collapse or expand the sidebar for mobile responsiveness."""
-        if collapsed:
-            self.rail.extended = False
-            self.rail.min_width = 70
-            self.rail.label_type = ft.NavigationRailLabelType.NONE
-            self.sidebar.width = 70
-            self.logo_text.visible = False
-            self.clipboard_switch.label = ""  # Hide label
-            self.clipboard_switch.tooltip = "Clipboard Monitor"
-        else:
-            self.rail.extended = True
-            self.rail.min_width = 100
-            self.rail.label_type = ft.NavigationRailLabelType.ALL
-            self.sidebar.width = 200
-            self.logo_text.visible = True
-            self.clipboard_switch.label = "Clipboard Monitor"
-            self.clipboard_switch.tooltip = None
-
-        try:
-            self.sidebar.update()
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass

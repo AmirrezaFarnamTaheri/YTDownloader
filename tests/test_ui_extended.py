@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import flet as ft
 
@@ -9,10 +9,26 @@ from views.rss_view import RSSView
 from views.settings_view import SettingsView
 
 
+class DummyPage:
+    def __init__(self):
+        self.width = 1024
+        self.controls = []
+        self.overlay = []
+        self.theme_mode = ft.ThemeMode.SYSTEM
+        self.navigation_bar = None
+        self.on_resized = None
+
+    def update(self):
+        pass
+
+    def open(self, control):
+        pass
+
+
 class TestUIExtended(unittest.TestCase):
 
     def setUp(self):
-        self.mock_page = MagicMock()
+        self.mock_page = DummyPage()
         self.mock_config = {"rss_feeds": ["http://feed.com"], "theme_mode": "Dark"}
 
     # --- RSSView Tests ---
@@ -21,32 +37,23 @@ class TestUIExtended(unittest.TestCase):
         view = RSSView(self.mock_config)
         self.assertIsInstance(view.tabs, ft.Tabs)
         self.assertEqual(len(view.tabs.tabs), 2)
-        # self.assertTrue(view.feeds_content.visible)
 
     def test_rss_view_tab_change(self):
         view = RSSView(self.mock_config)
-        # Mock update to avoid page assertion
         view.update = MagicMock()
 
-        # Switch to Latest Items
         e = MagicMock()
         view.tabs.selected_index = 1
         view.on_tab_change(e)
 
-        # self.assertFalse(view.feeds_content.visible)
-        # self.assertTrue(view.items_content.visible)
-
-        # Switch back
         view.tabs.selected_index = 0
         view.on_tab_change(e)
-        # self.assertTrue(view.feeds_content.visible)
 
     @patch("views.rss_view.RSSManager")
     def test_rss_view_fetch_feeds(self, MockRSS):
         view = RSSView(self.mock_config)
         view.update = MagicMock()
 
-        # Mock instance method instead of static parse_feed if used that way
         view.rss_manager.get_all_items = MagicMock(
             return_value=[
                 {
@@ -64,16 +71,9 @@ class TestUIExtended(unittest.TestCase):
             ]
         )
 
-        # Directly call the fetch task to avoid threading wait
         view._fetch_feeds_task()
 
         self.assertEqual(len(view.items_list.controls), 2)
-        # Sort check: Video 2 should be first (newer)
-        first_item = view.items_list.controls[0]
-        # We can't easily check content of container without diving deep,
-        # but we verify controls count and Mock calls.
-        # MockRSS.parse_feed.assert_called_with("http://feed.com")
-        # Since we mocked get_all_items, parse_feed won't be called in this test flow.
         view.rss_manager.get_all_items.assert_called()
 
     def test_rss_view_add_remove(self):
@@ -84,7 +84,6 @@ class TestUIExtended(unittest.TestCase):
         with patch("views.rss_view.ConfigManager.save_config") as mock_save:
             view.add_rss(None)
 
-            # Check if normalized dict or string is present
             found = False
             for f in self.mock_config["rss_feeds"]:
                 url = f if isinstance(f, str) else f.get("url")
@@ -109,6 +108,10 @@ class TestUIExtended(unittest.TestCase):
     def test_app_layout_init(self):
         nav_cb = MagicMock()
         clip_cb = MagicMock()
+
+        # Verify type
+        print(f"DEBUG: Type of mock_page is {type(self.mock_page)}")
+
         layout = AppLayout(self.mock_page, nav_cb, clip_cb)
 
         self.assertIsInstance(layout.view, ft.Row)
@@ -117,6 +120,7 @@ class TestUIExtended(unittest.TestCase):
     def test_app_layout_clipboard_toggle(self):
         nav_cb = MagicMock()
         clip_cb = MagicMock()
+
         layout = AppLayout(self.mock_page, nav_cb, clip_cb)
 
         e = MagicMock()
@@ -128,6 +132,7 @@ class TestUIExtended(unittest.TestCase):
     def test_app_layout_set_content(self):
         nav_cb = MagicMock()
         clip_cb = MagicMock()
+
         layout = AppLayout(self.mock_page, nav_cb, clip_cb)
         layout.content_area.update = MagicMock()
 
@@ -160,7 +165,11 @@ class TestUIExtended(unittest.TestCase):
 
     def test_settings_view_save(self):
         view = SettingsView(self.mock_config)
+
+        # Mocking open on the DummyPage
+        self.mock_page.open = MagicMock()
         view.page = self.mock_page
+
         view.proxy_input.value = "http://proxy"
         view.theme_mode_dd.value = "Light"
 

@@ -178,7 +178,7 @@ class DownloadView(BaseView):
     def _build_ui(self):
         """Constructs the UI layout."""
 
-        # Header
+        # Header - Responsive wrap
         header = ft.Row(
             [
                 ft.Column(
@@ -195,6 +195,7 @@ class DownloadView(BaseView):
                         ),
                     ],
                     spacing=2,
+                    expand=True,
                 ),
                 ft.Row(
                     [
@@ -208,10 +209,13 @@ class DownloadView(BaseView):
                             tooltip=LM.get("schedule_download"),
                             on_click=lambda e: self.on_schedule(e),
                         ),
-                    ]
+                    ],
+                    wrap=True,
                 ),
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.START,
+            wrap=True,
         )
 
         # Input Area
@@ -241,7 +245,7 @@ class DownloadView(BaseView):
             spacing=20,
         )
 
-        time_row = ft.Row([self.time_start, self.time_end], spacing=10)
+        time_row = ft.Row([self.time_start, self.time_end], spacing=10, wrap=True)
 
         # Input Card Container
         input_container = ft.Container(
@@ -254,7 +258,7 @@ class DownloadView(BaseView):
                     switches_row,
                     ft.Divider(height=10, color="transparent"),
                     ft.Text(LM.get("advanced_options"), weight=ft.FontWeight.BOLD),
-                    ft.Row([time_row], wrap=True),
+                    time_row,
                 ],
                 spacing=10,
             ),
@@ -302,7 +306,7 @@ class DownloadView(BaseView):
                     scroll=ft.ScrollMode.AUTO,
                     spacing=15,
                 ),
-                padding=20,
+                padding=10,  # Reduced padding to fit more on mobile
                 expand=True,
             )
         ]
