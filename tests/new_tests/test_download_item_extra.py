@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import flet as ft
 
@@ -11,21 +11,33 @@ class TestDownloadItemExtra(unittest.TestCase):
         item = {"url": "http://example.com", "status": "Queued", "title": "Test"}
         on_cancel = MagicMock()
         on_remove = MagicMock()
-        on_reorder = MagicMock()
 
-        control = DownloadItemControl(item, on_cancel, on_remove, on_reorder)
+        control = DownloadItemControl(
+            item,
+            on_cancel,
+            MagicMock(), # retry
+            on_remove,
+            MagicMock(), # play
+            MagicMock(), # folder
+        )
 
-        # Mock the page attribute of actions_row
-        control.actions_row.page = MagicMock()
+        # Mock the page attribute of action_row
+        control.action_row.page = MagicMock()
 
-        # Mock the update method of actions_row to avoid actual Flet logic
-        control.actions_row.update = MagicMock()
+        # Mock the update method of action_row to avoid actual Flet logic
+        control.action_row.update = MagicMock()
 
-        # Trigger update actions via _update_actions
-        control._update_actions()
+        # Trigger update actions
+        control.update_actions()
 
-        # Verify update was called
-        control.actions_row.update.assert_called()
+        # Verify update NOT called because update_actions doesn't call update() itself,
+        # but update_progress does.
+        # However, update_actions modifies controls list.
+        # The test originally checked if update was called.
+        # In new code, update_actions is purely logical. update_progress calls self.update().
+
+        # Let's check controls are present
+        self.assertTrue(len(control.action_row.controls) > 0)
 
 
 if __name__ == "__main__":

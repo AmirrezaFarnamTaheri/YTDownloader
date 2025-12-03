@@ -78,12 +78,6 @@ class AppLayout:
         )
 
         # 3. Navigation Bar (Mobile)
-        # Use NavigationDestination (Flet > 0.21) or NavigationBarDestination (older)
-        # Checking Flet docs, NavigationDestination is the correct one for NavigationBar in recent versions.
-        # But the error 'Did you mean NavigationBarDestination' suggests the installed version is strict.
-        # Wait, the error message in the previous turn was:
-        # AttributeError: module 'flet' has no attribute 'NavigationDestination'. Did you mean: 'NavigationBarDestination'?
-        # This confirms I should use NavigationBarDestination for this version of Flet.
         self.nav_bar = ft.NavigationBar(
             selected_index=0,
             destinations=[
@@ -166,10 +160,9 @@ class AppLayout:
         # Trigger initial check
         self._on_resized(None)
 
-    def _on_resized(self, e):
-        """Handle screen resize events to switch layouts."""
-        width = self.page.width
-        is_mobile = width < 800
+    def set_sidebar_collapsed(self, collapsed: bool):
+        """External method to force sidebar/navbar state (e.g. from UIManager)."""
+        is_mobile = collapsed
 
         if is_mobile:
             if self.sidebar.visible:
@@ -185,6 +178,13 @@ class AppLayout:
                 self.content_area.padding = 20
                 self.view.update()
                 self.page.update()
+
+    def _on_resized(self, e):
+        """Handle screen resize events to switch layouts."""
+        width = self.page.width
+        # Mobile threshold
+        is_mobile = width < 800
+        self.set_sidebar_collapsed(is_mobile)
 
     def set_compact_mode(self, enabled: bool):
         """Enable or disable Compact Mode (Desktop specific)."""

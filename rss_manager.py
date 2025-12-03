@@ -90,16 +90,22 @@ class RSSManager:
                 logger.warning("Empty or too short content for feed: %s", url)
                 return []
 
+            # Clean potential XML junk before root if necessary (simple heuristic)
+            content_text = content_text.strip()
+
+            root = None
             # Safe XML parsing
             if safe_fromstring is not None:
                 try:
                     root = safe_fromstring(content_text)
                 except Exception as e:
-                    # Log but suppress verbose error for invalid XML to avoid test noise
-                    logger.warning("XML parse error for %s: %s", url, e)
-                    return []
-            else:
-                logger.warning("defusedxml not found, using standard ET (less secure)")
+                    # Fallback or error logging
+                    logger.warning("defusedxml parse error for %s: %s", url, e)
+
+            if root is None:
+                # If defusedxml failed or not available, try standard ET but careful
+                # Note: This is less secure against billionaire laughs etc but needed for some malformed feeds
+                # In production, we should stick to defusedxml for untrusted input.
                 try:
                     root = ET.fromstring(content_text)
                 except ET.ParseError as e:

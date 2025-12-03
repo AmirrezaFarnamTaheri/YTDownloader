@@ -21,14 +21,24 @@ class TestDownloadItemControl(unittest.TestCase):
 
     def test_init(self):
         control = DownloadItemControl(
-            self.item, self.on_cancel, self.on_remove, self.on_reorder
+            self.item,
+            self.on_cancel,
+            self.on_remove,
+            self.on_reorder,
+            MagicMock(),  # on_play
+            MagicMock(),  # on_open_folder
         )
         self.assertEqual(control.item, self.item)
-        self.assertIsInstance(control.view, ft.Container)
+        self.assertIsInstance(control, ft.Container)
 
     def test_update_progress(self):
         control = DownloadItemControl(
-            self.item, self.on_cancel, self.on_remove, self.on_reorder
+            self.item,
+            self.on_cancel,
+            self.on_remove,
+            self.on_reorder,
+            MagicMock(),  # on_play
+            MagicMock(),  # on_open_folder
         )
         self.item["status"] = "Downloading"
         self.item["speed"] = "1MB/s"
@@ -37,16 +47,16 @@ class TestDownloadItemControl(unittest.TestCase):
 
         # Mock update method of controls inside because we can't really call update() in headless test without page
         control.status_text.update = MagicMock()
-        control.details_text.update = MagicMock()
+        control.info_text.update = MagicMock()
         control.progress_bar.update = MagicMock()
         control.title_text.update = MagicMock()
-        if hasattr(control, "actions_row") and control.actions_row.page:
-            control.actions_row.update = MagicMock()
+        control.action_row.update = MagicMock()
+        control.update = MagicMock()
 
         control.update_progress()
 
         self.assertEqual(control.status_text.value, "Downloading")
-        self.assertIn("1MB/s", control.details_text.value)
+        self.assertIn("1MB/s", control.info_text.value)
 
 
 if __name__ == "__main__":

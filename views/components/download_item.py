@@ -1,305 +1,216 @@
 """
-Download Item Control module.
-Represents a single download item in the queue UI.
-Refactored for responsiveness.
+Download Item Control.
+
+Represents a single download item in the Queue or History list.
+Features progress bar, status icon, and action buttons.
 """
 
-from typing import Any, Dict
+import logging
+from typing import Any, Callable, Dict, Optional
 
 import flet as ft
 
 from theme import Theme
 
+logger = logging.getLogger(__name__)
 
-class DownloadItemControl:
+
+class DownloadItemControl(ft.Container):
     """
-    Control for displaying a single download item.
+    A card-like control representing a download task.
     """
 
-    # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         item: Dict[str, Any],
-        on_cancel: Any,
-        on_remove: Any,
-        on_reorder: Any,
-        on_retry: Any = None,
-        is_selected: bool = False,
+        on_cancel: Callable,
+        on_retry: Callable,
+        on_remove: Callable,
+        on_play: Callable,
+        on_open_folder: Callable,
     ):
-        # pylint: disable=too-many-arguments
+        super().__init__()
         self.item = item
         self.on_cancel = on_cancel
-        self.on_remove = on_remove
-        self.on_reorder = on_reorder
         self.on_retry = on_retry
-        self.is_selected = is_selected
+        self.on_remove = on_remove
+        self.on_play = on_play
+        self.on_open_folder = on_open_folder
 
-        # Pre-bind callbacks
-        # pylint: disable=unnecessary-lambda
-        self._cancel_handler = lambda e: self.on_cancel(self.item)
-        self._remove_handler = lambda e: self.on_remove(self.item)
-        self._retry_handler = lambda e: (
-            self.on_retry(self.item) if self.on_retry else None
+        # UI Components
+        self.title_text = ft.Text(
+            item.get("title", item.get("url", "Unknown")),
+            weight=ft.FontWeight.BOLD,
+            size=16,
+            no_wrap=True,
+            overflow=ft.TextOverflow.ELLIPSIS,
+            color=Theme.Text.PRIMARY,
         )
-        self._reorder_up_handler = lambda e: self.on_reorder(self.item, -1)
-        self._reorder_down_handler = lambda e: self.on_reorder(self.item, 1)
 
-        # Progress Bar
+        self.status_text = ft.Text(
+            item.get("status", "Queued"),
+            size=12,
+            color=Theme.Text.SECONDARY,
+        )
+
         self.progress_bar = ft.ProgressBar(
-            value=0,
+            value=item.get("progress", 0),
+            color=Theme.Primary.MAIN,
+            bgcolor=Theme.Surface.BG,
             height=6,
             border_radius=3,
-            color=Theme.PRIMARY,
-            bgcolor=Theme.BG_HOVER,
         )
 
-        # Text Elements
-        self.status_text = ft.Text(
-            item["status"],
-            size=13,
-            color=Theme.INFO,
-            weight=ft.FontWeight.W_600,
+        self.info_text = ft.Text(
+            "", size=11, color=Theme.TEXT_MUTED
         )
 
-        self.details_text = ft.Text("", size=12, color=Theme.TEXT_MUTED)
+        self.action_row = ft.Row(spacing=0)
 
-        self.title_text = ft.Text(
-            self.item.get("title", self.item["url"]),
-            weight=ft.FontWeight.BOLD,
-            size=15,
-            overflow=ft.TextOverflow.ELLIPSIS,
-            color=Theme.TEXT_PRIMARY,
-            max_lines=1,
-        )
-
-        # Action container
-        self.actions_row = ft.Row(
-            spacing=5, alignment=ft.MainAxisAlignment.END, wrap=True
-        )
-        self._update_actions()
-
-        self.view = self.build()
-
-    def build(self):
-        """Build the UI view for the item."""
-        bg_color = (
-            Theme.BG_CARD
-            if not self.is_selected
-            else ft.Colors.with_opacity(0.1, Theme.PRIMARY)
-        )
-
-        # Platform specific icon logic
-        url = self.item.get("url", "").lower()
-        icon_data = ft.Icons.INSERT_DRIVE_FILE
-        icon_color = Theme.TEXT_SECONDARY
-
-        if "youtube" in url or "youtu.be" in url:
-            icon_data = ft.Icons.ONDEMAND_VIDEO
-            icon_color = ft.Colors.RED_400
-        elif "t.me" in url or "telegram" in url:
-            icon_data = ft.Icons.TELEGRAM
-            icon_color = ft.Colors.BLUE_400
-        elif "twitter" in url or "x.com" in url:
-            icon_data = ft.Icons.ALTERNATE_EMAIL
-            icon_color = ft.Colors.WHITE
-        elif "instagram" in url:
-            icon_data = ft.Icons.PHOTO_CAMERA
-            icon_color = ft.Colors.PINK_400
-
-        if self.item.get("is_audio"):
-            icon_data = ft.Icons.AUDIO_FILE
-        elif self.item.get("is_playlist"):
-            icon_data = ft.Icons.PLAYLIST_PLAY
-
-        # Icon Container
-        icon_container = ft.Container(
-            content=ft.Icon(icon_data, size=28, color=icon_color),
-            width=56,
-            height=56,
-            bgcolor=(
-                ft.Colors.with_opacity(0.1, icon_color)
-                if icon_color != Theme.TEXT_SECONDARY
-                else Theme.BG_DARK
-            ),
-            border_radius=12,
-            alignment=ft.alignment.center,
-        )
-
-        # Info Column
-        info_col = ft.Column(
+        # Main Layout
+        self.content = ft.Column(
             [
                 ft.Row(
-                    [self.title_text],
+                    [
+                        # Icon based on URL/Type
+                        self._get_platform_icon(item.get("url", "")),
+                        ft.Column(
+                            [self.title_text, self.status_text],
+                            spacing=2,
+                            expand=True,
+                        ),
+                        self.action_row,
+                    ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
                 self.progress_bar,
                 ft.Row(
-                    [self.status_text, self.details_text],
+                    [self.info_text],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    wrap=True,  # Wrap details if needed
                 ),
             ],
-            spacing=6,
-            expand=True,
+            spacing=8,
         )
 
-        # Use a Responsive Layout logic
-        # Container -> Row -> [Icon, Info(expand), Actions]
-
-        return ft.Container(
-            content=ft.Row(
-                [
-                    icon_container,
-                    info_col,
-                    ft.Container(self.actions_row, padding=ft.padding.only(left=5)),
-                ],
-                spacing=10,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
-            padding=10,  # Reduced padding for mobile
-            bgcolor=bg_color,
-            border_radius=16,
-            shadow=ft.BoxShadow(
-                blur_radius=10,
-                spread_radius=0,
-                color=ft.Colors.with_opacity(0.1, ft.Colors.BLACK),
-                offset=ft.Offset(0, 4),
-            ),
-            border=ft.border.all(1, Theme.BORDER),
-            margin=ft.margin.only(bottom=5),
+        self.padding = 15
+        self.border_radius = 10
+        self.bgcolor = Theme.Surface.CARD
+        # self.border = ft.border.all(1, Theme.Divider.COLOR) # Cleaner without border?
+        self.shadow = ft.BoxShadow(
+            blur_radius=5,
+            color=ft.Colors.with_opacity(0.05, ft.Colors.BLACK),
         )
 
-    def _update_actions(self):
-        """Update action buttons based on item status."""
-        status = self.item.get("status", "Queued")
-        actions = []
+        # Attach to item for updates
+        self.item["control"] = self
+        self.update_actions()
+        self._update_progress_internal(update_ui=False)
 
-        # Cancel Button
-        if status in ["Downloading", "Processing", "Allocating"]:
-            actions.append(
-                ft.IconButton(
-                    ft.Icons.CLOSE,
-                    on_click=self._cancel_handler,
-                    icon_size=20,
-                    tooltip="Cancel",
-                    icon_color=Theme.ERROR,
-                    style=ft.ButtonStyle(
-                        bgcolor=ft.Colors.with_opacity(0.1, Theme.ERROR),
-                        shape=ft.CircleBorder(),
-                    ),
-                )
-            )
-        # Retry Button
-        elif status in ["Error", "Cancelled"] and self.on_retry:
-            actions.append(
-                ft.IconButton(
-                    ft.Icons.REFRESH,
-                    on_click=self._retry_handler,
-                    icon_size=20,
-                    tooltip="Retry",
-                    icon_color=Theme.WARNING,
-                )
-            )
-
-        # Reorder Buttons (Only for Queued/Scheduled)
-        if status == "Queued" or str(status).startswith("Scheduled"):
-            actions.append(
-                ft.Column(
-                    [
-                        ft.IconButton(
-                            ft.Icons.KEYBOARD_ARROW_UP,
-                            on_click=self._reorder_up_handler,
-                            icon_size=18,
-                            tooltip="Move Up",
-                            style=ft.ButtonStyle(padding=0),
-                            icon_color=Theme.TEXT_SECONDARY,
-                        ),
-                        ft.IconButton(
-                            ft.Icons.KEYBOARD_ARROW_DOWN,
-                            on_click=self._reorder_down_handler,
-                            icon_size=18,
-                            tooltip="Move Down",
-                            style=ft.ButtonStyle(padding=0),
-                            icon_color=Theme.TEXT_SECONDARY,
-                        ),
-                    ],
-                    spacing=0,
-                    alignment=ft.MainAxisAlignment.CENTER,
-                )
-            )
-
-        # Remove Button (If not active)
-        if status not in ["Downloading", "Processing", "Allocating"]:
-            actions.append(
-                ft.IconButton(
-                    ft.Icons.DELETE_OUTLINE,
-                    on_click=self._remove_handler,
-                    icon_size=20,
-                    tooltip="Remove",
-                    icon_color=Theme.TEXT_SECONDARY,
-                )
-            )
-
-        self.actions_row.controls = actions
-        if self.actions_row.page:
-            self.actions_row.update()
-
-    def cleanup(self):
-        """Cleanup method to break circular references."""
-        self.on_cancel = None
-        self.on_remove = None
-        self.on_reorder = None
-        self.on_retry = None
-        self._cancel_handler = None
-        self._remove_handler = None
-        self._retry_handler = None
-        self._reorder_up_handler = None
-        self._reorder_down_handler = None
-        self.item = None
+    def _get_platform_icon(self, url: str) -> ft.Icon:
+        """Returns an icon based on the URL."""
+        if "youtube" in url or "youtu.be" in url:
+            return ft.Icon(ft.Icons.VIDEO_LIBRARY, color=ft.Colors.RED_400, size=30)
+        elif "instagram" in url:
+            return ft.Icon(ft.Icons.PHOTO_CAMERA, color=ft.Colors.PINK_400, size=30)
+        elif "twitter" in url or "x.com" in url:
+            return ft.Icon(ft.Icons.ALTERNATE_EMAIL, color=ft.Colors.BLUE_400, size=30)
+        else:
+            return ft.Icon(ft.Icons.LINK, color=Theme.Primary.MAIN, size=30)
 
     def update_progress(self):
-        """Update progress bar and status text."""
-        status = self.item["status"]
+        """Update progress bar and text (External Call)."""
+        self._update_progress_internal(update_ui=True)
+
+    def _update_progress_internal(self, update_ui: bool = True):
+        """Internal update logic."""
+        status = self.item.get("status", "Unknown")
+        progress = self.item.get("progress", 0)
+
+        self.progress_bar.value = progress
         self.status_text.value = status
 
-        # Dynamic colors
-        if status in ("Error", "Cancelled"):
-            self.progress_bar.color = Theme.ERROR
-            self.status_text.color = Theme.ERROR
-            self.progress_bar.value = 0
+        # Detailed info
+        speed = self.item.get("speed", "")
+        eta = self.item.get("eta", "")
+        size = self.item.get("size", "")
+
+        info_parts = []
+        if size: info_parts.append(size)
+        if speed: info_parts.append(speed)
+        if eta: info_parts.append(f"ETA: {eta}")
+
+        self.info_text.value = " • ".join(info_parts)
+
+        # Status Coloring
+        if status == "Downloading":
+            self.status_text.color = Theme.Primary.MAIN
         elif status == "Completed":
-            self.progress_bar.color = Theme.SUCCESS
-            self.status_text.color = Theme.SUCCESS
-            self.progress_bar.value = 1
-        elif status.startswith("Scheduled"):
-            self.progress_bar.color = Theme.INFO
-            self.status_text.color = Theme.INFO
-            self.progress_bar.value = 0
+            self.status_text.color = Theme.Status.SUCCESS
+            self.progress_bar.value = 1.0
+            self.progress_bar.color = Theme.Status.SUCCESS
+        elif status == "Error":
+            self.status_text.color = Theme.Status.ERROR
+            self.progress_bar.color = Theme.Status.ERROR
         else:
-            self.progress_bar.color = Theme.PRIMARY
-            self.status_text.color = Theme.INFO
+            self.status_text.color = Theme.Text.SECONDARY
 
-        # Update Details Text
-        if "speed" in self.item and status in ["Downloading", "Processing"]:
-            self.details_text.value = (
-                f"{self.item.get('size', '')} • "
-                f"{self.item.get('speed', '')} • "
-                f"ETA: {self.item.get('eta', '')}"
+        self.update_actions()
+        if update_ui:
+            self.update()
+
+    def update_actions(self):
+        """Update available action buttons based on status."""
+        status = self.item.get("status", "Unknown")
+        self.action_row.controls.clear()
+
+        # Play Button (Completed)
+        if status == "Completed":
+            self.action_row.controls.append(
+                ft.IconButton(
+                    ft.Icons.PLAY_ARROW,
+                    tooltip="Play",
+                    icon_color=Theme.Status.SUCCESS,
+                    on_click=lambda _: self.on_play(self.item),
+                )
             )
-        elif status.startswith("Scheduled"):
-            self.details_text.value = (
-                f"Scheduled for {self.item.get('scheduled_time', '')}"
+            self.action_row.controls.append(
+                ft.IconButton(
+                    ft.Icons.FOLDER_OPEN,
+                    tooltip="Open Folder",
+                    icon_color=Theme.Text.SECONDARY,
+                    on_click=lambda _: self.on_open_folder(self.item),
+                )
             )
-        else:
-            self.details_text.value = ""
 
-        # Force update of controls
-        self.status_text.update()
-        self.details_text.update()
-        self.progress_bar.update()
+        # Cancel Button (Active)
+        if status in ("Downloading", "Queued", "Processing"):
+            self.action_row.controls.append(
+                ft.IconButton(
+                    ft.Icons.CANCEL,
+                    tooltip="Cancel",
+                    icon_color=Theme.Status.ERROR,
+                    on_click=lambda _: self.on_cancel(self.item),
+                )
+            )
 
-        # Title might update (e.g. resolving URL to Title)
-        self.title_text.value = self.item.get("title", self.item["url"])
-        self.title_text.update()
+        # Retry Button (Error/Cancelled)
+        if status in ("Error", "Cancelled"):
+            self.action_row.controls.append(
+                ft.IconButton(
+                    ft.Icons.REFRESH,
+                    tooltip="Retry",
+                    icon_color=Theme.Primary.MAIN,
+                    on_click=lambda _: self.on_retry(self.item),
+                )
+            )
 
-        self._update_actions()
+        # Remove Button (Always available mostly, or specialized)
+        # Maybe show 'Close' or 'Delete' icon always?
+        self.action_row.controls.append(
+            ft.IconButton(
+                ft.Icons.DELETE_OUTLINE,
+                tooltip="Remove",
+                icon_color=Theme.TEXT_MUTED,
+                on_click=lambda _: self.on_remove(self.item),
+            )
+        )

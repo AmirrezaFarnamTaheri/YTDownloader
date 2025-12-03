@@ -2,7 +2,7 @@
 Application theme definitions and constants.
 """
 
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import flet as ft
 
@@ -147,25 +147,27 @@ class Theme:
         )
 
     @staticmethod
-    def get_input_decoration(hint_text: str = "", prefix_icon: Optional[str] = None):
+    def get_input_decoration(
+        hint_text: str = "", prefix_icon: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Standardized Input Decoration.
+        Standardized Input Decoration properties.
+        Returns a dictionary of properties to be unpacked into a TextField.
         """
-        # pylint: disable=no-member
-        return ft.InputDecoration(
-            filled=True,
-            fill_color=Theme.BG_INPUT,
-            hint_text=hint_text,
-            hint_style=ft.TextStyle(color=Theme.TEXT_MUTED),
-            border=ft.OutlineInputBorder(
-                border_side=ft.BorderSide(0, ft.Colors.TRANSPARENT),
-                border_radius=8,
-            ),
-            focused_border=ft.OutlineInputBorder(
-                border_side=ft.BorderSide(1, Theme.PRIMARY),
-                border_radius=8,
-            ),
-            content_padding=15,
-            prefix_icon=prefix_icon,
-            is_dense=True,  # Improved density
-        )
+        # Flet's TextField does not have an 'input_decoration' property.
+        # It has direct properties for decoration.
+        return {
+            "filled": True,
+            "bgcolor": Theme.BG_INPUT,
+            "hint_text": hint_text,
+            "hint_style": ft.TextStyle(color=Theme.TEXT_MUTED),
+            "border": ft.InputBorder.OUTLINE,
+            "border_width": 0,  # Simulate 'no border' initially if desired, or use transparent color
+            "border_color": ft.Colors.TRANSPARENT,
+            "focused_border_color": Theme.PRIMARY,
+            "focused_border_width": 1,
+            "content_padding": 15,
+            "prefix_icon": prefix_icon,
+            "dense": True,
+            "border_radius": 8,
+        }

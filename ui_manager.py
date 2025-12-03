@@ -56,6 +56,8 @@ class UIManager:
         on_reorder_item_callback,
         on_retry_item_callback,
         on_toggle_clipboard_callback,
+        on_play_callback,        # New
+        on_open_folder_callback, # New
     ):
         """Initialize all views with their dependencies."""
 
@@ -74,6 +76,8 @@ class UIManager:
             on_cancel_item_callback,
             on_remove_item_callback,
             on_reorder_item_callback,
+            on_play_callback,
+            on_open_folder_callback,
         )
         self.queue_view.on_retry = on_retry_item_callback
 
@@ -124,6 +128,8 @@ class UIManager:
                 view.load()
             elif isinstance(view, RSSView):
                 view.load()
+            elif isinstance(view, QueueView):
+                view.rebuild()
 
             self.page.update()
 
@@ -133,11 +139,9 @@ class UIManager:
         Mobile breakpoints (approx): < 800px width.
         """
         # pylint: disable=unused-argument
-        is_mobile = self.page.width < 800
-
+        # Use the dedicated method in AppLayout which checks width itself
         if self.app_layout:
-            # Use the dedicated method in AppLayout
-            self.app_layout.set_sidebar_collapsed(is_mobile)
+            self.app_layout._on_resized(e)
 
     def update_queue_view(self):
         """Rebuild queue view if it exists."""

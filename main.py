@@ -173,6 +173,8 @@ def main(pg: ft.Page):
         on_reorder_item_callback=CONTROLLER.on_reorder_item,
         on_retry_item_callback=CONTROLLER.on_retry_item,
         on_toggle_clipboard_callback=CONTROLLER.on_toggle_clipboard,
+        on_play_callback=CONTROLLER.on_play_item,
+        on_open_folder_callback=CONTROLLER.on_open_folder,
     )
 
     PAGE.add(main_view)
