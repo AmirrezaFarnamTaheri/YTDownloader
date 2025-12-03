@@ -108,6 +108,7 @@ def build_installer():
         "-m",
         "nuitka",
         "--standalone",
+        "--assume-yes-for-downloads",
         # Onefile yields a smaller distribution, but leave it disabled on
         # macOS so we can easily assemble a .app bundle for the DMG step.
     ]
@@ -124,6 +125,9 @@ def build_installer():
             f"--include-data-dir={root / 'locales'}=locales",
             f"--output-dir={dist_dir}",
             f"--output-filename={output_name}",
+            # Optimizations for yt-dlp build time
+            "--nofollow-import-to=yt_dlp.extractor.lazy_extractors",
+            "--include-package-data=yt_dlp",
         ]
     )
 
