@@ -166,7 +166,11 @@ class GenericDownloader:
             h = requests.head(url, allow_redirects=True, timeout=10)
             h.raise_for_status()
             final_url = h.url
-            total_size = int(h.headers.get("content-length", 0))
+            cl_header = h.headers.get("content-length")
+            try:
+                total_size = int(cl_header) if cl_header is not None else 0
+            except (TypeError, ValueError):
+                total_size = 0
 
             if not filename:
                 filename = GenericDownloader._get_filename_from_headers(url, h.headers)
@@ -301,7 +305,9 @@ class GenericDownloader:
                                     try:
                                         f.flush()
                                         os.fsync(f.fileno())
-                                    except Exception:  # pylint: disable=broad-exception-caught
+                                    except (
+                                        Exception
+                                    ):  # pylint: disable=broad-exception-caught
                                         pass
 
                     if progress_hook:

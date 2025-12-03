@@ -10,7 +10,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import yt_dlp
 
@@ -43,16 +43,12 @@ def _sanitize_output_path(output_path: str) -> str:
                 return tempfile.gettempdir()
         else:
             # Try to create it, if fails, fallback
-            try:
-                os.makedirs(path, exist_ok=True)
-            except OSError:
-                logger.warning("Cannot create path '%s', falling back to temp", path)
-                return tempfile.gettempdir()
+            os.makedirs(path, exist_ok=True)
 
         return str(path)
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except (OSError, TypeError, ValueError) as e:
         logger.warning("Failed to sanitize path '%s': %s", output_path, e)
-        return "."
+        return tempfile.gettempdir()
 
 
 def _check_disk_space(output_path: str, min_mb: int = 100) -> bool:
@@ -65,7 +61,7 @@ def _check_disk_space(output_path: str, min_mb: int = 100) -> bool:
             # We don't block, but we log loud
             return False
         return True
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except (OSError, ValueError) as e:
         logger.error("Failed to check disk space: %s", e)
         return True  # Assume ok if check fails
 
@@ -177,7 +173,7 @@ def _configure_advanced_options(
         end_sec = options.get_seconds(options.end_time)
         logger.info("Downloading range: %s - %s", options.start_time, options.end_time)
         ydl_opts["download_ranges"] = yt_dlp.utils.download_range_func(
-            None, [(start_sec, end_sec)]
+            [], [(start_sec, end_sec)]  # type: ignore
         )
 
     # Aria2c
@@ -190,7 +186,7 @@ def _configure_advanced_options(
 
     # GPU Acceleration
     if options.gpu_accel and options.gpu_accel.lower() != "none" and ffmpeg_available:
-        accel_flag = options.gpu_accel
+        accel_flag: Optional[str] = options.gpu_accel
         if options.gpu_accel.lower() == "auto":
             accel_flag = "cuda" if os.name == "nt" else None
 
@@ -234,7 +230,8 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
             logger.error("Failed to create output directory: %s", e)
             raise ValueError(f"Invalid output directory: {e}") from e
 
-    _check_disk_space(output_path)
+    if not _check_disk_space(output_path):
+        raise IOError("Not enough disk space on the target device.")
 
     # 3a. Check for Telegram
     if TelegramExtractor.is_telegram_url(options.url):

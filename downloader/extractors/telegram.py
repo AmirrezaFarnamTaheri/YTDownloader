@@ -39,10 +39,18 @@ class TelegramExtractor:
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
-            response = requests.get(url, headers=headers, timeout=15)
-            response.raise_for_status()
-
-            soup = BeautifulSoup(response.content, "html.parser")
+            with requests.get(url, headers=headers, timeout=15, stream=True) as response:
+                response.raise_for_status()
+                # Cap preview payload to 2 MB to prevent excessive memory usage
+                max_bytes = 2 * 1024 * 1024
+                content = bytearray()
+                for chunk in response.iter_content(chunk_size=16384):
+                    if not chunk:
+                        continue
+                    content.extend(chunk)
+                    if len(content) > max_bytes:
+                        break
+                soup = BeautifulSoup(bytes(content), "html.parser")
 
             # Extract basic info
             title_tag = soup.find("meta", property="og:title")

@@ -101,7 +101,7 @@ def _wrapped_download_task(item):
             try:
                 item["status"] = "Cancelled"
                 state.queue_manager.update_item_status(item.get("id"), "Cancelled")
-                if HistoryManager:
+                if HistoryManager is not None:
                     HistoryManager.add_entry(
                         item.get("url"),
                         item.get("title"),
@@ -189,17 +189,18 @@ def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
 
 def _log_to_history(item: Dict[str, Any], filepath: Optional[str] = None):
     """Log completed download to history safely."""
-    if not HistoryManager:
+    if HistoryManager is None:
         logger.warning("HistoryManager not available for logging.")
         return
 
     try:
+        status = item.get("status", "Unknown")
         HistoryManager.add_entry(
             item["url"],
             str(item.get("title", item["url"])),
             str(item.get("output_path", ".")),
             str(item.get("video_format", "best")),
-            "Completed",
+            status,
             str(item.get("size", "Unknown")),
             filepath or "N/A",
         )

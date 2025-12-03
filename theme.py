@@ -146,9 +146,7 @@ class Theme:
         )
 
     @staticmethod
-    def get_input_decoration(
-        hint_text: str = "", prefix_icon: Optional[str] = None
-    ):
+    def get_input_decoration(hint_text: str = "", prefix_icon: Optional[str] = None):
         """
         Standardized Input Decoration.
         """
