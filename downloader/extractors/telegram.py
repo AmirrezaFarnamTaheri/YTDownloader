@@ -7,7 +7,7 @@ import logging
 import os
 import re
 from typing import Any, Callable, Dict, Optional, cast
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup, Tag

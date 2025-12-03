@@ -3,6 +3,7 @@ Application theme definitions and constants.
 """
 
 from typing import Optional
+
 import flet as ft
 
 

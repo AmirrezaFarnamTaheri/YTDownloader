@@ -1,2 +1,5 @@
 [tool.flet]
 assets_dir = "assets"
+
+[tool.isort]
+profile = "black"
