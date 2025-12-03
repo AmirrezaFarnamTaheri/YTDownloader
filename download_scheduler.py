@@ -5,11 +5,13 @@ Download scheduler logic.
 from datetime import datetime
 from datetime import time as dt_time
 from datetime import timedelta
-from typing import Any, Dict, Optional, Tuple
+from typing import Optional, Tuple
 
 
 class DownloadScheduler:
     """Helper for scheduling downloads."""
+
+    # pylint: disable=too-few-public-methods
 
     @staticmethod
     def prepare_schedule(

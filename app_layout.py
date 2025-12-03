@@ -6,6 +6,7 @@ and content area management.
 """
 
 import logging
+from typing import Optional
 
 import flet as ft
 
@@ -19,13 +20,16 @@ class AppLayout:
     Main application layout component.
     """
 
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         page: ft.Page,
         navigate_callback,
         toggle_clipboard_callback,
-        clipboard_active=False,
-        initial_view=None,
+        clipboard_active: bool = False,
+        initial_view: Optional[ft.Control] = None,
     ):
         self.page = page
         self.navigate_callback = navigate_callback
@@ -36,7 +40,6 @@ class AppLayout:
             content=initial_view,
             expand=True,
             padding=20,
-            # Improve background transition if needed, currently transparent
         )
 
         # Navigation Rail
@@ -141,7 +144,6 @@ class AppLayout:
         self.view = ft.Row(
             [
                 self.sidebar,
-                # ft.VerticalDivider(width=1, color="transparent"), # Redundant if sidebar has border
                 self.content_area,
             ],
             expand=True,
@@ -155,19 +157,16 @@ class AppLayout:
             # Compact navigation bar? Or just hide sidebar and rely on keyboard?
             # For now, let's implement a minimal vertical bar (NavigationRail only) if compact,
             # but the request implies "Widget" style.
-            # "Compact Mode: 'Widget' style floating window."
-            # This suggests potentially resizing the window and hiding most UI.
-            # For this step, we will hide the text labels and make sidebar very thin.
             self.set_sidebar_collapsed(True)
             self.sidebar.width = 60
             self.rail.min_width = 60
             self.header.visible = False
-            self.content_area.padding = 10
+            self.content_area.padding = 10  # type: ignore
         else:
             self.sidebar.visible = True
             self.set_sidebar_collapsed(False)
             self.header.visible = True
-            self.content_area.padding = 20
+            self.content_area.padding = 20  # type: ignore
         self.view.update()
 
     def _on_nav_change(self, e):
@@ -212,5 +211,5 @@ class AppLayout:
 
         try:
             self.sidebar.update()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass

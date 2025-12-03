@@ -35,6 +35,7 @@ class RSSManager:
 
     def _save_feeds(self):
         """Persist feeds to config."""
+        # pylint: disable=import-outside-toplevel
         from config_manager import ConfigManager
 
         with self._lock:
@@ -116,7 +117,7 @@ class RSSManager:
         except requests.RequestException as e:
             logger.warning("Network error fetching feed %s: %s", url, e)
             return []
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             # Generic catch-all to prevent crashes
             logger.error("Unexpected error parsing feed %s: %s", url, e)
             return []
@@ -129,6 +130,7 @@ class RSSManager:
         url: str,
     ):
         """Parse Atom feed entries."""
+        # pylint: disable=protected-access
         ns = {
             "atom": "http://www.w3.org/2005/Atom",
             "yt": "http://www.youtube.com/xml/schemas/2015",
@@ -170,6 +172,7 @@ class RSSManager:
         url: str,
     ):
         """Parse RSS 2.0 feed items."""
+        # pylint: disable=protected-access
         channel = root.find("channel")
         if channel is None:
             return
@@ -239,10 +242,10 @@ class RSSManager:
                                 if item.get("published")
                                 else datetime.min
                             )
-                        except Exception:
+                        except Exception:  # pylint: disable=broad-exception-caught
                             item["date_obj"] = datetime.min
                         all_items.append(item)
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-exception-caught
                     logger.error("Feed fetch failed for %s: %s", feed_url, e)
 
         # Sort by date descending
@@ -250,9 +253,11 @@ class RSSManager:
         return all_items
 
     def get_all_items(self) -> List[Dict[str, Any]]:
+        """Alias for get_aggregated_items."""
         return self.get_aggregated_items()
 
     @classmethod
     def get_latest_video(cls, url: str) -> Optional[Dict[str, Any]]:
+        """Get the latest video from a feed."""
         items = cls.parse_feed(url)
         return items[0] if items else None

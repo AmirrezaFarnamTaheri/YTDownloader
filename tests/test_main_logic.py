@@ -32,14 +32,14 @@ class TestMainLogic(unittest.TestCase):
         self.patcher_tasks_direct = patch("tasks.state", self.mock_state)
 
         # Patch executor
-        self.patcher_executor = patch("tasks._executor")
+        self.patcher_executor = patch("tasks.EXECUTOR")
 
         # Patch submission throttle semaphore mock
-        # Note: tasks.py now uses _submission_throttle but has legacy alias _active_downloads
-        self.patcher_sem = patch("tasks._submission_throttle", create=True)
+        # Note: tasks.py now uses _SUBMISSION_THROTTLE
+        self.patcher_sem = patch("tasks._SUBMISSION_THROTTLE", create=True)
 
         self.patcher_lock = patch(
-            "tasks._process_queue_lock", threading.RLock(), create=True
+            "tasks._PROCESS_QUEUE_LOCK", threading.RLock(), create=True
         )
 
         self.patcher_main.start()
@@ -165,7 +165,7 @@ class TestMainLogic(unittest.TestCase):
     # --- Download Task Tests ---
 
     @patch("tasks.download_video")
-    @patch("history_manager.HistoryManager")
+    @patch("tasks.HistoryManager")
     @patch("tasks.process_queue")
     def test_download_task_success(
         self, mock_process_queue, MockHistory, mock_download_video

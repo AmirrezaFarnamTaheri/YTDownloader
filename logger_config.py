@@ -32,7 +32,7 @@ def setup_logging():
     home_log = Path.home() / ".streamcatch" / "app.log"
     try:
         home_log.parent.mkdir(parents=True, exist_ok=True)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         # Fallback to local
         home_log = Path("app.log")
 
@@ -56,7 +56,7 @@ def setup_logging():
             file_handler.setLevel(logging.DEBUG)
             file_handler.setFormatter(log_formatter)
             root_logger.addHandler(file_handler)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"Failed to setup log file {log_file}: {e}", file=sys.stderr)
 
     logging.info("Logging initialized successfully.")

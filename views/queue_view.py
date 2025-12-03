@@ -66,7 +66,9 @@ class QueueView(BaseView):
             # Update container background only
             if hasattr(ctrl, "view"):
                 ctrl.view.bgcolor = (
-                    ft.Colors.with_opacity(0.1, Theme.PRIMARY) if selected else Theme.BG_CARD
+                    ft.Colors.with_opacity(0.1, Theme.PRIMARY)
+                    if selected
+                    else Theme.BG_CARD
                 )
                 ctrl.view.update()
 

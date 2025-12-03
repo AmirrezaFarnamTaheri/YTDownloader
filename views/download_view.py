@@ -16,7 +16,6 @@ from app_state import AppState
 from localization_manager import LocalizationManager as LM
 from theme import Theme
 from views.base_view import BaseView
-from views.components.download_input import DownloadInputCard
 from views.components.download_preview import DownloadPreviewCard
 
 logger = logging.getLogger(__name__)
@@ -47,7 +46,8 @@ class DownloadView(BaseView):
         self.on_batch_import = on_batch_import
         self.on_schedule = on_schedule
         self.state = app_state
-        self.video_info = None
+        # pylint: disable=unsubscriptable-object
+        self.video_info: Optional[dict] = None
 
         # --- Controls ---
         # 1. URL Input
@@ -308,7 +308,8 @@ class DownloadView(BaseView):
         ]
 
     def _on_fetch_click(self, e):
-        url = self.url_input.value.strip()
+        # pylint: disable=unused-argument
+        url = self.url_input.value.strip() if self.url_input.value else ""
         if url:
             self.fetch_btn.disabled = True
             self.url_input.error_text = None
@@ -319,6 +320,7 @@ class DownloadView(BaseView):
             self.update()
 
     def _on_add_click(self, e):
+        # pylint: disable=unused-argument
         if not self.url_input.value:
             return
 

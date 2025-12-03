@@ -6,11 +6,11 @@ Supports downloading files from public Telegram channels (t.me/...).
 import logging
 import os
 import re
-from typing import Any, Callable, Dict, Optional
-from urllib.parse import urlparse
+from typing import Any, Callable, Dict, Optional, cast
+from urllib.parse import urlparse, urljoin
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from downloader.engines.generic import GenericDownloader
 
@@ -46,27 +46,49 @@ class TelegramExtractor:
 
             # Extract basic info
             title_tag = soup.find("meta", property="og:title")
-            title = title_tag.get("content") if title_tag else os.path.basename(url)
+            # Ensure attributes are strings or handle list if it can be a list (BeautifulSoup specifics)
+            title = (
+                title_tag.get("content")
+                if isinstance(title_tag, Tag)
+                and isinstance(title_tag.get("content"), str)
+                else os.path.basename(url)
+            )
 
             desc_tag = soup.find("meta", property="og:description")
-            description = desc_tag.get("content") if desc_tag else ""
+            description = (
+                desc_tag.get("content")
+                if isinstance(desc_tag, Tag)
+                and isinstance(desc_tag.get("content"), str)
+                else ""
+            )
 
             image_tag = soup.find("meta", property="og:image")
-            thumbnail = image_tag.get("content") if image_tag else ""
+            thumbnail = (
+                image_tag.get("content")
+                if isinstance(image_tag, Tag)
+                and isinstance(image_tag.get("content"), str)
+                else ""
+            )
 
             # Try to find media URL
-            download_url = None
+            download_url: Optional[str] = None
             video_tag = soup.find("video")
-            if video_tag and video_tag.get("src"):
-                download_url = video_tag.get("src")
+            if (
+                isinstance(video_tag, Tag)
+                and video_tag.get("src")
+                and isinstance(video_tag.get("src"), str)
+            ):
+                download_url = cast(str, video_tag.get("src"))
             else:
                 og_vid = soup.find("meta", property="og:video")
-                if og_vid:
-                    download_url = og_vid.get("content")
+                if (
+                    isinstance(og_vid, Tag)
+                    and og_vid.get("content")
+                    and isinstance(og_vid.get("content"), str)
+                ):
+                    download_url = cast(str, og_vid.get("content"))
 
             if download_url:
-                from urllib.parse import urljoin, urlparse
-
                 # Normalize whitespace
                 download_url = (download_url or "").strip()
                 # Ensure base URL ends with a slash to correctly resolve relative paths
@@ -125,8 +147,12 @@ class TelegramExtractor:
             file_id = url_path.strip("/").split("/")[-1]
             # Remove control chars and invalid filesystem chars
             invalid_chars = r'<>:"/\\|?*' + "".join(map(chr, range(32)))
-            safe_file_id = "".join(c for c in (file_id or "") if c.isalnum() or c in ("_", "-"))
-            safe_file_id = "".join(c for c in safe_file_id if c not in invalid_chars).strip()
+            safe_file_id = "".join(
+                c for c in (file_id or "") if c.isalnum() or c in ("_", "-")
+            )
+            safe_file_id = "".join(
+                c for c in safe_file_id if c not in invalid_chars
+            ).strip()
             # Neutralize traversal-like names and problematic leading/trailing dots/spaces
             if safe_file_id in {".", ".."}:
                 safe_file_id = "media"
@@ -134,7 +160,30 @@ class TelegramExtractor:
             while ".." in safe_file_id:
                 safe_file_id = safe_file_id.replace("..", "-")
             # Avoid Windows reserved device names
-            reserved = {"CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"}
+            reserved = {
+                "CON",
+                "PRN",
+                "AUX",
+                "NUL",
+                "COM1",
+                "COM2",
+                "COM3",
+                "COM4",
+                "COM5",
+                "COM6",
+                "COM7",
+                "COM8",
+                "COM9",
+                "LPT1",
+                "LPT2",
+                "LPT3",
+                "LPT4",
+                "LPT5",
+                "LPT6",
+                "LPT7",
+                "LPT8",
+                "LPT9",
+            }
             if (safe_file_id.split(".")[0].upper() or "") in reserved:
                 safe_file_id = f"_{safe_file_id}" if safe_file_id else "media"
             filename = f"telegram_{safe_file_id or 'media'}.mp4"

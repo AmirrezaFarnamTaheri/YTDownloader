@@ -40,14 +40,18 @@ class DownloadOptions:
         ):
             raise ValueError("Invalid proxy URL. Must start with http/https/socks")
 
-        start_sec = self._parse_time(self.start_time)
-        end_sec = self._parse_time(self.end_time)
+        start_sec = self.get_seconds(self.start_time)
+        end_sec = self.get_seconds(self.end_time)
 
         if start_sec < 0 or end_sec < 0:
             raise ValueError("Time values must be non-negative")
 
         if self.start_time and self.end_time and start_sec >= end_sec:
             raise ValueError("Start time must be before end time")
+
+    def get_seconds(self, time_str: Optional[str]) -> float:
+        """Public method to parse time string."""
+        return self._parse_time(time_str)
 
     @staticmethod
     def _parse_time(time_str: Optional[str]) -> float:
