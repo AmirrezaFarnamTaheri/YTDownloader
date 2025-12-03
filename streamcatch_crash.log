@@ -1,0 +1,12 @@
+STREAMCATCH CRASH REPORT [2025-12-03 08:17:04]
+--------------------------------------------------
+Type: ValueError
+Message: Test Crash
+
+Traceback:
+Traceback (most recent call last):
+  File "/app/tests/new_tests/test_main_coverage_extra.py", line 71, in test_global_crash_handler
+    raise ValueError("Test Crash")
+ValueError: Test Crash
+
+--------------------------------------------------

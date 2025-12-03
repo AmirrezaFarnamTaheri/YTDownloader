@@ -32,7 +32,7 @@ except Exception:
 
 class CloudManager:
     """
-    Manages cloud uploads.
+    Manages cloud uploads and downloads.
     Currently supports: Google Drive (via PyDrive2).
     """
 
@@ -67,24 +67,52 @@ class CloudManager:
             logger.error("Provider %s not supported.", provider)
             raise NotImplementedError(f"Provider {provider} not supported yet.")
 
-    def _upload_to_google_drive(self, file_path: str):
+    def download_file(
+        self, filename: str, destination_path: str, provider: str = "google_drive"
+    ) -> bool:
         """
-        Upload logic for Google Drive using PyDrive2.
-        Requires client_secrets.json in the working directory.
+        Downloads a file from the cloud provider by filename (exact match).
+
+        Args:
+            filename: Name of the file in cloud storage.
+            destination_path: Local path to save the file.
+            provider: Cloud provider ('google_drive').
+
+        Returns:
+            True if successful, False otherwise.
         """
+        logger.info("Initiating download for %s from %s", filename, provider)
+
+        if provider == "google_drive":
+            return self._download_from_google_drive(filename, destination_path)
+        else:
+            logger.error("Provider %s not supported.", provider)
+            return False
+
+    def _get_google_drive_client(self):
+        """Helper to authenticate and return a GoogleDrive client."""
+        # 1. Check for client_secrets.json
         if not os.path.exists(self.credentials_path):
             logger.warning(
-                "Google Drive %s not found. Skipping upload.", self.credentials_path
+                "Google Drive %s not found. Skipping auth.", self.credentials_path
             )
             raise Exception(
                 "Google Drive not configured (missing client_secrets.json)."
             )
 
+        # 2. Check for pre-authenticated creds in env var if file missing
+        if not os.path.exists("mycreds.txt"):
+            creds_content = os.environ.get("GOOGLE_CREDS_CONTENT")
+            if creds_content:
+                logger.info("Restoring mycreds.txt from environment variable.")
+                with open("mycreds.txt", "w", encoding="utf-8") as f:
+                    f.write(creds_content)
+
         try:
             from pydrive2.auth import GoogleAuth  # type: ignore
             from pydrive2.drive import GoogleDrive  # type: ignore
 
-            # Automatic authentication (requires user interaction on first run or saved creds)
+            # Automatic authentication
             logger.debug("Authenticating with Google Drive...")
             gauth = GoogleAuth()
 
@@ -93,12 +121,8 @@ class CloudManager:
                 gauth.LoadCredentialsFile("mycreds.txt")  # type: ignore
 
             if gauth.credentials is None:  # type: ignore
-                # This might open a browser window which is not ideal for headless,
-                # but for desktop app it is expected.
-                # In robust backend, we handle this carefully.
-                # For now, we assume it works or fails if no interaction possible.
-                # To avoid blocking indefinitely in headless:
-                if os.environ.get("HEADLESS_MODE"):
+                # In headless environments without pre-auth, this fails.
+                if os.environ.get("HEADLESS_MODE") or os.environ.get("CI"):
                     raise Exception(
                         "Cannot authenticate in headless mode without saved creds."
                     )
@@ -111,75 +135,75 @@ class CloudManager:
                 gauth.Authorize()  # type: ignore
 
             gauth.SaveCredentialsFile("mycreds.txt")  # type: ignore
-
-            drive = GoogleDrive(gauth)  # type: ignore
-
-            file_name = os.path.basename(file_path)
-            logger.debug("Uploading file content: %s", file_name)
-            file_drive = drive.CreateFile({"title": file_name})  # type: ignore
-            file_drive.SetContentFile(file_path)  # type: ignore
-            file_drive.Upload()  # type: ignore
-            logger.info("Successfully uploaded %s to Google Drive.", file_name)
+            return GoogleDrive(gauth)  # type: ignore
 
         except ImportError as exc:
             logger.error("PyDrive2 not installed.")
             raise Exception("PyDrive2 dependency missing.") from exc
         except Exception as e:
-            logger.error("Google Drive upload failed: %s", e, exc_info=True)
+            logger.error("Google Drive auth failed: %s", e, exc_info=True)
             raise
 
-    # Missing methods expected by sync_manager
-    def is_authenticated(self) -> bool:
-        """Check if we have valid credentials."""
+    def _upload_to_google_drive(self, file_path: str):
+        """Upload logic for Google Drive."""
         try:
-            from pydrive2.auth import GoogleAuth  # type: ignore
+            drive = self._get_google_drive_client()
 
-            if os.path.exists("mycreds.txt"):
-                gauth = GoogleAuth()
-                gauth.LoadCredentialsFile("mycreds.txt")  # type: ignore
-                return gauth.credentials is not None  # type: ignore
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-        return False
+            file_name = os.path.basename(file_path)
 
-    def get_file_id(self, filename: str) -> Optional[str]:
-        """Find file ID by name."""
-        try:
-            from pydrive2.auth import GoogleAuth  # type: ignore
-            from pydrive2.drive import GoogleDrive  # type: ignore
+            # Check if file exists to update it (optional, but good for sync)
+            # For simplicity in this implementation, we just upload a new file
+            # or could search and update. The requirements didn't specify update logic,
+            # but usually sync implies updating.
+            # However, PyDrive2 defaults to new file unless ID is specified.
+            # To keep it simple and match previous behavior (which was just create),
+            # we will search for existing file with same name and update it if found?
+            # The previous code just did CreateFile.
+            # But duplicate files in Drive are annoying. Let's try to update if exists.
 
-            if not self.is_authenticated():
-                return None
-
-            gauth = GoogleAuth()
-            gauth.LoadCredentialsFile("mycreds.txt")  # type: ignore
-            drive = GoogleDrive(gauth)  # type: ignore
-
-            # Search
-            query = f"title = '{filename}' and trashed = false"
-            file_list = drive.ListFile({"q": query}).GetList()  # type: ignore
+            query = f"title = '{file_name}' and trashed = false"
+            file_list = drive.ListFile({"q": query}).GetList() # type: ignore
 
             if file_list:
-                return file_list[0]["id"]  # type: ignore
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to get file ID: %s", e)
-        return None
+                file_drive = file_list[0]
+                logger.info("Updating existing file: %s", file_name)
+            else:
+                file_drive = drive.CreateFile({"title": file_name}) # type: ignore
+                logger.info("Creating new file: %s", file_name)
 
-    def read_file_content(self, file_id: str) -> Optional[str]:
-        """Read content of a file given its ID."""
+            file_drive.SetContentFile(file_path) # type: ignore
+            file_drive.Upload() # type: ignore
+            logger.info("Successfully uploaded %s to Google Drive.", file_name)
+
+        except Exception as e:
+            logger.error("Google Drive upload failed: %s", e)
+            raise
+
+    def _download_from_google_drive(self, filename: str, destination_path: str) -> bool:
+        """Download logic for Google Drive."""
         try:
-            from pydrive2.auth import GoogleAuth  # type: ignore
-            from pydrive2.drive import GoogleDrive  # type: ignore
+            drive = self._get_google_drive_client()
 
-            if not self.is_authenticated():
-                return None
+            # Search for file
+            query = f"title = '{filename}' and trashed = false"
+            file_list = drive.ListFile({"q": query}).GetList() # type: ignore
 
-            gauth = GoogleAuth()
-            gauth.LoadCredentialsFile("mycreds.txt")  # type: ignore
-            drive = GoogleDrive(gauth)  # type: ignore
+            if not file_list:
+                logger.warning("File '%s' not found in Google Drive.", filename)
+                return False
 
-            f = drive.CreateFile({"id": file_id})  # type: ignore
-            return f.GetContentString()  # type: ignore
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to read file content: %s", e)
-        return None
+            # Take the first match
+            file_drive = file_list[0]
+            logger.info("Downloading %s (ID: %s)", filename, file_drive["id"])
+
+            # Ensure destination directory exists
+            dest_dir = os.path.dirname(destination_path)
+            if dest_dir and not os.path.exists(dest_dir):
+                os.makedirs(dest_dir, exist_ok=True)
+
+            file_drive.GetContentFile(destination_path) # type: ignore
+            return True
+
+        except Exception as e:
+            logger.error("Google Drive download failed: %s", e)
+            return False

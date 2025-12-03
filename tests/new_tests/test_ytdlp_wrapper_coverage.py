@@ -64,17 +64,12 @@ class TestYTDLPWrapperCoverage(unittest.TestCase):
                 "http://url", progress_hook=MagicMock(), output_path="/tmp"
             )
 
-    @patch("downloader.extractors.generic.GenericExtractor.extract")
+    @patch("downloader.extractors.telegram.TelegramExtractor.extract")
     @patch("yt_dlp.YoutubeDL")
     def test_fallback_success(self, mock_ydl, mock_extract):
-        # YTDLPWrapper no longer implements fallback logic inside itself directly
+        # We removed GenericExtractor.extract, but we should ensure wrapper handles non-supported URLs
+        # by raising error or doing something else.
+        # Actually YTDLPWrapper.download doesn't do fallback anymore, the core logic does.
+        # So these fallback tests are likely for logic that was moved to core.
+        # We will keep the tests that verify YTDLP wrapper behavior.
         pass
-
-    @patch("downloader.extractors.generic.GenericExtractor.extract")
-    @patch("yt_dlp.YoutubeDL")
-    def test_fallback_failed(self, mock_ydl, mock_extract):
-        pass
-
-
-if __name__ == "__main__":
-    unittest.main()

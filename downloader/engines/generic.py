@@ -51,9 +51,9 @@ class GenericDownloader:
         # Sanitize filename (Path Traversal Protection + General Safety)
         # Remove null bytes, directory separators, and control chars
         filename = os.path.basename(filename)
-        # More robust sanitization: remove known invalid characters on Windows/Unix
-        invalid_chars = r'<>:"/\\|?*' + "".join(map(chr, range(32)))
-        filename = "".join(c for c in filename if c not in invalid_chars).strip()
+        # Stricter allowlist approach (A-Z, a-z, 0-9, -, _, .)
+        # This replaces the blocklist approach to ensure safety across all filesystems
+        filename = re.sub(r'[^A-Za-z0-9\-\_\.]', '', filename).strip()
 
         # Neutralize dot-only or traversal-like names
         if filename in {".", ".."}:
@@ -180,9 +180,8 @@ class GenericDownloader:
 
         # Sanitize filename again just in case (e.g. if filename came from arg)
         filename = os.path.basename(filename)
-        # Robust sanitization
-        invalid_chars = r'<>:"/\\|?*' + "".join(map(chr, range(32)))
-        filename = "".join(c for c in filename if c not in invalid_chars)
+        # Stricter allowlist approach
+        filename = re.sub(r'[^A-Za-z0-9\-\_\.]', '', filename).strip()
 
         final_path = os.path.join(output_path, filename)
 
