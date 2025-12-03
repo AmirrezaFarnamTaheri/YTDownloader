@@ -17,6 +17,10 @@ from localization_manager import LocalizationManager as LM
 from theme import Theme
 from views.base_view import BaseView
 from views.components.download_preview import DownloadPreviewCard
+from views.components.panels.base_panel import BasePanel
+from views.components.panels.generic_panel import GenericPanel
+from views.components.panels.instagram_panel import InstagramPanel
+from views.components.panels.youtube_panel import YouTubePanel
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +31,7 @@ class DownloadView(BaseView):
 
     Features:
     - Responsive Layout
-    - Advanced Options (Subtitle, Audio Selection)
+    - Dynamic Panels (YouTube, Insta, etc.)
     - Cookie Selection
     - Scheduling & Batch Import
     """
@@ -48,18 +52,16 @@ class DownloadView(BaseView):
         self.state = app_state
         # pylint: disable=unsubscriptable-object
         self.video_info: Optional[dict] = None
+        self.current_panel: Optional[BasePanel] = None
 
         # --- Controls ---
         # 1. URL Input
         self.url_input = ft.TextField(
             label=LM.get("video_url_label"),
-            hint_text=LM.get("url_placeholder"),
             expand=True,
             autofocus=True,
-            border_radius=8,
             on_submit=lambda e: self._on_fetch_click(e),
-            prefix_icon=ft.Icons.LINK,
-            bgcolor=Theme.Surface.INPUT,
+            **Theme.get_input_decoration(hint_text=LM.get("url_placeholder"), prefix_icon=ft.Icons.LINK)
         )
 
         self.fetch_btn = ft.ElevatedButton(
@@ -74,76 +76,28 @@ class DownloadView(BaseView):
             ),
         )
 
-        # 2. Basic Options
-        self.video_format_dd = ft.Dropdown(
-            label=LM.get("format"),
-            width=180,
-            border_radius=8,
-            options=[
-                ft.dropdown.Option("best", LM.get("best_quality")),
-                ft.dropdown.Option("audio", LM.get("audio_only")),
-                ft.dropdown.Option("4k", "4K (2160p)"),
-                ft.dropdown.Option("1440p", "1440p"),
-                ft.dropdown.Option("1080p", "1080p"),
-                ft.dropdown.Option("720p", "720p"),
-                ft.dropdown.Option("480p", "480p"),
-            ],
-            value="best",
-            bgcolor=Theme.Surface.INPUT,
-        )
+        # 2. Dynamic Options Panel Container
+        self.options_container = ft.Container()
 
-        self.audio_format_dd = ft.Dropdown(
-            label=LM.get("audio_stream"),
-            width=180,
-            border_radius=8,
-            visible=False,
-            bgcolor=Theme.Surface.INPUT,
-        )
-
-        self.subtitle_dd = ft.Dropdown(
-            label=LM.get("subtitles"),
-            width=180,
-            border_radius=8,
-            options=[
-                ft.dropdown.Option("None", "None"),
-                ft.dropdown.Option("en", "English"),
-                ft.dropdown.Option("es", "Spanish"),
-                ft.dropdown.Option("fr", "French"),
-                ft.dropdown.Option("de", "German"),
-                ft.dropdown.Option("ja", "Japanese"),
-                ft.dropdown.Option("auto", "Auto-generated"),
-            ],
-            value="None",
-            bgcolor=Theme.Surface.INPUT,
-        )
-
-        # 3. Switches & Checkboxes
-        self.playlist_cb = ft.Checkbox(label=LM.get("playlist"), value=False)
-        self.sponsorblock_cb = ft.Checkbox(label=LM.get("sponsorblock"), value=False)
-        self.force_generic_cb = ft.Checkbox(label=LM.get("force_generic"), value=False)
-
-        # 4. Advanced (Time / Cookies)
+        # 3. Global Advanced (Time / Cookies)
         self.time_start = ft.TextField(
             label=LM.get("time_start"),
             width=140,
             disabled=True,
-            border_radius=8,
             text_size=12,
-            bgcolor=Theme.Surface.INPUT,
+            **Theme.get_input_decoration(hint_text="00:00:00")
         )
         self.time_end = ft.TextField(
             label=LM.get("time_end"),
             width=140,
             disabled=True,
-            border_radius=8,
             text_size=12,
-            bgcolor=Theme.Surface.INPUT,
+            **Theme.get_input_decoration(hint_text="00:00:00")
         )
 
         self.cookies_dd = ft.Dropdown(
             label=LM.get("browser_cookies"),
             width=200,
-            border_radius=8,
             options=[
                 ft.dropdown.Option("None", "None"),
                 ft.dropdown.Option("chrome", "Chrome"),
@@ -151,8 +105,10 @@ class DownloadView(BaseView):
                 ft.dropdown.Option("edge", "Edge"),
             ],
             value="None",
-            bgcolor=Theme.Surface.INPUT,
+            **Theme.get_input_decoration(hint_text="Select Cookies")
         )
+
+        self.force_generic_cb = ft.Checkbox(label=LM.get("force_generic"), value=False)
 
         # 5. Main Actions
         self.add_btn = ft.ElevatedButton(
@@ -187,6 +143,7 @@ class DownloadView(BaseView):
                             LM.get("new_download"),
                             theme_style=ft.TextThemeStyle.HEADLINE_MEDIUM,
                             weight=ft.FontWeight.BOLD,
+                            color=Theme.Text.PRIMARY,
                         ),
                         ft.Text(
                             LM.get("enter_url_desc"),
@@ -203,11 +160,13 @@ class DownloadView(BaseView):
                             ft.Icons.FILE_UPLOAD,
                             tooltip=LM.get("batch_import"),
                             on_click=lambda _: self.on_batch_import(),
+                            icon_color=Theme.Text.SECONDARY
                         ),
                         ft.IconButton(
                             ft.Icons.SCHEDULE,
                             tooltip=LM.get("schedule_download"),
                             on_click=lambda e: self.on_schedule(e),
+                            icon_color=Theme.Text.SECONDARY
                         ),
                     ],
                     wrap=True,
@@ -225,40 +184,36 @@ class DownloadView(BaseView):
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
-        # Options Grid
-        # Use a Wrap for responsiveness
-        options_row = ft.Row(
-            [
-                self.video_format_dd,
-                self.audio_format_dd,
-                self.subtitle_dd,
-                self.cookies_dd,
-            ],
-            wrap=True,
-            spacing=15,
-            run_spacing=15,
-        )
-
-        switches_row = ft.Row(
-            [self.playlist_cb, self.sponsorblock_cb, self.force_generic_cb],
-            wrap=True,
-            spacing=20,
-        )
-
-        time_row = ft.Row([self.time_start, self.time_end], spacing=10, wrap=True)
+        advanced_row = ft.Row([self.time_start, self.time_end, self.cookies_dd], spacing=10, wrap=True)
 
         # Input Card Container
         input_container = ft.Container(
             content=ft.Column(
                 [
                     url_row,
-                    ft.Divider(height=20, color="transparent"),
-                    ft.Text(LM.get("options"), weight=ft.FontWeight.BOLD),
-                    options_row,
-                    switches_row,
+                    ft.Divider(height=20, color=Theme.Divider.COLOR),
+
+                    # Dynamic Options Panel
+                    self.options_container,
+
                     ft.Divider(height=10, color="transparent"),
-                    ft.Text(LM.get("advanced_options"), weight=ft.FontWeight.BOLD),
-                    time_row,
+
+                    # Advanced Collapsible (Simplified for now)
+                    ft.ExpansionTile(
+                        title=ft.Text(LM.get("advanced_options"), weight=ft.FontWeight.BOLD),
+                        controls=[
+                            ft.Container(
+                                content=ft.Column([
+                                    advanced_row,
+                                    self.force_generic_cb
+                                ], spacing=10),
+                                padding=10
+                            )
+                        ],
+                        collapsed_text_color=Theme.Text.SECONDARY,
+                        text_color=Theme.Primary.MAIN,
+                        icon_color=Theme.Primary.MAIN,
+                    ),
                 ],
                 spacing=10,
             ),
@@ -286,6 +241,7 @@ class DownloadView(BaseView):
                     LM.get("open_downloads_folder"),
                     icon=ft.Icons.FOLDER_OPEN,
                     on_click=lambda _: self._open_downloads_folder(),
+                    style=ft.ButtonStyle(color=Theme.TEXT_MUTED)
                 )
             )
 
@@ -295,18 +251,18 @@ class DownloadView(BaseView):
                 content=ft.Column(
                     [
                         header,
-                        ft.Divider(color="transparent", height=10),
+                        ft.Container(height=10),
                         input_container,
                         self.preview_card,
-                        ft.Divider(color="transparent", height=10),
+                        ft.Container(height=10),
                         actions_bar,
-                        ft.Divider(),
+                        ft.Divider(color=Theme.Divider.COLOR),
                         footer,
                     ],
                     scroll=ft.ScrollMode.AUTO,
                     spacing=15,
                 ),
-                padding=10,  # Reduced padding to fit more on mobile
+                padding=20,
                 expand=True,
             )
         ]
@@ -331,21 +287,27 @@ class DownloadView(BaseView):
         cookies = self.cookies_dd.value if self.cookies_dd.value != "None" else None
         template = self.state.config.get("output_template", "%(title)s.%(ext)s")
 
+        # Get base options
         data = {
             "url": self.url_input.value,
-            "video_format": self.video_format_dd.value,
-            "audio_format": self.audio_format_dd.value,
-            "subtitle_lang": (
-                self.subtitle_dd.value if self.subtitle_dd.value != "None" else None
-            ),
-            "playlist": self.playlist_cb.value,
-            "sponsorblock": self.sponsorblock_cb.value,
-            "force_generic": self.force_generic_cb.value,
             "start_time": self.time_start.value,
             "end_time": self.time_end.value,
             "output_template": template,
             "cookies_from_browser": cookies,
+            "force_generic": self.force_generic_cb.value,
+            # Defaults
+            "video_format": "best",
+            "audio_format": None,
+            "subtitle_lang": None,
+            "playlist": False,
+            "sponsorblock": False,
         }
+
+        # Merge with Panel Options
+        if self.current_panel:
+            panel_opts = self.current_panel.get_options()
+            data.update(panel_opts)
+
         self.on_add_to_queue(data)
 
         # Reset specific fields
@@ -353,6 +315,10 @@ class DownloadView(BaseView):
         self.fetch_btn.disabled = False
         self.preview_card.visible = False
         self.url_input.value = ""
+        # Clear panel
+        self.options_container.content = None
+        self.current_panel = None
+
         self.update()
 
     def update_video_info(self, info: Optional[dict]):
@@ -365,36 +331,27 @@ class DownloadView(BaseView):
             self.time_start.disabled = False
             self.time_end.disabled = False
 
-            # Update formats dynamically
-            if "video_streams" in info:
-                opts = []
-                for s in info["video_streams"]:
-                    label = f"{s.get('resolution', '?')} {s.get('ext','')} {s.get('filesize_str','')}"
-                    opts.append(ft.dropdown.Option(s["format_id"], label))
-                if opts:
-                    self.video_format_dd.options = opts
-                    self.video_format_dd.value = opts[0].key
+            # Determine Panel Type
+            url = info.get("original_url", "")
+            extractor = info.get("extractor", "").lower()
 
-            if "audio_streams" in info:
-                opts = []
-                for s in info["audio_streams"]:
-                    label = f"{s.get('abr','?')}k {s.get('ext','')}"
-                    opts.append(ft.dropdown.Option(s["format_id"], label))
-                if opts:
-                    self.audio_format_dd.options = opts
-                    self.audio_format_dd.value = opts[0].key
-                    self.audio_format_dd.visible = True
+            # Simple heuristic
+            if "youtube" in url or "youtu.be" in url:
+                self.current_panel = YouTubePanel(info, lambda: None)
+            elif "instagram" in url:
+                self.current_panel = InstagramPanel(info, lambda: None)
             else:
-                self.audio_format_dd.visible = False
+                self.current_panel = GenericPanel(info, lambda: None)
 
-            if info.get("_type") == "playlist" or "entries" in info:
-                self.playlist_cb.value = True
+            self.options_container.content = self.current_panel
+
         else:
             self.preview_card.visible = False
             self.add_btn.disabled = True
             self.time_start.disabled = True
             self.time_end.disabled = True
-            self.audio_format_dd.visible = False
+            self.options_container.content = None
+            self.current_panel = None
 
         self.update()
 

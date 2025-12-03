@@ -4,9 +4,12 @@ Handles application logic, callbacks, and bridging between UI and backend.
 """
 
 import logging
+import os
+import subprocess
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict
 
 import flet as ft
@@ -176,17 +179,21 @@ class AppController:
             "title": title,
             "status": status,
             "scheduled_time": sched_dt,
-            "video_format": data["video_format"],
+            "video_format": data.get("video_format"),
+            "audio_format": data.get("audio_format"),
+            "subtitle_lang": data.get("subtitle_lang"),
             "output_path": get_default_download_path(),
-            "playlist": data["playlist"],
-            "sponsorblock": data["sponsorblock"],
+            "playlist": data.get("playlist", False),
+            "sponsorblock": data.get("sponsorblock", False),
             "use_aria2c": state.config.get("use_aria2c", False),
             "gpu_accel": state.config.get("gpu_accel", "None"),
-            "output_template": data["output_template"],
-            "start_time": data["start_time"],
-            "end_time": data["end_time"],
-            "force_generic": data["force_generic"],
+            "output_template": data.get("output_template"),
+            "start_time": data.get("start_time"),
+            "end_time": data.get("end_time"),
+            "force_generic": data.get("force_generic", False),
             "cookies_from_browser": data.get("cookies_from_browser"),
+            "chapters": data.get("chapters", False),
+            "insta_type": data.get("insta_type"),
         }
         state.queue_manager.add_item(item)
         state.scheduled_time = None
@@ -244,9 +251,55 @@ class AppController:
             state.queue_manager.update_item_status(
                 item_id,
                 "Queued",
-                updates={"speed": "", "eta": "", "size": "", "progress": 0},
+                updates={"speed": "", "eta": "", "size": "", "progress": 0, "error": None},
             )
         self.ui.update_queue_view()
+
+    def on_play_item(self, item: Dict[str, Any]):
+        """Callback to open/play the downloaded file."""
+        # We need to know where the file is.
+        # Ideally, `tasks.py` should save the final `filepath` in the item dict.
+        # Currently `_log_to_history` gets it, but does it update the item dict in memory?
+        # Let's verify tasks.py.
+        # Assuming we can find the file.
+
+        # Heuristic search if direct path missing
+        output_path = item.get("output_path", get_default_download_path())
+        filename = item.get("filename")
+
+        if not filename:
+             self.page.open(ft.SnackBar(content=ft.Text("File path unknown")))
+             return
+
+        full_path = os.path.join(output_path, filename)
+
+        if os.path.exists(full_path):
+            try:
+                if os.name == 'nt':
+                    os.startfile(full_path)
+                elif sys.platform == 'darwin':
+                    subprocess.call(('open', full_path))
+                else:
+                    subprocess.call(('xdg-open', full_path))
+            except Exception as e:
+                logger.error("Failed to play file: %s", e)
+                self.page.open(ft.SnackBar(content=ft.Text(f"Failed to open file: {e}")))
+        else:
+            self.page.open(ft.SnackBar(content=ft.Text("File not found on disk")))
+
+    def on_open_folder(self, item: Dict[str, Any]):
+        """Callback to open the folder containing the file."""
+        output_path = item.get("output_path", get_default_download_path())
+        try:
+            if os.name == 'nt':
+                os.startfile(output_path)
+            elif sys.platform == 'darwin':
+                subprocess.call(('open', output_path))
+            else:
+                subprocess.call(('xdg-open', output_path))
+        except Exception as e:
+            logger.error("Failed to open folder: %s", e)
+            self.page.open(ft.SnackBar(content=ft.Text(f"Failed to open folder: {e}")))
 
     def on_batch_file_result(self, e: ft.FilePickerResultEvent):
         """Callback when a file is selected for batch import."""
