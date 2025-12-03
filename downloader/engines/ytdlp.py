@@ -103,8 +103,11 @@ class YTDLPWrapper:
                     # entries_raw is typed as object by mypy, but we know it is iterable if not None
                     # We cast to Iterable[Any] to satisfy mypy
                     from typing import Iterable
+
                     entries_iterable = cast(Iterable[Any], entries_raw)
-                    entries_list = list(entries_iterable) if entries_raw is not None else []
+                    entries_list = (
+                        list(entries_iterable) if entries_raw is not None else []
+                    )
                     return {
                         "filename": info.get("title", "Playlist"),
                         # Omit filepath for playlists to avoid misleading template string
