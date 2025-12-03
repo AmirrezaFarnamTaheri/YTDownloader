@@ -38,6 +38,7 @@ class ConfigManager:
     def _resolve_config_file() -> Path:
         """Resolve and return the correct config file path."""
         # pylint: disable=global-statement
+        # pylint: disable=global-variable-not-assigned
         global CONFIG_FILE
         try:
             if not CONFIG_FILE.parent.exists():
@@ -146,6 +147,7 @@ class ConfigManager:
                 logger.info("Configuration saved.")
 
             except Exception:
+                # Re-raise to be handled by outer block or just bubble up
                 raise
 
         except Exception as e:

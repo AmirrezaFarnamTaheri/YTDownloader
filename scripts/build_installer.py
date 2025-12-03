@@ -77,6 +77,7 @@ def build_installer():
 
     # Verify requirements
     try:
+        # pylint: disable=unused-import
         import nuitka
         from nuitka import Version
 

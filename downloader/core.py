@@ -10,7 +10,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import yt_dlp
 
@@ -50,12 +50,12 @@ def _sanitize_output_path(output_path: str) -> str:
                 return tempfile.gettempdir()
 
         return str(path)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.warning("Failed to sanitize path '%s': %s", output_path, e)
         return "."
 
 
-def _check_disk_space(output_path: str, min_mb: int = 100):
+def _check_disk_space(output_path: str, min_mb: int = 100) -> bool:
     """Check if there is sufficient disk space."""
     try:
         usage = shutil.disk_usage(output_path)
@@ -65,9 +65,141 @@ def _check_disk_space(output_path: str, min_mb: int = 100):
             # We don't block, but we log loud
             return False
         return True
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Failed to check disk space: %s", e)
         return True  # Assume ok if check fails
+
+
+def _configure_postprocessors(
+    ydl_opts: Dict[str, Any], options: DownloadOptions, ffmpeg_available: bool
+) -> None:
+    """Configure yt-dlp postprocessors based on options."""
+    # Ensure postprocessors list exists
+    if "postprocessors" not in ydl_opts:
+        ydl_opts["postprocessors"] = []
+
+    # Default postprocessors
+    if ffmpeg_available:
+        ydl_opts["postprocessors"].extend(
+            [
+                {"key": "FFmpegEmbedSubtitle"},
+                {"key": "EmbedThumbnail"},
+                {"key": "FFmpegMetadata"},
+            ]
+        )
+    else:
+        logger.warning("FFmpeg not available - disabling post-processors and merging")
+        ydl_opts["postprocessors"] = []
+        ydl_opts["writethumbnail"] = False
+        ydl_opts["format"] = "best"
+        ydl_opts.pop("merge_output_format", None)
+        return
+
+    # Split chapters
+    if options.split_chapters:
+        ydl_opts["postprocessors"].append({"key": "FFmpegSplitChapters"})
+
+    # SponsorBlock
+    if options.sponsorblock:
+        ydl_opts["postprocessors"].append(
+            {
+                "key": "SponsorBlock",
+                "categories": ["sponsor", "selfpromo", "interaction", "intro", "outro"],
+                "when": "after_filter",
+            }
+        )
+
+
+def _configure_format_selection(
+    ydl_opts: Dict[str, Any], options: DownloadOptions, ffmpeg_available: bool
+) -> None:
+    """Configure format selection options."""
+    if not ffmpeg_available and options.video_format != "audio":
+        ydl_opts["format"] = "best"
+        return
+
+    if options.video_format == "audio":
+        ydl_opts["format"] = "bestaudio/best"
+        if ffmpeg_available:
+            # Whitelist supported codecs
+            allowed_codecs = {"mp3", "m4a", "wav", "flac", "opus"}
+            codec = (options.audio_format or "mp3").lower()
+            if codec not in allowed_codecs:
+                codec = "mp3"
+
+            pp_args = {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": codec,
+            }
+            if codec in {"mp3", "m4a", "opus"}:
+                pp_args["preferredquality"] = "192"
+
+            ydl_opts.setdefault("postprocessors", []).append(pp_args)
+
+    elif options.video_format in ["4k", "1440p", "1080p", "720p", "480p"]:
+        height_map = {
+            "4k": 2160,
+            "1440p": 1440,
+            "1080p": 1080,
+            "720p": 720,
+            "480p": 480,
+        }
+        h = height_map.get(options.video_format, 1080)
+        # Prefer best at or below target height; if none, allow closest above.
+        # Fall back to overall best to avoid hard failures.
+        ydl_opts["format"] = (
+            f"bestvideo[height<={h}]+bestaudio/best/"
+            f"bestvideo[height>={h}]+bestaudio/best/"
+            f"best"
+        )
+
+
+def _configure_advanced_options(
+    ydl_opts: Dict[str, Any], options: DownloadOptions, ffmpeg_available: bool
+) -> None:
+    """Configure advanced download options."""
+    # Proxy and Rate Limit
+    if options.proxy:
+        ydl_opts["proxy"] = options.proxy
+    if options.rate_limit:
+        ydl_opts["ratelimit"] = options.rate_limit
+
+    # Subtitles
+    if options.subtitle_lang:
+        ydl_opts["subtitles"] = options.subtitle_lang
+        ydl_opts["writesubtitles"] = True
+        if options.subtitle_format:
+            ydl_opts["subtitlesformat"] = options.subtitle_format
+
+    # Download Sections (Time Range)
+    if (options.start_time or options.end_time) and ffmpeg_available:
+        start_sec = options.get_seconds(options.start_time)
+        end_sec = options.get_seconds(options.end_time)
+        logger.info("Downloading range: %s - %s", options.start_time, options.end_time)
+        ydl_opts["download_ranges"] = yt_dlp.utils.download_range_func(
+            None, [(start_sec, end_sec)]
+        )
+
+    # Aria2c
+    if options.use_aria2c:
+        if shutil.which("aria2c"):
+            ydl_opts["external_downloader"] = "aria2c"
+            ydl_opts["external_downloader_args"] = ["-x", "16", "-k", "1M", "-s", "16"]
+        else:
+            logger.warning("Aria2c enabled but not found.")
+
+    # GPU Acceleration
+    if options.gpu_accel and options.gpu_accel.lower() != "none" and ffmpeg_available:
+        accel_flag = options.gpu_accel
+        if options.gpu_accel.lower() == "auto":
+            accel_flag = "cuda" if os.name == "nt" else None
+
+        if accel_flag:
+            ydl_opts["postprocessor_args"] = {"ffmpeg": ["-hwaccel", accel_flag]}
+
+    # Cookies
+    if options.cookies_from_browser:
+        ydl_opts["cookiesfrombrowser"] = (options.cookies_from_browser,)
 
 
 def download_video(options: DownloadOptions) -> Dict[str, Any]:
@@ -86,7 +218,6 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
     """
     # Guard against incorrect usage (e.g. legacy kwargs)
     if not isinstance(options, DownloadOptions):
-        # Fallback for compatibility or catch errors
         raise TypeError(f"download_video expects DownloadOptions, got {type(options)}")
 
     logger.info("Initiating download_video for URL: %s", options.url)
@@ -124,7 +255,7 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
         )
 
     # 4. Configure yt-dlp options
-    ydl_opts = {
+    ydl_opts: Dict[str, Any] = {
         "outtmpl": f"{output_path}/{options.output_template}",
         "quiet": True,
         "no_warnings": True,
@@ -134,119 +265,19 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
         "format": "bestvideo+bestaudio/best",
         "merge_output_format": "mp4",
         "writethumbnail": True,
-        "postprocessors": [
-            {"key": "FFmpegEmbedSubtitle"},
-            {"key": "EmbedThumbnail"},
-            {"key": "FFmpegMetadata"},
-        ],
     }
 
-    if options.proxy:
-        ydl_opts["proxy"] = options.proxy
-    if options.rate_limit:
-        ydl_opts["ratelimit"] = options.rate_limit
-
-    # 4a. FFmpeg Availability Check
+    # 4a. Check FFmpeg availability
     ffmpeg_available = getattr(state, "ffmpeg_available", True)
 
-    if options.subtitle_lang:
-        ydl_opts["subtitles"] = options.subtitle_lang
-        ydl_opts["writesubtitles"] = True
-        if options.subtitle_format:
-            ydl_opts["subtitlesformat"] = options.subtitle_format
+    # 4b. Configure Post-processors
+    _configure_postprocessors(ydl_opts, options, ffmpeg_available)
 
-    if options.split_chapters and ffmpeg_available:
-        ydl_opts.setdefault("postprocessors", []).append({"key": "FFmpegSplitChapters"})
+    # 4c. Configure Format Selection
+    _configure_format_selection(ydl_opts, options, ffmpeg_available)
 
-    if not ffmpeg_available:
-        logger.warning("FFmpeg not available - disabling post-processors and merging")
-        ydl_opts["postprocessors"] = []
-        ydl_opts["writethumbnail"] = False
-        ydl_opts["format"] = "best"
-        ydl_opts.pop("merge_output_format", None)
-
-    # 4b. Format Selection
-    if options.video_format == "audio":
-        ydl_opts["format"] = "bestaudio/best"
-        if ffmpeg_available:
-            # Whitelist supported codecs
-            allowed_codecs = {"mp3", "m4a", "wav", "flac", "opus"}
-            codec = (options.audio_format or "mp3").lower()
-            if codec not in allowed_codecs:
-                codec = "mp3"
-
-            ydl_opts["postprocessors"].append(
-                {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": codec,
-                    "preferredquality": (
-                        "192" if codec in {"mp3", "m4a", "opus"} else None
-                    ),
-                }
-            )
-            # Remove None values
-            ydl_opts["postprocessors"][-1] = {
-                k: v for k, v in ydl_opts["postprocessors"][-1].items() if v is not None
-            }
-    elif options.video_format in ["4k", "1440p", "1080p", "720p", "480p"]:
-        height_map = {
-            "4k": 2160,
-            "1440p": 1440,
-            "1080p": 1080,
-            "720p": 720,
-            "480p": 480,
-        }
-        h = height_map.get(options.video_format, 1080)
-        # Prefer best at or below target height; if none, allow closest above.
-        # Fall back to overall best to avoid hard failures.
-        ydl_opts["format"] = (
-            f"bestvideo[height<={h}]+bestaudio/best/"
-            f"bestvideo[height>={h}]+bestaudio/best/"
-            f"best"
-        )
-
-    if not ffmpeg_available and options.video_format != "audio":
-        ydl_opts["format"] = "best"
-
-    # 4c. Download Sections (Time Range)
-    if (options.start_time or options.end_time) and ffmpeg_available:
-        start_sec = options._parse_time(options.start_time)
-        end_sec = options._parse_time(options.end_time)
-        logger.info("Downloading range: %s - %s", options.start_time, options.end_time)
-        ydl_opts["download_ranges"] = yt_dlp.utils.download_range_func(
-            None, [(start_sec, end_sec)]
-        )
-
-    # 4d. SponsorBlock
-    if options.sponsorblock and ffmpeg_available:
-        ydl_opts["postprocessors"].append(
-            {
-                "key": "SponsorBlock",
-                "categories": ["sponsor", "selfpromo", "interaction", "intro", "outro"],
-                "when": "after_filter",
-            }
-        )
-
-    # 4e. Aria2c
-    if options.use_aria2c:
-        if shutil.which("aria2c"):
-            ydl_opts["external_downloader"] = "aria2c"
-            ydl_opts["external_downloader_args"] = ["-x", "16", "-k", "1M", "-s", "16"]
-        else:
-            logger.warning("Aria2c enabled but not found.")
-
-    # 4f. GPU Acceleration
-    if options.gpu_accel and options.gpu_accel.lower() != "none" and ffmpeg_available:
-        accel_flag = options.gpu_accel
-        if options.gpu_accel.lower() == "auto":
-            accel_flag = "cuda" if os.name == "nt" else None
-
-        if accel_flag:
-            ydl_opts["postprocessor_args"] = {"ffmpeg": ["-hwaccel", accel_flag]}
-
-    # 4g. Cookies
-    if options.cookies_from_browser:
-        ydl_opts["cookiesfrombrowser"] = (options.cookies_from_browser,)
+    # 4d. Configure Advanced Options
+    _configure_advanced_options(ydl_opts, options, ffmpeg_available)
 
     wrapper = YTDLPWrapper(ydl_opts)
     try:

@@ -27,7 +27,11 @@ class SocialManager:
     def connect(self):
         """Connect to Discord RPC."""
         # Simple check to avoid trying if ID is dummy/invalid
-        if not self._client_id or self._client_id == "123456789012345678" or not self._client_id.isdigit():
+        if (
+            not self._client_id
+            or self._client_id == "123456789012345678"
+            or not self._client_id.isdigit()
+        ):
             # Silent fail or log debug
             logger.debug("Discord RPC skipped: No valid Client ID provided")
             return

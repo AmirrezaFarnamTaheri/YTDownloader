@@ -2,6 +2,7 @@
 Application theme definitions and constants.
 """
 
+from typing import Optional
 import flet as ft
 
 
@@ -43,21 +44,31 @@ class Theme:
 
     # --- Subclasses for Usage ---
     class Surface:
+        """Surface color definitions."""
+
         BG = "#1E293B"
         CARD = "#1E293B"
         INPUT = "#020617"
 
     class Primary:
+        """Primary color definitions."""
+
         MAIN = "#818CF8"
 
     class Text:
+        """Text color definitions."""
+
         PRIMARY = "#F8FAFC"
         SECONDARY = "#94A3B8"
 
     class Divider:
+        """Divider color definitions."""
+
         COLOR = "#334155"
 
     class Status:
+        """Status color definitions."""
+
         SUCCESS = "#34D399"
         ERROR = "#EF4444"
 
@@ -132,16 +143,16 @@ class Theme:
                 thickness=6,
                 interactive=True,
             ),
-            # Standardize font (optional, if custom fonts were included)
-            # font_family="Roboto",
         )
 
     @staticmethod
-    def get_input_decoration(hint_text: str = "", prefix_icon: str = None):
+    def get_input_decoration(
+        hint_text: str = "", prefix_icon: Optional[str] = None
+    ):
         """
         Standardized Input Decoration.
-        Note: Removed explicit return type hint to avoid AttributeError in some envs where flet.InputDecoration is not exposed.
         """
+        # pylint: disable=no-member
         return ft.InputDecoration(
             filled=True,
             fill_color=Theme.BG_INPUT,

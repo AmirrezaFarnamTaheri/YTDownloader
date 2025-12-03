@@ -32,6 +32,7 @@ class AppController:
     Refactored to delegate responsibilities.
     """
 
+    # pylint: disable=too-many-instance-attributes
     def __init__(self, page: ft.Page, ui_manager: UIManager):
         self.page = page
         self.ui = ui_manager

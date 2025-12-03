@@ -77,6 +77,7 @@ def startup_timeout(seconds=10):
             if timer:
                 timer.cancel()
             if timed_out["flag"]:
+                # pylint: disable=broad-exception-raised
                 raise TimeoutError(f"Operation timed out after {seconds} seconds")
     else:
         # Unix-like systems use signal
@@ -95,6 +96,7 @@ def startup_timeout(seconds=10):
 
 def main(pg: ft.Page):
     """Main application loop."""
+    # pylint: disable=global-statement
     global PAGE, UI, CONTROLLER
     PAGE = pg
 
@@ -124,10 +126,10 @@ def main(pg: ft.Page):
         # but we can assume these shortcuts work globally or check visible state if needed.
 
         # J / K Navigation
-        if e.key == "J": # Next
+        if e.key == "J":  # Next
             idx = UI.queue_view.selected_index + 1
             UI.queue_view.select_item(idx)
-        elif e.key == "K": # Prev
+        elif e.key == "K":  # Prev
             idx = UI.queue_view.selected_index - 1
             UI.queue_view.select_item(idx)
 
@@ -141,7 +143,7 @@ def main(pg: ft.Page):
                 UI.queue_view.select_item(UI.queue_view.selected_index)
 
         # Space (Pause/Resume or Global Pause)
-        elif e.key == " ": # Space
+        elif e.key == " ":  # Space
             # For now, maybe pause everything? Or selected?
             # Implemented: Pause/Resume selected if active
             item = UI.queue_view.get_selected_item()
@@ -151,7 +153,7 @@ def main(pg: ft.Page):
                 # So we won't implement Space for now to avoid confusion.
                 pass
 
-    PAGE.on_keyboard_event = on_keyboard
+    PAGE.on_keyboard_event = on_keyboard  # type: ignore
 
     # Initialize UI Manager
     UI = UIManager(PAGE)
@@ -183,7 +185,8 @@ def main(pg: ft.Page):
     def cleanup_on_disconnect(e):
         # pylint: disable=unused-argument
         logger.info("Page disconnected, cleaning up...")
-        CONTROLLER.cleanup()
+        if CONTROLLER:
+            CONTROLLER.cleanup()
 
     PAGE.on_disconnect = cleanup_on_disconnect
     PAGE.on_close = cleanup_on_disconnect
@@ -240,7 +243,7 @@ def global_crash_handler(exctype, value, tb):
 
                 msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
                 ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 pass
     except Exception:  # pylint: disable=broad-exception-caught
         pass
@@ -268,6 +271,7 @@ if __name__ == "__main__":
                 _ = state  # Force singleton initialization
                 logger.info("AppState initialized successfully")
             except Exception as e:
+                # pylint: disable=broad-exception-caught
                 print(f"ERROR: Failed to initialize AppState: {e}", file=sys.stderr)
                 traceback.print_exc()
                 sys.exit(1)
@@ -282,5 +286,5 @@ if __name__ == "__main__":
     else:
         try:
             ft.app(target=main)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             global_crash_handler(type(e), e, e.__traceback__)

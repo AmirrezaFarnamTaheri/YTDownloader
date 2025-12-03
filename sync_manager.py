@@ -89,11 +89,6 @@ class SyncManager:
                 else:
                     config_data = {}
 
-                # Filter sensitive keys if needed
-                # (currently none explicit in memory, but good practice)
-                # config_data = {k:v for k,v in config_data.items()
-                #                if k not in ["access_token"]}
-
                 config_file = self._write_temp_json(config_data)
 
                 # 2. Export History (if available)
@@ -206,6 +201,56 @@ class SyncManager:
             logger.error("Export failed: %s", e)
             raise  # Raise so UI can show error
 
+    def _import_history_db(self, zf: zipfile.ZipFile) -> None:
+        """Helper to extract and replace history DB."""
+        if "history.db" not in zf.namelist():
+            return
+
+        target_db = None
+        if self.history:
+            target_db = getattr(self.history, "DB_FILE", None)
+
+        if not target_db:
+            target_db = os.path.expanduser("~/.streamcatch/history.db")
+
+        target_db_path = str(target_db)
+
+        # Ensure directory exists
+        parent = os.path.dirname(target_db_path)
+        if parent and not os.path.exists(parent):
+            os.makedirs(parent, exist_ok=True)
+
+        # Write to temp then move
+        temp_db = target_db_path + ".tmp"
+
+        try:
+            with open(temp_db, "wb") as f_out:
+                with zf.open("history.db") as f_in:
+                    shutil.copyfileobj(f_in, f_out)
+
+            # Atomic replacement (try)
+            if os.path.exists(target_db_path):
+                try:
+                    os.remove(target_db_path)
+                except OSError:
+                    logger.warning(
+                        "Could not remove existing DB, import might be incomplete if locked"
+                    )
+
+            if not os.path.exists(target_db_path):
+                os.rename(temp_db, target_db_path)
+            else:
+                logger.error("Failed to replace database file, it may be locked.")
+
+        finally:
+            if os.path.exists(temp_db):
+                try:
+                    os.remove(temp_db)
+                except OSError as e:  # pylint: disable=broad-exception-caught
+                    logger.error(
+                        "Failed to clean up temporary DB file %s: %s", temp_db, e
+                    )
+
     def import_data(self, import_path: str):
         """Imports data from a zip file."""
         try:
@@ -226,59 +271,7 @@ class SyncManager:
                                 self.config.set(k, v)
 
                 # Restore History
-                if "history.db" in zf.namelist():
-                    target_db = None
-                    if self.history:
-                        target_db = getattr(self.history, "DB_FILE", None)
-
-                    if not target_db:
-                        target_db = os.path.expanduser("~/.streamcatch/history.db")
-
-                    target_db_path = str(target_db)
-
-                    # Ensure directory exists
-                    parent = os.path.dirname(target_db_path)
-                    if parent and not os.path.exists(parent):
-                        os.makedirs(parent, exist_ok=True)
-
-                    # Write to temp then move
-                    temp_db = target_db_path + ".tmp"
-
-                    try:
-                        with open(temp_db, "wb") as f_out:
-                            with zf.open("history.db") as f_in:
-                                shutil.copyfileobj(f_in, f_out)
-
-                        # Atomic replacement (try)
-                        if os.path.exists(target_db_path):
-                            try:
-                                os.remove(target_db_path)
-                            except OSError:
-                                logger.warning(
-                                    "Could not remove existing DB, import might be incomplete if locked"
-                                )
-                                # If we can't delete, we can't replace.
-                                # Just leave the .tmp file? Or try to overwrite?
-
-                        if not os.path.exists(target_db_path):
-                            os.rename(temp_db, target_db_path)
-                        else:
-                            # This case happens if os.remove failed.
-                            logger.error(
-                                "Failed to replace database file, it may be locked."
-                            )
-
-                    finally:
-                        # Clean up the temp file if it still exists
-                        if os.path.exists(temp_db):
-                            try:
-                                os.remove(temp_db)
-                            except OSError as e:
-                                logger.error(
-                                    "Failed to clean up temporary DB file %s: %s",
-                                    temp_db,
-                                    e,
-                                )
+                self._import_history_db(zf)
 
             logger.info("Import completed")
         except Exception as e:

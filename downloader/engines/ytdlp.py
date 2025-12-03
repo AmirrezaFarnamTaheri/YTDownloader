@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, cast
 
 import yt_dlp
 
@@ -24,6 +24,7 @@ class YTDLPWrapper:
         # We generally assume yt-dlp supports most things, or we fail and fallback.
         # However, we can use extractors to check.
         # For now, simplistic check:
+        # pylint: disable=unused-argument
         return True
 
     def download(
@@ -50,6 +51,7 @@ class YTDLPWrapper:
         Raises:
             Exception: If download fails or is cancelled.
         """
+        # pylint: disable=unused-argument
         options = self.options.copy()
 
         # Handle path override
@@ -68,8 +70,10 @@ class YTDLPWrapper:
             if cancel_token:
                 # Support both method check() and attribute cancelled
                 if hasattr(cancel_token, "is_set") and cancel_token.is_set():
+                    # pylint: disable=broad-exception-raised
                     raise InterruptedError("Download Cancelled by user")
                 if hasattr(cancel_token, "cancelled") and cancel_token.cancelled:
+                    # pylint: disable=broad-exception-raised
                     raise InterruptedError("Download Cancelled by user")
 
         hooks.append(check_cancel)
@@ -90,16 +94,20 @@ class YTDLPWrapper:
 
                 # Handle null info (can happen in some cases)
                 if not info:
+                    # pylint: disable=broad-exception-raised
                     raise Exception("Failed to extract video info")
 
                 # Handle Playlists
                 if "entries" in info:
                     # Return summary for playlist
+                    # mypy complains about 'entries' not being in TypedDict if stubs are strict.
+                    # We cast or ignore.
+                    entries_list = list(info.get("entries", []))
                     return {
                         "filename": info.get("title", "Playlist"),
                         "filepath": options.get("outtmpl", "."),
                         "title": info.get("title", "Playlist"),
-                        "entries": len(list(info["entries"])),
+                        "entries": len(entries_list),
                         "type": "playlist",
                     }
 
@@ -124,6 +132,7 @@ class YTDLPWrapper:
             msg = str(e)
             if "Cancelled" in msg or "Interrupted" in msg:
                 logger.info("Download cancelled via hook.")
+                # pylint: disable=broad-exception-raised
                 raise InterruptedError("Download Cancelled by user") from e
 
             logger.error("yt-dlp error for %s: %s", url, e)

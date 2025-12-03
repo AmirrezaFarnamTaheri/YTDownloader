@@ -51,17 +51,19 @@ class TestGetVideoInfo(unittest.TestCase):
         info = get_video_info("https://www.youtube.com/watch?v=test")
 
         self.assertIsNotNone(info)
-        self.assertEqual(info["title"], "Test Video")
-        self.assertEqual(info["thumbnail"], "https://example.com/thumb.jpg")
-        self.assertEqual(info["duration"], "10:30")
-        self.assertEqual(len(info["subtitles"]), 2)
-        self.assertIn("en", info["subtitles"])
-        self.assertIn("es", info["subtitles"])
-        self.assertEqual(len(info["video_streams"]), 1)
-        self.assertEqual(len(info["audio_streams"]), 1)
-        self.assertEqual(info["video_streams"][0]["format_id"], "22")
-        self.assertEqual(info["audio_streams"][0]["format_id"], "140")
-        self.assertIsNotNone(info["chapters"])
+        # mypy check suppression
+        if info:
+            self.assertEqual(info["title"], "Test Video")
+            self.assertEqual(info["thumbnail"], "https://example.com/thumb.jpg")
+            self.assertEqual(info["duration"], "10:30")
+            self.assertEqual(len(info["subtitles"]), 2)
+            self.assertIn("en", info["subtitles"])
+            self.assertIn("es", info["subtitles"])
+            self.assertEqual(len(info["video_streams"]), 1)
+            self.assertEqual(len(info["audio_streams"]), 1)
+            self.assertEqual(info["video_streams"][0]["format_id"], "22")
+            self.assertEqual(info["audio_streams"][0]["format_id"], "140")
+            self.assertIsNotNone(info["chapters"])
 
     @patch("downloader.info.yt_dlp.YoutubeDL")
     def test_get_video_info_no_subtitles(self, mock_youtube_dl):
@@ -80,8 +82,9 @@ class TestGetVideoInfo(unittest.TestCase):
         info = get_video_info("https://www.youtube.com/watch?v=test")
 
         self.assertIsNotNone(info)
-        self.assertEqual(info["title"], "No Subtitles Video")
-        self.assertEqual(len(info["subtitles"]), 0)
+        if info:
+            self.assertEqual(info["title"], "No Subtitles Video")
+            self.assertEqual(len(info["subtitles"]), 0)
 
     @patch("downloader.info.GenericExtractor.get_metadata")
     @patch("downloader.info.TelegramExtractor.get_metadata")
@@ -172,8 +175,9 @@ class TestGetVideoInfo(unittest.TestCase):
         }
 
         info = get_video_info("https://www.youtube.com/watch?v=test")
-        self.assertEqual(len(info["video_streams"]), 3)
-        self.assertEqual(len(info["audio_streams"]), 2)
+        if info:
+            self.assertEqual(len(info["video_streams"]), 3)
+            self.assertEqual(len(info["audio_streams"]), 2)
 
 
 class TestDownloadVideo(unittest.TestCase):

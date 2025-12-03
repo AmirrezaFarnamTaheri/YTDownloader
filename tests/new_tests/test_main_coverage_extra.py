@@ -29,7 +29,6 @@ from main import global_crash_handler, main
 # `main()` does NOT call it. It's called when module loads.
 
 
-
 class TestMainIntegration(unittest.TestCase):
 
     def setUp(self):

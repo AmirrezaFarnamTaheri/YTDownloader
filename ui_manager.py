@@ -27,6 +27,7 @@ class UIManager:
     Manages the application's UI, including views and layout.
     """
 
+    # pylint: disable=too-many-instance-attributes
     def __init__(self, page: ft.Page):
         self.page = page
         self.download_view: Optional[DownloadView] = None
@@ -42,6 +43,8 @@ class UIManager:
         # Track current view index
         self.current_view_index = 0
 
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def initialize_views(
         self,
         on_fetch_info_callback,
@@ -108,7 +111,7 @@ class UIManager:
 
     def navigate_to(self, index: int):
         """Navigate to the specified view index."""
-        if 0 <= index < len(self.views_list):
+        if self.app_layout and 0 <= index < len(self.views_list):
             logger.debug("Navigating to view index: %d", index)
             self.current_view_index = index
             view = self.views_list[index]
@@ -129,6 +132,7 @@ class UIManager:
         Handle page resize events for responsive layout.
         Mobile breakpoints (approx): < 800px width.
         """
+        # pylint: disable=unused-argument
         is_mobile = self.page.width < 800
 
         if self.app_layout:

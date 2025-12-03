@@ -1,12 +1,15 @@
+"""
+Cloud Manager module.
+"""
+
 import logging
 import os
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Compatibility shim: ensure pydrive2 exposes auth/drive as attributes on its
-# top-level package if available. Some tests patch "pydrive2.auth" directly,
-# which expects this attribute-style access to work.
+
+# Compatibility shim for pydrive2 attributes if needed
 try:  # pragma: no cover - environment dependent
     import pydrive2 as _pyd2  # type: ignore
 
@@ -15,7 +18,7 @@ try:  # pragma: no cover - environment dependent
 
         if not hasattr(_pyd2, "auth"):
             _pyd2.auth = _pyd2_auth  # type: ignore[attr-defined]
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass
 
     try:
@@ -23,10 +26,9 @@ try:  # pragma: no cover - environment dependent
 
         if not hasattr(_pyd2, "drive"):
             _pyd2.drive = _pyd2_drive  # type: ignore[attr-defined]
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass
-except Exception:
-    # If pydrive2 isn't installed, normal import paths and error handling apply.
+except Exception:  # pylint: disable=broad-exception-caught
     pass
 
 
@@ -39,8 +41,8 @@ class CloudManager:
     def __init__(self):
         logger.debug("Initializing CloudManager...")
         self.enabled = False
-        self.credentials_path = "client_secrets.json"  # Standard PyDrive2 file
-        self.settings_path = "settings.yaml"  # PyDrive2 settings
+        self.credentials_path = "client_secrets.json"
+        self.settings_path = "settings.yaml"
 
     def upload_file(self, file_path: str, provider: str = "google_drive"):
         """
@@ -85,9 +87,8 @@ class CloudManager:
 
         if provider == "google_drive":
             return self._download_from_google_drive(filename, destination_path)
-        else:
-            logger.error("Provider %s not supported.", provider)
-            return False
+        logger.error("Provider %s not supported.", provider)
+        return False
 
     def _get_google_drive_client(self):
         """Helper to authenticate and return a GoogleDrive client."""
@@ -96,6 +97,7 @@ class CloudManager:
             logger.warning(
                 "Google Drive %s not found. Skipping auth.", self.credentials_path
             )
+            # pylint: disable=broad-exception-raised
             raise Exception(
                 "Google Drive not configured (missing client_secrets.json)."
             )
@@ -109,6 +111,7 @@ class CloudManager:
                     f.write(creds_content)
 
         try:
+            # pylint: disable=import-outside-toplevel
             from pydrive2.auth import GoogleAuth  # type: ignore
             from pydrive2.drive import GoogleDrive  # type: ignore
 
@@ -123,6 +126,7 @@ class CloudManager:
             if gauth.credentials is None:  # type: ignore
                 # In headless environments without pre-auth, this fails.
                 if os.environ.get("HEADLESS_MODE") or os.environ.get("CI"):
+                    # pylint: disable=broad-exception-raised
                     raise Exception(
                         "Cannot authenticate in headless mode without saved creds."
                     )
@@ -139,6 +143,7 @@ class CloudManager:
 
         except ImportError as exc:
             logger.error("PyDrive2 not installed.")
+            # pylint: disable=broad-exception-raised
             raise Exception("PyDrive2 dependency missing.") from exc
         except Exception as e:
             logger.error("Google Drive auth failed: %s", e, exc_info=True)
@@ -151,28 +156,18 @@ class CloudManager:
 
             file_name = os.path.basename(file_path)
 
-            # Check if file exists to update it (optional, but good for sync)
-            # For simplicity in this implementation, we just upload a new file
-            # or could search and update. The requirements didn't specify update logic,
-            # but usually sync implies updating.
-            # However, PyDrive2 defaults to new file unless ID is specified.
-            # To keep it simple and match previous behavior (which was just create),
-            # we will search for existing file with same name and update it if found?
-            # The previous code just did CreateFile.
-            # But duplicate files in Drive are annoying. Let's try to update if exists.
-
             query = f"title = '{file_name}' and trashed = false"
-            file_list = drive.ListFile({"q": query}).GetList() # type: ignore
+            file_list = drive.ListFile({"q": query}).GetList()  # type: ignore
 
             if file_list:
                 file_drive = file_list[0]
                 logger.info("Updating existing file: %s", file_name)
             else:
-                file_drive = drive.CreateFile({"title": file_name}) # type: ignore
+                file_drive = drive.CreateFile({"title": file_name})  # type: ignore
                 logger.info("Creating new file: %s", file_name)
 
-            file_drive.SetContentFile(file_path) # type: ignore
-            file_drive.Upload() # type: ignore
+            file_drive.SetContentFile(file_path)  # type: ignore
+            file_drive.Upload()  # type: ignore
             logger.info("Successfully uploaded %s to Google Drive.", file_name)
 
         except Exception as e:
@@ -186,7 +181,7 @@ class CloudManager:
 
             # Search for file
             query = f"title = '{filename}' and trashed = false"
-            file_list = drive.ListFile({"q": query}).GetList() # type: ignore
+            file_list = drive.ListFile({"q": query}).GetList()  # type: ignore
 
             if not file_list:
                 logger.warning("File '%s' not found in Google Drive.", filename)
@@ -201,7 +196,7 @@ class CloudManager:
             if dest_dir and not os.path.exists(dest_dir):
                 os.makedirs(dest_dir, exist_ok=True)
 
-            file_drive.GetContentFile(destination_path) # type: ignore
+            file_drive.GetContentFile(destination_path)  # type: ignore
             return True
 
         except Exception as e:

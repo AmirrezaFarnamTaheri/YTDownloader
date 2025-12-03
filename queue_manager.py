@@ -193,11 +193,6 @@ class QueueManager:
                 token = self._cancel_tokens.get(item_id)
                 if token:
                     token.cancel()
-                    # Do not delete from token map yet, tasks.py cleans up?
-                    # No, tasks.py unregisters on finally.
-                    # But if we remove the item from queue, tasks.py might not find it if it looks it up.
-                    # Actually tasks.py holds the item object.
-                    # Safe to remove from queue list.
 
                 self._queue.remove(target)
                 removed = True
@@ -302,7 +297,8 @@ class QueueManager:
             # Update status only if in non-terminal state
             for item in self._queue:
                 if item.get("id") == item_id:
-                    # Prevent overwriting terminal statuses like 'Completed', 'Error', 'Cancelled'
+                    # Prevent overwriting terminal statuses like
+                    # 'Completed', 'Error', 'Cancelled'
                     # If it's already 'Cancelled', no harm done.
                     # 'Allocating', 'Downloading', 'Processing', 'Queued' are cancellable.
                     if item.get("status") in [

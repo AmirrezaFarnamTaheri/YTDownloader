@@ -1,3 +1,6 @@
+"""
+Module for fetching video metadata using yt-dlp or fallback extractors.
+"""
 import logging
 import os
 import signal
@@ -31,6 +34,136 @@ def extraction_timeout(seconds=30):
         yield  # No timeout on Windows
 
 
+def _extract_telegram_info(url: str) -> Optional[Dict[str, Any]]:
+    """Attempt to scrape Telegram URL."""
+    logger.info("Detected Telegram URL. Attempting to scrape...")
+    info = TelegramExtractor.get_metadata(url)
+    if info:
+        return {
+            "title": info.get("title", "Unknown"),
+            "thumbnail": info.get("thumbnail"),
+            "duration": "N/A",
+            "subtitles": {},
+            "video_streams": [
+                {
+                    "format_id": "telegram_direct",
+                    "ext": "mp4",
+                    "resolution": "Unknown",
+                    "filesize": None,
+                }
+            ],
+            "audio_streams": [],
+            "original_url": url,
+        }
+    return None
+
+
+def _extract_generic_info(url: str) -> Optional[Dict[str, Any]]:
+    """Attempt GenericExtractor fallback."""
+    generic_info = GenericExtractor.get_metadata(url)
+    if generic_info:
+        return {
+            "title": generic_info.get("title"),
+            "thumbnail": None,
+            "duration": "N/A",
+            "subtitles": {},
+            "video_streams": [
+                {
+                    "format_id": "direct",
+                    "ext": "unknown",
+                    "filesize": generic_info.get("filesize"),
+                    "resolution": "N/A",
+                }
+            ],
+            "audio_streams": [],
+            "original_url": url,
+        }
+    return None
+
+
+def _process_subtitles(info_dict: Dict[str, Any]) -> Dict[str, List[str]]:
+    """Process subtitles from yt-dlp info."""
+    subtitles: Dict[str, List[str]] = {}
+
+    # Check manual subtitles
+    raw_subs = info_dict.get("subtitles")
+    if raw_subs and hasattr(raw_subs, "items"):
+        for lang, subs in raw_subs.items():
+            if isinstance(subs, list):
+                formats_list = [
+                    sub.get("ext", "vtt") if isinstance(sub, dict) else str(sub)
+                    for sub in subs
+                ]
+            else:
+                formats_list = ["vtt"]
+            if formats_list:
+                subtitles[lang] = formats_list
+
+    # Check automatic captions
+    raw_auto = info_dict.get("automatic_captions")
+    if raw_auto and hasattr(raw_auto, "items"):
+        for lang, subs in raw_auto.items():
+            if isinstance(subs, list):
+                formats_list = [
+                    sub.get("ext", "vtt") if isinstance(sub, dict) else str(sub)
+                    for sub in subs
+                ]
+            else:
+                formats_list = ["vtt"]
+            auto_lang = f"{lang} (Auto)" if lang not in subtitles else lang
+            if formats_list:
+                subtitles[auto_lang] = formats_list
+
+    return subtitles
+
+
+def _process_streams(
+    info_dict: Dict[str, Any], formats: List[Any]
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Process video and audio streams from yt-dlp info."""
+    video_streams: List[Dict[str, Any]] = []
+    audio_streams: List[Dict[str, Any]] = []
+
+    # If no formats but direct is True (generic file handled by yt-dlp)
+    if not formats and info_dict.get("direct"):
+        video_streams.append(
+            {
+                "format_id": "direct",
+                "ext": info_dict.get("ext", "unknown"),
+                "resolution": "N/A",
+                "filesize": None,
+                "url": info_dict.get("url"),
+            }
+        )
+    else:
+        # Handle possible None for formats
+        formats_iter = formats if formats is not None else []
+        for f in formats_iter:
+            if f.get("vcodec") != "none":
+                video_streams.append(
+                    {
+                        "format_id": f.get("format_id"),
+                        "ext": f.get("ext"),
+                        "resolution": f.get("resolution"),
+                        "fps": f.get("fps"),
+                        "vcodec": f.get("vcodec"),
+                        "acodec": f.get("acodec"),
+                        "filesize": f.get("filesize"),
+                    }
+                )
+            elif f.get("vcodec") == "none" and f.get("acodec") != "none":
+                audio_streams.append(
+                    {
+                        "format_id": f.get("format_id"),
+                        "ext": f.get("ext"),
+                        "abr": f.get("abr"),
+                        "acodec": f.get("acodec"),
+                        "filesize": f.get("filesize"),
+                    }
+                )
+    return video_streams, audio_streams
+
+
 def get_video_info(
     url: str,
     cookies_from_browser: Optional[str] = None,
@@ -40,29 +173,9 @@ def get_video_info(
     Fetches video metadata without downloading the video.
     Tries yt-dlp first, then falls back to Telegram scraping or Generic file check.
     """
-
     # 1. Check for Telegram URL explicitly first (faster)
     if TelegramExtractor.is_telegram_url(url):
-        logger.info("Detected Telegram URL. Attempting to scrape...")
-        info = TelegramExtractor.get_metadata(url)
-        if info:
-            # Map to standard structure
-            return {
-                "title": info.get("title", "Unknown"),
-                "thumbnail": info.get("thumbnail"),
-                "duration": "N/A",
-                "subtitles": {},
-                "video_streams": [
-                    {
-                        "format_id": "telegram_direct",
-                        "ext": "mp4",
-                        "resolution": "Unknown",
-                        "filesize": None,
-                    }
-                ],
-                "audio_streams": [],
-                "original_url": url,
-            }
+        return _extract_telegram_info(url)
 
     try:
         ydl_opts: Dict[str, Any] = {
@@ -73,7 +186,7 @@ def get_video_info(
         }
 
         if cookies_from_browser:
-            logger.debug(f"Using browser cookies from: {cookies_from_browser}")
+            logger.debug("Using browser cookies from: %s", cookies_from_browser)
             # Tuple cast for mypy
             cookies_tuple: Tuple[str, Optional[str]] = (
                 cookies_from_browser,
@@ -81,7 +194,7 @@ def get_video_info(
             )
             ydl_opts["cookies_from_browser"] = cookies_tuple
 
-        logger.info(f"Fetching video info for: {url}")
+        logger.info("Fetching video info for: %s", url)
 
         # Wrap extraction in timeout
         with extraction_timeout(45):
@@ -98,97 +211,12 @@ def get_video_info(
                 logger.debug(
                     "yt-dlp returned Generic extractor with no formats. Trying GenericExtractor fallback."
                 )
-                generic_info = GenericExtractor.get_metadata(url)
+                generic_info = _extract_generic_info(url)
                 if generic_info:
-                    return {
-                        "title": generic_info.get("title"),
-                        "thumbnail": None,
-                        "duration": "N/A",
-                        "subtitles": {},
-                        "video_streams": [
-                            {
-                                "format_id": "direct",
-                                "ext": "unknown",
-                                "filesize": generic_info.get("filesize"),
-                                "resolution": "N/A",
-                            }
-                        ],
-                        "audio_streams": [],
-                        "original_url": url,
-                    }
+                    return generic_info
 
-            # Process yt-dlp info
-            subtitles: Dict[str, List[str]] = {}
-
-            # Check manual subtitles
-            raw_subs = info_dict.get("subtitles")
-            if raw_subs and hasattr(raw_subs, "items"):
-                for lang, subs in raw_subs.items():
-                    if isinstance(subs, list):
-                        formats_list = [
-                            sub.get("ext", "vtt") if isinstance(sub, dict) else str(sub)
-                            for sub in subs
-                        ]
-                    else:
-                        formats_list = ["vtt"]
-                    if formats_list:
-                        subtitles[lang] = formats_list
-
-            # Check automatic captions
-            raw_auto = info_dict.get("automatic_captions")
-            if raw_auto and hasattr(raw_auto, "items"):
-                for lang, subs in raw_auto.items():
-                    if isinstance(subs, list):
-                        formats_list = [
-                            sub.get("ext", "vtt") if isinstance(sub, dict) else str(sub)
-                            for sub in subs
-                        ]
-                    else:
-                        formats_list = ["vtt"]
-                    auto_lang = f"{lang} (Auto)" if lang not in subtitles else lang
-                    if formats_list:
-                        subtitles[auto_lang] = formats_list
-
-            video_streams: List[Dict[str, Any]] = []
-            audio_streams: List[Dict[str, Any]] = []
-
-            # If no formats but direct is True (generic file handled by yt-dlp)
-            if not formats and info_dict.get("direct"):
-                video_streams.append(
-                    {
-                        "format_id": "direct",
-                        "ext": info_dict.get("ext", "unknown"),
-                        "resolution": "N/A",
-                        "filesize": None,
-                        "url": info_dict.get("url"),
-                    }
-                )
-            else:
-                # Handle possible None for formats
-                formats_iter = formats if formats is not None else []
-                for f in formats_iter:
-                    if f.get("vcodec") != "none":
-                        video_streams.append(
-                            {
-                                "format_id": f.get("format_id"),
-                                "ext": f.get("ext"),
-                                "resolution": f.get("resolution"),
-                                "fps": f.get("fps"),
-                                "vcodec": f.get("vcodec"),
-                                "acodec": f.get("acodec"),
-                                "filesize": f.get("filesize"),
-                            }
-                        )
-                    elif f.get("vcodec") == "none" and f.get("acodec") != "none":
-                        audio_streams.append(
-                            {
-                                "format_id": f.get("format_id"),
-                                "ext": f.get("ext"),
-                                "abr": f.get("abr"),
-                                "acodec": f.get("acodec"),
-                                "filesize": f.get("filesize"),
-                            }
-                        )
+            subtitles = _process_subtitles(info_dict)
+            video_streams, audio_streams = _process_streams(info_dict, formats)
 
             result = {
                 "title": info_dict.get("title", "N/A"),
@@ -201,32 +229,14 @@ def get_video_info(
                 "original_url": url,
             }
 
-            logger.info(f"Successfully fetched video info: {result['title']}")
+            logger.info("Successfully fetched video info: %s", result["title"])
             return result
 
     except yt_dlp.utils.DownloadError as e:
-        logger.warning(f"yt-dlp failed: {e}. Trying Generic/Telegram fallback.")
-
+        logger.warning("yt-dlp failed: %s. Trying Generic/Telegram fallback.", e)
         # Fallback for when yt-dlp fails (e.g. unknown service)
-        generic_info = GenericExtractor.get_metadata(url)
-        if generic_info:
-            return {
-                "title": generic_info.get("title"),
-                "thumbnail": None,
-                "duration": "N/A",
-                "subtitles": {},
-                "video_streams": [
-                    {
-                        "format_id": "direct",
-                        "ext": "unknown",
-                        "filesize": generic_info.get("filesize"),
-                        "resolution": "N/A",
-                    }
-                ],
-                "audio_streams": [],
-                "original_url": url,
-            }
-        return None
-    except Exception as e:
-        logger.error(f"Unexpected error while fetching video info: {e}", exc_info=True)
+        return _extract_generic_info(url)
+
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.error("Unexpected error while fetching video info: %s", e, exc_info=True)
         return None

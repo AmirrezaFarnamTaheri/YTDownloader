@@ -7,11 +7,9 @@ import logging
 import os
 import re
 import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Mapping
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
 from ui_utils import validate_url
 
@@ -29,7 +27,7 @@ class GenericDownloader:
     """
 
     @staticmethod
-    def _get_filename_from_headers(url: str, headers: Dict[str, Any]) -> str:
+    def _get_filename_from_headers(url: str, headers: Mapping[str, str]) -> str:
         """Extract filename from Content-Disposition header or fallback to URL."""
         filename = ""
         cd = headers.get("Content-Disposition")
@@ -53,7 +51,7 @@ class GenericDownloader:
         filename = os.path.basename(filename)
         # Stricter allowlist approach (A-Z, a-z, 0-9, -, _, .)
         # This replaces the blocklist approach to ensure safety across all filesystems
-        filename = re.sub(r'[^A-Za-z0-9\-\_\.]', '', filename).strip()
+        filename = re.sub(r"[^A-Za-z0-9\-\_\.]", "", filename).strip()
 
         # Neutralize dot-only or traversal-like names
         if filename in {".", ".."}:
@@ -106,8 +104,10 @@ class GenericDownloader:
 
         # Check standard threading.Event/CancelToken interfaces
         if hasattr(token, "is_set") and token.is_set():
+            # pylint: disable=broad-exception-raised
             raise InterruptedError("Download Cancelled by user")
         if hasattr(token, "cancelled") and token.cancelled:
+            # pylint: disable=broad-exception-raised
             raise InterruptedError("Download Cancelled by user")
 
         # Check for explicit check() method (used in tests)
@@ -117,6 +117,7 @@ class GenericDownloader:
             except Exception as e:
                 # If check raises exception, we propagate it or wrap it
                 if "Cancel" in str(e):
+                    # pylint: disable=broad-exception-raised
                     raise InterruptedError("Download Cancelled by user") from e
                 raise
 
@@ -155,7 +156,7 @@ class GenericDownloader:
             try:
                 os.makedirs(output_path, exist_ok=True)
             except OSError as e:
-                raise ValueError(f"Invalid output path: {e}")
+                raise ValueError(f"Invalid output path: {e}") from e
 
         # Initial HEAD request to resolve redirects and get filename/size
         try:
@@ -171,7 +172,7 @@ class GenericDownloader:
                 filename = GenericDownloader._get_filename_from_headers(url, h.headers)
         except InterruptedError:
             raise
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             # Fallback if HEAD fails (some servers block HEAD)
             final_url = url
             total_size = 0
@@ -181,7 +182,7 @@ class GenericDownloader:
         # Sanitize filename again just in case (e.g. if filename came from arg)
         filename = os.path.basename(filename)
         # Stricter allowlist approach
-        filename = re.sub(r'[^A-Za-z0-9\-\_\.]', '', filename).strip()
+        filename = re.sub(r"[^A-Za-z0-9\-\_\.]", "", filename).strip()
 
         final_path = os.path.join(output_path, filename)
 
@@ -300,7 +301,7 @@ class GenericDownloader:
                                     try:
                                         f.flush()
                                         os.fsync(f.fileno())
-                                    except Exception:
+                                    except Exception:  # pylint: disable=broad-exception-caught
                                         pass
 
                     if progress_hook:
