@@ -171,7 +171,9 @@ def build_installer():
         subprocess.check_call(cmd)
         print("\n[OK] Build completed successfully\n")
     except subprocess.CalledProcessError as e:
-        print(f"\n[ERROR] Build failed with exit code {e.returncode}\n", file=sys.stderr)
+        print(
+            f"\n[ERROR] Build failed with exit code {e.returncode}\n", file=sys.stderr
+        )
         sys.exit(1)
 
     if sys.platform == "darwin":
@@ -193,7 +195,9 @@ def build_installer():
                 )
                 sys.exit(1)
         else:
-            print("[WARNING] Inno Setup (iscc) not found. Skipping installer generation.")
+            print(
+                "[WARNING] Inno Setup (iscc) not found. Skipping installer generation."
+            )
             print("[INFO] Standalone executable is in dist/StreamCatch.exe\n")
     else:
         print("Non-Windows platform: standalone binary built.")
