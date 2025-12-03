@@ -49,9 +49,10 @@ class DownloadOptions:
         if self.start_time and self.end_time and start_sec >= end_sec:
             raise ValueError("Start time must be before end time")
 
-    def get_seconds(self, time_str: Optional[str]) -> float:
+    @staticmethod
+    def get_seconds(time_str: Optional[str]) -> float:
         """Public method to parse time string."""
-        return self._parse_time(time_str)
+        return DownloadOptions._parse_time(time_str)
 
     @staticmethod
     def _parse_time(time_str: Optional[str]) -> float:

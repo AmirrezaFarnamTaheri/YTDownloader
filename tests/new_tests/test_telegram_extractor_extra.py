@@ -17,12 +17,12 @@ class TestTelegramExtractorExtra(unittest.TestCase):
         with patch("downloader.extractors.telegram.requests.get") as mock_get:
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.content = b"""
+            mock_response.iter_content.return_value = [b"""
                 <html>
                     <video src="http://video.mp4"></video>
                 </html>
-            """
-            mock_get.return_value = mock_response
+            """]
+            mock_get.return_value.__enter__.return_value = mock_response
 
             # Test URL already having embed (logic check mainly in what requests gets called with?)
             # Actually extract() fetches the URL as given.
@@ -32,7 +32,7 @@ class TestTelegramExtractorExtra(unittest.TestCase):
             TelegramExtractor.extract("http://t.me/c/1?embed=1", output_path="/tmp")
 
             mock_get.assert_called_with(
-                "http://t.me/c/1?embed=1", headers=unittest.mock.ANY, timeout=15
+                "http://t.me/c/1?embed=1", headers=unittest.mock.ANY, timeout=15, stream=True
             )
 
     @patch("downloader.extractors.telegram.GenericDownloader.download")
@@ -43,13 +43,13 @@ class TestTelegramExtractorExtra(unittest.TestCase):
             mock_response = MagicMock()
             mock_response.status_code = 200
             # HTML with video but empty text
-            mock_response.content = b"""
+            mock_response.iter_content.return_value = [b"""
                 <html>
                     <video src="http://video.mp4"></video>
                     <div class="tgme_widget_message_text"></div>
                 </html>
-            """
-            mock_get.return_value = mock_response
+            """]
+            mock_get.return_value.__enter__.return_value = mock_response
 
             info = TelegramExtractor.extract("http://t.me/c/123", output_path="/tmp")
 

@@ -5,8 +5,13 @@ Unit tests for UI utility functions.
 import unittest
 from unittest.mock import patch
 
-from ui_utils import (format_file_size, is_ffmpeg_available, validate_proxy,
-                      validate_rate_limit, validate_url)
+from ui_utils import (
+    format_file_size,
+    is_ffmpeg_available,
+    validate_proxy,
+    validate_rate_limit,
+    validate_url,
+)
 
 
 class TestUIUtils(unittest.TestCase):

@@ -1,6 +1,7 @@
 """
 Module for fetching video metadata using yt-dlp or fallback extractors.
 """
+
 import logging
 import os
 import signal
