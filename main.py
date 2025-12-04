@@ -103,7 +103,13 @@ def main(pg: ft.Page):
     logger.info("Initializing main UI...")
 
     PAGE.title = "StreamCatch - Ultimate Downloader"
-    PAGE.theme_mode = ft.ThemeMode.DARK
+
+    # Load Theme Mode from Config
+    theme_mode_str = state.config.get("theme_mode", "dark").lower()
+    PAGE.theme_mode = (
+        ft.ThemeMode.LIGHT if theme_mode_str == "light" else ft.ThemeMode.DARK
+    )
+
     PAGE.padding = 0
     PAGE.window_min_width = 1100
     PAGE.window_min_height = 800
@@ -245,6 +251,8 @@ def global_crash_handler(exctype, value, tb):
 
                 msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
                 ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
+            except OSError:
+                pass
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
     except Exception:  # pylint: disable=broad-exception-caught
