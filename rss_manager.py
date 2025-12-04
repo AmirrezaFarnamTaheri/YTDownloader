@@ -25,7 +25,11 @@ def safe_log_warning(msg, *args):
     """Safely log a warning message, ignoring closed stream errors."""
     try:
         # Check if sys.stderr/stdout are closed (common during interpreter shutdown)
-        if sys.stderr is None or sys.stderr.closed:
+        if not sys or not sys.stderr or sys.stderr.closed:
+            return
+
+        # Double check handlers to avoid "No handlers could be found" or closed file errors in handlers
+        if not logger.handlers and not logging.root.handlers:
             return
 
         if logger.isEnabledFor(logging.WARNING):
@@ -40,7 +44,10 @@ def safe_log_warning(msg, *args):
 def safe_log_error(msg, *args):
     """Safely log an error message, ignoring closed stream errors."""
     try:
-        if sys.stderr is None or sys.stderr.closed:
+        if not sys or not sys.stderr or sys.stderr.closed:
+            return
+
+        if not logger.handlers and not logging.root.handlers:
             return
 
         if logger.isEnabledFor(logging.ERROR):

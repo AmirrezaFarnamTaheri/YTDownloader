@@ -5,10 +5,10 @@ Extracts metadata and media URLs from public Telegram posts (t.me/...).
 
 import logging
 import re
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from downloader.utils.constants import RESERVED_FILENAMES
 from ui_utils import validate_url
@@ -55,29 +55,32 @@ class TelegramExtractor:
             soup = BeautifulSoup(content, "html.parser")
 
             # Extract Title/Description
+            title: Union[str, None] = "Telegram Video"
             title_tag = soup.find("meta", property="og:description")
-            title = (
-                title_tag["content"]
-                if title_tag and isinstance(title_tag, dict)
-                else "Telegram Video"
-            )
-            # Handle Tag object (bs4) vs dict
-            if hasattr(title_tag, 'get'):
-                title = title_tag.get('content', 'Telegram Video')
+
+            if isinstance(title_tag, Tag):
+                content_attr = title_tag.get("content")
+                if isinstance(content_attr, str):
+                    title = content_attr
+                elif isinstance(content_attr, list):
+                     title = str(content_attr[0])
 
             # Extract Video URL
-            video_tag = soup.find("video")
             video_url = None
-            if video_tag:
+            video_tag = soup.find("video")
+
+            if isinstance(video_tag, Tag):
                 src = video_tag.get("src")
-                if src:
-                    video_url = str(src)
+                if isinstance(src, str):
+                    video_url = src
 
             # If no video tag, check for og:video
             if not video_url:
                 og_vid = soup.find("meta", property="og:video")
-                if og_vid:
-                    video_url = og_vid.get("content")
+                if isinstance(og_vid, Tag):
+                    content_attr = og_vid.get("content")
+                    if isinstance(content_attr, str):
+                        video_url = content_attr
 
             # Validate extracted URL
             if video_url and not video_url.startswith("http"):
@@ -91,8 +94,10 @@ class TelegramExtractor:
             # Extract Thumbnail
             thumbnail = None
             og_image = soup.find("meta", property="og:image")
-            if og_image:
-                thumbnail = og_image.get("content")
+            if isinstance(og_image, Tag):
+                content_attr = og_image.get("content")
+                if isinstance(content_attr, str):
+                    thumbnail = content_attr
 
             return {
                 "url": video_url,

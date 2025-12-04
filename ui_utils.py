@@ -216,16 +216,20 @@ def open_folder(path: str, page: Optional[ft.Page] = None) -> bool:
             abs_path = os.path.dirname(abs_path)
 
         # Mobile / Web Logic
-        if page and page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS]:
-             # Try launch_url with file scheme
-             # Note: Mobile sandboxing often prevents this without specific permissions/plugins
-             # but this is the best Flet effort.
-             page.launch_url(f"file://{abs_path}")
-             return True
-        elif page and page.platform == ft.PagePlatform.MACOS:
-             # If running as macOS app bundle (not in browser)
-             if sys.platform != "darwin": # Remote browser?
-                  return False
+        if page and page.platform in [  # type: ignore
+            ft.PagePlatform.ANDROID,
+            ft.PagePlatform.IOS,
+        ]:
+            # Try launch_url with file scheme
+            # Note: Mobile sandboxing often prevents this without specific permissions/plugins
+            # but this is the best Flet effort.
+            page.launch_url(f"file://{abs_path}")  # type: ignore
+            return True
+
+        if page and page.platform == ft.PagePlatform.MACOS:  # type: ignore
+            # If running as macOS app bundle (not in browser)
+            if sys.platform != "darwin":  # Remote browser?
+                return False
 
         sys_plat = platform.system()
 
@@ -263,18 +267,22 @@ def play_file(path: str, page: Optional[ft.Page] = None) -> bool:
             return False
 
         # Mobile / Web Logic
-        if page and page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS]:
-             page.launch_url(f"file://{abs_path}")
-             return True
-        elif page and page.platform == ft.PagePlatform.MACOS:
-             if sys.platform != "darwin":
-                  return False
+        if page and page.platform in [  # type: ignore
+            ft.PagePlatform.ANDROID,
+            ft.PagePlatform.IOS,
+        ]:
+            page.launch_url(f"file://{abs_path}")  # type: ignore
+            return True
+
+        if page and page.platform == ft.PagePlatform.MACOS:  # type: ignore
+            if sys.platform != "darwin":
+                return False
 
         sys_plat = platform.system()
 
         if sys_plat == "Windows":
-             # pylint: disable=no-member
-            os.startfile(abs_path) # type: ignore
+            # pylint: disable=no-member
+            os.startfile(abs_path)  # type: ignore
             return True
 
         cmd = ["open", abs_path] if sys_plat == "Darwin" else ["xdg-open", abs_path]
