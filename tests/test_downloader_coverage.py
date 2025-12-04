@@ -56,46 +56,42 @@ class TestDownloaderCoverage(unittest.TestCase):
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
+    @patch("shutil.which")
     def test_download_video_options_time_range(
-        self, mock_wrapper_class, mock_is_telegram
+        self, mock_which, mock_wrapper_class, mock_is_telegram
     ):
         mock_is_telegram.return_value = False
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
-        # Ensure ffmpeg available for ranges
-        with patch("downloader.core.state") as mock_state:
-            mock_state.ffmpeg_available = True
+        options = DownloadOptions(
+            url="http://yt.link",
+            output_path=".",
+            start_time="00:01",
+            end_time="00:05",
+        )
+        download_video(options)
 
-            options = DownloadOptions(
-                url="http://yt.link",
-                output_path=".",
-                start_time="00:01",
-                end_time="00:05",
-            )
-            download_video(options)
-
-            # Check options passed to wrapper
-            call_args = mock_wrapper_class.call_args[0][0]
-            self.assertIn("download_ranges", call_args)
+        # Check options passed to wrapper
+        call_args = mock_wrapper_class.call_args[0][0]
+        self.assertIn("download_ranges", call_args)
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
+    @patch("shutil.which")
     def test_download_video_options_gpu_accel(
-        self, mock_wrapper_class, mock_is_telegram
+        self, mock_which, mock_wrapper_class, mock_is_telegram
     ):
         mock_is_telegram.return_value = False
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
-        # Ensure ffmpeg available
-        with patch("downloader.core.state") as mock_state:
-            mock_state.ffmpeg_available = True
+        options = DownloadOptions(
+            url="http://yt.link", output_path=".", gpu_accel="cuda"
+        )
+        download_video(options)
 
-            options = DownloadOptions(
-                url="http://yt.link", output_path=".", gpu_accel="cuda"
-            )
-            download_video(options)
-
-            call_args = mock_wrapper_class.call_args[0][0]
-            self.assertIn("postprocessor_args", call_args)
-            self.assertEqual(call_args["postprocessor_args"]["ffmpeg"][1], "cuda")
+        call_args = mock_wrapper_class.call_args[0][0]
+        self.assertIn("postprocessor_args", call_args)
+        self.assertEqual(call_args["postprocessor_args"]["ffmpeg"][1], "cuda")
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
@@ -133,22 +129,21 @@ class TestDownloaderCoverage(unittest.TestCase):
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_no_ffmpeg(self, mock_wrapper_class, mock_is_telegram):
+    @patch("shutil.which")
+    def test_download_video_no_ffmpeg(self, mock_which, mock_wrapper_class, mock_is_telegram):
         mock_is_telegram.return_value = False
+        mock_which.return_value = None  # No FFmpeg
 
-        with patch("downloader.core.state") as mock_state:
-            mock_state.ffmpeg_available = False
+        options = DownloadOptions(url="http://yt.link", video_format="audio")
+        download_video(options)
 
-            options = DownloadOptions(url="http://yt.link", video_format="audio")
-            download_video(options)
-
-            # Should have disabled postprocessors or merging
-            call_args = mock_wrapper_class.call_args[0][0]
-            # When format is audio but no ffmpeg, it sets format to bestaudio/best
-            self.assertEqual(call_args["format"], "bestaudio/best")
-            # And potentially clears postprocessors or sets generic
-            # Code: if not ffmpeg ... ydl_opts["postprocessors"] = []
-            self.assertEqual(call_args.get("postprocessors"), [])
+        # Should have disabled postprocessors or merging
+        call_args = mock_wrapper_class.call_args[0][0]
+        # When format is audio but no ffmpeg, it sets format to bestaudio/best
+        self.assertEqual(call_args["format"], "bestaudio/best")
+        # And potentially clears postprocessors or sets generic
+        # Code: if not ffmpeg ... ydl_opts["postprocessors"] = []
+        self.assertEqual(call_args.get("postprocessors"), [])
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")

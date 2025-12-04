@@ -25,36 +25,43 @@ class TestFeatureVerification(unittest.TestCase):
         mock_download.assert_called()
 
     @patch("downloader.core.YTDLPWrapper")
-    def test_downloader_arguments_partial(self, mock_wrapper_class):
+    @patch("shutil.which")
+    def test_downloader_arguments_partial(self, mock_which, mock_wrapper_class):
         """Verify that start/end time arguments are passed to yt-dlp."""
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
         item = {}
 
         def hook(d):
             pass
 
-        # Ensure ffmpeg available
-        with patch("downloader.core.state") as mock_state:
-            mock_state.ffmpeg_available = True
+        options = DownloadOptions(
+            url="http://example.com",
+            progress_hook=hook,
+            download_item=item,
+            start_time="00:01:00",
+            end_time="00:02:00",
+        )
+        download_video(options)
 
-            options = DownloadOptions(
-                url="http://example.com",
-                progress_hook=hook,
-                download_item=item,
-                start_time="00:01:00",
-                end_time="00:02:00",
-            )
-            download_video(options)
-
-            args, kwargs = mock_wrapper_class.call_args
-            opts = args[0]
-            self.assertIn("download_ranges", opts)
+        args, kwargs = mock_wrapper_class.call_args
+        opts = args[0]
+        self.assertIn("download_ranges", opts)
 
     @patch("downloader.core.YTDLPWrapper")
     @patch("shutil.which")
     def test_downloader_arguments_aria2c(self, mock_which, mock_wrapper_class):
         """Verify that aria2c arguments are passed."""
-        mock_which.return_value = "/usr/bin/aria2c"
+        # Need mock_which to return valid path for aria2c check
+        # But download_video also checks ffmpeg, so we might need side_effect
+        def side_effect(cmd):
+            if cmd == "aria2c":
+                return "/usr/bin/aria2c"
+            if cmd == "ffmpeg":
+                return "/usr/bin/ffmpeg"
+            return None
+
+        mock_which.side_effect = side_effect
 
         item = {}
 
@@ -74,29 +81,27 @@ class TestFeatureVerification(unittest.TestCase):
         self.assertEqual(opts["external_downloader"], "aria2c")
 
     @patch("downloader.core.YTDLPWrapper")
-    def test_downloader_arguments_gpu(self, mock_wrapper_class):
+    @patch("shutil.which")
+    def test_downloader_arguments_gpu(self, mock_which, mock_wrapper_class):
         """Verify that GPU arguments are added to postprocessor args."""
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
         item = {}
 
         def hook(d):
             pass
 
-        # Ensure ffmpeg available
-        with patch("downloader.core.state") as mock_state:
-            mock_state.ffmpeg_available = True
+        options = DownloadOptions(
+            url="http://example.com",
+            progress_hook=hook,
+            download_item=item,
+            gpu_accel="cuda",
+        )
+        download_video(options)
 
-            options = DownloadOptions(
-                url="http://example.com",
-                progress_hook=hook,
-                download_item=item,
-                gpu_accel="cuda",
-            )
-            download_video(options)
-
-            args, kwargs = mock_wrapper_class.call_args
-            opts = args[0]
-            self.assertIn("-hwaccel", opts["postprocessor_args"]["ffmpeg"])
+        args, kwargs = mock_wrapper_class.call_args
+        opts = args[0]
+        self.assertIn("-hwaccel", opts["postprocessor_args"]["ffmpeg"])
 
 
 if __name__ == "__main__":

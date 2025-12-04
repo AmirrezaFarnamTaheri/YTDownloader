@@ -167,11 +167,11 @@ def global_crash_handler(exctype, value, tb):
         print("=" * 60 + "\n", file=sys.stderr)
 
         if os.name == "nt":
-            # Only show message box if we have a UI or are not headless?
-            # We can't easily detect headless, but we can try catch
+             # Try to show message box in a separate thread to avoid blocking if possible,
+             # but here we are crashing anyway.
             try:
                 import ctypes  # pylint: disable=import-outside-toplevel
-
+                # MessageBoxW blocks, but since we are crashing, it's fine.
                 msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
                 ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
             except OSError:
@@ -198,20 +198,15 @@ if __name__ == "__main__":
     print("=" * 60 + "\n")
 
     try:
-        with timeout_manager(30, "Startup timed out"):
-            try:
-                logger.info("Initializing AppState...")
-                _ = state  # Force singleton initialization
-                logger.info("AppState initialized successfully")
-            except Exception as e:
-                # pylint: disable=broad-exception-caught
-                print(f"ERROR: Failed to initialize AppState: {e}", file=sys.stderr)
-                traceback.print_exc()
-                sys.exit(1)
-
-            logger.info("Starting Flet application...")
-    except TimeoutError as e:
-        print(f"FATAL: Startup timeout - {e}", file=sys.stderr)
+        # Initialize AppState first to fail fast if config/DB is broken
+        logger.info("Initializing AppState...")
+        # Accessing state triggers initialization
+        _ = state
+        logger.info("AppState initialized successfully")
+    except Exception as e:
+        # pylint: disable=broad-exception-caught
+        print(f"ERROR: Failed to initialize AppState: {e}", file=sys.stderr)
+        traceback.print_exc()
         sys.exit(1)
 
     if os.environ.get("FLET_WEB"):

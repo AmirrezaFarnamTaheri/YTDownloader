@@ -115,7 +115,7 @@ class TestDownloadViewCoverage(unittest.TestCase):
             self.mock_state,
         )
 
-        with patch("ui_utils.open_folder") as mock_open:
+        with patch("views.download_view.open_folder") as mock_open:
             mock_open.side_effect = Exception("Failed")
             # Should log error but not crash
             view._open_downloads_folder()

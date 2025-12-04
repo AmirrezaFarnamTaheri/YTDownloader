@@ -17,6 +17,7 @@ class DummyPage:
         self.theme_mode = ft.ThemeMode.SYSTEM
         self.navigation_bar = None
         self.on_resized = None
+        self.platform = ft.PagePlatform.LINUX
 
     def update(self):
         pass
@@ -107,33 +108,21 @@ class TestUIExtended(unittest.TestCase):
 
     def test_app_layout_init(self):
         nav_cb = MagicMock()
-        clip_cb = MagicMock()
 
-        # Verify type
-        print(f"DEBUG: Type of mock_page is {type(self.mock_page)}")
+        layout = AppLayout(self.mock_page, nav_cb)
 
-        layout = AppLayout(self.mock_page, nav_cb, clip_cb)
-
-        self.assertIsInstance(layout.view, ft.Row)
         self.assertIsInstance(layout.rail, ft.NavigationRail)
+        self.assertIsInstance(layout.content_area, ft.Container)
 
     def test_app_layout_clipboard_toggle(self):
-        nav_cb = MagicMock()
-        clip_cb = MagicMock()
-
-        layout = AppLayout(self.mock_page, nav_cb, clip_cb)
-
-        e = MagicMock()
-        e.control.value = True
-        layout._on_clipboard_toggle(e)
-
-        clip_cb.assert_called_with(True)
+        # This test was checking a callback that is no longer in AppLayout
+        # So we remove/adapt it. AppLayout doesn't handle clipboard toggle anymore.
+        pass
 
     def test_app_layout_set_content(self):
         nav_cb = MagicMock()
-        clip_cb = MagicMock()
 
-        layout = AppLayout(self.mock_page, nav_cb, clip_cb)
+        layout = AppLayout(self.mock_page, nav_cb)
         layout.content_area.update = MagicMock()
 
         content = ft.Text("New Content")

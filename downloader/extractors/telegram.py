@@ -61,6 +61,9 @@ class TelegramExtractor:
                 if title_tag and isinstance(title_tag, dict)
                 else "Telegram Video"
             )
+            # Handle Tag object (bs4) vs dict
+            if hasattr(title_tag, 'get'):
+                title = title_tag.get('content', 'Telegram Video')
 
             # Extract Video URL
             video_tag = soup.find("video")

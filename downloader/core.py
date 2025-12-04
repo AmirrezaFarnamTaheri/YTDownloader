@@ -14,7 +14,6 @@ from typing import Any, Dict, Optional
 
 import yt_dlp
 
-from app_state import state
 from downloader.engines.generic import GenericDownloader
 from downloader.engines.ytdlp import YTDLPWrapper
 from downloader.extractors.telegram import TelegramExtractor
@@ -265,7 +264,8 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
     }
 
     # 4a. Check FFmpeg availability
-    ffmpeg_available = getattr(state, "ffmpeg_available", True)
+    # Check directly instead of relying on global state
+    ffmpeg_available = shutil.which("ffmpeg") is not None
 
     # 4b. Configure Post-processors
     _configure_postprocessors(ydl_opts, options, ffmpeg_available)

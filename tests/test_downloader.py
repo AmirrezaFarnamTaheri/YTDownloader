@@ -235,32 +235,31 @@ class TestDownloadVideo(unittest.TestCase):
 
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_with_chapters(self, mock_wrapper_class, mock_mkdir):
+    @patch("shutil.which")
+    def test_download_video_with_chapters(self, mock_which, mock_wrapper_class, mock_mkdir):
         """Test video download with chapter splitting."""
         progress_hook = MagicMock()
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
-        with patch("downloader.core.state") as mock_state:
-            mock_state.ffmpeg_available = True
+        options = DownloadOptions(
+            url="https://www.youtube.com/watch?v=test",
+            progress_hook=progress_hook,
+            playlist=False,
+            video_format="best",
+            output_path="/tmp",
+            subtitle_lang=None,
+            subtitle_format="srt",
+            split_chapters=True,
+            proxy=None,
+            rate_limit=None,
+            cancel_token=None,
+        )
+        download_video(options)
 
-            options = DownloadOptions(
-                url="https://www.youtube.com/watch?v=test",
-                progress_hook=progress_hook,
-                playlist=False,
-                video_format="best",
-                output_path="/tmp",
-                subtitle_lang=None,
-                subtitle_format="srt",
-                split_chapters=True,
-                proxy=None,
-                rate_limit=None,
-                cancel_token=None,
-            )
-            download_video(options)
-
-            args, kwargs = mock_wrapper_class.call_args
-            ydl_opts = args[0]
-            pps = ydl_opts.get("postprocessors", [])
-            self.assertTrue(any(p["key"] == "FFmpegSplitChapters" for p in pps))
+        args, kwargs = mock_wrapper_class.call_args
+        ydl_opts = args[0]
+        pps = ydl_opts.get("postprocessors", [])
+        self.assertTrue(any(p["key"] == "FFmpegSplitChapters" for p in pps))
 
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
@@ -446,41 +445,41 @@ class TestDownloadVideo(unittest.TestCase):
 
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_sponsorblock(self, mock_wrapper_class, mock_mkdir):
-        with patch("downloader.core.state") as mock_state:
-            mock_state.ffmpeg_available = True
+    @patch("shutil.which")
+    def test_download_video_sponsorblock(self, mock_which, mock_wrapper_class, mock_mkdir):
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
-            download_video(
-                DownloadOptions(
-                    url="test",
-                    progress_hook=lambda d: None,
-                    sponsorblock=True,
-                )
+        download_video(
+            DownloadOptions(
+                url="test",
+                progress_hook=lambda d: None,
+                sponsorblock=True,
             )
+        )
 
-            args, kwargs = mock_wrapper_class.call_args
-            ydl_opts = args[0]
-            pps = ydl_opts.get("postprocessors", [])
-            self.assertTrue(any(p["key"] == "SponsorBlock" for p in pps))
+        args, kwargs = mock_wrapper_class.call_args
+        ydl_opts = args[0]
+        pps = ydl_opts.get("postprocessors", [])
+        self.assertTrue(any(p["key"] == "SponsorBlock" for p in pps))
 
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_gpu_accel(self, mock_wrapper_class, mock_mkdir):
-        with patch("downloader.core.state") as mock_state:
-            mock_state.ffmpeg_available = True
+    @patch("shutil.which")
+    def test_download_video_gpu_accel(self, mock_which, mock_wrapper_class, mock_mkdir):
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
-            download_video(
-                DownloadOptions(
-                    url="test",
-                    progress_hook=lambda d: None,
-                    gpu_accel="cuda",
-                )
+        download_video(
+            DownloadOptions(
+                url="test",
+                progress_hook=lambda d: None,
+                gpu_accel="cuda",
             )
+        )
 
-            args, kwargs = mock_wrapper_class.call_args
-            ydl_opts = args[0]
-            self.assertIn("postprocessor_args", ydl_opts)
-            self.assertIn("-hwaccel", ydl_opts["postprocessor_args"]["ffmpeg"])
+        args, kwargs = mock_wrapper_class.call_args
+        ydl_opts = args[0]
+        self.assertIn("postprocessor_args", ydl_opts)
+        self.assertIn("-hwaccel", ydl_opts["postprocessor_args"]["ffmpeg"])
 
 
 if __name__ == "__main__":

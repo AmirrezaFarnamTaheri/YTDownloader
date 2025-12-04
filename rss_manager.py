@@ -118,7 +118,12 @@ class RSSManager:
                     root = safe_fromstring(content_text)
                 except Exception as e:
                     # Fallback or error logging
-                    safe_log_warning("defusedxml parse error for %s: %s", url, e)
+                    try:
+                        # Log inside a try block to catch closed file error on shutdown
+                        if logger.isEnabledFor(logging.WARNING):
+                            logger.warning("defusedxml parse error for %s: %s", url, e)
+                    except (ValueError, OSError):
+                        pass
 
             if root is None:
                 # If defusedxml failed or not available, try standard ET but careful
@@ -127,7 +132,11 @@ class RSSManager:
                 try:
                     root = ET.fromstring(content_text)
                 except ET.ParseError as e:
-                    safe_log_warning("XML parse error for %s: %s", url, e)
+                    try:
+                        if logger.isEnabledFor(logging.WARNING):
+                            logger.warning("XML parse error for %s: %s", url, e)
+                    except (ValueError, OSError):
+                        pass
                     return []
 
             items: List[Dict[str, Any]] = []
