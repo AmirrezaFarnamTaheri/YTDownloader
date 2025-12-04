@@ -62,7 +62,9 @@ class DownloadView(BaseView):
             expand=True,
             autofocus=True,
             on_submit=lambda e: self._on_fetch_click(e),
-            **Theme.get_input_decoration(hint_text=LM.get("url_placeholder"), prefix_icon=ft.Icons.LINK)
+            **Theme.get_input_decoration(
+                hint_text=LM.get("url_placeholder"), prefix_icon=ft.Icons.LINK
+            )
         )
 
         self.fetch_btn = ft.ElevatedButton(
@@ -161,13 +163,13 @@ class DownloadView(BaseView):
                             ft.Icons.FILE_UPLOAD,
                             tooltip=LM.get("batch_import"),
                             on_click=lambda _: self.on_batch_import(),
-                            icon_color=Theme.Text.SECONDARY
+                            icon_color=Theme.Text.SECONDARY,
                         ),
                         ft.IconButton(
                             ft.Icons.SCHEDULE,
                             tooltip=LM.get("schedule_download"),
                             on_click=lambda e: self.on_schedule(e),
-                            icon_color=Theme.Text.SECONDARY
+                            icon_color=Theme.Text.SECONDARY,
                         ),
                     ],
                     wrap=True,
@@ -185,7 +187,9 @@ class DownloadView(BaseView):
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
-        advanced_row = ft.Row([self.time_start, self.time_end, self.cookies_dd], spacing=10, wrap=True)
+        advanced_row = ft.Row(
+            [self.time_start, self.time_end, self.cookies_dd], spacing=10, wrap=True
+        )
 
         # Input Card Container
         input_container = ft.Container(
@@ -193,22 +197,20 @@ class DownloadView(BaseView):
                 [
                     url_row,
                     ft.Divider(height=20, color=Theme.Divider.COLOR),
-
                     # Dynamic Options Panel
                     self.options_container,
-
                     ft.Divider(height=10, color="transparent"),
-
                     # Advanced Collapsible (Simplified for now)
                     ft.ExpansionTile(
-                        title=ft.Text(LM.get("advanced_options"), weight=ft.FontWeight.BOLD),
+                        title=ft.Text(
+                            LM.get("advanced_options"), weight=ft.FontWeight.BOLD
+                        ),
                         controls=[
                             ft.Container(
-                                content=ft.Column([
-                                    advanced_row,
-                                    self.force_generic_cb
-                                ], spacing=10),
-                                padding=10
+                                content=ft.Column(
+                                    [advanced_row, self.force_generic_cb], spacing=10
+                                ),
+                                padding=10,
                             )
                         ],
                         collapsed_text_color=Theme.Text.SECONDARY,
@@ -242,7 +244,7 @@ class DownloadView(BaseView):
                     LM.get("open_downloads_folder"),
                     icon=ft.Icons.FOLDER_OPEN,
                     on_click=lambda _: self._open_downloads_folder(),
-                    style=ft.ButtonStyle(color=Theme.TEXT_MUTED)
+                    style=ft.ButtonStyle(color=Theme.TEXT_MUTED),
                 )
             )
 

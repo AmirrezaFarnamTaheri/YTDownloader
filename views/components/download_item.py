@@ -61,9 +61,7 @@ class DownloadItemControl(ft.Container):
             border_radius=3,
         )
 
-        self.info_text = ft.Text(
-            "", size=11, color=Theme.TEXT_MUTED
-        )
+        self.info_text = ft.Text("", size=11, color=Theme.TEXT_MUTED)
 
         self.action_row = ft.Row(spacing=0)
 
@@ -135,9 +133,12 @@ class DownloadItemControl(ft.Container):
         size = self.item.get("size", "")
 
         info_parts = []
-        if size: info_parts.append(size)
-        if speed: info_parts.append(speed)
-        if eta: info_parts.append(f"ETA: {eta}")
+        if size:
+            info_parts.append(size)
+        if speed:
+            info_parts.append(speed)
+        if eta:
+            info_parts.append(f"ETA: {eta}")
 
         self.info_text.value = " • ".join(info_parts)
 

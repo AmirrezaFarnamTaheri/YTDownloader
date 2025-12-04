@@ -12,6 +12,7 @@ import flet as ft
 from app_layout import AppLayout
 from app_state import state
 from views.base_view import BaseView
+
 # from views.dashboard_view import DashboardView # Dashboard removed from nav for now?
 # The AppLayout has 5 items: Download, Queue, History, RSS, Settings.
 # Dashboard seems extra or replaced by RSS/History?
@@ -60,8 +61,8 @@ class UIManager:
         on_reorder_item_callback,
         on_retry_item_callback,
         on_toggle_clipboard_callback,
-        on_play_callback,        # New
-        on_open_folder_callback, # New
+        on_play_callback,  # New
+        on_open_folder_callback,  # New
     ):
         """Initialize all views with their dependencies."""
 
@@ -101,14 +102,11 @@ class UIManager:
 
         # AppLayout expects `on_nav_change` as the second argument
         def on_nav_change(e):
-             # NavigationRail `on_change` event passes an object with `control.selected_index`
-             idx = e.control.selected_index
-             self.navigate_to(idx)
+            # NavigationRail `on_change` event passes an object with `control.selected_index`
+            idx = e.control.selected_index
+            self.navigate_to(idx)
 
-        self.app_layout = AppLayout(
-            self.page,
-            on_nav_change
-        )
+        self.app_layout = AppLayout(self.page, on_nav_change)
         self.app_layout.set_content(self.download_view)
 
         # Handle responsive layout logic if needed (AppLayout does basic rail toggle)

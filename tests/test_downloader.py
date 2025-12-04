@@ -236,7 +236,9 @@ class TestDownloadVideo(unittest.TestCase):
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
     @patch("shutil.which")
-    def test_download_video_with_chapters(self, mock_which, mock_wrapper_class, mock_mkdir):
+    def test_download_video_with_chapters(
+        self, mock_which, mock_wrapper_class, mock_mkdir
+    ):
         """Test video download with chapter splitting."""
         progress_hook = MagicMock()
         mock_which.return_value = "/usr/bin/ffmpeg"
@@ -446,7 +448,9 @@ class TestDownloadVideo(unittest.TestCase):
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
     @patch("shutil.which")
-    def test_download_video_sponsorblock(self, mock_which, mock_wrapper_class, mock_mkdir):
+    def test_download_video_sponsorblock(
+        self, mock_which, mock_wrapper_class, mock_mkdir
+    ):
         mock_which.return_value = "/usr/bin/ffmpeg"
 
         download_video(

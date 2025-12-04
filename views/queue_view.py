@@ -27,8 +27,8 @@ class QueueView(BaseView):
         on_cancel: Callable,
         on_remove: Callable,
         on_reorder: Callable,
-        on_play: Callable,        # New
-        on_open_folder: Callable, # New
+        on_play: Callable,  # New
+        on_open_folder: Callable,  # New
     ):
         super().__init__(LM.get("queue"), ft.Icons.QUEUE_MUSIC)
         self.queue_manager = queue_manager
@@ -60,14 +60,16 @@ class QueueView(BaseView):
                     content=ft.Column(
                         [
                             ft.Icon(ft.Icons.QUEUE, size=64, color=Theme.TEXT_MUTED),
-                            ft.Text(LM.get("no_items_found"), color=Theme.Text.SECONDARY),
+                            ft.Text(
+                                LM.get("no_items_found"), color=Theme.Text.SECONDARY
+                            ),
                         ],
                         alignment=ft.MainAxisAlignment.CENTER,
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
                     alignment=ft.alignment.center,
                     expand=True,
-                    height=300 # Approximate center
+                    height=300,  # Approximate center
                 )
             )
         else:

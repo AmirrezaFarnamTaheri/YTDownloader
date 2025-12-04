@@ -1,5 +1,9 @@
+"""
+Tests for DownloadItemControl component coverage.
+"""
+
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import flet as ft
 
@@ -7,7 +11,10 @@ from views.components.download_item import DownloadItemControl
 
 
 class TestDownloadItemControlCoverage(unittest.TestCase):
+    """Test suite for DownloadItemControl."""
+
     def test_build_and_init(self):
+        """Test basic build and initialization."""
         item = {
             "url": "http://example.com/video.mp4",
             "status": "Queued",
@@ -30,6 +37,7 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
         self.assertEqual(control.progress_bar.value, 0)
 
     def test_icon_logic(self):
+        """Test correct icon selection based on URL."""
         cases = [
             ("https://youtube.com/v/123", ft.Icons.VIDEO_LIBRARY),
             ("https://instagram.com/p/123", ft.Icons.PHOTO_CAMERA),
@@ -40,12 +48,7 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
         for url, expected_icon in cases:
             item = {"url": url, "status": "Queued"}
             control = DownloadItemControl(
-                item,
-                MagicMock(),
-                MagicMock(),
-                MagicMock(),
-                MagicMock(),
-                MagicMock()
+                item, MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
             )
 
             # Icon is inside the first Row -> Icon is first child
@@ -56,6 +59,7 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
             self.assertEqual(icon.name, expected_icon, f"Failed for {url}")
 
     def test_update_actions_logic(self):
+        """Test action buttons update based on status."""
         # Downloading state -> Cancel button
         item = {"url": "http://test", "status": "Downloading"}
         control = DownloadItemControl(
@@ -109,6 +113,7 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
         )
 
     def test_update_progress_logic(self):
+        """Test progress update logic."""
         item = {"url": "http://test", "status": "Queued"}
         control = DownloadItemControl(
             item, MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
@@ -142,6 +147,7 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
         control.update.assert_called()
 
     def test_action_callbacks(self):
+        """Test that buttons trigger correct callbacks."""
         # Test clicks trigger callbacks
         mock_cancel = MagicMock()
         mock_retry = MagicMock()
@@ -178,6 +184,7 @@ class TestDownloadItemControlCoverage(unittest.TestCase):
         )
         remove_btn.on_click(None)
         mock_remove.assert_called_with(item)
+
 
 if __name__ == "__main__":
     unittest.main()

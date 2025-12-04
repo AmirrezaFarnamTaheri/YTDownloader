@@ -43,7 +43,7 @@ class Theme:
 
     # Borders & Dividers
     BORDER = "#334155"  # Slate 700
-    DIVIDER = "#334155" # Alias for Divider color
+    DIVIDER = "#334155"  # Alias for Divider color
 
     # --- Subclasses for Usage ---
     class Surface:

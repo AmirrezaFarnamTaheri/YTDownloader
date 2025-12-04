@@ -1,7 +1,10 @@
+"""
+Tests for HistoryView coverage.
+"""
+
 from unittest.mock import MagicMock, patch
 
 import flet as ft
-import pytest
 
 from views.history_view import HistoryView
 
@@ -13,11 +16,9 @@ def test_history_view_open_folder_error():
     # Actually open_folder is imported.
 
     with patch("views.history_view.open_folder", side_effect=Exception("Folder error")):
-        with patch("logging.Logger.error") as mock_log:
-            # We need to ensure logging is configured or patch logging.error directly
-            with patch("views.history_view.logging.error") as mock_log_fn:
-                view.open_folder_safe("/invalid/path")
-                mock_log_fn.assert_called_with("Failed to open folder: Folder error")
+        with patch("views.history_view.logging.error") as mock_log_fn:
+            view.open_folder_safe("/invalid/path")
+            mock_log_fn.assert_called_with("Failed to open folder: Folder error")
 
 
 def test_history_view_copy_url():
@@ -30,6 +31,7 @@ def test_history_view_copy_url():
     view.page = MagicMock()
 
     item = {"url": "http://test.com", "title": "Test", "output_path": "/tmp"}
+    # pylint: disable=protected-access
     control = view._create_item(item)
 
     # Find the copy button (last icon button)
@@ -50,6 +52,7 @@ def test_history_view_open_folder_click():
     view.open_folder_safe = MagicMock()
 
     item = {"url": "http://test.com", "title": "Test", "output_path": "/tmp"}
+    # pylint: disable=protected-access
     control = view._create_item(item)
 
     row = control.content
