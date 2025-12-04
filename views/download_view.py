@@ -15,6 +15,7 @@ import flet as ft
 from app_state import AppState
 from localization_manager import LocalizationManager as LM
 from theme import Theme
+from ui_utils import open_folder
 from views.base_view import BaseView
 from views.components.download_preview import DownloadPreviewCard
 from views.components.panels.base_panel import BasePanel
@@ -361,10 +362,8 @@ class DownloadView(BaseView):
     def _open_downloads_folder(self):
         from pathlib import Path
 
-        from ui_utils import open_folder
-
         try:
             path = Path.home() / "Downloads"
-            open_folder(str(path))
+            open_folder(str(path), self.page)
         except Exception as e:
             logger.error("Failed to open folder: %s", e)

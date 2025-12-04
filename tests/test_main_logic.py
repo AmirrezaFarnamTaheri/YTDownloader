@@ -165,7 +165,7 @@ class TestMainLogic(unittest.TestCase):
     # --- Download Task Tests ---
 
     @patch("tasks.download_video")
-    @patch("tasks.HistoryManager")
+    @patch("history_manager.HistoryManager")
     @patch("tasks.process_queue")
     def test_download_task_success(
         self, mock_process_queue, MockHistory, mock_download_video
@@ -182,6 +182,21 @@ class TestMainLogic(unittest.TestCase):
             "control": MagicMock(),
             "output_path": ".",
         }
+
+        # Need to patch the local import of HistoryManager in tasks.py
+        # Since we can't patch local import easily without import patching tools or changing code structure
+        # We can rely on the fact that tasks.py imports it inside _log_to_history.
+        # But we want to mock the class.
+        # Since 'history_manager' is a module, we can mock sys.modules['history_manager'] or similar.
+        # Or better: patch 'tasks.HistoryManager' if I hadn't removed it from toplevel.
+        # Since it's removed, I must patch 'history_manager.HistoryManager' AND ensure tasks.py imports it.
+        # The test file imports tasks.py which uses lazy import.
+        # The easiest way is to mock 'history_manager' module in sys.modules, OR
+        # Since I'm patching 'history_manager.HistoryManager', if tasks.py imports 'HistoryManager' from 'history_manager'
+        # it should get the mock.
+
+        # NOTE: In Python, if tasks.py does `from history_manager import HistoryManager` inside a function,
+        # and we patch `history_manager.HistoryManager`, it will work.
 
         download_task(item)
 

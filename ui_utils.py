@@ -10,8 +10,11 @@ import re
 import shutil
 import subprocess
 import threading
+import sys
 from pathlib import Path
 from typing import Optional, Union
+
+import flet as ft
 
 logger = logging.getLogger(__name__)
 
@@ -188,8 +191,14 @@ def get_default_download_path() -> str:
     return "."
 
 
-def open_folder(path: str) -> bool:
-    """Opens a folder in the system file manager."""
+def open_folder(path: str, page: Optional[ft.Page] = None) -> bool:
+    """
+    Opens a folder in the system file manager.
+
+    Args:
+        path: The path to open.
+        page: Optional Flet page (required for mobile/web fallback).
+    """
     if not path or not isinstance(path, str):
         return False
 
@@ -203,8 +212,18 @@ def open_folder(path: str) -> bool:
             return False
 
         if not os.path.isdir(abs_path):
-            logger.warning("Path is not a directory: %s", abs_path)
-            return False
+            # If it's a file, get parent
+            abs_path = os.path.dirname(abs_path)
+
+        # Mobile / Web Logic
+        if page and page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS, ft.PagePlatform.MACOS]:
+            if page.platform == ft.PagePlatform.MACOS and sys.platform == "darwin":
+                 # Use desktop logic for macOS desktop app
+                 pass
+            else:
+                 # Try launch_url with file scheme
+                 page.launch_url(f"file://{abs_path}")
+                 return True
 
         sys_plat = platform.system()
 
@@ -222,4 +241,43 @@ def open_folder(path: str) -> bool:
 
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Failed to open folder: %s", e)
+        return False
+
+
+def play_file(path: str, page: Optional[ft.Page] = None) -> bool:
+    """
+    Opens/Plays a file in the default system application.
+
+    Args:
+        path: The path of the file to play.
+        page: Optional Flet page (required for mobile/web fallback).
+    """
+    if not path or not isinstance(path, str):
+        return False
+
+    try:
+        abs_path = os.path.abspath(os.path.expanduser(path))
+        if not os.path.exists(abs_path):
+            return False
+
+        # Mobile / Web Logic
+        if page and page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS, ft.PagePlatform.MACOS]:
+            if page.platform == ft.PagePlatform.MACOS and sys.platform == "darwin":
+                 pass
+            else:
+                 page.launch_url(f"file://{abs_path}")
+                 return True
+
+        sys_plat = platform.system()
+
+        if sys_plat == "Windows":
+             # pylint: disable=no-member
+            os.startfile(abs_path) # type: ignore
+            return True
+
+        cmd = ["open", abs_path] if sys_plat == "Darwin" else ["xdg-open", abs_path]
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except Exception as e:
+        logger.error("Failed to play file: %s", e)
         return False

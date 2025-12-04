@@ -40,15 +40,18 @@ class TestDownloaderCoreCoverage(unittest.TestCase):
         mock_download.assert_called()
 
     @patch("shutil.which")
-    @patch("downloader.core.state")
     @patch("pathlib.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
-    def test_all_options(self, MockWrapper, mock_mkdir, mock_state, mock_which):
+    def test_all_options(self, MockWrapper, mock_mkdir, mock_which):
         mock_instance = MockWrapper.return_value
-        # Mock FFmpeg availability
-        mock_state.ffmpeg_available = True
-        # Mock aria2c availability
-        mock_which.return_value = "/usr/bin/aria2c"
+        # Mock FFmpeg availability and aria2c
+        def side_effect(cmd):
+            if cmd == "aria2c":
+                return "/usr/bin/aria2c"
+            if cmd == "ffmpeg":
+                return "/usr/bin/ffmpeg"
+            return None
+        mock_which.side_effect = side_effect
 
         options = DownloadOptions(
             url="http://yt.com",
@@ -73,12 +76,12 @@ class TestDownloaderCoreCoverage(unittest.TestCase):
         self.assertEqual(opts["external_downloader"], "aria2c")
         self.assertFalse(opts["noplaylist"])
 
-    @patch("downloader.core.state")
+    @patch("shutil.which")
     @patch("pathlib.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
-    def test_time_range_success(self, MockWrapper, mock_mkdir, mock_state):
+    def test_time_range_success(self, MockWrapper, mock_mkdir, mock_which):
         mock_instance = MockWrapper.return_value
-        mock_state.ffmpeg_available = True
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
         options = DownloadOptions(
             url="http://yt.com",
@@ -92,12 +95,12 @@ class TestDownloaderCoreCoverage(unittest.TestCase):
         opts = args[0]
         self.assertIn("download_ranges", opts)
 
-    @patch("downloader.core.state")
+    @patch("shutil.which")
     @patch("pathlib.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper")
-    def test_gpu_accel_vulkan(self, MockWrapper, mock_mkdir, mock_state):
+    def test_gpu_accel_vulkan(self, MockWrapper, mock_mkdir, mock_which):
         mock_instance = MockWrapper.return_value
-        mock_state.ffmpeg_available = True
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
         options = DownloadOptions(url="u", progress_hook=self.hook, gpu_accel="vulkan")
         download_video(options)

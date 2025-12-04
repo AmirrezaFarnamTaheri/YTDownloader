@@ -25,20 +25,20 @@ class TestDownloaderRobustness(unittest.TestCase):
             download_video(options)
 
     @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_with_ranges(self, mock_wrapper_class):
+    @patch("shutil.which")
+    def test_download_video_with_ranges(self, mock_which, mock_wrapper_class):
         # Ensure ffmpeg available for ranges
-        with patch("downloader.core.state") as mock_state:
-            mock_state.ffmpeg_available = True
+        mock_which.return_value = "/usr/bin/ffmpeg"
 
-            options = DownloadOptions(
-                url="http://test.com",
-                progress_hook=lambda d: None,
-                download_item={},
-                start_time="00:00:10",
-                end_time="00:00:20",
-            )
-            download_video(options)
+        options = DownloadOptions(
+            url="http://test.com",
+            progress_hook=lambda d: None,
+            download_item={},
+            start_time="00:00:10",
+            end_time="00:00:20",
+        )
+        download_video(options)
 
-            # Verify call args on wrapper
-            call_args = mock_wrapper_class.call_args[0][0]
-            self.assertIn("download_ranges", call_args)
+        # Verify call args on wrapper
+        call_args = mock_wrapper_class.call_args[0][0]
+        self.assertIn("download_ranges", call_args)

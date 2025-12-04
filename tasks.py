@@ -15,20 +15,11 @@ from downloader.core import download_video
 from downloader.types import DownloadOptions
 from utils import CancelToken
 
-# Import HistoryManager at toplevel (assuming safe from circular deps if handled carefully,
-# otherwise keep local import but suppress warning if absolutely necessary)
-# Given previous lint output, it complained about import outside toplevel.
-# Let's try top-level import. If circular, we might need a different structure,
-# but history_manager usually doesn't import tasks.
-try:
-    from history_manager import HistoryManager
-except ImportError:
-    HistoryManager = None  # type: ignore
-
 logger = logging.getLogger(__name__)
 
 # Executor for managing download threads
-MAX_WORKERS = 3
+# Default to 3, but could be configurable via state.config if desired
+MAX_WORKERS = state.config.get("max_concurrent_downloads", 3)
 EXECUTOR = ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="DLWorker")
 _ACTIVE_COUNT = 0
 _ACTIVE_COUNT_LOCK = threading.Lock()
@@ -104,16 +95,7 @@ def _wrapped_download_task(item):
             try:
                 item["status"] = "Cancelled"
                 state.queue_manager.update_item_status(item.get("id"), "Cancelled")
-                if HistoryManager is not None:
-                    HistoryManager.add_entry(
-                        item.get("url"),
-                        item.get("title"),
-                        item.get("output_path", "."),
-                        item.get("video_format", "best"),
-                        "Cancelled",
-                        "N/A",
-                        "N/A",
-                    )
+                _log_to_history(item, None)
             except Exception:  # pylint: disable=broad-exception-caught
                 # best-effort; don't block cleanup
                 logger.exception("Failed to mark item as cancelled on shutdown.")
@@ -192,11 +174,10 @@ def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
 
 def _log_to_history(item: Dict[str, Any], filepath: Optional[str] = None):
     """Log completed download to history safely."""
-    if HistoryManager is None:
-        logger.warning("HistoryManager not available for logging.")
-        return
-
+    # Import locally to avoid circular import issues at top-level
     try:
+        from history_manager import HistoryManager
+
         status = item.get("status", "Unknown")
         HistoryManager.add_entry(
             item["url"],

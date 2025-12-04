@@ -1,16 +1,14 @@
 """
 AppController module.
 Handles application logic, callbacks, and bridging between UI and backend.
+Refactored to delegate responsibilities.
 """
 
 import logging
 import os
-import subprocess
 import threading
 import time
-import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict
 
 import flet as ft
@@ -25,7 +23,7 @@ from rate_limiter import RateLimiter
 from tasks import process_queue
 from tasks_extended import fetch_info_task
 from ui_manager import UIManager
-from ui_utils import get_default_download_path, validate_url
+from ui_utils import get_default_download_path, validate_url, open_folder, play_file
 
 logger = logging.getLogger(__name__)
 
@@ -266,46 +264,14 @@ class AppController:
              return
 
         full_path = os.path.join(output_path, filename)
-
-        if os.path.exists(full_path):
-            try:
-                # Flet fallback for mobile/web
-                if self.page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS]:
-                    # Need to serve via local web server or use page.launch_url if public
-                    # Since it's local file, simple launch_url might not work due to sandbox.
-                    # Best we can do is try 'share' if plugin available (not in standard flet yet)
-                    # or 'launch_url' with file:// scheme if allowed.
-                    # This is a limitation without external Flet plugins.
-                    self.page.launch_url(f"file://{full_path}")
-                elif sys.platform == "win32":
-                    os.startfile(full_path)
-                elif sys.platform == 'darwin':
-                    subprocess.call(('open', full_path))
-                else:
-                    subprocess.call(('xdg-open', full_path))
-            except Exception as e:
-                logger.error("Failed to play file: %s", e)
-                self.page.open(ft.SnackBar(content=ft.Text(f"Failed to open file: {e}")))
-        else:
-            self.page.open(ft.SnackBar(content=ft.Text("File not found on disk")))
+        if not play_file(full_path, self.page):
+             self.page.open(ft.SnackBar(content=ft.Text("Failed to open file or file not found")))
 
     def on_open_folder(self, item: Dict[str, Any]):
         """Callback to open the folder containing the file."""
         output_path = item.get("output_path", get_default_download_path())
-        try:
-            if self.page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS]:
-                # On mobile, we can't 'open folder' like desktop explorer.
-                # Maybe launch file manager?
-                self.page.launch_url(f"file://{output_path}")
-            elif sys.platform == "win32":
-                os.startfile(output_path)
-            elif sys.platform == 'darwin':
-                subprocess.call(('open', output_path))
-            else:
-                subprocess.call(('xdg-open', output_path))
-        except Exception as e:
-            logger.error("Failed to open folder: %s", e)
-            self.page.open(ft.SnackBar(content=ft.Text(f"Failed to open folder: {e}")))
+        if not open_folder(output_path, self.page):
+             self.page.open(ft.SnackBar(content=ft.Text("Failed to open folder")))
 
     def on_batch_file_result(self, e: ft.FilePickerResultEvent):
         """Callback when a file is selected for batch import."""
