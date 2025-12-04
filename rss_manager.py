@@ -3,6 +3,7 @@ RSS Manager module for fetching and parsing RSS feeds.
 """
 
 import logging
+import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -23,18 +24,30 @@ logger = logging.getLogger(__name__)
 def safe_log_warning(msg, *args):
     """Safely log a warning message, ignoring closed stream errors."""
     try:
+        # Check if sys.stderr/stdout are closed (common during interpreter shutdown)
+        if sys.stderr is None or sys.stderr.closed:
+            return
+
         if logger.isEnabledFor(logging.WARNING):
             logger.warning(msg, *args)
     except (ValueError, OSError):
+        # Ignore "I/O operation on closed file"
+        pass
+    except Exception:  # pylint: disable=broad-exception-caught
         pass
 
 
 def safe_log_error(msg, *args):
     """Safely log an error message, ignoring closed stream errors."""
     try:
+        if sys.stderr is None or sys.stderr.closed:
+            return
+
         if logger.isEnabledFor(logging.ERROR):
             logger.error(msg, *args)
     except (ValueError, OSError):
+        pass
+    except Exception:  # pylint: disable=broad-exception-caught
         pass
 
 
@@ -118,12 +131,7 @@ class RSSManager:
                     root = safe_fromstring(content_text)
                 except Exception as e:
                     # Fallback or error logging
-                    try:
-                        # Log inside a try block to catch closed file error on shutdown
-                        if logger.isEnabledFor(logging.WARNING):
-                            logger.warning("defusedxml parse error for %s: %s", url, e)
-                    except (ValueError, OSError):
-                        pass
+                    safe_log_warning("defusedxml parse error for %s: %s", url, e)
 
             if root is None:
                 # If defusedxml failed or not available, try standard ET but careful
@@ -132,11 +140,7 @@ class RSSManager:
                 try:
                     root = ET.fromstring(content_text)
                 except ET.ParseError as e:
-                    try:
-                        if logger.isEnabledFor(logging.WARNING):
-                            logger.warning("XML parse error for %s: %s", url, e)
-                    except (ValueError, OSError):
-                        pass
+                    safe_log_warning("XML parse error for %s: %s", url, e)
                     return []
 
             items: List[Dict[str, Any]] = []

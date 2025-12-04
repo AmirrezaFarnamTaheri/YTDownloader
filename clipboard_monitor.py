@@ -39,6 +39,8 @@ def _clipboard_loop(page, download_view):
     """
     Background loop that checks the clipboard for URLs.
     """
+    import flet as ft
+
     while not state.shutdown_flag.is_set():
         time.sleep(2)
         if state.clipboard_monitor_active:
@@ -55,18 +57,31 @@ def _clipboard_loop(page, download_view):
                     state.last_clipboard_content = content
                     if validate_url(content) and download_view:
                         # Only auto-paste if field is empty
+                        # Need to check value in thread-safe way? Flet objects are generally not thread-safe for reading?
+                        # Actually value access is local property.
                         if not download_view.url_input.value:
                             logger.info("Clipboard URL detected: %s", content)
                             download_view.url_input.value = content
-                            if page:
-                                import flet as ft
 
-                                page.open(
-                                    ft.SnackBar(
-                                        content=ft.Text(f"URL detected: {content}")
-                                    )
-                                )
-                                page.update()
+                            # UI updates must be scheduled on the page
+                            if page:
+                                def update_ui():
+                                    try:
+                                        page.open(
+                                            ft.SnackBar(
+                                                content=ft.Text(f"URL detected: {content}")
+                                            )
+                                        )
+                                        download_view.update() # Update the view so the input field shows the value
+                                    except Exception as ex:
+                                        logger.warning("Failed to update UI from clipboard: %s", ex)
+
+                                # Use page.run_task or just calling page.update if thread-safe enough?
+                                # Flet's page.update() is thread-safe wrapper.
+                                # But modify controls might not be if they are mid-render.
+                                # However, setting .value is just property setting.
+                                update_ui()
+
             except Exception as e:  # pylint: disable=broad-exception-caught
                 # Catch-all to prevent thread death
                 logger.error("Error in clipboard monitor: %s", e, exc_info=True)

@@ -21,14 +21,18 @@ logger = logging.getLogger(__name__)
 # Default to 3, but could be configurable via state.config if desired
 MAX_WORKERS = state.config.get("max_concurrent_downloads", 3)
 EXECUTOR = ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="DLWorker")
+
+# Tracks the number of actively running downloads
 _ACTIVE_COUNT = 0
 _ACTIVE_COUNT_LOCK = threading.Lock()
 
-# Throttle submission to executor to avoid flooding it with "Allocating" tasks
-# that sit in the executor queue and can't be easily cancelled.
+# Throttle submission to executor to avoid flooding it with tasks.
 # We limit the number of submitted-but-not-finished tasks to MAX_WORKERS.
+# This prevents queuing up 100 tasks in the executor when only 3 can run at once,
+# which allows for more responsive cancellation and priority handling.
 _SUBMISSION_THROTTLE = threading.Semaphore(MAX_WORKERS)
-# And lock
+
+# Lock for protecting the queue processing loop
 _PROCESS_QUEUE_LOCK = threading.RLock()
 
 # Compatibility alias for tests (legacy)
@@ -51,19 +55,19 @@ def process_queue():
             if state.shutdown_flag.is_set():
                 break
 
-            # Use semaphore for limiting
-            # Check availability without blocking to decide if we should try to claim
-            # The semaphore is used to limit active submissions, not just for locking
+            # Try to acquire a slot without blocking
             if _SUBMISSION_THROTTLE.acquire(blocking=False):
-                # We acquired a slot, but we need to check if there is work
-                # If no work, we must release immediately
+                # We acquired a slot, check if there is work
                 item = state.queue_manager.claim_next_downloadable()
                 if not item:
+                    # No work, release slot immediately
                     _SUBMISSION_THROTTLE.release()
                     break
             else:
                 # No slots available
                 break
+
+            # Increment active count for monitoring
             # pylint: disable=consider-using-with
             with _ACTIVE_COUNT_LOCK:
                 _ACTIVE_COUNT += 1
@@ -84,7 +88,10 @@ def process_queue():
 
 
 def _wrapped_download_task(item):
-    """Wrapper to ensure semaphore release."""
+    """
+    Wrapper to ensure semaphore release and accurate active count.
+    Guarantees semaphore is released even if download_task fails or app shuts down.
+    """
     # pylint: disable=global-statement
     global _ACTIVE_COUNT
     try:
@@ -100,11 +107,12 @@ def _wrapped_download_task(item):
                 # best-effort; don't block cleanup
                 logger.exception("Failed to mark item as cancelled on shutdown.")
     finally:
+        # ALWAYS release semaphore and decrement count
         _SUBMISSION_THROTTLE.release()
         with _ACTIVE_COUNT_LOCK:
             _ACTIVE_COUNT -= 1
 
-        # Notify
+        # Notify queue manager that a slot opened up
         try:
             # Accessing protected member _has_work as designed for internal signaling
             # pylint: disable=protected-access
@@ -160,9 +168,6 @@ def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
                 item["status"] = "Processing"
                 _update_progress_ui(item)
 
-            else:
-                # Ignore other statuses or unknown
-                pass
         except InterruptedError:
             # Re-raise cancellation to stop download promptly
             raise
