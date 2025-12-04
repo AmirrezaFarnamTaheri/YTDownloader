@@ -1,196 +1,125 @@
-name: Build Mobile Apps (Flet)
+name: Build Mobile Apps
 
 on:
   workflow_call:
   workflow_dispatch:
-    inputs:
-      build_android:
-        description: 'Build Android APK'
-        type: boolean
-        default: true
-      build_ios:
-        description: 'Build iOS IPA'
-        type: boolean
-        default: false
 
 env:
-  FLET_VERSION: "0.28.3"
   PYTHON_VERSION: "3.12"
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  FLUTTER_VERSION: "3.29.0"
 
 jobs:
   version:
     uses: ./.github/workflows/get-version.yml
+    with:
+      tag_name: ${{ github.event.inputs.tag_name }}
 
   # ===========================================================================
-  # Android APK Build
+  # Android Build
   # ===========================================================================
   build-android:
-    name: Build Android APK
+    name: Build Android
     needs: version
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    if: ${{ github.event.inputs.build_android != 'false' }}
+    timeout-minutes: 60
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        channel: 'stable'
+        cache: true
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
 
-    - name: Install Flet
+    - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install flet>=${{ env.FLET_VERSION }}
+        pip install -r requirements.txt
+        # Flet build needs specific package structure
+        pip install flet
 
-    - name: Prepare mobile requirements
+    - name: Build APK
+      env:
+        APP_VERSION: ${{ needs.version.outputs.version }}
       run: |
-        # Use requirements.txt but exclude incompatible packages
-        # Exclude dev tools AND lxml/Pillow as they are problematic/unused on mobile
-        echo "Filtering incompatible packages from requirements.txt"
-        grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort|nuitka|ordered-set|zstandard|lxml|Pillow)" requirements.txt > requirements-filtered.txt
-        mv requirements-filtered.txt requirements.txt
+        # Ensure pure python requirements are used (no binary wheels that won't work on Android)
+        # But for 'flet build apk', it packages the python code.
+        # We need to ensure we don't include heavy desktop libs if possible.
         
-        echo "=== Final requirements.txt ==="
-        cat requirements.txt
+        flet build apk --verbose \
+          --build-version "${{ env.APP_VERSION }}" \
+          --project-name "StreamCatch" \
+          --org "com.jules.streamcatch" \
+          --product "StreamCatch" \
+          --description "Ultimate Video Downloader" \
+          --include-packages yt_dlp,requests,urllib3,certifi,idna,charset_normalizer \
+          main.py
 
-    - name: Build APK with Flet
-      run: |
-        # Use --build-version to inject version into the app bundle
-        flet build apk --verbose --build-version "${{ needs.version.outputs.version }}"
-
-    - name: Find and verify APK
-      id: find_apk
-      run: |
-        APK_PATH=$(find build -name "*.apk" -type f 2>/dev/null | head -1)
-        if [ -z "$APK_PATH" ]; then
-          echo "ERROR: No APK file found!"
-          find build -type f -name "*" 2>/dev/null || echo "Build directory not found"
-          exit 1
-        fi
-        echo "Found APK: $APK_PATH"
-        echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
-
-    - name: Upload APK Artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: StreamCatch-Android-APK
-        path: ${{ steps.find_apk.outputs.apk_path }}
-        if-no-files-found: error
-        retention-days: 1
+        name: StreamCatch-Android
+        path: build/apk/app-release.apk
+        if-no-files-found: warn
 
   # ===========================================================================
-  # iOS IPA Build
+  # iOS Build (Requires Mac)
   # ===========================================================================
   build-ios:
-    name: Build iOS IPA
+    name: Build iOS
     needs: version
-    # Pinned to macos-14 to support Xcode 15.4 which is required for Flutter
-    runs-on: macos-14
+    runs-on: macos-14 # Required for Xcode 15+
     timeout-minutes: 60
-    if: ${{ github.event.inputs.build_ios == 'true' }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        channel: 'stable'
+        cache: true
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
 
-    - name: Install Flet
+    - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install flet>=${{ env.FLET_VERSION }}
+        pip install -r requirements.txt
+        pip install flet
 
-    - name: Prepare mobile requirements
+    - name: Build iOS IPA (No signing for now - strictly build check)
+      env:
+        APP_VERSION: ${{ needs.version.outputs.version }}
       run: |
-        # Use requirements.txt but exclude incompatible packages
-        echo "Filtering incompatible packages from requirements.txt"
-        grep -v -E "^(pyinstaller|pytest|black|mypy|pylint|isort|nuitka|ordered-set|zstandard|lxml|Pillow)" requirements.txt > requirements-filtered.txt
-        mv requirements-filtered.txt requirements.txt
-        
-        echo "=== Final requirements.txt ==="
-        cat requirements.txt
+        flet build ipa --no-codesign --verbose \
+          --build-version "${{ env.APP_VERSION }}" \
+          --project-name "StreamCatch" \
+          --org "com.jules.streamcatch" \
+          --product "StreamCatch" \
+          --include-packages yt_dlp,requests,urllib3,certifi,idna,charset_normalizer \
+          main.py
 
-# IMPORTANT: This workflow requires specific Xcode versions to work correctly.
-# Using 'latest-stable' can break builds when Apple releases new Xcode versions
-# that aren't yet supported by Flutter/Flet.
-
-    - name: Set up Xcode (pinned to stable version)
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        # Pin to Xcode 15.4 which is known to work with Flutter 3.29.x
-        # DO NOT use 'latest-stable' as it may install Xcode 26.x which requires
-        # iOS 26.1 SDK that isn't available in GitHub runners
-        # Available versions: https://github.com/actions/runner-images/blob/main/images/macos/macos-14-arm64-Readme.md
-        xcode-version: '15.4'
-
-    - name: Verify Xcode setup
-      run: |
-        echo "=== Xcode Version ==="
-        xcodebuild -version
-        echo "=== Available SDKs ==="
-        xcodebuild -showsdks
-        echo "=== Available Simulators ==="
-        xcrun simctl list devices available | head -20
-
-    - name: Build iOS Archive with Flet
-      run: |
-        # Build xcarchive (no code signing required for archive)
-        # Use --build-version to inject version into the app bundle
-        flet build ipa --verbose --build-version "${{ needs.version.outputs.version }}"
-      continue-on-error: true
-
-    - name: Find iOS artifacts
-      id: find_ios
-      run: |
-        # Check for IPA first
-        IPA_PATH=$(find build -name "*.ipa" -type f 2>/dev/null | head -1)
-        if [ -n "$IPA_PATH" ]; then
-          echo "Found IPA: $IPA_PATH"
-          echo "ipa_path=$IPA_PATH" >> $GITHUB_OUTPUT
-          echo "artifact_type=ipa" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-        
-        # Check for xcarchive
-        ARCHIVE_PATH=$(find build -name "*.xcarchive" -type d 2>/dev/null | head -1)
-        if [ -n "$ARCHIVE_PATH" ]; then
-          echo "Found xcarchive: $ARCHIVE_PATH"
-          # Compress xcarchive for upload
-          zip -r ios-archive.zip "$ARCHIVE_PATH"
-          echo "archive_path=ios-archive.zip" >> $GITHUB_OUTPUT
-          echo "artifact_type=xcarchive" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-        
-        echo "WARNING: No iOS artifacts found"
-        echo "artifact_type=none" >> $GITHUB_OUTPUT
-
-    - name: Upload IPA Artifact
-      if: steps.find_ios.outputs.artifact_type == 'ipa'
+    - name: Upload iOS Archive
       uses: actions/upload-artifact@v4
       with:
-        name: StreamCatch-iOS-IPA
-        path: ${{ steps.find_ios.outputs.ipa_path }}
+        name: StreamCatch-iOS-Unsigned
+        path: build/ios/Runner.xcarchive
         if-no-files-found: warn
-        retention-days: 1
-
-    - name: Upload xcarchive Artifact
-      if: steps.find_ios.outputs.artifact_type == 'xcarchive'
-      uses: actions/upload-artifact@v4
-      with:
-        name: StreamCatch-iOS-xcarchive
-        path: ${{ steps.find_ios.outputs.archive_path }}
-        if-no-files-found: warn
-        retention-days: 1

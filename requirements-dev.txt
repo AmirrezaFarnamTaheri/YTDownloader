@@ -1,31 +1,14 @@
-# =============================================================================
-# StreamCatch - Development & Desktop Build Dependencies
-# =============================================================================
-# Install with: pip install -r requirements-dev.txt
-# This includes all core dependencies plus development/build tools
-# =============================================================================
-
-# Include all core dependencies
--r requirements.txt
-
-# =============================================================================
-# Desktop Build Tools (NOT compatible with mobile builds)
-# =============================================================================
-nuitka>=2.0.0                   # Create standalone native executables
-ordered-set                     # Recommended for Nuitka performance
-zstandard                       # Recommended for Nuitka compression
-
-# =============================================================================
-# Testing
-# =============================================================================
-pytest>=7.4.0                   # Testing framework
-pytest-cov>=4.1.0               # Code coverage support
-pytest-asyncio>=0.21.0          # Async test support
-
-# =============================================================================
-# Code Quality (Optional)
-# =============================================================================
-black>=23.0.0                   # Code formatting
-mypy>=1.0.0                     # Type checking
-pylint>=3.0.0                   # Code linting
-isort>=5.12.0                   # Import sorting
+pytest
+pylint
+black
+mypy
+types-requests
+types-yt-dlp
+types-python-dateutil
+types-defusedxml
+types-pyperclip
+types-beautifulsoup4
+types-setuptools
+nuitka
+ordered-set
+zstandard

@@ -3,36 +3,15 @@ Module for fetching video metadata using yt-dlp or fallback extractors.
 """
 
 import logging
-import os
-import signal
-from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import yt_dlp
 
 from downloader.extractors.generic import GenericExtractor
 from downloader.extractors.telegram import TelegramExtractor
+from utils_shared import timeout_manager
 
 logger = logging.getLogger(__name__)
-
-
-@contextmanager
-def extraction_timeout(seconds=30):
-    """Context manager for timeout on info extraction."""
-
-    def timeout_handler(signum, frame):
-        raise TimeoutError(f"Info extraction timed out after {seconds}s")
-
-    if os.name != "nt":
-        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(seconds)
-        try:
-            yield
-        finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old_handler)
-    else:
-        yield  # No timeout on Windows
 
 
 def _extract_telegram_info(url: str) -> Optional[Dict[str, Any]]:
@@ -198,10 +177,11 @@ def get_video_info(
         logger.info("Fetching video info for: %s", url)
 
         # Wrap extraction in timeout
-        with extraction_timeout(45):
+        with timeout_manager(45, "Info extraction timed out"):
             # Explicitly cast to Any or suppress error because YoutubeDL expects _Params but we pass Dict
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
-                info_dict = ydl.extract_info(url, download=False)
+                # Cast result to Dict[str, Any] as extract_info returns Any (usually dict)
+                info_dict = cast(Dict[str, Any], ydl.extract_info(url, download=False))
 
             # Check if yt-dlp fell back to generic and didn't find much
             extractor = info_dict.get("extractor_key", "")

@@ -258,13 +258,6 @@ class AppController:
 
     def on_play_item(self, item: Dict[str, Any]):
         """Callback to open/play the downloaded file."""
-        # We need to know where the file is.
-        # Ideally, `tasks.py` should save the final `filepath` in the item dict.
-        # Currently `_log_to_history` gets it, but does it update the item dict in memory?
-        # Let's verify tasks.py.
-        # Assuming we can find the file.
-
-        # Heuristic search if direct path missing
         output_path = item.get("output_path", get_default_download_path())
         filename = item.get("filename")
 
@@ -276,7 +269,15 @@ class AppController:
 
         if os.path.exists(full_path):
             try:
-                if sys.platform == "win32":
+                # Flet fallback for mobile/web
+                if self.page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS]:
+                    # Need to serve via local web server or use page.launch_url if public
+                    # Since it's local file, simple launch_url might not work due to sandbox.
+                    # Best we can do is try 'share' if plugin available (not in standard flet yet)
+                    # or 'launch_url' with file:// scheme if allowed.
+                    # This is a limitation without external Flet plugins.
+                    self.page.launch_url(f"file://{full_path}")
+                elif sys.platform == "win32":
                     os.startfile(full_path)
                 elif sys.platform == 'darwin':
                     subprocess.call(('open', full_path))
@@ -292,7 +293,11 @@ class AppController:
         """Callback to open the folder containing the file."""
         output_path = item.get("output_path", get_default_download_path())
         try:
-            if sys.platform == "win32":
+            if self.page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS]:
+                # On mobile, we can't 'open folder' like desktop explorer.
+                # Maybe launch file manager?
+                self.page.launch_url(f"file://{output_path}")
+            elif sys.platform == "win32":
                 os.startfile(output_path)
             elif sys.platform == 'darwin':
                 subprocess.call(('open', output_path))

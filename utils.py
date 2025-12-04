@@ -58,6 +58,7 @@ class CancelToken:
         Raises:
             InterruptedError: If download is cancelled or pause timeout exceeded.
         """
+        # pylint: disable=unused-argument
         if self.cancelled:
             raise InterruptedError("Download Cancelled by user")
 

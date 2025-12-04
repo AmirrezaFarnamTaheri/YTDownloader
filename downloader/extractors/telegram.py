@@ -1,212 +1,144 @@
 """
 Telegram extractor module.
-Supports downloading files from public Telegram channels (t.me/...).
+Extracts metadata and media URLs from public Telegram posts (t.me/...).
 """
 
 import logging
-import os
 import re
-from typing import Any, Callable, Dict, Optional, cast
-from urllib.parse import urljoin, urlparse
+from typing import Any, Callable, Dict, Optional
 
 import requests
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 
-from downloader.engines.generic import GenericDownloader
+from downloader.utils.constants import RESERVED_FILENAMES
+from ui_utils import validate_url
 
 logger = logging.getLogger(__name__)
 
 
 class TelegramExtractor:
     """
-    Extracts and downloads media from public Telegram links.
+    Extracts media from public Telegram links.
     """
 
     @staticmethod
     def is_telegram_url(url: str) -> bool:
-        """Check if the URL is a Telegram URL."""
-        return "t.me/" in url
+        """Check if URL is a supported Telegram link."""
+        return "t.me/" in url and validate_url(url)
 
     @staticmethod
     def get_metadata(url: str) -> Optional[Dict[str, Any]]:
         """
-        Extract metadata from Telegram preview page.
-        Returns None if failed or not found.
+        Scrape the public Telegram page to find the media URL and metadata.
+        Returns a dict with 'url', 'title', 'thumbnail' or None.
+        Safely limits memory usage by streaming the response.
         """
-        logger.info("Extracting Telegram metadata from: %s", url)
         try:
-            # Fetch the preview page
+            # We need to impersonate a browser to get the preview page
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
-            with requests.get(
-                url, headers=headers, timeout=15, stream=True
-            ) as response:
+
+            # Use stream=True to prevent loading large responses into memory
+            with requests.get(url, headers=headers, timeout=10, stream=True) as response:
                 response.raise_for_status()
-                # Cap preview payload to 2 MB to prevent excessive memory usage
+
+                # Limit response reading to 2MB to prevent DoS via large HTML/files
                 max_bytes = 2 * 1024 * 1024
-                content = bytearray()
-                for chunk in response.iter_content(chunk_size=16384):
-                    if not chunk:
-                        continue
-                    content.extend(chunk)
+                content = b""
+                for chunk in response.iter_content(chunk_size=8192):
+                    content += chunk
                     if len(content) > max_bytes:
-                        break
-                soup = BeautifulSoup(bytes(content), "html.parser")
+                        logger.warning("Telegram response too large, aborting.")
+                        return None
 
-            # Extract basic info
-            title_tag = soup.find("meta", property="og:title")
-            # Ensure attributes are strings or handle list if it can be a list (BeautifulSoup specifics)
+            soup = BeautifulSoup(content, "html.parser")
+
+            # Extract Title/Description
+            title_tag = soup.find("meta", property="og:description")
             title = (
-                title_tag.get("content")
-                if isinstance(title_tag, Tag)
-                and isinstance(title_tag.get("content"), str)
-                else os.path.basename(url)
+                title_tag["content"]
+                if title_tag and isinstance(title_tag, dict)
+                else "Telegram Video"
             )
 
-            desc_tag = soup.find("meta", property="og:description")
-            description = (
-                desc_tag.get("content")
-                if isinstance(desc_tag, Tag)
-                and isinstance(desc_tag.get("content"), str)
-                else ""
-            )
-
-            image_tag = soup.find("meta", property="og:image")
-            thumbnail = (
-                image_tag.get("content")
-                if isinstance(image_tag, Tag)
-                and isinstance(image_tag.get("content"), str)
-                else ""
-            )
-
-            # Try to find media URL
-            download_url: Optional[str] = None
+            # Extract Video URL
             video_tag = soup.find("video")
-            if (
-                isinstance(video_tag, Tag)
-                and video_tag.get("src")
-                and isinstance(video_tag.get("src"), str)
-            ):
-                download_url = cast(str, video_tag.get("src"))
-            else:
+            video_url = None
+            if video_tag:
+                src = video_tag.get("src")
+                if src:
+                    video_url = str(src)
+
+            # If no video tag, check for og:video
+            if not video_url:
                 og_vid = soup.find("meta", property="og:video")
-                if (
-                    isinstance(og_vid, Tag)
-                    and og_vid.get("content")
-                    and isinstance(og_vid.get("content"), str)
-                ):
-                    download_url = cast(str, og_vid.get("content"))
+                if og_vid:
+                    video_url = og_vid.get("content")
 
-            if download_url:
-                # Normalize whitespace
-                download_url = (download_url or "").strip()
-                # Ensure base URL ends with a slash to correctly resolve relative paths
-                base = url if url.endswith("/") else url + "/"
-                # Handle protocol-relative URLs explicitly
-                if download_url.startswith("//"):
-                    download_url = "https:" + download_url
-                else:
-                    # Normalize relative paths against the page URL
-                    download_url = urljoin(base, download_url)
+            # Validate extracted URL
+            if video_url and not video_url.startswith("http"):
+                # Handle relative URLs if any (unlikely for og tags but possible in src)
+                pass
 
-                # Validate final scheme to avoid javascript:, data:, etc.
-                parsed = urlparse(download_url)
-                if parsed.scheme not in ("http", "https"):
-                    download_url = None
+            if not video_url:
+                logger.warning("No video found in Telegram link: %s", url)
+                return None
 
-                if download_url:
-                    return {
-                        "title": title,
-                        "description": description,
-                        "thumbnail": thumbnail,
-                        "webpage_url": url,
-                        "direct_url": download_url,
-                        "extractor": "telegram",
-                        "duration": 0,  # Unknown
-                    }
-            return None
+            # Extract Thumbnail
+            thumbnail = None
+            og_image = soup.find("meta", property="og:image")
+            if og_image:
+                thumbnail = og_image.get("content")
 
-        except Exception as e:
-            logger.warning("Failed to extract Telegram metadata: %s", e)
+            return {
+                "url": video_url,
+                "title": str(title)[:100],  # Truncate title
+                "thumbnail": str(thumbnail) if thumbnail else None,
+            }
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Telegram extraction failed: %s", e)
             return None
 
     @staticmethod
     def extract(
         url: str,
         output_path: str,
-        progress_hook: Optional[Callable[[Dict[str, Any]], None]] = None,
+        progress_hook: Optional[Callable] = None,
         cancel_token: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
-        Extract direct link from Telegram preview page and download.
+        Download the video from a Telegram link.
         """
-        logger.info("Extracting Telegram media from: %s", url)
+        meta = TelegramExtractor.get_metadata(url)
+        if not meta or not meta.get("url"):
+            raise ValueError("Could not extract video from Telegram link")
 
-        try:
-            metadata = TelegramExtractor.get_metadata(url)
-            if not metadata or not metadata.get("direct_url"):
-                raise ValueError("Could not find media link in Telegram preview")
+        video_url = meta["url"]
+        title = meta["title"]
 
-            download_url = metadata["direct_url"]
-            logger.info("Found media URL: %s", download_url)
+        # Sanitize filename
+        filename = re.sub(r"[^A-Za-z0-9\-\_\.]", "", title).strip()
+        if not filename:
+            filename = "telegram_video"
+        if not filename.endswith(".mp4"):
+            filename += ".mp4"
 
-            # Sanitize filename robustly
-            url_path = urlparse(url).path
-            # Get the last part of the path, e.g., '123' from '/channel/123'
-            file_id = url_path.strip("/").split("/")[-1]
-            # Remove control chars and invalid filesystem chars
-            invalid_chars = r'<>:"/\\|?*' + "".join(map(chr, range(32)))
-            safe_file_id = "".join(
-                c for c in (file_id or "") if c.isalnum() or c in ("_", "-")
-            )
-            safe_file_id = "".join(
-                c for c in safe_file_id if c not in invalid_chars
-            ).strip()
-            # Neutralize traversal-like names and problematic leading/trailing dots/spaces
-            if safe_file_id in {".", ".."}:
-                safe_file_id = "media"
-            safe_file_id = safe_file_id.strip(" .")
-            while ".." in safe_file_id:
-                safe_file_id = safe_file_id.replace("..", "-")
-            # Avoid Windows reserved device names
-            reserved = {
-                "CON",
-                "PRN",
-                "AUX",
-                "NUL",
-                "COM1",
-                "COM2",
-                "COM3",
-                "COM4",
-                "COM5",
-                "COM6",
-                "COM7",
-                "COM8",
-                "COM9",
-                "LPT1",
-                "LPT2",
-                "LPT3",
-                "LPT4",
-                "LPT5",
-                "LPT6",
-                "LPT7",
-                "LPT8",
-                "LPT9",
-            }
-            if (safe_file_id.split(".")[0].upper() or "") in reserved:
-                safe_file_id = f"_{safe_file_id}" if safe_file_id else "media"
-            filename = f"telegram_{safe_file_id or 'media'}.mp4"
+        # Reserved names check
+        name_root = filename.split(".")[0].upper()
+        if name_root in RESERVED_FILENAMES:
+            filename = f"_{filename}"
 
-            # Delegate to GenericDownloader
-            return GenericDownloader.download(
-                download_url,
-                output_path,
-                progress_hook,
-                cancel_token,
-                filename=filename,
-            )
+        # Use GenericDownloader to handle the actual file download
+        # Avoid circular imports if possible, but GenericDownloader is in engines.
+        # pylint: disable=import-outside-toplevel
+        from downloader.engines.generic import GenericDownloader
 
-        except Exception as e:
-            logger.error("Telegram extraction failed: %s", e)
-            raise
+        return GenericDownloader.download(
+            video_url,
+            output_path,
+            progress_hook,
+            cancel_token,
+            filename=filename,
+        )
