@@ -8,6 +8,7 @@ import os
 import subprocess
 import threading
 import time
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
@@ -275,7 +276,7 @@ class AppController:
 
         if os.path.exists(full_path):
             try:
-                if os.name == 'nt':
+                if sys.platform == "win32":
                     os.startfile(full_path)
                 elif sys.platform == 'darwin':
                     subprocess.call(('open', full_path))
@@ -291,7 +292,7 @@ class AppController:
         """Callback to open the folder containing the file."""
         output_path = item.get("output_path", get_default_download_path())
         try:
-            if os.name == 'nt':
+            if sys.platform == "win32":
                 os.startfile(output_path)
             elif sys.platform == 'darwin':
                 subprocess.call(('open', output_path))

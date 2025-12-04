@@ -20,6 +20,22 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def safe_log_warning(msg, *args):
+    """Safely log a warning message, ignoring closed stream errors."""
+    try:
+        logger.warning(msg, *args)
+    except (ValueError, OSError):
+        pass
+
+
+def safe_log_error(msg, *args):
+    """Safely log an error message, ignoring closed stream errors."""
+    try:
+        logger.error(msg, *args)
+    except (ValueError, OSError):
+        pass
+
+
 class RSSManager:
     """
     Manages RSS feed subscriptions, fetching, and parsing.
@@ -87,7 +103,7 @@ class RSSManager:
 
             # Check for empty or excessively small content
             if not content_text or len(content_text.strip()) < 10:
-                logger.warning("Empty or too short content for feed: %s", url)
+                safe_log_warning("Empty or too short content for feed: %s", url)
                 return []
 
             # Clean potential XML junk before root if necessary (simple heuristic)
@@ -100,7 +116,7 @@ class RSSManager:
                     root = safe_fromstring(content_text)
                 except Exception as e:
                     # Fallback or error logging
-                    logger.warning("defusedxml parse error for %s: %s", url, e)
+                    safe_log_warning("defusedxml parse error for %s: %s", url, e)
 
             if root is None:
                 # If defusedxml failed or not available, try standard ET but careful
@@ -109,7 +125,7 @@ class RSSManager:
                 try:
                     root = ET.fromstring(content_text)
                 except ET.ParseError as e:
-                    logger.warning("XML parse error for %s: %s", url, e)
+                    safe_log_warning("XML parse error for %s: %s", url, e)
                     return []
 
             items: List[Dict[str, Any]] = []
@@ -121,11 +137,11 @@ class RSSManager:
             return items
 
         except requests.RequestException as e:
-            logger.warning("Network error fetching feed %s: %s", url, e)
+            safe_log_warning("Network error fetching feed %s: %s", url, e)
             return []
         except Exception as e:  # pylint: disable=broad-exception-caught
             # Generic catch-all to prevent crashes
-            logger.error("Unexpected error parsing feed %s: %s", url, e)
+            safe_log_error("Unexpected error parsing feed %s: %s", url, e)
             return []
 
     @staticmethod
@@ -252,7 +268,7 @@ class RSSManager:
                             item["date_obj"] = datetime.min
                         all_items.append(item)
                 except Exception as e:  # pylint: disable=broad-exception-caught
-                    logger.error("Feed fetch failed for %s: %s", feed_url, e)
+                    safe_log_error("Feed fetch failed for %s: %s", feed_url, e)
 
         # Sort by date descending
         all_items.sort(key=lambda x: x.get("date_obj", datetime.min), reverse=True)

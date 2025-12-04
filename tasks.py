@@ -61,15 +61,18 @@ def process_queue():
                 break
 
             # Use semaphore for limiting
-            if not _SUBMISSION_THROTTLE.acquire(blocking=False):
+            # Check availability without blocking to decide if we should try to claim
+            # The semaphore is used to limit active submissions, not just for locking
+            if _SUBMISSION_THROTTLE.acquire(blocking=False):
+                # We acquired a slot, but we need to check if there is work
+                # If no work, we must release immediately
+                item = state.queue_manager.claim_next_downloadable()
+                if not item:
+                    _SUBMISSION_THROTTLE.release()
+                    break
+            else:
+                # No slots available
                 break
-
-            # Claim item
-            item = state.queue_manager.claim_next_downloadable()
-            if not item:
-                _SUBMISSION_THROTTLE.release()
-                break
-
             # pylint: disable=consider-using-with
             with _ACTIVE_COUNT_LOCK:
                 _ACTIVE_COUNT += 1
@@ -255,7 +258,11 @@ def download_task(item: Dict[str, Any]):
         state.queue_manager.update_item_status(
             item_id,
             "Completed",
-            {"filename": info.get("filename", "Unknown"), "progress": 1.0},
+            {
+                "filename": info.get("filename", "Unknown"),
+                "filepath": info.get("filepath", "Unknown"),
+                "progress": 1.0,
+            },
         )
         # Update the item dict in place because download_task caller might hold reference
         # But queue manager update_item_status does it for the queue.
