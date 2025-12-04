@@ -216,14 +216,16 @@ def open_folder(path: str, page: Optional[ft.Page] = None) -> bool:
             abs_path = os.path.dirname(abs_path)
 
         # Mobile / Web Logic
-        if page and page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS, ft.PagePlatform.MACOS]:
-            if page.platform == ft.PagePlatform.MACOS and sys.platform == "darwin":
-                 # Use desktop logic for macOS desktop app
-                 pass
-            else:
-                 # Try launch_url with file scheme
-                 page.launch_url(f"file://{abs_path}")
-                 return True
+        if page and page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS]:
+             # Try launch_url with file scheme
+             # Note: Mobile sandboxing often prevents this without specific permissions/plugins
+             # but this is the best Flet effort.
+             page.launch_url(f"file://{abs_path}")
+             return True
+        elif page and page.platform == ft.PagePlatform.MACOS:
+             # If running as macOS app bundle (not in browser)
+             if sys.platform != "darwin": # Remote browser?
+                  return False
 
         sys_plat = platform.system()
 
@@ -261,12 +263,12 @@ def play_file(path: str, page: Optional[ft.Page] = None) -> bool:
             return False
 
         # Mobile / Web Logic
-        if page and page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS, ft.PagePlatform.MACOS]:
-            if page.platform == ft.PagePlatform.MACOS and sys.platform == "darwin":
-                 pass
-            else:
-                 page.launch_url(f"file://{abs_path}")
-                 return True
+        if page and page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS]:
+             page.launch_url(f"file://{abs_path}")
+             return True
+        elif page and page.platform == ft.PagePlatform.MACOS:
+             if sys.platform != "darwin":
+                  return False
 
         sys_plat = platform.system()
 

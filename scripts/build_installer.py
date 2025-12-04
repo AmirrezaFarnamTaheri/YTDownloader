@@ -132,6 +132,13 @@ def build_installer():
     )
 
     # Windows specific flags
+    version_str = os.environ.get("APP_VERSION", "2.0.0").lstrip("v")
+
+    # Ensure version string is valid for Windows (X.X.X.X)
+    win_version = version_str
+    if win_version.count(".") < 3:
+        win_version += ".0" * (3 - win_version.count("."))
+
     if os.name == "nt":
         cmd.extend(
             [
@@ -139,8 +146,8 @@ def build_installer():
                 "--windows-icon-from-ico=assets/icon.ico",
                 "--company-name=StreamCatch",
                 "--product-name=StreamCatch",
-                "--file-version=2.0.0.0",
-                "--product-version=2.0.0.0",
+                f"--file-version={win_version}",
+                f"--product-version={win_version}",
                 "--copyright=Copyright (c) 2024 Jules",
             ]
         )
@@ -151,7 +158,7 @@ def build_installer():
                 "--macos-create-app-bundle",
                 "--macos-app-icon=assets/icon.icns",  # Assuming icon exists
                 "--macos-app-name=StreamCatch",
-                "--macos-app-version=2.0.0",
+                f"--macos-app-version={version_str}",
             ]
         )
 

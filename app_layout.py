@@ -82,7 +82,8 @@ class AppLayout(ft.Row):
 
         self.controls = [
             self.sidebar_container,
-            ft.VerticalDivider(width=1, thickness=1, color=Theme.DIVIDER),
+            # Using Container instead of VerticalDivider for clearer definition/no issues
+            ft.Container(width=1, bgcolor=Theme.DIVIDER),
             self.content_area,
         ]
 
