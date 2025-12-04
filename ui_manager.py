@@ -12,7 +12,12 @@ import flet as ft
 from app_layout import AppLayout
 from app_state import state
 from views.base_view import BaseView
-from views.dashboard_view import DashboardView
+# from views.dashboard_view import DashboardView # Dashboard removed from nav for now?
+# The AppLayout has 5 items: Download, Queue, History, RSS, Settings.
+# Dashboard seems extra or replaced by RSS/History?
+# Let's check AppLayout destinations. It has Icons.RSS_FEED but no Dashboard.
+# Wait, AppLayout has 5 destinations: Download, Queue, History, RSS, Settings.
+# The list in UIManager has 6. Index mismatch!
 from views.download_view import DownloadView
 from views.history_view import HistoryView
 from views.queue_view import QueueView
@@ -33,7 +38,6 @@ class UIManager:
         self.download_view: Optional[DownloadView] = None
         self.queue_view: Optional[QueueView] = None
         self.history_view: Optional[HistoryView] = None
-        self.dashboard_view: Optional[DashboardView] = None
         self.rss_view: Optional[RSSView] = None
         self.settings_view: Optional[SettingsView] = None
 
@@ -82,36 +86,41 @@ class UIManager:
         self.queue_view.on_retry = on_retry_item_callback
 
         self.history_view = HistoryView()
-        self.dashboard_view = DashboardView()
         self.rss_view = RSSView(state.config)
         self.settings_view = SettingsView(state.config)
 
+        # Match the order in AppLayout.destinations:
+        # 0: Download, 1: Queue, 2: History, 3: RSS, 4: Settings
         self.views_list = [
             self.download_view,
             self.queue_view,
             self.history_view,
-            self.dashboard_view,
             self.rss_view,
             self.settings_view,
         ]
 
+        # AppLayout expects `on_nav_change` as the second argument
+        def on_nav_change(e):
+             # NavigationRail `on_change` event passes an object with `control.selected_index`
+             idx = e.control.selected_index
+             self.navigate_to(idx)
+
         self.app_layout = AppLayout(
             self.page,
-            self.navigate_to,
-            on_toggle_clipboard_callback,
-            state.clipboard_monitor_active,
-            initial_view=self.download_view,
+            on_nav_change
         )
+        self.app_layout.set_content(self.download_view)
 
-        # Handle responsive layout
-        self.page.on_resize = self._on_page_resize
-        self._on_page_resize(None)
+        # Handle responsive layout logic if needed (AppLayout does basic rail toggle)
+        # We can add listener here if we want automatic compact mode
+        # But AppLayout constructor didn't have self.page attached to resize.
+        # Let's just trust AppLayout logic or Page logic.
 
-        # Apply initial settings
+        # Restore compact mode from state
         if state.compact_mode:
-            self.app_layout.set_compact_mode(True)
+            self.app_layout.toggle_compact_mode(True)
 
-        return self.app_layout.view
+        return self.app_layout
 
     def navigate_to(self, index: int):
         """Navigate to the specified view index."""
@@ -124,24 +133,15 @@ class UIManager:
             # Refresh view if needed
             if isinstance(view, HistoryView):
                 view.load()
-            elif isinstance(view, DashboardView):
-                view.load()
             elif isinstance(view, RSSView):
                 view.load()
             elif isinstance(view, QueueView):
                 view.rebuild()
 
-            self.page.update()
+            # Sync Rail index if navigated programmatically (not via click)
+            self.app_layout.set_navigation_index(index)
 
-    def _on_page_resize(self, e):
-        """
-        Handle page resize events for responsive layout.
-        Mobile breakpoints (approx): < 800px width.
-        """
-        # pylint: disable=unused-argument
-        # Use the dedicated method in AppLayout which checks width itself
-        if self.app_layout:
-            self.app_layout._on_resized(e)
+            self.page.update()
 
     def update_queue_view(self):
         """Rebuild queue view if it exists."""

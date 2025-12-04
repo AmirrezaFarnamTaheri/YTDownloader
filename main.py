@@ -7,11 +7,9 @@ Refactored for event-driven queue processing and cleaner architecture.
 
 import logging
 import os
-import signal
 import sys
 import threading
 import traceback
-from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -23,6 +21,7 @@ from app_state import state
 from logger_config import setup_logging
 from theme import Theme
 from ui_manager import UIManager
+from utils_shared import timeout_manager
 
 # Setup logging immediately
 setup_logging()
@@ -32,66 +31,6 @@ logger = logging.getLogger(__name__)
 UI: Optional[UIManager] = None
 PAGE: Optional[ft.Page] = None
 CONTROLLER: Optional[AppController] = None
-
-
-@contextmanager
-def startup_timeout(seconds=10):
-    """Context manager for timeout on startup operations.
-    Thread-based implementation compatible with Windows.
-    """
-
-    # Simple container for result/exception
-    result = {"completed": False, "exception": None}
-
-    def target(func, *args, **kwargs):
-        try:
-            func(*args, **kwargs)
-            result["completed"] = True
-        except Exception as e:
-            result["exception"] = e
-
-    # This context manager is tricky because 'yield' gives control back to caller.
-    # To timeout the caller's block, we'd need to run the caller's block in a thread.
-    # But usually the caller's block IS the main thread initialization.
-    # On Windows, we can't interrupt the main thread easily without signals.
-
-    # Alternative: Use a timer thread that kills the process if not cancelled?
-    # That's drastic but "TimeoutError" implies we give up.
-
-    timer = None
-    timed_out = {"flag": False}
-    if os.name == "nt":
-
-        def mark_timeout():
-            logger.error(
-                f"Startup timed out after {seconds} seconds (Windows fallback)."
-            )
-            timed_out["flag"] = True
-
-        timer = threading.Timer(seconds, mark_timeout)
-        timer.daemon = True  # Ensure timer doesn't block exit
-        timer.start()
-        try:
-            yield
-        finally:
-            if timer:
-                timer.cancel()
-            if timed_out["flag"]:
-                # pylint: disable=broad-exception-raised
-                raise TimeoutError(f"Operation timed out after {seconds} seconds")
-    else:
-        # Unix-like systems use signal
-        def timeout_handler(signum, frame):
-            # pylint: disable=unused-argument
-            raise TimeoutError(f"Operation timed out after {seconds} seconds")
-
-        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(seconds)
-        try:
-            yield
-        finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old_handler)
 
 
 def main(pg: ft.Page):
@@ -127,10 +66,6 @@ def main(pg: ft.Page):
         if not UI or not UI.queue_view:
             return
 
-        # Only handle if Queue view is active or globally desired
-        # Current logic doesn't strictly track active view in UI manager publicly,
-        # but we can assume these shortcuts work globally or check visible state if needed.
-
         # J / K Navigation
         if e.key == "J":  # Next
             idx = UI.queue_view.selected_index + 1
@@ -144,20 +79,8 @@ def main(pg: ft.Page):
             item = UI.queue_view.get_selected_item()
             if item and CONTROLLER:
                 CONTROLLER.on_remove_item(item)
-                # Adjust selection if needed is handled by remove?
                 # Ideally we move selection up one.
                 UI.queue_view.select_item(UI.queue_view.selected_index)
-
-        # Space (Pause/Resume or Global Pause)
-        elif e.key == " ":  # Space
-            # For now, maybe pause everything? Or selected?
-            # Implemented: Pause/Resume selected if active
-            item = UI.queue_view.get_selected_item()
-            if item:
-                # Toggle logic... but wait, we only have Cancel/Remove/Retry exposed easily.
-                # Pausing individual downloads isn't fully supported by the engine yet (only cancel).
-                # So we won't implement Space for now to avoid confusion.
-                pass
 
     PAGE.on_keyboard_event = on_keyboard  # type: ignore
 
@@ -275,7 +198,7 @@ if __name__ == "__main__":
     print("=" * 60 + "\n")
 
     try:
-        with startup_timeout(30):
+        with timeout_manager(30, "Startup timed out"):
             try:
                 logger.info("Initializing AppState...")
                 _ = state  # Force singleton initialization

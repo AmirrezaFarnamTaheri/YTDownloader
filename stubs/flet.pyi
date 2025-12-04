@@ -13,6 +13,7 @@ class Page:
     on_close: Any
     navigation_bar: Any
     on_resized: Any
+    on_keyboard_event: Any
     def open(self, control: Any) -> None: ...
     def update(self) -> None: ...
     def add(self, *controls: Any) -> None: ...
@@ -31,6 +32,9 @@ class Control:
     def update(self) -> None: ...
 
 class Container(Control):
+    content: Any
+    padding: Any
+    border: Any
     def __init__(
         self,
         content: Any = None,
@@ -75,6 +79,7 @@ class Row(Control):
 
 class Text(Control):
     value: str
+    color: Any
     def __init__(
         self,
         value: Any = None,
@@ -95,6 +100,8 @@ class Icon(Control):
     def __init__(self, name: Any = None, size: Any = None, color: Any = None): ...
 
 class ProgressBar(Control):
+    value: Any
+    color: Any
     def __init__(
         self,
         value: Any = None,
@@ -314,6 +321,7 @@ class Checkbox(Control):
         label: Any = None,
         value: bool = False,
         on_change: Any = None,
+        fill_color: Any = None,
     ): ...
 
 class dropdown:
@@ -372,6 +380,7 @@ class Tab(Control):
     ): ...
 
 class ListView(Control):
+    controls: list[Control]
     def __init__(
         self,
         expand: Any = None,
@@ -380,6 +389,7 @@ class ListView(Control):
         auto_scroll: bool = False,
         controls: Any = None,
     ): ...
+    def scroll_to(self, offset: float = 0.0, delta: float = 0.0, key: str = "", duration: int = 0, curve: Any = None) -> None: ...
 
 class FloatingActionButton(Control):
     def __init__(
@@ -454,6 +464,21 @@ class margin:
     def only(left: Any = None, top: Any = None, right: Any = None, bottom: Any = None) -> Any: ...
     @staticmethod
     def all(value: Any) -> Any: ...
+
+class RadioGroup(Control):
+    value: Any
+    def __init__(self, content: Any = None, on_change: Any = None, value: Any = None): ...
+
+class Radio(Control):
+    def __init__(self, value: Any = None, label: Any = None, fill_color: Any = None): ...
+
+class KeyboardEvent:
+    key: str
+    shift: bool
+    ctrl: bool
+    alt: bool
+    meta: bool
+    test: bool
 
 # Relaxed types
 Colors: Any

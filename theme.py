@@ -28,6 +28,7 @@ class Theme:
     BG_HOVER = "#334155"  # Slate 700
     BG_INPUT = "#020617"  # Slate 950
     BG_SURFACE_VARIANT = "#1E293B"
+    BG_LIGHT = "#1E293B"  # Light background used for sidebar in dark mode apps
 
     # Text
     TEXT_PRIMARY = "#F8FAFC"  # Slate 50
@@ -40,8 +41,9 @@ class Theme:
     ERROR = "#EF4444"  # Red 500
     INFO = "#60A5FA"  # Blue 400
 
-    # Borders
+    # Borders & Dividers
     BORDER = "#334155"  # Slate 700
+    DIVIDER = "#334155" # Alias for Divider color
 
     # --- Subclasses for Usage ---
     class Surface:

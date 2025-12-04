@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, Mapping, Optional
 
 import requests
 
+from downloader.utils.constants import RESERVED_FILENAMES
 from ui_utils import validate_url
 
 logger = logging.getLogger(__name__)
@@ -63,32 +64,8 @@ class GenericDownloader:
             filename = filename.replace("..", "-")
 
         # Avoid Windows reserved device names (case-insensitive), with or without extension
-        reserved = {
-            "CON",
-            "PRN",
-            "AUX",
-            "NUL",
-            "COM1",
-            "COM2",
-            "COM3",
-            "COM4",
-            "COM5",
-            "COM6",
-            "COM7",
-            "COM8",
-            "COM9",
-            "LPT1",
-            "LPT2",
-            "LPT3",
-            "LPT4",
-            "LPT5",
-            "LPT6",
-            "LPT7",
-            "LPT8",
-            "LPT9",
-        }
         name_root = filename.split(".")[0].upper() if filename else ""
-        if name_root in reserved:
+        if name_root in RESERVED_FILENAMES:
             filename = f"_{filename}" if filename else "downloaded_file"
 
         if not filename:

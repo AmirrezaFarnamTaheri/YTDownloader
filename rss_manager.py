@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 def safe_log_warning(msg, *args):
     """Safely log a warning message, ignoring closed stream errors."""
     try:
-        logger.warning(msg, *args)
+        if logger.isEnabledFor(logging.WARNING):
+            logger.warning(msg, *args)
     except (ValueError, OSError):
         pass
 
@@ -31,7 +32,8 @@ def safe_log_warning(msg, *args):
 def safe_log_error(msg, *args):
     """Safely log an error message, ignoring closed stream errors."""
     try:
-        logger.error(msg, *args)
+        if logger.isEnabledFor(logging.ERROR):
+            logger.error(msg, *args)
     except (ValueError, OSError):
         pass
 
