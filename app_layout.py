@@ -54,7 +54,7 @@ class AppLayout(ft.Row):
 
         # Navigation Rail (Sidebar)
         self.rail = ft.NavigationRail(
-            selected_index=0,
+            selected_index=0, # type: ignore
             label_type=ft.NavigationRailLabelType.ALL,
             on_change=self.on_nav_change,
             destinations=self.destinations,
@@ -106,5 +106,5 @@ class AppLayout(ft.Row):
 
     def set_navigation_index(self, index: int):
         """Sets the selected navigation index programmatically."""
-        self.rail.selected_index = index
+        self.rail.selected_index = index # type: ignore
         self.rail.update()
