@@ -65,16 +65,21 @@ def _clipboard_loop(page, download_view):
 
                             # UI updates must be scheduled on the page
                             if page:
+
                                 def update_ui():
                                     try:
                                         page.open(
                                             ft.SnackBar(
-                                                content=ft.Text(f"URL detected: {content}")
+                                                content=ft.Text(
+                                                    f"URL detected: {content}"
+                                                )
                                             )
                                         )
-                                        download_view.update() # Update the view so the input field shows the value
+                                        download_view.update()  # Update the view so the input field shows the value
                                     except Exception as ex:
-                                        logger.warning("Failed to update UI from clipboard: %s", ex)
+                                        logger.warning(
+                                            "Failed to update UI from clipboard: %s", ex
+                                        )
 
                                 # Use page.run_task or just calling page.update if thread-safe enough?
                                 # Flet's page.update() is thread-safe wrapper.

@@ -20,11 +20,13 @@ class InstagramPanel(BasePanel):
         super().__init__(info, on_option_change)
 
         self.download_type = ft.RadioGroup(
-            content=ft.Row([
-                ft.Radio(value="post", label="Post/Reel"),
-                ft.Radio(value="story", label="Story"),
-            ]),
-            value="post"
+            content=ft.Row(
+                [
+                    ft.Radio(value="post", label="Post/Reel"),
+                    ft.Radio(value="story", label="Story"),
+                ]
+            ),
+            value="post",
         )
 
         self.content = self.build()
@@ -32,7 +34,11 @@ class InstagramPanel(BasePanel):
     def build(self):
         return ft.Column(
             [
-                ft.Text("Instagram Options", weight=ft.FontWeight.BOLD, color=Theme.Primary.MAIN),
+                ft.Text(
+                    "Instagram Options",
+                    weight=ft.FontWeight.BOLD,
+                    color=Theme.Primary.MAIN,
+                ),
                 self.download_type,
             ],
             spacing=10,

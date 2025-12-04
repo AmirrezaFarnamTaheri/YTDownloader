@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, Mapping, Optional
 import requests
 
 from downloader.utils.constants import RESERVED_FILENAMES
-from ui_utils import validate_url
+from ui_utils import validate_url, format_file_size
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +239,11 @@ class GenericDownloader:
                         total_size = int(r.headers.get("content-length", 0))
 
                     start_time = time.time()
-                    last_update_time = 0.0
+                    last_update_time = start_time
+                    last_update_bytes = downloaded
+
+                    # For moving average speed
+                    speed_history = []
 
                     with open(final_path, mode) as f:
                         for chunk in r.iter_content(chunk_size=CHUNK_SIZE_BYTES):
@@ -250,11 +254,30 @@ class GenericDownloader:
                                 downloaded += len(chunk)
 
                                 current_time = time.time()
-                                if (
-                                    current_time - last_update_time > 0.2
-                                ):  # Update every 200ms
-                                    elapsed = max(current_time - start_time, 1e-6)
-                                    # Speed calc logic would go here if needed
+                                time_diff = current_time - last_update_time
+
+                                if time_diff > 0.5:  # Update every 500ms
+                                    bytes_diff = downloaded - last_update_bytes
+                                    speed = (
+                                        bytes_diff / time_diff if time_diff > 0 else 0
+                                    )
+
+                                    # Simple moving average for stability
+                                    speed_history.append(speed)
+                                    if len(speed_history) > 5:
+                                        speed_history.pop(0)
+                                    avg_speed = sum(speed_history) / len(speed_history)
+
+                                    eta_str = "Unknown"
+                                    if total_size > 0 and avg_speed > 0:
+                                        remaining = total_size - downloaded
+                                        seconds = remaining / avg_speed
+                                        if seconds < 60:
+                                            eta_str = f"{int(seconds)}s"
+                                        elif seconds < 3600:
+                                            eta_str = f"{int(seconds//60)}m {int(seconds%60)}s"
+                                        else:
+                                            eta_str = f"{int(seconds//3600)}h {int((seconds%3600)//60)}m"
 
                                     if progress_hook:
                                         percent_str = (
@@ -262,30 +285,25 @@ class GenericDownloader:
                                             if total_size > 0
                                             else "N/A"
                                         )
+                                        speed_str = f"{format_file_size(avg_speed)}/s"
+
                                         progress_hook(
                                             {
                                                 "status": "downloading",
                                                 "_percent_str": percent_str,
-                                                "_speed_str": "Calculating...",
-                                                "_eta_str": "Calculating...",
+                                                "_speed_str": speed_str,
+                                                "_eta_str": eta_str,
                                                 "_total_bytes_str": (
-                                                    f"{total_size / 1024 / 1024:.1f} MiB"
-                                                    if total_size
-                                                    else "N/A"
+                                                    format_file_size(total_size)
                                                 ),
                                                 "filename": filename,
+                                                "downloaded_bytes": downloaded,
+                                                "total_bytes": total_size,
                                             }
                                         )
-                                    last_update_time = current_time
 
-                                    # Periodic flush to disk for data integrity
-                                    try:
-                                        f.flush()
-                                        os.fsync(f.fileno())
-                                    except (
-                                        Exception
-                                    ):  # pylint: disable=broad-exception-caught
-                                        pass
+                                    last_update_time = current_time
+                                    last_update_bytes = downloaded
 
                     if progress_hook:
                         progress_hook(

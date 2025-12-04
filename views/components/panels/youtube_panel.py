@@ -54,7 +54,7 @@ class YouTubePanel(BasePanel):
         )
 
         self.chapters_cb = ft.Checkbox(
-            label="Split by Chapters", # TODO: Add to locale
+            label="Split by Chapters",  # TODO: Add to locale
             value=False,
             fill_color=Theme.Primary.MAIN,
         )
@@ -65,10 +65,17 @@ class YouTubePanel(BasePanel):
     def build(self):
         return ft.Column(
             [
-                ft.Text("YouTube Options", weight=ft.FontWeight.BOLD, color=Theme.Primary.MAIN),
+                ft.Text(
+                    "YouTube Options",
+                    weight=ft.FontWeight.BOLD,
+                    color=Theme.Primary.MAIN,
+                ),
                 ft.Row([self.video_format_dd, self.audio_format_dd], spacing=10),
                 self.subtitle_dd,
-                ft.Row([self.playlist_cb, self.sponsorblock_cb, self.chapters_cb], wrap=True),
+                ft.Row(
+                    [self.playlist_cb, self.sponsorblock_cb, self.chapters_cb],
+                    wrap=True,
+                ),
             ],
             spacing=10,
         )
@@ -82,9 +89,9 @@ class YouTubePanel(BasePanel):
         if "video_streams" in self.info:
             for s in self.info["video_streams"]:
                 # Simple label
-                res = s.get('resolution', 'Unknown')
-                ext = s.get('ext', '')
-                size = s.get('filesize_str', '') or s.get('filesize', '')
+                res = s.get("resolution", "Unknown")
+                ext = s.get("ext", "")
+                size = s.get("filesize_str", "") or s.get("filesize", "")
                 if size and isinstance(size, int):
                     size = f"{size / 1024 / 1024:.1f}MB"
 
@@ -99,8 +106,8 @@ class YouTubePanel(BasePanel):
         if "audio_streams" in self.info and self.info["audio_streams"]:
             self.audio_format_dd.visible = True
             for s in self.info["audio_streams"]:
-                abr = s.get('abr', '?')
-                ext = s.get('ext', '')
+                abr = s.get("abr", "?")
+                ext = s.get("ext", "")
                 label = f"{abr}k ({ext})"
                 audio_opts.append(ft.dropdown.Option(s.get("format_id"), label))
             self.audio_format_dd.options = audio_opts
@@ -128,8 +135,12 @@ class YouTubePanel(BasePanel):
     def get_options(self) -> Dict[str, Any]:
         return {
             "video_format": self.video_format_dd.value,
-            "audio_format": self.audio_format_dd.value if self.audio_format_dd.visible else None,
-            "subtitle_lang": self.subtitle_dd.value if self.subtitle_dd.value != "None" else None,
+            "audio_format": (
+                self.audio_format_dd.value if self.audio_format_dd.visible else None
+            ),
+            "subtitle_lang": (
+                self.subtitle_dd.value if self.subtitle_dd.value != "None" else None
+            ),
             "sponsorblock": self.sponsorblock_cb.value,
             "playlist": self.playlist_cb.value,
             "chapters": self.chapters_cb.value,
