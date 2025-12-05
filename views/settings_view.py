@@ -9,7 +9,7 @@ from .base_view import BaseView
 
 class SettingsView(BaseView):
     def __init__(self, config):
-        super().__init__(LM.get("settings"), ft.Icons.SETTINGS)
+        super().__init__(LM.get("settings"), ft.icons.SETTINGS)
         self.config = config
 
         self.proxy_input = ft.TextField(
@@ -70,7 +70,7 @@ class SettingsView(BaseView):
 
         # High Contrast
         self.high_contrast_cb = ft.Checkbox(
-            label="High Contrast Mode",
+            label=LM.get("high_contrast_mode"),
             value=self.config.get("high_contrast", False),
             fill_color=Theme.PRIMARY,
             on_change=self._on_high_contrast_change,
@@ -78,7 +78,7 @@ class SettingsView(BaseView):
 
         # Compact Mode
         self.compact_mode_cb = ft.Checkbox(
-            label="Compact Mode (Requires Restart)",
+            label=LM.get("compact_mode"),
             value=self.config.get("compact_mode", False),
             fill_color=Theme.PRIMARY,
         )
@@ -87,14 +87,14 @@ class SettingsView(BaseView):
             LM.get("save_settings"),
             on_click=self.save_settings,
             bgcolor=Theme.PRIMARY,
-            color=ft.Colors.WHITE,
+            color=ft.colors.WHITE,
             style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=8)),
         )
 
         self.add_control(self.proxy_input)
         self.add_control(self.rate_limit_input)
         self.add_control(self.output_template_input)
-        self.add_control(ft.Divider(height=20, color=ft.Colors.TRANSPARENT))
+        self.add_control(ft.Container(height=20))
         self.add_control(
             ft.Text(
                 LM.get("performance"),
@@ -105,7 +105,7 @@ class SettingsView(BaseView):
         )
         self.add_control(self.use_aria2c_cb)
         self.add_control(self.gpu_accel_dd)
-        self.add_control(ft.Divider(height=20, color=ft.Colors.TRANSPARENT))
+        self.add_control(ft.Container(height=20))
         self.add_control(
             ft.Text(
                 LM.get("appearance"),
@@ -117,7 +117,8 @@ class SettingsView(BaseView):
         self.add_control(self.theme_mode_dd)
         self.add_control(self.high_contrast_cb)
         self.add_control(self.compact_mode_cb)
-        self.add_control(ft.Divider(height=20, color=Theme.BORDER))
+        self.add_control(ft.Container(height=1, bgcolor=Theme.BORDER))
+        self.add_control(ft.Container(height=20))
         self.add_control(self.save_btn)
 
     def _on_theme_change(self, e):

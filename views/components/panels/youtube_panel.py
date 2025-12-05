@@ -23,14 +23,14 @@ class YouTubePanel(BasePanel):
         self.video_format_dd = ft.Dropdown(
             label=LM.get("format"),
             expand=True,
-            **Theme.get_input_decoration(hint_text="Select Format"),
+            **Theme.get_input_decoration(hint_text=LM.get("select_format")),
         )
 
         self.audio_format_dd = ft.Dropdown(
             label=LM.get("audio_stream"),
             expand=True,
             visible=False,
-            **Theme.get_input_decoration(hint_text="Select Audio"),
+            **Theme.get_input_decoration(hint_text=LM.get("select_audio")),
         )
 
         self.subtitle_dd = ft.Dropdown(
@@ -38,7 +38,7 @@ class YouTubePanel(BasePanel):
             expand=True,
             options=[ft.dropdown.Option("None", "None")],
             value="None",
-            **Theme.get_input_decoration(hint_text="Select Subtitles"),
+            **Theme.get_input_decoration(hint_text=LM.get("select_subtitles")),
         )
 
         self.sponsorblock_cb = ft.Checkbox(
@@ -54,7 +54,7 @@ class YouTubePanel(BasePanel):
         )
 
         self.chapters_cb = ft.Checkbox(
-            label="Split by Chapters",  # TODO: Add to locale
+            label=LM.get("split_chapters"),
             value=False,
             fill_color=Theme.Primary.MAIN,
         )
@@ -66,7 +66,7 @@ class YouTubePanel(BasePanel):
         return ft.Column(
             [
                 ft.Text(
-                    "YouTube Options",
+                    LM.get("youtube_options"),
                     weight=ft.FontWeight.BOLD,
                     color=Theme.Primary.MAIN,
                 ),

@@ -20,14 +20,17 @@ class GenericPanel(BasePanel):
         self.content = self.build()
 
     def build(self):
+        # pylint: disable=import-outside-toplevel
+        from localization_manager import LocalizationManager as LM
+
         return ft.Column(
             [
                 ft.Text(
-                    "Download Options",
+                    LM.get("download_options"),
                     weight=ft.FontWeight.BOLD,
                     color=Theme.Primary.MAIN,
                 ),
-                ft.Text("Standard download mode used.", color=Theme.Text.SECONDARY),
+                ft.Text(LM.get("generic_download_mode"), color=Theme.Text.SECONDARY),
             ],
             spacing=10,
         )

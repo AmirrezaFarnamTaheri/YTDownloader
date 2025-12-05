@@ -9,8 +9,8 @@ import platform
 import re
 import shutil
 import subprocess
-import threading
 import sys
+import threading
 from pathlib import Path
 from typing import Optional, Union
 

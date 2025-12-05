@@ -23,7 +23,7 @@ from rate_limiter import RateLimiter
 from tasks import process_queue
 from tasks_extended import fetch_info_task
 from ui_manager import UIManager
-from ui_utils import get_default_download_path, validate_url, open_folder, play_file
+from ui_utils import get_default_download_path, open_folder, play_file, validate_url
 
 logger = logging.getLogger(__name__)
 

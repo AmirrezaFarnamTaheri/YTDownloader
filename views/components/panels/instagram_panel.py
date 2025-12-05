@@ -22,8 +22,8 @@ class InstagramPanel(BasePanel):
         self.download_type = ft.RadioGroup(
             content=ft.Row(
                 [
-                    ft.Radio(value="post", label="Post/Reel"),
-                    ft.Radio(value="story", label="Story"),
+                    ft.Radio(value="post", label=LM.get("instagram_post_reel")),
+                    ft.Radio(value="story", label=LM.get("instagram_story")),
                 ]
             ),
             value="post",
@@ -35,7 +35,7 @@ class InstagramPanel(BasePanel):
         return ft.Column(
             [
                 ft.Text(
-                    "Instagram Options",
+                    LM.get("instagram_options"),
                     weight=ft.FontWeight.BOLD,
                     color=Theme.Primary.MAIN,
                 ),

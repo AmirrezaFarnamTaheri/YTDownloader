@@ -1,5 +1,6 @@
 import flet as ft
 
+from localization_manager import LocalizationManager as LM
 from theme import Theme
 
 
@@ -21,7 +22,7 @@ class DownloadPreviewCard(ft.Container):
         )
 
         self.title_text = ft.Text(
-            "Video Title",
+            LM.get("video_title_placeholder"),
             size=16,
             weight=ft.FontWeight.BOLD,
             max_lines=2,
@@ -29,7 +30,9 @@ class DownloadPreviewCard(ft.Container):
         )
 
         self.duration_text = ft.Text("00:00", size=12, color=Theme.TEXT_MUTED)
-        self.author_text = ft.Text("Channel", size=12, color=Theme.TEXT_MUTED)
+        self.author_text = ft.Text(
+            LM.get("channel_placeholder"), size=12, color=Theme.TEXT_MUTED
+        )
 
         self.content = ft.Row(
             [
@@ -56,11 +59,11 @@ class DownloadPreviewCard(ft.Container):
             self.update()
             return
 
-        self.title_text.value = info.get("title", "Unknown Title")
+        self.title_text.value = info.get("title", LM.get("unknown_title"))
         self.thumbnail.src = info.get("thumbnail", "")
         duration = info.get("duration_string") or info.get("duration")
         self.duration_text.value = str(duration) if duration else ""
-        self.author_text.value = info.get("uploader", "Unknown Channel")
+        self.author_text.value = info.get("uploader", LM.get("unknown_channel"))
 
         self.visible = True
         self.update()
