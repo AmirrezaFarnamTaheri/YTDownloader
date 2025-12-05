@@ -40,7 +40,9 @@ class TelegramExtractor:
             }
 
             # Use stream=True to prevent loading large responses into memory
-            with requests.get(url, headers=headers, timeout=10, stream=True) as response:
+            with requests.get(
+                url, headers=headers, timeout=10, stream=True
+            ) as response:
                 response.raise_for_status()
 
                 # Limit response reading to 2MB to prevent DoS via large HTML/files
@@ -63,7 +65,7 @@ class TelegramExtractor:
                 if isinstance(content_attr, str):
                     title = content_attr
                 elif isinstance(content_attr, list):
-                     title = str(content_attr[0])
+                    title = str(content_attr[0])
 
             # Extract Video URL
             video_url = None

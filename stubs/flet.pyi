@@ -389,7 +389,14 @@ class ListView(Control):
         auto_scroll: bool = False,
         controls: Any = None,
     ): ...
-    def scroll_to(self, offset: float = 0.0, delta: float = 0.0, key: str = "", duration: int = 0, curve: Any = None) -> None: ...
+    def scroll_to(
+        self,
+        offset: float = 0.0,
+        delta: float = 0.0,
+        key: str = "",
+        duration: int = 0,
+        curve: Any = None,
+    ) -> None: ...
 
 class FloatingActionButton(Control):
     def __init__(
@@ -461,16 +468,22 @@ class Offset:
 
 class margin:
     @staticmethod
-    def only(left: Any = None, top: Any = None, right: Any = None, bottom: Any = None) -> Any: ...
+    def only(
+        left: Any = None, top: Any = None, right: Any = None, bottom: Any = None
+    ) -> Any: ...
     @staticmethod
     def all(value: Any) -> Any: ...
 
 class RadioGroup(Control):
     value: Any
-    def __init__(self, content: Any = None, on_change: Any = None, value: Any = None): ...
+    def __init__(
+        self, content: Any = None, on_change: Any = None, value: Any = None
+    ): ...
 
 class Radio(Control):
-    def __init__(self, value: Any = None, label: Any = None, fill_color: Any = None): ...
+    def __init__(
+        self, value: Any = None, label: Any = None, fill_color: Any = None
+    ): ...
 
 class KeyboardEvent:
     key: str
@@ -544,3 +557,10 @@ class PageTransitionsTheme:
 class PageTransitionTheme:
     ZOOM: Any
     CUPERTINO: Any
+
+class PagePlatform:
+    ANDROID: Any
+    IOS: Any
+    MACOS: Any
+    LINUX: Any
+    WINDOWS: Any

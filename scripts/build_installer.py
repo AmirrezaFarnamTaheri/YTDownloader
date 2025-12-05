@@ -128,6 +128,10 @@ def build_installer():
             # Optimizations for yt-dlp build time
             "--nofollow-import-to=yt_dlp.extractor.lazy_extractors",
             "--include-package-data=yt_dlp",
+            # Include important runtime dependencies that might be missed
+            "--include-package=pypresence",
+            "--include-package=PyDrive2",
+            "--include-package=defusedxml",
         ]
     )
 

@@ -1,14 +1,18 @@
-import os
-import platform
+"""
+Tests for ui_utils module coverage.
+"""
+
 import unittest
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, patch
 
 import ui_utils
 
 
 class TestUIUtilsCoverage(unittest.TestCase):
+    """Test suite for ui_utils coverage."""
 
     def test_format_file_size_extended(self):
+        """Test extended file size formatting cases."""
         # Additional cases
         self.assertEqual(ui_utils.format_file_size(None), "N/A")
         self.assertEqual(ui_utils.format_file_size("invalid"), "N/A")
@@ -22,8 +26,9 @@ class TestUIUtilsCoverage(unittest.TestCase):
         )  # Loop finishes at PB
 
     def test_validate_url_extended(self):
-        self.assertFalse(ui_utils.validate_url(None))
-        self.assertFalse(ui_utils.validate_url(123))
+        """Test extended URL validation cases."""
+        self.assertFalse(ui_utils.validate_url(None))  # type: ignore
+        self.assertFalse(ui_utils.validate_url(123))  # type: ignore
         self.assertFalse(ui_utils.validate_url("   "))
         self.assertFalse(ui_utils.validate_url("ftp://example.com"))  # Only http/s
         self.assertFalse(ui_utils.validate_url("http://"))  # Too short
@@ -35,7 +40,8 @@ class TestUIUtilsCoverage(unittest.TestCase):
         )  # Space not allowed
 
     def test_validate_proxy_extended(self):
-        self.assertTrue(ui_utils.validate_proxy(None))
+        """Test extended proxy validation cases."""
+        self.assertTrue(ui_utils.validate_proxy(None))  # type: ignore
         self.assertTrue(ui_utils.validate_proxy(""))
 
         self.assertFalse(ui_utils.validate_proxy("http://no-port"))
@@ -53,7 +59,8 @@ class TestUIUtilsCoverage(unittest.TestCase):
         self.assertFalse(ui_utils.validate_proxy("http://:8080"))
 
     def test_validate_rate_limit_extended(self):
-        self.assertTrue(ui_utils.validate_rate_limit(None))
+        """Test extended rate limit validation cases."""
+        self.assertTrue(ui_utils.validate_rate_limit(None))  # type: ignore
         self.assertTrue(ui_utils.validate_rate_limit(""))
 
         self.assertTrue(ui_utils.validate_rate_limit("50K"))
@@ -65,6 +72,7 @@ class TestUIUtilsCoverage(unittest.TestCase):
 
     @patch("shutil.which")
     def test_is_ffmpeg_available(self, mock_which):
+        """Test ffmpeg availability check."""
         mock_which.return_value = "/usr/bin/ffmpeg"
         self.assertTrue(ui_utils.is_ffmpeg_available())
 
@@ -79,8 +87,9 @@ class TestUIUtilsCoverage(unittest.TestCase):
     def test_open_folder(
         self, mock_startfile, mock_popen, mock_expand, mock_exists, mock_isdir
     ):
+        """Test open_folder logic for different platforms."""
         # Path empty
-        self.assertFalse(ui_utils.open_folder(None))
+        self.assertFalse(ui_utils.open_folder(None))  # type: ignore
 
         mock_expand.return_value = "/path/to/folder"
 

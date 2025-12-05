@@ -102,7 +102,7 @@ class TestDownloadViewCoverage(unittest.TestCase):
 
         # Check Panel content
         panel = view.current_panel
-        assert len(panel.video_format_dd.options) == 2 # Best + 1 stream
+        assert len(panel.video_format_dd.options) == 2  # Best + 1 stream
         assert panel.audio_format_dd.visible is True
 
     def test_download_view_open_download_folder_error(self):
@@ -120,6 +120,7 @@ class TestDownloadViewCoverage(unittest.TestCase):
             # Should log error but not crash
             view._open_downloads_folder()
             mock_open.assert_called()
+
 
 if __name__ == "__main__":
     unittest.main()

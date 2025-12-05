@@ -9,6 +9,7 @@ from downloader.extractors.telegram import TelegramExtractor
 
 
 class TestTelegramExtractorExtra(unittest.TestCase):
+    """Test suite for TelegramExtractor extra coverage."""
 
     @patch("downloader.engines.generic.GenericDownloader.download")
     def test_extract_embed_url_logic(self, mock_download):

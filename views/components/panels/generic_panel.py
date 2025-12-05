@@ -22,7 +22,11 @@ class GenericPanel(BasePanel):
     def build(self):
         return ft.Column(
             [
-                ft.Text("Download Options", weight=ft.FontWeight.BOLD, color=Theme.Primary.MAIN),
+                ft.Text(
+                    "Download Options",
+                    weight=ft.FontWeight.BOLD,
+                    color=Theme.Primary.MAIN,
+                ),
                 ft.Text("Standard download mode used.", color=Theme.Text.SECONDARY),
             ],
             spacing=10,

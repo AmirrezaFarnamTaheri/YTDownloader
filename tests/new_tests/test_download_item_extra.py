@@ -15,10 +15,10 @@ class TestDownloadItemExtra(unittest.TestCase):
         control = DownloadItemControl(
             item,
             on_cancel,
-            MagicMock(), # retry
+            MagicMock(),  # retry
             on_remove,
-            MagicMock(), # play
-            MagicMock(), # folder
+            MagicMock(),  # play
+            MagicMock(),  # folder
         )
 
         # Mock the page attribute of action_row

@@ -52,6 +52,7 @@ class TestFeatureVerification(unittest.TestCase):
     @patch("shutil.which")
     def test_downloader_arguments_aria2c(self, mock_which, mock_wrapper_class):
         """Verify that aria2c arguments are passed."""
+
         # Need mock_which to return valid path for aria2c check
         # But download_video also checks ffmpeg, so we might need side_effect
         def side_effect(cmd):

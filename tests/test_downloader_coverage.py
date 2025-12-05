@@ -130,7 +130,9 @@ class TestDownloaderCoverage(unittest.TestCase):
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
     @patch("shutil.which")
-    def test_download_video_no_ffmpeg(self, mock_which, mock_wrapper_class, mock_is_telegram):
+    def test_download_video_no_ffmpeg(
+        self, mock_which, mock_wrapper_class, mock_is_telegram
+    ):
         mock_is_telegram.return_value = False
         mock_which.return_value = None  # No FFmpeg
 
