@@ -10,6 +10,7 @@ from history_manager import HistoryManager
 
 
 class TestHistoryManagerExtra(unittest.TestCase):
+    """Test suite for HistoryManager extra coverage."""
 
     @patch("history_manager.HistoryManager._get_connection")
     def test_init_db_generic_exception(self, mock_get_conn):

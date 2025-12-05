@@ -42,13 +42,18 @@ class TestUIExtended(unittest.TestCase):
     def test_rss_view_tab_change(self):
         view = RSSView(self.mock_config)
         view.update = MagicMock()
+        # Mock refresh_feeds to avoid spawning threads
+        view.refresh_feeds = MagicMock()
 
         e = MagicMock()
         view.tabs.selected_index = 1
         view.on_tab_change(e)
+        view.refresh_feeds.assert_called()
 
         view.tabs.selected_index = 0
         view.on_tab_change(e)
+        # Only called once (when switching to index 1)
+        self.assertEqual(view.refresh_feeds.call_count, 1)
 
     @patch("views.rss_view.RSSManager")
     def test_rss_view_fetch_feeds(self, MockRSS):
@@ -81,6 +86,10 @@ class TestUIExtended(unittest.TestCase):
         view = RSSView(self.mock_config)
         view.update = MagicMock()
         view.rss_input.value = "http://newfeed.com"
+
+        # Mock refresh_feeds to prevent thread spawn on add_rss if it calls it
+        # Actually add_rss calls refresh_feeds via load_feeds_list? No.
+        view.refresh_feeds = MagicMock()
 
         with patch("views.rss_view.ConfigManager.save_config") as mock_save:
             view.add_rss(None)

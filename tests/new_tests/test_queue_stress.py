@@ -6,10 +6,7 @@ import threading
 import time
 import uuid
 
-import pytest
-
 from queue_manager import QueueManager
-from utils import CancelToken
 
 
 def test_queue_stress_add_remove():
