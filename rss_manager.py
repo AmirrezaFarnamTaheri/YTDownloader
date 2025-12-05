@@ -32,8 +32,17 @@ def safe_log_warning(msg, *args):
         if not logger.handlers and not logging.root.handlers:
             return
 
+        # Use a lock if available on the logger to prevent race during emit
+        # (Though logging module is thread-safe, the stream underneath might not be during shutdown)
+
         if logger.isEnabledFor(logging.WARNING):
-            logger.warning(msg, *args)
+            # Final check for shutdown
+            if threading.main_thread().is_alive():
+                try:
+                    logger.warning(msg, *args)
+                except (ValueError, OSError):
+                    # Catch I/O operation on closed file occurring DURING log
+                    pass
     except (ValueError, OSError):
         # Ignore "I/O operation on closed file"
         pass
@@ -51,7 +60,11 @@ def safe_log_error(msg, *args):
             return
 
         if logger.isEnabledFor(logging.ERROR):
-            logger.error(msg, *args)
+            if threading.main_thread().is_alive():
+                try:
+                    logger.error(msg, *args)
+                except (ValueError, OSError):
+                    pass
     except (ValueError, OSError):
         pass
     except Exception:  # pylint: disable=broad-exception-caught

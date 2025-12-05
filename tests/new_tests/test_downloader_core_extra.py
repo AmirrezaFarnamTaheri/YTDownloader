@@ -3,13 +3,14 @@ Extra coverage tests for downloader.core.
 """
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from downloader.core import download_video
 from downloader.types import DownloadOptions
 
 
 class TestDownloaderCoreExtra(unittest.TestCase):
+    """Test suite for downloader.core extra coverage."""
 
     def test_time_range_validation_negative(self):
         """Test negative time values."""
@@ -32,6 +33,9 @@ class TestDownloaderCoreExtra(unittest.TestCase):
     @patch("downloader.core.YTDLPWrapper.download")
     def test_proxy_warning(self, mock_download):
         """Test invalid proxy format raises ValueError."""
+        # Unused argument
+        del mock_download
+
         options = DownloadOptions(url="http://url", proxy="invalid_proxy_format")
         with self.assertRaises(ValueError):
             download_video(options)

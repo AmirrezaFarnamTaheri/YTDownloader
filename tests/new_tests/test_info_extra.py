@@ -1,10 +1,16 @@
+"""
+Extra coverage tests for downloader.info module.
+"""
+
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from downloader.info import get_video_info
 
 
 class TestInfoExtra(unittest.TestCase):
+    """Test suite for downloader.info extra coverage."""
+
     @patch("downloader.info.yt_dlp.YoutubeDL")
     def test_cookies_profile(self, mock_ydl):
         """Test cookies_from_browser_profile is passed correctly."""
@@ -12,7 +18,7 @@ class TestInfoExtra(unittest.TestCase):
 
         get_video_info("http://url", "chrome", "profile1")
 
-        args, kwargs = mock_ydl.call_args
+        args, _ = mock_ydl.call_args
         self.assertEqual(args[0]["cookies_from_browser"], ("chrome", "profile1"))
 
     @patch("downloader.info.yt_dlp.YoutubeDL")

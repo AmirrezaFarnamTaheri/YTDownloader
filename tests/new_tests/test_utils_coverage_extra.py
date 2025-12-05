@@ -1,4 +1,7 @@
-import time
+"""
+Extra coverage tests for utils module.
+"""
+
 from unittest.mock import patch
 
 import pytest
@@ -27,6 +30,8 @@ def test_cancel_token_check_cancelled_during_pause():
     # We can patch time.sleep to trigger cancel
 
     def side_effect(seconds):
+        # Unused argument
+        del seconds
         token.cancel()
 
     with patch("time.sleep", side_effect=side_effect):

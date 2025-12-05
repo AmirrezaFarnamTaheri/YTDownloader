@@ -2,7 +2,6 @@
 Extra coverage tests for GenericDownloader engine.
 """
 
-import builtins
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -12,6 +11,7 @@ from downloader.engines.generic import download_generic
 
 
 class TestGenericEngineExtra(unittest.TestCase):
+    """Test suite for GenericDownloader extra coverage."""
 
     @patch(
         "downloader.engines.generic.validate_url", return_value=True
@@ -19,6 +19,9 @@ class TestGenericEngineExtra(unittest.TestCase):
     @patch("downloader.engines.generic.requests.get")
     def test_progress_update_logic(self, mock_get, mock_validate):
         """Test that progress updates trigger correctly."""
+        # Unused arguments
+        del mock_validate
+
         # Setup mock response with enough chunks to trigger update
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -48,6 +51,9 @@ class TestGenericEngineExtra(unittest.TestCase):
     @patch("downloader.engines.generic.requests.get")
     def test_retry_resume_logic(self, mock_get, mock_validate):
         """Test that retries set the Range header correctly."""
+        # Unused arguments
+        del mock_validate
+
         # First attempt fails with connection error
         # Second attempt succeeds
         mock_fail = MagicMock()
@@ -75,13 +81,16 @@ class TestGenericEngineExtra(unittest.TestCase):
 
         # Verify Range header on second call
         self.assertEqual(mock_get.call_count, 2)
-        args, kwargs = mock_get.call_args_list[1]
+        _, kwargs = mock_get.call_args_list[1]
         self.assertEqual(kwargs["headers"]["Range"], "bytes=500-")
 
     @patch("downloader.engines.generic.validate_url", return_value=True)
     @patch("downloader.engines.generic.requests.get")
     def test_exhausted_retries_raises_last_error(self, mock_get, mock_validate):
         """Test that exception is re-raised after max retries."""
+        # Unused arguments
+        del mock_validate
+
         mock_fail = MagicMock()
         mock_fail.raise_for_status.side_effect = requests.exceptions.ConnectionError(
             "Final Fail"
@@ -103,6 +112,9 @@ class TestGenericEngineExtra(unittest.TestCase):
     @patch("downloader.engines.generic.requests.get")
     def test_retry_without_file_exists(self, mock_get, mock_validate):
         """Test retry logic when partial file does not exist."""
+        # Unused arguments
+        del mock_validate
+
         # First attempt fails
         mock_fail = MagicMock()
         mock_fail.raise_for_status.side_effect = requests.exceptions.ConnectionError(
@@ -128,5 +140,5 @@ class TestGenericEngineExtra(unittest.TestCase):
                 download_generic("http://url", "/tmp", "file.mp4", MagicMock(), {})
 
         # Verify Range header NOT set on second call
-        args, kwargs = mock_get.call_args_list[1]
+        _, kwargs = mock_get.call_args_list[1]
         self.assertNotIn("Range", kwargs["headers"])

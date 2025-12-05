@@ -1,7 +1,10 @@
+"""
+Tests for RSSView coverage.
+"""
+
 from unittest.mock import MagicMock, patch
 
 import flet as ft
-import pytest
 
 from localization_manager import LocalizationManager
 from views.rss_view import RSSView
@@ -30,20 +33,17 @@ def test_rss_view_fetch_task_exception():
     # Mock page for clipboard access in item creation (though not called here)
     view.page = MagicMock()
 
-    with patch("rss_manager.RSSManager.parse_feed") as mock_parse:
-
-        def side_effect(url, instance=None):
-            if "bad" in url:
-                raise Exception("Network Error")
-            return [
-                {"title": "Video 1", "link": "http://v1", "published": "2023-01-01"}
-            ]
-
-        mock_parse.side_effect = side_effect
-
-        # Run directly without thread
+    with patch("rss_manager.RSSManager.get_aggregated_items") as mock_agg:
+        mock_agg.return_value = [
+            {
+                "title": "Video 1",
+                "link": "http://v1",
+                "published": "2023-01-01",
+                "feed_name": "Good Feed",
+                "date_obj": None,
+            }
+        ]
         view._fetch_feeds_task()
-
         assert len(view.items_list.controls) == 1
 
 
@@ -52,14 +52,11 @@ def test_rss_view_fetch_task_empty():
     view = RSSView({"rss_feeds": ["http://empty.com"]})
     view.update = MagicMock()
 
-    # Pre-load "no_items_found" so we know what to expect
-    # Since LocalizationManager uses a dict, we can mock it or assume default keys if not loaded
-    # But for robustness, let's just match the key or the English string if loaded.
-    # In tests, LM might not load en.json unless called.
-
+    # Pre-load "no_items_found"
     LocalizationManager._strings = {"no_items_found": "No items found."}
 
-    with patch("rss_manager.RSSManager.parse_feed", return_value=[]):
+    # Patch get_aggregated_items to avoid thread pool
+    with patch("rss_manager.RSSManager.get_aggregated_items", return_value=[]):
         view._fetch_feeds_task()
 
         assert len(view.items_list.controls) == 1
@@ -73,8 +70,16 @@ def test_rss_view_item_copy():
     view.page = MagicMock()
 
     with patch(
-        "rss_manager.RSSManager.parse_feed",
-        return_value=[{"title": "T", "link": "L", "published": "D"}],
+        "rss_manager.RSSManager.get_aggregated_items",
+        return_value=[
+            {
+                "title": "T",
+                "link": "L",
+                "published": "D",
+                "feed_name": "Test Feed",
+                "date_obj": None,
+            }
+        ],
     ):
         view._fetch_feeds_task()
 
