@@ -6,12 +6,14 @@ import os
 import signal
 from contextlib import contextmanager
 
+
 @contextmanager
 def timeout_manager(seconds=30, error_message="Operation timed out"):
     """
     Context manager for timeout operations.
     Supports Unix signals and Windows threading (simplified/fallback).
     """
+
     def timeout_handler(signum, frame):
         raise TimeoutError(error_message)
 

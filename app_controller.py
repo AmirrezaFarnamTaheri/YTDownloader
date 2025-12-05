@@ -250,7 +250,13 @@ class AppController:
             state.queue_manager.update_item_status(
                 item_id,
                 "Queued",
-                updates={"speed": "", "eta": "", "size": "", "progress": 0, "error": None},
+                updates={
+                    "speed": "",
+                    "eta": "",
+                    "size": "",
+                    "progress": 0,
+                    "error": None,
+                },
             )
         self.ui.update_queue_view()
 
@@ -260,18 +266,20 @@ class AppController:
         filename = item.get("filename")
 
         if not filename:
-             self.page.open(ft.SnackBar(content=ft.Text("File path unknown")))
-             return
+            self.page.open(ft.SnackBar(content=ft.Text("File path unknown")))
+            return
 
         full_path = os.path.join(output_path, filename)
         if not play_file(full_path, self.page):
-             self.page.open(ft.SnackBar(content=ft.Text("Failed to open file or file not found")))
+            self.page.open(
+                ft.SnackBar(content=ft.Text("Failed to open file or file not found"))
+            )
 
     def on_open_folder(self, item: Dict[str, Any]):
         """Callback to open the folder containing the file."""
         output_path = item.get("output_path", get_default_download_path())
         if not open_folder(output_path, self.page):
-             self.page.open(ft.SnackBar(content=ft.Text("Failed to open folder")))
+            self.page.open(ft.SnackBar(content=ft.Text("Failed to open folder")))
 
     def on_batch_file_result(self, e: ft.FilePickerResultEvent):
         """Callback when a file is selected for batch import."""

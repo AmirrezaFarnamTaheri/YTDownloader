@@ -167,10 +167,11 @@ def global_crash_handler(exctype, value, tb):
         print("=" * 60 + "\n", file=sys.stderr)
 
         if os.name == "nt":
-             # Try to show message box in a separate thread to avoid blocking if possible,
-             # but here we are crashing anyway.
+            # Try to show message box in a separate thread to avoid blocking if possible,
+            # but here we are crashing anyway.
             try:
                 import ctypes  # pylint: disable=import-outside-toplevel
+
                 # MessageBoxW blocks, but since we are crashing, it's fine.
                 msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
                 ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
