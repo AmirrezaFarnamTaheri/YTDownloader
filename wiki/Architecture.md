@@ -9,10 +9,15 @@ graph TD
     UI[Flet UI] --> AppController
     AppController --> TaskManager[Task Manager]
     AppController --> QueueManager[Queue Manager]
+    AppController --> RSSManager[RSS Manager]
+    AppController --> SyncManager[Sync Manager]
+    AppController --> SocialManager[Social Manager]
     TaskManager --> Downloader[Downloader Engine]
     Downloader --> YTDLP[yt-dlp Wrapper]
     Downloader --> Generic[Generic Downloader]
     QueueManager --> TaskManager
+    SyncManager --> CloudManager[Cloud Manager]
+    RSSManager --> TaskManager
 ```
 
 ## Key Components
@@ -22,7 +27,7 @@ The central coordinator. It initializes the UI, manages global state, and handle
 
 ### 2. UI Layer (`views/`)
 Built using Flet. It uses a component-based approach:
-*   **Views**: High-level pages (e.g., `DownloadView`, `QueueView`).
+*   **Views**: High-level pages (e.g., `DownloadView`, `QueueView`, `RSSView`).
 *   **Components**: Reusable widgets (e.g., `DownloadItemControl`, `Panels`).
 *   **Theme**: Centralized styling in `theme.py`.
 
@@ -33,12 +38,17 @@ Handles background processing using `ThreadPoolExecutor`. It manages concurrency
 A robust package handling the actual download logic.
 *   **Core**: Main entry point (`download_video`).
 *   **Engines**: Specific implementations for different backends (yt-dlp, generic HTTP).
-*   **Extractors**: Metadata extraction logic.
+*   **Extractors**: Metadata extraction logic (Telegram, Generic).
 
 ### 5. State Management
 *   **AppState**: A singleton holding global configuration and runtime state.
 *   **QueueManager**: Manages the list of downloads, their status, and persistence.
 *   **HistoryManager**: Logs completed downloads to a SQLite database.
+
+### 6. Extended Managers
+*   **RSSManager**: Manages RSS feed subscriptions, parsing, and automated checking.
+*   **SocialManager**: Handles integration with Discord Rich Presence.
+*   **SyncManager**: Manages configuration and database backup/restore to cloud providers (via `CloudManager`).
 
 ## Data Flow
 
