@@ -146,7 +146,7 @@ class ConfigManager:
                 os.replace(temp_path, str(config_path))
                 logger.info("Configuration saved.")
 
-# pylint: disable=try-except-raise
+            # pylint: disable=try-except-raise
             except Exception:
                 # Re-raise to be handled by outer block or just bubble up
                 raise

@@ -5,6 +5,7 @@ This module provides the `AppState` singleton which manages the global state
 of the application, including configuration, queue management, services, and
 feature flags.
 """
+
 import logging
 import threading
 from datetime import time

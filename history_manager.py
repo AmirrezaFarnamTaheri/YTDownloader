@@ -165,7 +165,7 @@ class HistoryManager:
             raise last_error
 
     @staticmethod
-# pylint: disable=too-many-positional-arguments
+    # pylint: disable=too-many-positional-arguments
     def add_entry(
         url: str,
         title: str,

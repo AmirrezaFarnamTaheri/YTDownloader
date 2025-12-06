@@ -46,30 +46,31 @@ class Theme:
     DIVIDER = "#334155"  # Alias for Divider color
 
     # --- Subclasses for Usage ---
-# pylint: disable=too-few-public-methods
+    # pylint: disable=too-few-public-methods
     class Surface:
         """Surface color definitions."""
 
         BG = "#1E293B"
         CARD = "#1E293B"
         INPUT = "#020617"
-# pylint: disable=too-few-public-methods
+
+    # pylint: disable=too-few-public-methods
 
     class Primary:
         """Primary color definitions."""
 
-# pylint: disable=too-few-public-methods
+        # pylint: disable=too-few-public-methods
         MAIN = "#818CF8"
 
     class Text:
         """Text color definitions."""
 
-# pylint: disable=too-few-public-methods
+        # pylint: disable=too-few-public-methods
         PRIMARY = "#F8FAFC"
         SECONDARY = "#94A3B8"
 
     class Divider:
-# pylint: disable=too-few-public-methods
+        # pylint: disable=too-few-public-methods
         """Divider color definitions."""
 
         COLOR = "#334155"
@@ -85,22 +86,22 @@ class Theme:
         """Returns the High Contrast Theme object."""
         return ft.Theme(
             color_scheme=ft.ColorScheme(
-                primary=ft.colors.YELLOW_400,
-                secondary=ft.colors.CYAN_400,
-                background=ft.colors.BLACK,
-                surface=ft.colors.GREY_900,
-                surface_variant=ft.colors.GREY_800,
-                error=ft.colors.RED_500,
-                on_primary=ft.colors.BLACK,
-                on_secondary=ft.colors.BLACK,
-                on_background=ft.colors.WHITE,
-                on_surface=ft.colors.WHITE,
-                surface_tint=ft.colors.TRANSPARENT,
-                outline=ft.colors.WHITE,
-                inverse_surface=ft.colors.WHITE,
-                on_inverse_surface=ft.colors.BLACK,
+                primary=ft.Colors.YELLOW_400,
+                secondary=ft.Colors.CYAN_400,
+                background=ft.Colors.BLACK,
+                surface=ft.Colors.GREY_900,
+                surface_variant=ft.Colors.GREY_800,
+                error=ft.Colors.RED_500,
+                on_primary=ft.Colors.BLACK,
+                on_secondary=ft.Colors.BLACK,
+                on_background=ft.Colors.WHITE,
+                on_surface=ft.Colors.WHITE,
+                surface_tint=ft.Colors.TRANSPARENT,
+                outline=ft.Colors.WHITE,
+                inverse_surface=ft.Colors.WHITE,
+                on_inverse_surface=ft.Colors.BLACK,
             ),
-# pylint: disable=no-member
+            # pylint: disable=no-member
             visual_density=ft.VisualDensity.COMFORTABLE,
             page_transitions=ft.PageTransitionsTheme(
                 android=ft.PageTransitionTheme.ZOOM,
@@ -110,7 +111,7 @@ class Theme:
                 windows=ft.PageTransitionTheme.ZOOM,
             ),
             scrollbar_theme=ft.ScrollbarTheme(
-                thumb_color=ft.colors.WHITE,
+                thumb_color=ft.Colors.WHITE,
                 radius=0,
                 thickness=10,
                 interactive=True,
@@ -132,13 +133,13 @@ class Theme:
                 on_secondary=Theme.BG_DARK,
                 on_background=Theme.TEXT_PRIMARY,
                 on_surface=Theme.TEXT_PRIMARY,
-                surface_tint=ft.colors.TRANSPARENT,  # Removing tint for cleaner look
+                surface_tint=ft.Colors.TRANSPARENT,  # Removing tint for cleaner look
                 outline=Theme.BORDER,
                 inverse_surface=Theme.TEXT_PRIMARY,
                 on_inverse_surface=Theme.BG_DARK,
-# pylint: disable=no-member
+                # pylint: disable=no-member
             ),
-# pylint: disable=no-member
+            # pylint: disable=no-member
             visual_density=ft.VisualDensity.COMFORTABLE,
             page_transitions=ft.PageTransitionsTheme(
                 android=ft.PageTransitionTheme.ZOOM,
@@ -172,9 +173,9 @@ class Theme:
             "hint_text": hint_text,
             "hint_style": ft.TextStyle(color=Theme.TEXT_MUTED),
             "border": ft.InputBorder.OUTLINE,
-# pylint: disable=line-too-long
+            # pylint: disable=line-too-long
             "border_width": 0,  # Simulate 'no border' initially if desired, or use transparent color
-            "border_color": ft.colors.TRANSPARENT,
+            "border_color": ft.Colors.TRANSPARENT,
             "focused_border_color": Theme.PRIMARY,
             "focused_border_width": 1,
             "content_padding": 15,

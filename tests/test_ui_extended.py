@@ -98,7 +98,7 @@ class TestUIExtended(unittest.TestCase):
 
             found = False
             for f in self.mock_config["rss_feeds"]:
-# pylint: disable=no-member
+                # pylint: disable=no-member
                 url = f if isinstance(f, str) else f.get("url")
                 if url == "http://newfeed.com":
                     found = True
@@ -109,7 +109,7 @@ class TestUIExtended(unittest.TestCase):
             view.remove_rss("http://newfeed.com")
 
             found = False
-# pylint: disable=no-member
+            # pylint: disable=no-member
             for f in self.mock_config["rss_feeds"]:
                 url = f if isinstance(f, str) else f.get("url")
                 if url == "http://newfeed.com":

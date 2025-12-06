@@ -28,7 +28,7 @@ def safe_log_warning(msg, *args):
         if not sys or not sys.stderr or sys.stderr.closed:
             return
 
-# pylint: disable=line-too-long
+        # pylint: disable=line-too-long
         # Double check handlers to avoid "No handlers could be found" or closed file errors in handlers
         if not logger.handlers and not logging.root.handlers:
             return
@@ -143,14 +143,14 @@ class RSSManager:
             if safe_fromstring is not None:
                 try:
                     root = safe_fromstring(content_text)
-# pylint: disable=broad-exception-caught
+                # pylint: disable=broad-exception-caught
                 except Exception as e:
                     # Fallback or error logging
                     safe_log_warning("defusedxml parse error for %s: %s", url, e)
 
             if root is None:
                 # If defusedxml failed or not available, try standard ET but careful
-# pylint: disable=line-too-long
+                # pylint: disable=line-too-long
                 # Note: This is less secure against billionaire laughs etc but needed for some malformed feeds
                 # In production, we should stick to defusedxml for untrusted input.
                 try:

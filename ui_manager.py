@@ -60,7 +60,7 @@ class UIManager:
         on_remove_item_callback,
         on_reorder_item_callback,
         on_retry_item_callback,
-# pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         on_toggle_clipboard_callback,
         on_play_callback,  # New
         on_open_folder_callback,  # New

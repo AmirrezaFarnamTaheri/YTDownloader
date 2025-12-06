@@ -21,6 +21,7 @@ class QueueView(BaseView):
     """
     View for managing the download queue.
     """
+
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-positional-arguments
     def __init__(
@@ -32,7 +33,7 @@ class QueueView(BaseView):
         on_play: Callable,  # New
         on_open_folder: Callable,  # New
     ):
-        super().__init__(LM.get("queue"), ft.icons.QUEUE_MUSIC)
+        super().__init__(LM.get("queue"), ft.Icons.QUEUE_MUSIC)
         self.queue_manager = queue_manager
         self.on_cancel = on_cancel
         self.on_remove = on_remove
@@ -61,7 +62,7 @@ class QueueView(BaseView):
                 ft.Container(
                     content=ft.Column(
                         [
-                            ft.Icon(ft.icons.QUEUE, size=64, color=Theme.TEXT_MUTED),
+                            ft.Icon(ft.Icons.QUEUE, size=64, color=Theme.TEXT_MUTED),
                             ft.Text(
                                 LM.get("no_items_found"), color=Theme.Text.SECONDARY
                             ),

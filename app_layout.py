@@ -27,28 +27,28 @@ class AppLayout(ft.Row):
         # Define Navigation Destinations
         self.destinations = [
             ft.NavigationRailDestination(
-                icon=ft.icons.DOWNLOAD,
-                selected_icon=ft.icons.DOWNLOAD_ROUNDED,
+                icon=ft.Icons.DOWNLOAD,
+                selected_icon=ft.Icons.DOWNLOAD_ROUNDED,
                 label=LM.get("download"),
             ),
             ft.NavigationRailDestination(
-                icon=ft.icons.LIST,
-                selected_icon=ft.icons.LIST_ALT,
+                icon=ft.Icons.LIST,
+                selected_icon=ft.Icons.LIST_ALT,
                 label=LM.get("queue"),
             ),
             ft.NavigationRailDestination(
-                icon=ft.icons.HISTORY,
-                selected_icon=ft.icons.HISTORY_TOGGLE_OFF,
+                icon=ft.Icons.HISTORY,
+                selected_icon=ft.Icons.HISTORY_TOGGLE_OFF,
                 label=LM.get("history"),
             ),
             ft.NavigationRailDestination(
-                icon=ft.icons.RSS_FEED,
-                selected_icon=ft.icons.RSS_FEED_ROUNDED,
+                icon=ft.Icons.RSS_FEED,
+                selected_icon=ft.Icons.RSS_FEED_ROUNDED,
                 label=LM.get("rss"),
             ),
             ft.NavigationRailDestination(
-                icon=ft.icons.SETTINGS,
-                selected_icon=ft.icons.SETTINGS_SUGGEST,
+                icon=ft.Icons.SETTINGS,
+                selected_icon=ft.Icons.SETTINGS_SUGGEST,
                 label=LM.get("settings"),
             ),
         ]

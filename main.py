@@ -202,7 +202,7 @@ if __name__ == "__main__":
         # Accessing state triggers initialization
         _ = state
         logger.info("AppState initialized successfully")
-# pylint: disable=broad-exception-caught
+    # pylint: disable=broad-exception-caught
     except Exception as e:
         # pylint: disable=broad-exception-caught
         print(f"ERROR: Failed to initialize AppState: {e}", file=sys.stderr)

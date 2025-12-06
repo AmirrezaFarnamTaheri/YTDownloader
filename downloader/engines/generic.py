@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long,too-many-locals,too-many-branches,too-many-statements,too-many-arguments,broad-exception-caught
 """
 Generic downloader engine using requests.
 Supports resumable downloads, retry with exponential backoff, and robust filename extraction.
