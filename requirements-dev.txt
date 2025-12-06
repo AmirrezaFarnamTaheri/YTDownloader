@@ -12,5 +12,3 @@ types-pyperclip
 types-python-dateutil
 types-setuptools
 types-defusedxml
-flet-desktop
-flet-runtime

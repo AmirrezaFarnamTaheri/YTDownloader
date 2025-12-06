@@ -19,3 +19,17 @@ We use a `CancelToken` pattern (similar to C# CancellationToken) to handle downl
 ## Flet & UI Threading
 
 Flet runs on a separate thread. Updates to the UI from background threads (like download progress) must be thread-safe. We use `page.update()` or control-specific update methods.
+
+## RSS Feeds
+
+StreamCatch supports subscribing to RSS feeds (e.g., YouTube channel feeds).
+*   **Parsing**: Uses `defusedxml` for secure XML parsing.
+*   **Updates**: Can be triggered manually or on a schedule.
+*   **Integration**: New items from feeds can be directly added to the download queue.
+
+## Cloud Sync
+
+The `SyncManager` facilitates backing up and restoring application data.
+*   **Scope**: Backs up `config.json` and the SQLite history database.
+*   **Format**: Uses ZIP compression.
+*   **Providers**: Supports Google Drive (via `PyDrive2`) and potentially others in the future.
