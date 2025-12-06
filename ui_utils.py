@@ -101,8 +101,7 @@ def validate_proxy(proxy: str) -> bool:
     # User/pass optional
 
     regex = re.compile(
-        r"^(?:http|https|socks4|socks5)://"
-        r"(?:[^:@]+:[^:@]+@)?"
+        r"^(?:http|https|socks4|socks5)://" r"(?:[^:@]+:[^:@]+@)?"
         # pylint: disable=line-too-long
         r"(?:"
         r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*|"
