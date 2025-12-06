@@ -1,31 +1,14 @@
-# Welcome to the StreamCatch Wiki
+# StreamCatch Encyclopedia
 
-StreamCatch is a modern, high-performance media downloader built with Python and Flet.
+Welcome to the StreamCatch Encyclopedia. This section provides in-depth technical documentation, architectural overviews, and conceptual guides for the StreamCatch project.
 
-## 📚 Documentation Index
+## Index
 
-### 🚀 [User Guide](User-Guide.md)
-*   [Installation](Installation.md)
-*   [Getting Started](User-Guide.md#getting-started)
-*   [Downloading Media](User-Guide.md#downloading-media)
-*   [Queue Management](User-Guide.md#queue-management)
-*   [Configuration](User-Guide.md#configuration)
+*   [Architecture](Architecture.md) - High-level system design and component interactions.
+*   [Core Concepts](Concepts.md) - Explanation of key concepts like Downloaders, Extractors, and Managers.
+*   [API Reference](API.md) - Internal API documentation for developers.
+*   [Legacy Documentation](../project_docs/Home.md) - Practical user guides and older documentation.
 
-### 🛠️ [Developer Guide](Developer-Guide.md)
-*   [Architecture Overview](Developer-Guide.md#architecture)
-*   [Setting Up Environment](Developer-Guide.md#setup)
-*   [Running Tests](Developer-Guide.md#testing)
-*   [Building Installers](Developer-Guide.md#building)
-*   [Contribution Guidelines](Developer-Guide.md#contributing)
+## Purpose
 
-### ❓ [Support & Troubleshooting](Troubleshooting.md)
-*   [Common Issues](Troubleshooting.md#common-issues)
-*   [Reporting Bugs](Troubleshooting.md#reporting-bugs)
-*   [FAQ](Troubleshooting.md#faq)
-
-### 🔮 [Project Roadmap](Roadmap.md)
-*   [What's Next](Roadmap.md)
-*   [Suggestions](Suggestions.md)
-
----
-*StreamCatch © 2025*
+The purpose of this encyclopedia is to serve as a comprehensive source of truth for the codebase's inner workings, intended primarily for contributors and maintainers.

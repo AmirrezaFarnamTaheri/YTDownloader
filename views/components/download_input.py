@@ -40,20 +40,20 @@ class DownloadInputCard(ft.Container):
         platform_icons = ft.Row(
             [
                 ft.Icon(
-                    ft.Icons.ONDEMAND_VIDEO, color=ft.Colors.RED_400, tooltip="YouTube"
+                    ft.icons.ONDEMAND_VIDEO, color=ft.colors.RED_400, tooltip="YouTube"
                 ),
                 ft.Icon(
-                    ft.Icons.TELEGRAM, color=ft.Colors.BLUE_400, tooltip="Telegram"
+                    ft.icons.TELEGRAM, color=ft.colors.BLUE_400, tooltip="Telegram"
                 ),
                 ft.Icon(
-                    ft.Icons.ALTERNATE_EMAIL,
-                    color=ft.Colors.LIGHT_BLUE_400,
+                    ft.icons.ALTERNATE_EMAIL,
+                    color=ft.colors.LIGHT_BLUE_400,
                     tooltip="Twitter/X",
                 ),
                 ft.Icon(
-                    ft.Icons.CAMERA_ALT, color=ft.Colors.PINK_400, tooltip="Instagram"
+                    ft.icons.CAMERA_ALT, color=ft.colors.PINK_400, tooltip="Instagram"
                 ),
-                ft.Icon(ft.Icons.LINK, color=Theme.TEXT_MUTED, tooltip="Generic Files"),
+                ft.Icon(ft.icons.LINK, color=Theme.TEXT_MUTED, tooltip="Generic Files"),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             spacing=20,

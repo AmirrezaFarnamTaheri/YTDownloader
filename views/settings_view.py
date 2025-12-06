@@ -13,7 +13,7 @@ from .base_view import BaseView
 
 class SettingsView(BaseView):
     def __init__(self, config):
-        super().__init__(LM.get("settings"), ft.Icons.SETTINGS)
+        super().__init__(LM.get("settings"), ft.icons.SETTINGS)
         self.config = config
 
         self.proxy_input = ft.TextField(
@@ -91,7 +91,7 @@ class SettingsView(BaseView):
             LM.get("save_settings"),
             on_click=self.save_settings,
             bgcolor=Theme.PRIMARY,
-            color=ft.Colors.WHITE,
+            color=ft.colors.WHITE,
             style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=8)),
         )
 

@@ -22,7 +22,7 @@ class RSSView(BaseView):
     """View for managing and viewing RSS feeds."""
 
     def __init__(self, config):
-        super().__init__(LM.get("rss"), ft.Icons.RSS_FEED)
+        super().__init__(LM.get("rss"), ft.icons.RSS_FEED)
         self.config = config
         self.rss_manager = RSSManager(config)
         self.feed_list = ft.ListView(expand=True, spacing=10, padding=20)
@@ -37,19 +37,19 @@ class RSSView(BaseView):
             tabs=[
                 ft.Tab(
                     text=LM.get("feeds"),
-                    icon=ft.Icons.RSS_FEED,
+                    icon=ft.icons.RSS_FEED,
                     content=ft.Column(
                         [
                             ft.Row(
                                 [
                                     self.rss_input,
                                     ft.IconButton(
-                                        icon=ft.Icons.ADD,
+                                        icon=ft.icons.ADD,
                                         tooltip=LM.get("add_feed"),
                                         on_click=self.add_rss,
                                     ),
                                     ft.IconButton(
-                                        icon=ft.Icons.REFRESH,
+                                        icon=ft.icons.REFRESH,
                                         on_click=self.refresh_feeds,
                                     ),
                                 ],
@@ -63,7 +63,7 @@ class RSSView(BaseView):
                 ),
                 ft.Tab(
                     text=LM.get("latest_items"),
-                    icon=ft.Icons.NEW_RELEASES,
+                    icon=ft.icons.NEW_RELEASES,
                     content=self.items_list,
                 ),
             ],
@@ -102,22 +102,22 @@ class RSSView(BaseView):
                         content=ft.Container(
                             content=ft.Row(
                                 [
-                                    ft.Icon(ft.Icons.RSS_FEED),
+                                    ft.Icon(ft.icons.RSS_FEED),
                                     ft.Column(
                                         [
                                             ft.Text(name, weight=ft.FontWeight.BOLD),
                                             ft.Text(
                                                 url,
                                                 size=12,
-                                                color=ft.Colors.GREY,
+                                                color=ft.colors.GREY,
                                                 overflow=ft.TextOverflow.ELLIPSIS,
                                             ),
                                         ],
                                         expand=True,
                                     ),
                                     ft.IconButton(
-                                        icon=ft.Icons.DELETE,
-                                        icon_color=ft.Colors.RED,
+                                        icon=ft.icons.DELETE,
+                                        icon_color=ft.colors.RED,
                                         on_click=lambda e, f=feed: self.remove_rss(f),
                                     ),
                                 ]
@@ -194,7 +194,7 @@ class RSSView(BaseView):
                                     ft.Text(
                                         f"{item['feed_name']} - {item['published']}",
                                         size=12,
-                                        color=ft.Colors.GREY,
+                                        color=ft.colors.GREY,
                                     ),
                                     ft.Row(
                                         [
