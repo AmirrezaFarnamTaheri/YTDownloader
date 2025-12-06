@@ -95,7 +95,7 @@ class DownloadItemControl(ft.Container):
         # self.border = ft.border.all(1, Theme.Divider.COLOR) # Cleaner without border?
         self.shadow = ft.BoxShadow(
             blur_radius=5,
-            color=ft.Colors.with_opacity(0.05, ft.Colors.BLACK),
+            color=ft.colors.with_opacity(0.05, ft.colors.BLACK),
         )
 
         # Attach to item for updates
@@ -106,12 +106,12 @@ class DownloadItemControl(ft.Container):
     def _get_platform_icon(self, url: str) -> ft.Icon:
         """Returns an icon based on the URL."""
         if "youtube" in url or "youtu.be" in url:
-            return ft.Icon(ft.Icons.VIDEO_LIBRARY, color=ft.Colors.RED_400, size=30)
+            return ft.Icon(ft.icons.VIDEO_LIBRARY, color=ft.colors.RED_400, size=30)
         if "instagram" in url:
-            return ft.Icon(ft.Icons.PHOTO_CAMERA, color=ft.Colors.PINK_400, size=30)
+            return ft.Icon(ft.icons.PHOTO_CAMERA, color=ft.colors.PINK_400, size=30)
         if "twitter" in url or "x.com" in url:
-            return ft.Icon(ft.Icons.ALTERNATE_EMAIL, color=ft.Colors.BLUE_400, size=30)
-        return ft.Icon(ft.Icons.LINK, color=Theme.Primary.MAIN, size=30)
+            return ft.Icon(ft.icons.ALTERNATE_EMAIL, color=ft.colors.BLUE_400, size=30)
+        return ft.Icon(ft.icons.LINK, color=Theme.Primary.MAIN, size=30)
 
     def update_progress(self):
         """Update progress bar and text (External Call)."""
@@ -166,7 +166,7 @@ class DownloadItemControl(ft.Container):
         if status == "Completed":
             self.action_row.controls.append(
                 ft.IconButton(
-                    ft.Icons.PLAY_ARROW,
+                    ft.icons.PLAY_ARROW,
                     tooltip="Play",
                     icon_color=Theme.Status.SUCCESS,
                     on_click=lambda _: self.on_play(self.item),
@@ -174,7 +174,7 @@ class DownloadItemControl(ft.Container):
             )
             self.action_row.controls.append(
                 ft.IconButton(
-                    ft.Icons.FOLDER_OPEN,
+                    ft.icons.FOLDER_OPEN,
                     tooltip="Open Folder",
                     icon_color=Theme.Text.SECONDARY,
                     on_click=lambda _: self.on_open_folder(self.item),
@@ -185,7 +185,7 @@ class DownloadItemControl(ft.Container):
         if status in ("Downloading", "Queued", "Processing"):
             self.action_row.controls.append(
                 ft.IconButton(
-                    ft.Icons.CANCEL,
+                    ft.icons.CANCEL,
                     tooltip="Cancel",
                     icon_color=Theme.Status.ERROR,
                     on_click=lambda _: self.on_cancel(self.item),
@@ -196,7 +196,7 @@ class DownloadItemControl(ft.Container):
         if status in ("Error", "Cancelled"):
             self.action_row.controls.append(
                 ft.IconButton(
-                    ft.Icons.REFRESH,
+                    ft.icons.REFRESH,
                     tooltip="Retry",
                     icon_color=Theme.Primary.MAIN,
                     on_click=lambda _: self.on_retry(self.item),
@@ -207,7 +207,7 @@ class DownloadItemControl(ft.Container):
         # Maybe show 'Close' or 'Delete' icon always?
         self.action_row.controls.append(
             ft.IconButton(
-                ft.Icons.DELETE_OUTLINE,
+                ft.icons.DELETE_OUTLINE,
                 tooltip="Remove",
                 icon_color=Theme.TEXT_MUTED,
                 on_click=lambda _: self.on_remove(self.item),

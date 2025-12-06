@@ -11,11 +11,12 @@ from ui_utils import open_folder
 
 from .base_view import BaseView
 
+
 class HistoryView(BaseView):
     """View for displaying download history."""
 
     def __init__(self):
-        super().__init__(LM.get("history"), ft.Icons.HISTORY)
+        super().__init__(LM.get("history"), ft.icons.HISTORY)
 
         self.history_list = ft.ListView(expand=True, spacing=10)
         self.add_control(
@@ -24,7 +25,7 @@ class HistoryView(BaseView):
                     ft.Container(expand=True),
                     ft.OutlinedButton(
                         LM.get("clear_history"),
-                        icon=ft.Icons.DELETE_SWEEP,
+                        icon=ft.icons.DELETE_SWEEP,
                         on_click=self.clear_history,
                     ),
                 ]
@@ -48,7 +49,7 @@ class HistoryView(BaseView):
             border_radius=8,
             content=ft.Row(
                 [
-                    ft.Icon(ft.Icons.CHECK_CIRCLE, color=Theme.SUCCESS),
+                    ft.Icon(ft.icons.CHECK_CIRCLE, color=Theme.SUCCESS),
                     ft.Column(
                         [
                             ft.Text(
@@ -67,7 +68,7 @@ class HistoryView(BaseView):
                     ),
                     ft.Container(expand=True),
                     ft.IconButton(
-                        ft.Icons.FOLDER_OPEN,
+                        ft.icons.FOLDER_OPEN,
                         tooltip=LM.get("open_folder"),
                         icon_color=Theme.PRIMARY,
                         on_click=lambda e, p=item.get(
@@ -75,7 +76,7 @@ class HistoryView(BaseView):
                         ): self.open_folder_safe(p),
                     ),
                     ft.IconButton(
-                        ft.Icons.COPY,
+                        ft.icons.COPY,
                         tooltip=LM.get("copy_url"),
                         icon_color=Theme.TEXT_SECONDARY,
                         on_click=lambda e, u=item["url"]: self.page.set_clipboard(u),

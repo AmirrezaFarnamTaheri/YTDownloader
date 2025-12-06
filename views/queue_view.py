@@ -5,7 +5,7 @@ Displays the list of active, queued, and completed downloads.
 Refactored to use DownloadItemControl.
 """
 
-from typing import Any, Callable, Dict, Optional, List  # pylint: disable=unused-import
+from typing import Any, Callable, Dict, List, Optional  # pylint: disable=unused-import
 
 import flet as ft
 
@@ -33,7 +33,7 @@ class QueueView(BaseView):
         on_play: Callable,  # New
         on_open_folder: Callable,  # New
     ):
-        super().__init__(LM.get("queue"), ft.Icons.QUEUE_MUSIC)
+        super().__init__(LM.get("queue"), ft.icons.QUEUE_MUSIC)
         self.queue_manager = queue_manager
         self.on_cancel = on_cancel
         self.on_remove = on_remove
@@ -62,7 +62,7 @@ class QueueView(BaseView):
                 ft.Container(
                     content=ft.Column(
                         [
-                            ft.Icon(ft.Icons.QUEUE, size=64, color=Theme.TEXT_MUTED),
+                            ft.Icon(ft.icons.QUEUE, size=64, color=Theme.TEXT_MUTED),
                             ft.Text(
                                 LM.get("no_items_found"), color=Theme.Text.SECONDARY
                             ),
