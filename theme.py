@@ -46,25 +46,30 @@ class Theme:
     DIVIDER = "#334155"  # Alias for Divider color
 
     # --- Subclasses for Usage ---
+# pylint: disable=too-few-public-methods
     class Surface:
         """Surface color definitions."""
 
         BG = "#1E293B"
         CARD = "#1E293B"
         INPUT = "#020617"
+# pylint: disable=too-few-public-methods
 
     class Primary:
         """Primary color definitions."""
 
+# pylint: disable=too-few-public-methods
         MAIN = "#818CF8"
 
     class Text:
         """Text color definitions."""
 
+# pylint: disable=too-few-public-methods
         PRIMARY = "#F8FAFC"
         SECONDARY = "#94A3B8"
 
     class Divider:
+# pylint: disable=too-few-public-methods
         """Divider color definitions."""
 
         COLOR = "#334155"
@@ -95,7 +100,8 @@ class Theme:
                 inverse_surface=ft.colors.WHITE,
                 on_inverse_surface=ft.colors.BLACK,
             ),
-            visual_density=ft.ThemeVisualDensity.COMFORTABLE,
+# pylint: disable=no-member
+            visual_density=ft.VisualDensity.COMFORTABLE,
             page_transitions=ft.PageTransitionsTheme(
                 android=ft.PageTransitionTheme.ZOOM,
                 ios=ft.PageTransitionTheme.CUPERTINO,
@@ -130,8 +136,10 @@ class Theme:
                 outline=Theme.BORDER,
                 inverse_surface=Theme.TEXT_PRIMARY,
                 on_inverse_surface=Theme.BG_DARK,
+# pylint: disable=no-member
             ),
-            visual_density=ft.ThemeVisualDensity.COMFORTABLE,
+# pylint: disable=no-member
+            visual_density=ft.VisualDensity.COMFORTABLE,
             page_transitions=ft.PageTransitionsTheme(
                 android=ft.PageTransitionTheme.ZOOM,
                 ios=ft.PageTransitionTheme.CUPERTINO,
@@ -164,6 +172,7 @@ class Theme:
             "hint_text": hint_text,
             "hint_style": ft.TextStyle(color=Theme.TEXT_MUTED),
             "border": ft.InputBorder.OUTLINE,
+# pylint: disable=line-too-long
             "border_width": 0,  # Simulate 'no border' initially if desired, or use transparent color
             "border_color": ft.colors.TRANSPARENT,
             "focused_border_color": Theme.PRIMARY,

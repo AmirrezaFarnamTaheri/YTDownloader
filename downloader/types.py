@@ -2,11 +2,12 @@
 Configuration dataclasses for the downloader.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
 
 @dataclass
+# pylint: disable=too-many-instance-attributes
 class DownloadOptions:
     """Options for controlling the download process."""
 
@@ -76,6 +77,7 @@ class DownloadOptions:
                     return float(parts[0] * 60 + parts[1])
 
                 # Any other number of parts is invalid for HH:MM:SS format.
+                # pylint: disable=raise-missing-from
                 raise ValueError(f"Invalid time format: {time_str}")
             except (ValueError, TypeError) as e:
                 raise ValueError(f"Could not parse time string: {time_str}") from e

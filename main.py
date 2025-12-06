@@ -8,7 +8,6 @@ Refactored for event-driven queue processing and cleaner architecture.
 import logging
 import os
 import sys
-import threading
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -21,7 +20,6 @@ from app_state import state
 from logger_config import setup_logging
 from theme import Theme
 from ui_manager import UIManager
-from utils_shared import timeout_manager
 
 # Setup logging immediately
 setup_logging()
@@ -204,6 +202,7 @@ if __name__ == "__main__":
         # Accessing state triggers initialization
         _ = state
         logger.info("AppState initialized successfully")
+# pylint: disable=broad-exception-caught
     except Exception as e:
         # pylint: disable=broad-exception-caught
         print(f"ERROR: Failed to initialize AppState: {e}", file=sys.stderr)

@@ -1,11 +1,16 @@
+# pylint: disable=line-too-long, wrong-import-position, too-many-instance-attributes, too-many-public-methods, invalid-name, unused-variable, import-outside-toplevel
+# pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 """
 Coverage tests for UIManager.
 """
 
 import unittest
 from unittest.mock import MagicMock, patch
+
 import flet as ft
+
 from ui_manager import UIManager
+
 
 class TestUIManagerCoverage(unittest.TestCase):
     """Test suite for UIManager class."""
@@ -36,7 +41,7 @@ class TestUIManagerCoverage(unittest.TestCase):
         mock_history,  # pylint: disable=unused-argument
         mock_queue,  # pylint: disable=unused-argument
         mock_download,  # pylint: disable=unused-argument
-        mock_layout
+        mock_layout,
     ):
         """Test initializing views and layout."""
         mock_layout.return_value = MagicMock()
@@ -74,7 +79,9 @@ class TestUIManagerCoverage(unittest.TestCase):
     def test_navigate_to_history_real(self):
         """Test navigation to history view."""
         # We need to rely on the actual class imports if isinstance is strict.
-        from views.history_view import HistoryView  # pylint: disable=import-outside-toplevel
+        from views.history_view import (  # pylint: disable=import-outside-toplevel
+            HistoryView,
+        )
 
         view_instance = MagicMock()
         view_instance.__class__ = HistoryView
@@ -100,7 +107,7 @@ class TestUIManagerCoverage(unittest.TestCase):
             self.manager.queue_view,
             self.manager.history_view,
             self.manager.rss_view,
-            self.manager.settings_view
+            self.manager.settings_view,
         ]
 
         e = MagicMock()

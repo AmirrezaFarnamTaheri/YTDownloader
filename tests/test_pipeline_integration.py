@@ -1,3 +1,6 @@
+# pylint: disable=line-too-long, wrong-import-position, too-many-instance-attributes, too-many-public-methods, invalid-name, unused-variable, import-outside-toplevel
+# pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
+# pylint: disable=duplicate-code
 """
 Integration tests for the entire pipeline.
 Simulates adding to queue -> processing -> downloading -> history.

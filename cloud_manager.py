@@ -4,7 +4,6 @@ Cloud Manager module.
 
 import logging
 import os
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -199,6 +198,7 @@ class CloudManager:
             file_drive.GetContentFile(destination_path)  # type: ignore
             return True
 
+# pylint: disable=broad-exception-caught
         except Exception as e:
             logger.error("Google Drive download failed: %s", e)
             return False

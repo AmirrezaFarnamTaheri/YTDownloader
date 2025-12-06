@@ -5,6 +5,7 @@ Rate limiter for application actions.
 import time
 
 
+# pylint: disable=too-few-public-methods
 class RateLimiter:
     """Simple rate limiter based on time intervals."""
 

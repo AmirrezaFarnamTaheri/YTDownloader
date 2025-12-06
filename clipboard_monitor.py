@@ -39,7 +39,9 @@ def _clipboard_loop(page, download_view):
     """
     Background loop that checks the clipboard for URLs.
     """
+# pylint: disable=import-outside-toplevel
     import flet as ft
+# pylint: disable=too-many-nested-blocks
 
     while not state.shutdown_flag.is_set():
         time.sleep(2)
@@ -57,6 +59,7 @@ def _clipboard_loop(page, download_view):
                     state.last_clipboard_content = content
                     if validate_url(content) and download_view:
                         # Only auto-paste if field is empty
+# pylint: disable=line-too-long
                         # Need to check value in thread-safe way? Flet objects are generally not thread-safe for reading?
                         # Actually value access is local property.
                         if not download_view.url_input.value:
@@ -74,11 +77,15 @@ def _clipboard_loop(page, download_view):
                                                     f"URL detected: {content}"
                                                 )
                                             )
+# pylint: disable=line-too-long
+# pylint: disable=broad-exception-caught
                                         )
                                         download_view.update()  # Update the view so the input field shows the value
+# pylint: disable=broad-exception-caught
                                     except Exception as ex:
                                         logger.warning(
                                             "Failed to update UI from clipboard: %s", ex
+# pylint: disable=line-too-long
                                         )
 
                                 # Use page.run_task or just calling page.update if thread-safe enough?

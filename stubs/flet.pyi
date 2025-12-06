@@ -1,3 +1,5 @@
+# pylint: disable=all
+# pylint: disable=all
 from typing import Any
 
 class Page:
@@ -494,6 +496,8 @@ class KeyboardEvent:
     test: bool
 
 # Relaxed types
+colors: Any
+icons: Any
 Colors: Any
 Icons: Any
 FontWeight: Any

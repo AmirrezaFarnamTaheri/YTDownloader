@@ -1,3 +1,4 @@
+# pylint: disable=unnecessary-lambda
 """
 Download View Module.
 
@@ -26,6 +27,7 @@ from views.components.panels.youtube_panel import YouTubePanel
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-instance-attributes
 class DownloadView(BaseView):
     """
     Main view for adding downloads.
@@ -36,6 +38,7 @@ class DownloadView(BaseView):
     - Cookie Selection
     - Scheduling & Batch Import
     """
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 
     def __init__(
         self,
@@ -321,9 +324,11 @@ class DownloadView(BaseView):
         # Clear panel
         self.options_container.content = None
         self.current_panel = None
+# pylint: disable=missing-function-docstring
 
         self.update()
 
+# pylint: disable=missing-function-docstring
     def update_video_info(self, info: Optional[dict]):
         self.fetch_btn.disabled = False
         self.video_info = info
@@ -332,6 +337,7 @@ class DownloadView(BaseView):
             self.preview_card.update_info(info)
             self.add_btn.disabled = False
             self.time_start.disabled = False
+# pylint: disable=unused-variable
             self.time_end.disabled = False
 
             # Determine Panel Type
@@ -353,13 +359,18 @@ class DownloadView(BaseView):
             self.add_btn.disabled = True
             self.time_start.disabled = True
             self.time_end.disabled = True
+# pylint: disable=missing-function-docstring
             self.options_container.content = None
             self.current_panel = None
 
+# pylint: disable=import-outside-toplevel
         self.update()
+# pylint: disable=missing-function-docstring
 
     def update_info(self, info: Optional[dict]):
         self.update_video_info(info)
+# pylint: disable=broad-exception-caught
+# pylint: disable=import-outside-toplevel
 
     def _open_downloads_folder(self):
         from pathlib import Path

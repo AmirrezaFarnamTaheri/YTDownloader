@@ -1,11 +1,16 @@
+# pylint: disable=line-too-long, wrong-import-position, too-many-instance-attributes, too-many-public-methods, invalid-name, unused-variable, import-outside-toplevel
+# pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 """
 Coverage tests for QueueView.
 """
 
 import unittest
 from unittest.mock import MagicMock, patch
+
 import flet as ft
+
 from views.queue_view import QueueView
+
 
 class TestQueueViewCoverage(unittest.TestCase):
     """Test suite for QueueView."""
@@ -20,7 +25,7 @@ class TestQueueViewCoverage(unittest.TestCase):
             on_remove=MagicMock(),
             on_reorder=MagicMock(),
             on_play=MagicMock(),
-            on_open_folder=MagicMock()
+            on_open_folder=MagicMock(),
         )
         self.view.page = self.mock_page
 

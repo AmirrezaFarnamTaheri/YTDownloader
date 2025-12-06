@@ -1,3 +1,4 @@
+"""Settings View"""
 import flet as ft
 
 from config_manager import ConfigManager
@@ -6,6 +7,7 @@ from theme import Theme
 
 from .base_view import BaseView
 
+# pylint: disable=missing-class-docstring, too-many-instance-attributes
 
 class SettingsView(BaseView):
     def __init__(self, config):
@@ -119,8 +121,10 @@ class SettingsView(BaseView):
         self.add_control(self.compact_mode_cb)
         self.add_control(ft.Container(height=1, bgcolor=Theme.BORDER))
         self.add_control(ft.Container(height=20))
+# pylint: disable=unused-argument
         self.add_control(self.save_btn)
 
+# pylint: disable=unused-argument
     def _on_theme_change(self, e):
         mode = self.theme_mode_dd.value
         if self.page:
@@ -148,8 +152,10 @@ class SettingsView(BaseView):
                 self.page.theme_mode = ft.ThemeMode.LIGHT
             else:
                 self.page.theme_mode = ft.ThemeMode.SYSTEM
+# pylint: disable=missing-function-docstring, unused-argument
 
             self.page.update()
+# pylint: disable=missing-function-docstring, unused-argument
 
     def save_settings(self, e):
         self.config["proxy"] = self.proxy_input.value

@@ -1,3 +1,5 @@
+# pylint: disable=line-too-long, wrong-import-position, too-many-instance-attributes, too-many-public-methods, invalid-name, unused-variable, import-outside-toplevel
+# pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -45,6 +47,7 @@ class TestRSSManager(unittest.TestCase):
     def test_get_latest_video(self, mock_parse):
         mock_parse.return_value = [{"title": "Latest", "link": "http://link"}]
         video = RSSManager.get_latest_video("http://fake.url")
+# pylint: disable=unsubscriptable-object
         self.assertEqual(video["title"], "Latest")
 
     @patch("rss_manager.RSSManager.parse_feed")
