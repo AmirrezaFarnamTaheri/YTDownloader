@@ -10,9 +10,10 @@ class TestRSSManager(unittest.TestCase):
 
     @patch("rss_manager.requests.get")
     def test_parse_feed_success(self, mock_get):
-        # Mock XML response
+        # Mock XML response. Note: Ensure namespaces are correct for ElementTree default parsing
+        # The parser logic in RSSManager uses {http://www.w3.org/2005/Atom} tags
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-        <feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns="http://www.w3.org/2005/Atom">
+        <feed xmlns="http://www.w3.org/2005/Atom" xmlns:yt="http://www.youtube.com/xml/schemas/2015">
             <entry>
                 <id>yt:video:VIDEO_ID</id>
                 <yt:videoId>VIDEO_ID</yt:videoId>
