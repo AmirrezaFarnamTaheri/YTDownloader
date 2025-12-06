@@ -1,5 +1,5 @@
-import sys
 import logging
+import sys
 import xml.etree.ElementTree as ET
 from unittest.mock import MagicMock
 

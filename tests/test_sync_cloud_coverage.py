@@ -6,6 +6,7 @@ Coverage tests for SyncManager and CloudManager.
 
 import io
 import json
+import os
 import unittest
 import zipfile
 from unittest.mock import ANY, MagicMock, patch
@@ -111,25 +112,30 @@ class TestCloudManagerCoverage(unittest.TestCase):
     @patch("pydrive2.drive.GoogleDrive")
     @patch("cloud_manager.os.path.exists")
     def test_get_google_drive_client_success(self, mock_exists, mock_drive, mock_gauth):
-        # Mock existence: client_secrets.json -> True, mycreds.txt -> False
-        def exists_side_effect(path):
-            if "client_secrets.json" in str(path):
-                return True
-            if "mycreds.txt" in str(path):
+        # Clean environment to prevent CI/Headless logic from triggering
+        with patch.dict(os.environ, {}, clear=True):
+            # Mock existence: client_secrets.json -> True, mycreds.txt -> False
+            def exists_side_effect(path):
+                if "client_secrets.json" in str(path):
+                    return True
+                if "mycreds.txt" in str(path):
+                    return False
                 return False
-            return False
 
-        mock_exists.side_effect = exists_side_effect
+            mock_exists.side_effect = exists_side_effect
 
-        # Mock Auth flow
-        auth_instance = mock_gauth.return_value
-        auth_instance.credentials = None  # trigger auth
+            # Mock Auth flow
+            auth_instance = mock_gauth.return_value
+            # Ensure credentials are None to trigger authentication
+            auth_instance.credentials = None
+            # Ensure access_token_expired is False to avoid that branch
+            auth_instance.access_token_expired = False
 
-        client = self.manager._get_google_drive_client()
+            client = self.manager._get_google_drive_client()
 
-        auth_instance.LocalWebserverAuth.assert_called()
-        auth_instance.SaveCredentialsFile.assert_called()
-        self.assertEqual(client, mock_drive.return_value)
+            auth_instance.LocalWebserverAuth.assert_called()
+            auth_instance.SaveCredentialsFile.assert_called()
+            self.assertEqual(client, mock_drive.return_value)
 
     @patch("cloud_manager.os.path.exists")
     def test_upload_file_file_not_found(self, mock_exists):
