@@ -1,11 +1,11 @@
-
-import sys
 import logging
+import sys
 import xml.etree.ElementTree as ET
 from unittest.mock import MagicMock
 
 # Configure logging to capture import errors
 logger = logging.getLogger(__name__)
+
 
 def pytest_configure(config):
     """
@@ -15,11 +15,15 @@ def pytest_configure(config):
     """
     try:
         import flet as ft
+
         # Try to access a property to ensure it's fully loaded
         _ = ft.PagePlatform.ANDROID
     except (ImportError, OSError, AttributeError) as e:
-        logger.warning(f"Flet import failed: {e}. Mocking flet and dependencies for tests.")
+        logger.warning(
+            f"Flet import failed: {e}. Mocking flet and dependencies for tests."
+        )
         mock_dependencies()
+
 
 def mock_dependencies():
     """Mocks flet and other runtime dependencies in sys.modules."""
@@ -28,9 +32,9 @@ def mock_dependencies():
     # Define base classes for inheritance
     class MockControl:
         def __init__(self, *args, **kwargs):
-            self.content = kwargs.get('content')
-            self.controls = kwargs.get('controls', [])
-            self.value = kwargs.get('value')
+            self.content = kwargs.get("content")
+            self.controls = kwargs.get("controls", [])
+            self.value = kwargs.get("value")
             self.page = None
             self.overlay = []
 
@@ -76,28 +80,38 @@ def mock_dependencies():
     class MockNavigationRail(MockControl):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.destinations = kwargs.get('destinations', [])
-            self.selected_index = kwargs.get('selected_index', 0)
-            self.extended = kwargs.get('extended', False)
+            self.destinations = kwargs.get("destinations", [])
+            self.selected_index = kwargs.get("selected_index", 0)
+            self.extended = kwargs.get("extended", False)
 
     class MockNavigationRailDestination(MockControl):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.icon = kwargs.get('icon')
-            self.selected_icon = kwargs.get('selected_icon')
-            self.label = kwargs.get('label')
+            self.icon = kwargs.get("icon")
+            self.selected_icon = kwargs.get("selected_icon")
+            self.label = kwargs.get("label")
 
     class MockPage(MockControl):
         platform = "linux"
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.overlay = []
 
-        def launch_url(self, url): pass
-        def update(self): pass
-        def open(self, control): pass
-        def close(self, control): pass
-        def set_clipboard(self, data): pass
+        def launch_url(self, url):
+            pass
+
+        def update(self):
+            pass
+
+        def open(self, control):
+            pass
+
+        def close(self, control):
+            pass
+
+        def set_clipboard(self, data):
+            pass
 
     class MockRow(MockControl):
         pass
@@ -106,7 +120,7 @@ def mock_dependencies():
         pass
 
     class MockIcon(MockControl):
-         def __init__(self, name=None, *args, **kwargs):
+        def __init__(self, name=None, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.name = name
 
@@ -180,8 +194,10 @@ def mock_dependencies():
     # yt_dlp
     if "yt_dlp" not in sys.modules:
         yt_dlp_mock = MagicMock()
+
         class MockDownloadError(Exception):
             pass
+
         yt_dlp_mock.utils.DownloadError = MockDownloadError
         sys.modules["yt_dlp"] = yt_dlp_mock
         # Ensure submodules are also mocked if imported directly
@@ -206,14 +222,19 @@ def mock_dependencies():
     # requests
     if "requests" not in sys.modules:
         requests_mock = MagicMock()
+
         class MockRequestException(Exception):
             pass
+
         class MockConnectionError(MockRequestException):
             pass
+
         class MockHTTPError(MockRequestException):
             pass
+
         class MockTimeout(MockRequestException):
             pass
+
         class MockTooManyRedirects(MockRequestException):
             pass
 
