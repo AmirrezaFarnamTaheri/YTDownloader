@@ -1,6 +1,7 @@
+# pylint: disable=line-too-long,too-many-locals,too-many-arguments,broad-exception-caught,ungrouped-imports
 import logging
 import os
-from typing import Any, Callable, Dict, Optional, cast
+from typing import Any, Callable, Dict, Optional, cast, Iterable
 
 import yt_dlp
 
@@ -102,7 +103,7 @@ class YTDLPWrapper:
                     entries_raw = info.get("entries", [])
                     # entries_raw is typed as object by mypy, but we know it is iterable if not None
                     # We cast to Iterable[Any] to satisfy mypy
-                    from typing import Iterable
+
 
                     entries_iterable = cast(Iterable[Any], entries_raw)
                     entries_list = (

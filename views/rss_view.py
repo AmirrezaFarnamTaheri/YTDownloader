@@ -22,7 +22,7 @@ class RSSView(BaseView):
     """View for managing and viewing RSS feeds."""
 
     def __init__(self, config):
-        super().__init__(LM.get("rss"), ft.icons.RSS_FEED)
+        super().__init__(LM.get("rss"), ft.Icons.RSS_FEED)
         self.config = config
         self.rss_manager = RSSManager(config)
         self.feed_list = ft.ListView(expand=True, spacing=10, padding=20)
@@ -37,19 +37,19 @@ class RSSView(BaseView):
             tabs=[
                 ft.Tab(
                     text=LM.get("feeds"),
-                    icon=ft.icons.RSS_FEED,
+                    icon=ft.Icons.RSS_FEED,
                     content=ft.Column(
                         [
                             ft.Row(
                                 [
                                     self.rss_input,
                                     ft.IconButton(
-                                        icon=ft.icons.ADD,
+                                        icon=ft.Icons.ADD,
                                         tooltip=LM.get("add_feed"),
                                         on_click=self.add_rss,
                                     ),
                                     ft.IconButton(
-                                        icon=ft.icons.REFRESH,
+                                        icon=ft.Icons.REFRESH,
                                         on_click=self.refresh_feeds,
                                     ),
                                 ],
@@ -63,7 +63,7 @@ class RSSView(BaseView):
                 ),
                 ft.Tab(
                     text=LM.get("latest_items"),
-                    icon=ft.icons.NEW_RELEASES,
+                    icon=ft.Icons.NEW_RELEASES,
                     content=self.items_list,
                 ),
             ],
@@ -102,22 +102,22 @@ class RSSView(BaseView):
                         content=ft.Container(
                             content=ft.Row(
                                 [
-                                    ft.Icon(ft.icons.RSS_FEED),
+                                    ft.Icon(ft.Icons.RSS_FEED),
                                     ft.Column(
                                         [
                                             ft.Text(name, weight=ft.FontWeight.BOLD),
                                             ft.Text(
                                                 url,
                                                 size=12,
-                                                color=ft.colors.GREY,
+                                                color=ft.Colors.GREY,
                                                 overflow=ft.TextOverflow.ELLIPSIS,
                                             ),
                                         ],
                                         expand=True,
                                     ),
                                     ft.IconButton(
-                                        icon=ft.icons.DELETE,
-                                        icon_color=ft.colors.RED,
+                                        icon=ft.Icons.DELETE,
+                                        icon_color=ft.Colors.RED,
                                         on_click=lambda e, f=feed: self.remove_rss(f),
                                     ),
                                 ]
@@ -128,7 +128,7 @@ class RSSView(BaseView):
                 )
         self.update()
 
-# pylint: disable=unused-argument
+    # pylint: disable=unused-argument
     def add_rss(self, e):
         """Add a new RSS feed."""
         new_url = self.rss_input.value
@@ -167,7 +167,8 @@ class RSSView(BaseView):
             ConfigManager.save_config(self.config)
             self.load_feeds_list()
             self.update()
-# pylint: disable=unused-argument
+
+    # pylint: disable=unused-argument
 
     def refresh_feeds(self, e):
         """Fetch latest items from all feeds."""
@@ -193,7 +194,7 @@ class RSSView(BaseView):
                                     ft.Text(
                                         f"{item['feed_name']} - {item['published']}",
                                         size=12,
-                                        color=ft.colors.GREY,
+                                        color=ft.Colors.GREY,
                                     ),
                                     ft.Row(
                                         [
@@ -213,7 +214,7 @@ class RSSView(BaseView):
                 )
         self.update()
         # Also refresh list names in case they updated
-# pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         self.load_feeds_list()
 
     def on_tab_change(self, e):

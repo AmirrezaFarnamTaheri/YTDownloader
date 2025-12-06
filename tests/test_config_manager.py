@@ -68,7 +68,7 @@ class TestConfigManager(unittest.TestCase):
         # Ensure dir exists if test runs isolated
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
-# pylint: disable=unspecified-encoding
+        # pylint: disable=unspecified-encoding
         with open(self.config_path, "w") as f:
             f.write("{invalid json")
 

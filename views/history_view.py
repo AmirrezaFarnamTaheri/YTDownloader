@@ -1,4 +1,5 @@
 """History View"""
+
 import logging
 
 import flet as ft
@@ -10,11 +11,11 @@ from ui_utils import open_folder
 
 from .base_view import BaseView
 
-# pylint: disable=missing-class-docstring
-
 class HistoryView(BaseView):
+    """View for displaying download history."""
+
     def __init__(self):
-        super().__init__(LM.get("history"), ft.icons.HISTORY)
+        super().__init__(LM.get("history"), ft.Icons.HISTORY)
 
         self.history_list = ft.ListView(expand=True, spacing=10)
         self.add_control(
@@ -23,17 +24,16 @@ class HistoryView(BaseView):
                     ft.Container(expand=True),
                     ft.OutlinedButton(
                         LM.get("clear_history"),
-                        icon=ft.icons.DELETE_SWEEP,
+                        icon=ft.Icons.DELETE_SWEEP,
                         on_click=self.clear_history,
                     ),
                 ]
             )
         )
-# pylint: disable=missing-function-docstring
         self.add_control(self.history_list)
 
-# pylint: disable=missing-function-docstring
     def load(self):
+        """Loads history items from the database."""
         self.history_list.controls.clear()
         items = HistoryManager.get_history(limit=50)
         for item in items:
@@ -41,13 +41,14 @@ class HistoryView(BaseView):
         self.update()
 
     def _create_item(self, item):
+        """Creates a UI component for a single history item."""
         return ft.Container(
             padding=15,
             bgcolor=Theme.BG_CARD,
             border_radius=8,
             content=ft.Row(
                 [
-                    ft.Icon(ft.icons.CHECK_CIRCLE, color=Theme.SUCCESS),
+                    ft.Icon(ft.Icons.CHECK_CIRCLE, color=Theme.SUCCESS),
                     ft.Column(
                         [
                             ft.Text(
@@ -66,7 +67,7 @@ class HistoryView(BaseView):
                     ),
                     ft.Container(expand=True),
                     ft.IconButton(
-                        ft.icons.FOLDER_OPEN,
+                        ft.Icons.FOLDER_OPEN,
                         tooltip=LM.get("open_folder"),
                         icon_color=Theme.PRIMARY,
                         on_click=lambda e, p=item.get(
@@ -74,43 +75,19 @@ class HistoryView(BaseView):
                         ): self.open_folder_safe(p),
                     ),
                     ft.IconButton(
-                        ft.icons.COPY,
+                        ft.Icons.COPY,
                         tooltip=LM.get("copy_url"),
                         icon_color=Theme.TEXT_SECONDARY,
                         on_click=lambda e, u=item["url"]: self.page.set_clipboard(u),
                     ),
                 ]
-# pylint: disable=missing-function-docstring
             ),
         )
 
-# pylint: disable=missing-function-docstring
-# pylint: disable=unused-argument
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
-# pylint: disable=missing-function-docstring
     def clear_history(self, e):
+        """Clears the history with a confirmation dialog."""
         # Create dialog instance first
-# pylint: disable=unused-argument
+        # pylint: disable=unused-argument
         dlg = ft.AlertDialog(modal=True)
 
         def close_dlg(e):
@@ -129,13 +106,11 @@ class HistoryView(BaseView):
         ]
         dlg.actions_alignment = ft.MainAxisAlignment.END
 
-# pylint: disable=missing-function-docstring
         self.page.open(dlg)
 
-# pylint: disable=broad-exception-caught
-# pylint: disable=logging-fstring-interpolation
     def open_folder_safe(self, path):
+        """Safely opens the folder containing the downloaded file."""
         try:
             open_folder(path)
-        except Exception as ex:
-            logging.error(f"Failed to open folder: {ex}")
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            logging.error("Failed to open folder: %s", ex)

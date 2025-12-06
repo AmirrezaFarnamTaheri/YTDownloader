@@ -38,7 +38,8 @@ class DownloadView(BaseView):
     - Cookie Selection
     - Scheduling & Batch Import
     """
-# pylint: disable=too-many-arguments, too-many-positional-arguments
+
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
 
     def __init__(
         self,
@@ -48,7 +49,7 @@ class DownloadView(BaseView):
         on_schedule: Callable,
         app_state: AppState,
     ):
-        super().__init__(LM.get("new_download"), ft.icons.DOWNLOAD)
+        super().__init__(LM.get("new_download"), ft.Icons.DOWNLOAD)
         self.on_fetch_info = on_fetch_info
         self.on_add_to_queue = on_add_to_queue
         self.on_batch_import = on_batch_import
@@ -66,13 +67,13 @@ class DownloadView(BaseView):
             autofocus=True,
             on_submit=lambda e: self._on_fetch_click(e),
             **Theme.get_input_decoration(
-                hint_text=LM.get("url_placeholder"), prefix_icon=ft.icons.LINK
+                hint_text=LM.get("url_placeholder"), prefix_icon=ft.Icons.LINK
             )
         )
 
         self.fetch_btn = ft.ElevatedButton(
             LM.get("fetch_info"),
-            icon=ft.icons.SEARCH,
+            icon=ft.Icons.SEARCH,
             on_click=self._on_fetch_click,
             style=ft.ButtonStyle(
                 padding=20,
@@ -119,7 +120,7 @@ class DownloadView(BaseView):
         # 5. Main Actions
         self.add_btn = ft.ElevatedButton(
             LM.get("add_to_queue"),
-            icon=ft.icons.ADD,
+            icon=ft.Icons.ADD,
             on_click=self._on_add_click,
             disabled=True,
             style=ft.ButtonStyle(
@@ -163,13 +164,13 @@ class DownloadView(BaseView):
                 ft.Row(
                     [
                         ft.IconButton(
-                            ft.icons.FILE_UPLOAD,
+                            ft.Icons.FILE_UPLOAD,
                             tooltip=LM.get("batch_import"),
                             on_click=lambda _: self.on_batch_import(),
                             icon_color=Theme.Text.SECONDARY,
                         ),
                         ft.IconButton(
-                            ft.icons.SCHEDULE,
+                            ft.Icons.SCHEDULE,
                             tooltip=LM.get("schedule_download"),
                             on_click=lambda e: self.on_schedule(e),
                             icon_color=Theme.Text.SECONDARY,
@@ -229,7 +230,7 @@ class DownloadView(BaseView):
             border=ft.border.all(1, Theme.Divider.COLOR),
             shadow=ft.BoxShadow(
                 blur_radius=10,
-                color=ft.colors.with_opacity(0.1, ft.colors.BLACK),
+                color=ft.Colors.with_opacity(0.1, ft.Colors.BLACK),
             ),
         )
 
@@ -245,7 +246,7 @@ class DownloadView(BaseView):
             footer.controls.append(
                 ft.TextButton(
                     LM.get("open_downloads_folder"),
-                    icon=ft.icons.FOLDER_OPEN,
+                    icon=ft.Icons.FOLDER_OPEN,
                     on_click=lambda _: self._open_downloads_folder(),
                     style=ft.ButtonStyle(color=Theme.TEXT_MUTED),
                 )
@@ -324,11 +325,11 @@ class DownloadView(BaseView):
         # Clear panel
         self.options_container.content = None
         self.current_panel = None
-# pylint: disable=missing-function-docstring
+        # pylint: disable=missing-function-docstring
 
         self.update()
 
-# pylint: disable=missing-function-docstring
+    # pylint: disable=missing-function-docstring
     def update_video_info(self, info: Optional[dict]):
         self.fetch_btn.disabled = False
         self.video_info = info
@@ -337,7 +338,7 @@ class DownloadView(BaseView):
             self.preview_card.update_info(info)
             self.add_btn.disabled = False
             self.time_start.disabled = False
-# pylint: disable=unused-variable
+            # pylint: disable=unused-variable
             self.time_end.disabled = False
 
             # Determine Panel Type
@@ -359,18 +360,20 @@ class DownloadView(BaseView):
             self.add_btn.disabled = True
             self.time_start.disabled = True
             self.time_end.disabled = True
-# pylint: disable=missing-function-docstring
+            # pylint: disable=missing-function-docstring
             self.options_container.content = None
             self.current_panel = None
 
-# pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
         self.update()
-# pylint: disable=missing-function-docstring
+
+    # pylint: disable=missing-function-docstring
 
     def update_info(self, info: Optional[dict]):
         self.update_video_info(info)
-# pylint: disable=broad-exception-caught
-# pylint: disable=import-outside-toplevel
+
+    # pylint: disable=broad-exception-caught
+    # pylint: disable=import-outside-toplevel
 
     def _open_downloads_folder(self):
         from pathlib import Path

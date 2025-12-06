@@ -1,0 +1,11 @@
+flet==0.21.2
+yt-dlp
+requests
+pypresence
+PyDrive2
+beautifulsoup4
+defusedxml
+Pillow
+pyperclip
+python-dateutil
+ffmpeg-python

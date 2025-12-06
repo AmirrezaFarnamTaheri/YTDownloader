@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long,too-many-locals,too-many-branches
 """
 Telegram extractor module.
 Extracts metadata and media URLs from public Telegram posts (t.me/...).
