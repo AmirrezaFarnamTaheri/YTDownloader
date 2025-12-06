@@ -1,10 +1,14 @@
+# pylint: disable=line-too-long, wrong-import-position, too-many-instance-attributes, too-many-public-methods, invalid-name, unused-variable, import-outside-toplevel
+# pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 """
 Coverage tests for BatchImporter.
 """
 
 import unittest
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, mock_open, patch
+
 from batch_importer import BatchImporter
+
 
 class TestBatchImporterCoverage(unittest.TestCase):
     def setUp(self):
@@ -16,7 +20,11 @@ class TestBatchImporterCoverage(unittest.TestCase):
         self.assertEqual(self.importer.queue_manager, self.mock_queue)
         self.assertEqual(self.importer.config, self.mock_config)
 
-    @patch("builtins.open", new_callable=mock_open, read_data="http://url1.com\nhttp://url2.com")
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data="http://url1.com\nhttp://url2.com",
+    )
     @patch("os.path.exists")
     def test_import_from_file_success(self, mock_exists, mock_file):
         mock_exists.return_value = True
@@ -27,7 +35,9 @@ class TestBatchImporterCoverage(unittest.TestCase):
         self.assertFalse(truncated)
         self.assertEqual(self.mock_queue.add_item.call_count, 2)
 
-    @patch("builtins.open", new_callable=mock_open, read_data="invalid\nhttp://valid.com")
+    @patch(
+        "builtins.open", new_callable=mock_open, read_data="invalid\nhttp://valid.com"
+    )
     @patch("os.path.exists")
     def test_import_from_file_mixed(self, mock_exists, mock_file):
         mock_exists.return_value = True

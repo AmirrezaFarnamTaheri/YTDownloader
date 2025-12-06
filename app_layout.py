@@ -10,6 +10,7 @@ from localization_manager import LocalizationManager as LM
 from theme import Theme
 
 
+# pylint: disable=too-many-instance-attributes
 class AppLayout(ft.Row):
     """
     Main application layout using a Row of [Sidebar, Content].

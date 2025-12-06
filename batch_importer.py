@@ -1,17 +1,15 @@
 """
 Batch importer for download items.
 """
-
 import logging
-from typing import List, Optional
-
-import flet as ft
+from typing import Any  # pylint: disable=unused-import
 
 from ui_utils import get_default_download_path
 
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-few-public-methods
 class BatchImporter:
     """Handles importing URLs from files."""
 

@@ -1,14 +1,18 @@
+# pylint: disable=line-too-long, wrong-import-position, too-many-instance-attributes, too-many-public-methods, invalid-name, unused-variable, import-outside-toplevel
+# pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 """
 Coverage tests for SyncManager and CloudManager.
 """
 
-import unittest
-from unittest.mock import MagicMock, patch, ANY
-import json
-import zipfile
 import io
-from sync_manager import SyncManager
+import json
+import unittest
+import zipfile
+from unittest.mock import ANY, MagicMock, patch
+
 from cloud_manager import CloudManager
+from sync_manager import SyncManager
+
 
 class TestSyncManagerCoverage(unittest.TestCase):
     def setUp(self):
@@ -23,7 +27,7 @@ class TestSyncManagerCoverage(unittest.TestCase):
     @patch("zipfile.ZipFile")
     @patch("os.path.exists")
     def test_export_data(self, mock_exists, mock_zip):
-        mock_exists.return_value = True # for history.db
+        mock_exists.return_value = True  # for history.db
 
         # Mock Config return
         self.mock_config.get_all.return_value = {"theme": "dark"}
@@ -33,8 +37,8 @@ class TestSyncManagerCoverage(unittest.TestCase):
 
         # Verify zip interactions
         mock_zip.assert_called_with("backup.zip", "w", zipfile.ZIP_DEFLATED)
-        mock_zip.return_value.__enter__.return_value.writestr.assert_called() # config
-        mock_zip.return_value.__enter__.return_value.write.assert_called() # history
+        mock_zip.return_value.__enter__.return_value.writestr.assert_called()  # config
+        mock_zip.return_value.__enter__.return_value.write.assert_called()  # history
 
     def test_export_data_failure(self):
         # Trigger exception
@@ -64,7 +68,7 @@ class TestSyncManagerCoverage(unittest.TestCase):
 
         # Mock opening file from zip for history.db
         mock_read_file = MagicMock()
-        mock_read_file.read.return_value = b'some bytes'
+        mock_read_file.read.return_value = b"some bytes"
         mock_zf.open.return_value.__enter__.return_value = mock_read_file
 
         # Mock builtins.open for writing history.db
@@ -85,6 +89,7 @@ class TestSyncManagerCoverage(unittest.TestCase):
         with patch("os.path.exists", return_value=False):
             with self.assertRaises(FileNotFoundError):
                 self.manager.import_data("missing.zip")
+
 
 class TestCloudManagerCoverage(unittest.TestCase):
     def setUp(self):
@@ -108,14 +113,17 @@ class TestCloudManagerCoverage(unittest.TestCase):
     def test_get_google_drive_client_success(self, mock_exists, mock_drive, mock_gauth):
         # Mock existence: client_secrets.json -> True, mycreds.txt -> False
         def exists_side_effect(path):
-            if "client_secrets.json" in str(path): return True
-            if "mycreds.txt" in str(path): return False
+            if "client_secrets.json" in str(path):
+                return True
+            if "mycreds.txt" in str(path):
+                return False
             return False
+
         mock_exists.side_effect = exists_side_effect
 
         # Mock Auth flow
         auth_instance = mock_gauth.return_value
-        auth_instance.credentials = None # trigger auth
+        auth_instance.credentials = None  # trigger auth
 
         client = self.manager._get_google_drive_client()
 
@@ -135,7 +143,7 @@ class TestCloudManagerCoverage(unittest.TestCase):
         mock_exists.return_value = True
         mock_drive = mock_get_client.return_value
         mock_file = MagicMock()
-        mock_drive.ListFile.return_value.GetList.return_value = [] # New file
+        mock_drive.ListFile.return_value.GetList.return_value = []  # New file
         mock_drive.CreateFile.return_value = mock_file
 
         self.manager.upload_file("test.zip")

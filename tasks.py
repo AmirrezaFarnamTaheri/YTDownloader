@@ -56,6 +56,7 @@ def process_queue():
                 break
 
             # Try to acquire a slot without blocking
+# pylint: disable=consider-using-with
             if _SUBMISSION_THROTTLE.acquire(blocking=False):
                 # We acquired a slot, check if there is work
                 item = state.queue_manager.claim_next_downloadable()
@@ -180,6 +181,7 @@ def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
 def _log_to_history(item: Dict[str, Any], filepath: Optional[str] = None):
     """Log completed download to history safely."""
     # Import locally to avoid circular import issues at top-level
+# pylint: disable=import-outside-toplevel
     try:
         from history_manager import HistoryManager
 

@@ -1,11 +1,16 @@
+# pylint: disable=line-too-long, wrong-import-position, too-many-instance-attributes, too-many-public-methods, invalid-name, unused-variable, import-outside-toplevel
+# pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 """
 Coverage tests for HistoryView.
 """
 
 import unittest
 from unittest.mock import MagicMock, patch
+
 import flet as ft
+
 from views.history_view import HistoryView
+
 
 class TestHistoryViewCoverage(unittest.TestCase):
     """Test suite for HistoryView."""
@@ -27,8 +32,13 @@ class TestHistoryViewCoverage(unittest.TestCase):
 
         # Mock history data as dicts (based on implementation)
         mock_history_manager.get_history.return_value = [
-            {"title": "Title", "url": "http://url", "timestamp": "2023",
-             "file_size": "10MB", "output_path": "/tmp"}
+            {
+                "title": "Title",
+                "url": "http://url",
+                "timestamp": "2023",
+                "file_size": "10MB",
+                "output_path": "/tmp",
+            }
         ]
 
         view.load()

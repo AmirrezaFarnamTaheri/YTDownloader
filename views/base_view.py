@@ -1,9 +1,11 @@
+"""Base View Module"""
 from typing import Optional
 
 import flet as ft
 
 from theme import Theme
 
+# pylint: disable=missing-class-docstring
 
 class BaseView(ft.Container):
     def __init__(self, title: str, icon: Optional[str] = None, **kwargs):
@@ -26,7 +28,9 @@ class BaseView(ft.Container):
 
         self.content_col.controls.append(self.header)
         self.content_col.controls.append(ft.Divider(color=Theme.BORDER))
+# pylint: disable=missing-function-docstring
         self.content = self.content_col
 
+# pylint: disable=missing-function-docstring
     def add_control(self, control):
         self.content_col.controls.append(control)

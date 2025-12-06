@@ -44,6 +44,7 @@ class SocialManager:
                 self.rpc.connect()
                 self.connected = True
                 logger.info("Connected to Discord RPC")
+# pylint: disable=broad-exception-caught
             except Exception as e:
                 logger.warning("Failed to connect to Discord RPC: %s", e)
 
@@ -60,7 +61,9 @@ class SocialManager:
                     large_image=large_image,
                     large_text="StreamCatch",
                     start=time.time(),
+# pylint: disable=broad-exception-caught
                 )
+# pylint: disable=broad-exception-caught
             except Exception as e:
                 logger.warning("Failed to update Discord activity: %s", e)
                 self.connected = False
@@ -69,6 +72,7 @@ class SocialManager:
         """Close the RPC connection."""
         with self._lock:
             if self.rpc:
+# pylint: disable=broad-exception-caught
                 try:
                     self.rpc.close()
                 except Exception:

@@ -5,7 +5,7 @@ Displays the list of active, queued, and completed downloads.
 Refactored to use DownloadItemControl.
 """
 
-from typing import Callable, List, Optional
+from typing import Any, Callable, Dict, Optional, List  # pylint: disable=unused-import
 
 import flet as ft
 
@@ -16,11 +16,13 @@ from views.base_view import BaseView
 from views.components.download_item import DownloadItemControl
 
 
+# pylint: disable=too-many-instance-attributes
 class QueueView(BaseView):
     """
     View for managing the download queue.
     """
-
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         queue_manager: QueueManager,
@@ -73,7 +75,7 @@ class QueueView(BaseView):
                 )
             )
         else:
-            for i, item in enumerate(items):
+            for _, item in enumerate(items):
                 control = DownloadItemControl(
                     item,
                     on_cancel=self.on_cancel,

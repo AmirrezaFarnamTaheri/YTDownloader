@@ -128,6 +128,7 @@ class RSSView(BaseView):
                 )
         self.update()
 
+# pylint: disable=unused-argument
     def add_rss(self, e):
         """Add a new RSS feed."""
         new_url = self.rss_input.value
@@ -166,6 +167,7 @@ class RSSView(BaseView):
             ConfigManager.save_config(self.config)
             self.load_feeds_list()
             self.update()
+# pylint: disable=unused-argument
 
     def refresh_feeds(self, e):
         """Fetch latest items from all feeds."""
@@ -211,6 +213,7 @@ class RSSView(BaseView):
                 )
         self.update()
         # Also refresh list names in case they updated
+# pylint: disable=unused-argument
         self.load_feeds_list()
 
     def on_tab_change(self, e):

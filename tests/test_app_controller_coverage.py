@@ -1,12 +1,17 @@
+# pylint: disable=line-too-long, wrong-import-position, too-many-instance-attributes, too-many-public-methods, invalid-name, unused-variable, import-outside-toplevel
+# pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 """
 Coverage tests for AppController.
 """
 
 import unittest
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import ANY, MagicMock, patch
+
 import flet as ft
+
 from app_controller import AppController
 from ui_manager import UIManager
+
 
 class TestAppControllerCoverage(unittest.TestCase):
     def setUp(self):
@@ -43,9 +48,7 @@ class TestAppControllerCoverage(unittest.TestCase):
     def test_start_background_loop(self):
         self.controller.start_background_loop()
         self.mock_thread.assert_called_with(
-            target=self.controller._background_loop,
-            daemon=True,
-            name="BackgroundLoop"
+            target=self.controller._background_loop, daemon=True, name="BackgroundLoop"
         )
         self.mock_thread.return_value.start.assert_called_once()
         self.assertIn(self.mock_thread.return_value, self.controller.active_threads)
@@ -53,7 +56,9 @@ class TestAppControllerCoverage(unittest.TestCase):
     @patch("app_controller.start_clipboard_monitor")
     def test_start_clipboard_monitor(self, mock_start_monitor):
         self.controller.start_clipboard_monitor()
-        mock_start_monitor.assert_called_with(self.mock_page, self.mock_ui.download_view)
+        mock_start_monitor.assert_called_with(
+            self.mock_page, self.mock_ui.download_view
+        )
 
     def test_cleanup(self):
         mock_thread = MagicMock()
@@ -88,7 +93,9 @@ class TestAppControllerCoverage(unittest.TestCase):
     @patch("app_controller.time.sleep")
     def test_background_loop_exception(self, mock_sleep):
         # Simulate exception then shutdown
-        self.mock_state.queue_manager.wait_for_items.side_effect = Exception("Test Error")
+        self.mock_state.queue_manager.wait_for_items.side_effect = Exception(
+            "Test Error"
+        )
         self.mock_state.shutdown_flag.is_set.side_effect = [False, True]
 
         self.controller._background_loop()
@@ -108,7 +115,7 @@ class TestAppControllerCoverage(unittest.TestCase):
         self.mock_thread.assert_called_with(
             target=mock_fetch_task,
             args=(url, self.mock_ui.download_view, self.mock_page),
-            daemon=True
+            daemon=True,
         )
 
     def test_on_fetch_info_empty(self):
@@ -123,7 +130,9 @@ class TestAppControllerCoverage(unittest.TestCase):
         mock_validate.return_value = False
         self.controller.on_fetch_info("invalid")
         self.mock_page.open.assert_called()
-        self.assertIn("valid http/https URL", self.mock_page.open.call_args[0][0].content.value)
+        self.assertIn(
+            "valid http/https URL", self.mock_page.open.call_args[0][0].content.value
+        )
 
     @patch("app_controller.validate_url")
     @patch("app_controller.get_default_download_path")
@@ -139,14 +148,16 @@ class TestAppControllerCoverage(unittest.TestCase):
 
         self.mock_state.queue_manager.add_item.assert_called()
         self.mock_ui.update_queue_view.assert_called()
-        self.mock_page.open.assert_called() # SnackBar
+        self.mock_page.open.assert_called()  # SnackBar
 
     def test_on_add_to_queue_rate_limit(self):
         with patch("app_controller.validate_url", return_value=True):
             self.mock_rate.return_value.check.return_value = False
             self.controller.on_add_to_queue({"url": "http://test.com"})
             self.mock_page.open.assert_called()
-            self.assertIn("Please wait", self.mock_page.open.call_args[0][0].content.value)
+            self.assertIn(
+                "Please wait", self.mock_page.open.call_args[0][0].content.value
+            )
 
     def test_on_cancel_item(self):
         item = {"id": "123", "title": "Test"}
@@ -215,7 +226,9 @@ class TestAppControllerCoverage(unittest.TestCase):
 
         self.controller.on_batch_file_result(e)
 
-        self.mock_batch.return_value.import_from_file.assert_called_with("/path/to/file.txt")
+        self.mock_batch.return_value.import_from_file.assert_called_with(
+            "/path/to/file.txt"
+        )
         self.mock_ui.update_queue_view.assert_called()
         self.mock_page.open.assert_called()
 

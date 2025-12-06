@@ -58,7 +58,6 @@ class DownloadItemControl(ft.Container):
             color=Theme.Primary.MAIN,
             bgcolor=Theme.Surface.BG,
             height=6,
-            bar_height=6,
         )
 
         self.info_text = ft.Text("", size=11, color=Theme.TEXT_MUTED)

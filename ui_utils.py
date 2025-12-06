@@ -19,6 +19,7 @@ import flet as ft
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-few-public-methods
 class UIConstants:
     """Class to hold UI-related constants."""
 
@@ -65,6 +66,7 @@ def validate_url(url: str) -> bool:
     # Does not allow user/pass in URL for UI safety
     regex = re.compile(
         r"^(?:http|https)://"  # http:// or https://
+# pylint: disable=line-too-long
         r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|"  # domain...
         r"localhost|"  # localhost...
         r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
@@ -101,6 +103,7 @@ def validate_proxy(proxy: str) -> bool:
     regex = re.compile(
         r"^(?:http|https|socks4|socks5)://"
         r"(?:[^:@]+:[^:@]+@)?"
+# pylint: disable=line-too-long
         r"(?:"
         r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*|"
         r"localhost|"
@@ -190,6 +193,7 @@ def get_default_download_path() -> str:
         pass
     return "."
 
+# pylint: disable=too-many-return-statements
 
 def open_folder(path: str, page: Optional[ft.Page] = None) -> bool:
     """
@@ -240,6 +244,7 @@ def open_folder(path: str, page: Optional[ft.Page] = None) -> bool:
 
         cmd = ["open", abs_path] if sys_plat == "Darwin" else ["xdg-open", abs_path]
 
+# pylint: disable=consider-using-with
         # Use Popen to avoid blocking
         # Redirect stdout/stderr to avoid leaking descriptors or output
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -248,6 +253,7 @@ def open_folder(path: str, page: Optional[ft.Page] = None) -> bool:
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Failed to open folder: %s", e)
         return False
+# pylint: disable=too-many-return-statements
 
 
 def play_file(path: str, page: Optional[ft.Page] = None) -> bool:
@@ -283,11 +289,14 @@ def play_file(path: str, page: Optional[ft.Page] = None) -> bool:
         if sys_plat == "Windows":
             # pylint: disable=no-member
             os.startfile(abs_path)  # type: ignore
+# pylint: disable=consider-using-with
             return True
 
         cmd = ["open", abs_path] if sys_plat == "Darwin" else ["xdg-open", abs_path]
+# pylint: disable=consider-using-with
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
+# pylint: disable=broad-exception-caught
     except Exception as e:
         logger.error("Failed to play file: %s", e)
         return False

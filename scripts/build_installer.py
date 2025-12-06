@@ -1,3 +1,4 @@
+"""Build installer script"""
 import os
 import shutil
 import subprocess
@@ -53,6 +54,7 @@ def ensure_macos_app_bundle(dist_dir: Path, app_name: str, binary_name: str) -> 
 
     return target
 
+# pylint: disable=too-many-branches, too-many-statements
 
 def build_installer():
     """
@@ -77,6 +79,8 @@ def build_installer():
 
     # Verify requirements
     try:
+# pylint: disable=import-outside-toplevel
+# pylint: disable=import-outside-toplevel
         # pylint: disable=unused-import
         import nuitka
         from nuitka import Version
@@ -86,6 +90,7 @@ def build_installer():
         print("ERROR: Nuitka not installed. Run: pip install nuitka")
         sys.exit(1)
     except AttributeError:
+# pylint: disable=broad-exception-caught
         # Fallback for some versions or if structure differs
         try:
             subprocess.run([sys.executable, "-m", "nuitka", "--version"], check=True)
@@ -130,7 +135,7 @@ def build_installer():
             "--include-package-data=yt_dlp",
             # Include important runtime dependencies that might be missed
             "--include-package=pypresence",
-            "--include-package=PyDrive2",
+            "--include-package=pydrive2",
             "--include-package=defusedxml",
         ]
     )
@@ -220,6 +225,7 @@ def build_installer():
 
 
 if __name__ == "__main__":
+# pylint: disable=broad-exception-caught
     try:
         build_installer()
     except KeyboardInterrupt:

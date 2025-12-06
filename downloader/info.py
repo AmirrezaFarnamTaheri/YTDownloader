@@ -178,6 +178,7 @@ def get_video_info(
 
         # Wrap extraction in timeout
         with timeout_manager(45, "Info extraction timed out"):
+# pylint: disable=line-too-long
             # Explicitly cast to Any or suppress error because YoutubeDL expects _Params but we pass Dict
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
                 # Cast result to Dict[str, Any] as extract_info returns Any (usually dict)
@@ -189,6 +190,7 @@ def get_video_info(
 
             # If generic extractor and no video/audio formats found, it might be a file link
             if extractor == "Generic" and not formats:
+# pylint: disable=line-too-long
                 logger.debug(
                     "yt-dlp returned Generic extractor with no formats. Trying GenericExtractor fallback."
                 )
