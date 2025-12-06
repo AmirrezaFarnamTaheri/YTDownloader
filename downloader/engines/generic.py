@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, Mapping, Optional
 import requests
 
 from downloader.utils.constants import RESERVED_FILENAMES
-from ui_utils import validate_url, format_file_size
+from ui_utils import format_file_size, validate_url
 
 logger = logging.getLogger(__name__)
 
