@@ -51,9 +51,9 @@ class TestHistoryViewCoverage(unittest.TestCase):
         # Let's inspect controls defensively
         if len(row.controls) > 1:
             col = row.controls[1]
-            if hasattr(col, 'controls') and col.controls:
-               title_text = col.controls[0]
-               self.assertIn("Title", title_text.value)
+            if hasattr(col, "controls") and col.controls:
+                title_text = col.controls[0]
+                self.assertIn("Title", title_text.value)
 
     @patch("views.history_view.HistoryManager")
     def test_clear_history(self, mock_history_manager):
