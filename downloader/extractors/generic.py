@@ -14,6 +14,8 @@ class GenericExtractor:
     Generic extractor.
     """
 
+    # pylint: disable=too-few-public-methods
+
     @staticmethod
     def get_metadata(url: str) -> Optional[Dict[str, Any]]:
         """
@@ -36,6 +38,6 @@ class GenericExtractor:
                 "filesize": response.headers.get("Content-Length"),
                 "format": content_type,
             }
-        except Exception:
+        except requests.RequestException:
             # Fallback
             return {"title": url, "webpage_url": url, "extractor": "generic"}

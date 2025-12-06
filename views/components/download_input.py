@@ -1,3 +1,10 @@
+"""
+Download Input Card Component.
+
+This module defines the `DownloadInputCard` class, which is a UI component
+for the download view containing URL input, fetch button, and various options.
+"""
+
 import flet as ft
 
 from localization_manager import LocalizationManager as LM
@@ -5,6 +12,25 @@ from theme import Theme
 
 
 class DownloadInputCard(ft.Container):
+    """
+    A card container for download inputs and options.
+
+    Attributes:
+        url_input (ft.TextField): Text field for URL input.
+        fetch_btn (ft.IconButton): Button to trigger metadata fetching.
+        video_format_dd (ft.Dropdown): Dropdown for video format selection.
+        cookies_dd (ft.Dropdown): Dropdown for cookies selection.
+        playlist_cb (ft.Checkbox): Checkbox for playlist downloading.
+        sponsorblock_cb (ft.Checkbox): Checkbox for SponsorBlock.
+        force_generic_cb (ft.Checkbox): Checkbox for forcing generic downloader.
+        time_start (ft.TextField): Input for start time.
+        time_end (ft.TextField): Input for end time.
+    """
+
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
+
     def __init__(
         self,
         url_input,

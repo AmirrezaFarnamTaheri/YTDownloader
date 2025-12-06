@@ -2,7 +2,7 @@
 YouTube specific download panel.
 """
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict
 
 import flet as ft
 
@@ -119,7 +119,7 @@ class YouTubePanel(BasePanel):
         # 3. Subtitles
         sub_opts = [ft.dropdown.Option("None", "None")]
         if "subtitles" in self.info:
-            for lang, formats in self.info["subtitles"].items():
+            for lang, _ in self.info["subtitles"].items():
                 sub_opts.append(ft.dropdown.Option(lang, lang))
         self.subtitle_dd.options = sub_opts
         self.subtitle_dd.value = "None"

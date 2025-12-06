@@ -20,6 +20,10 @@ class DownloadItemControl(ft.Container):
     A card-like control representing a download task.
     """
 
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
+
     def __init__(
         self,
         item: Dict[str, Any],
