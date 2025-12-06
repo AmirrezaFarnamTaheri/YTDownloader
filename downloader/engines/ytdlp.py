@@ -1,4 +1,11 @@
-# pylint: disable=line-too-long,too-many-locals,too-many-arguments,broad-exception-caught,ungrouped-imports
+# pylint: disable=line-too-long,too-many-locals,too-many-arguments,broad-exception-caught,ungrouped-imports,too-many-positional-arguments
+"""
+yt-dlp wrapper module.
+
+Provides a wrapper around yt-dlp to handle configuration, execution, and error mapping,
+ensuring consistent behavior for cancellation and progress reporting.
+"""
+
 import logging
 import os
 from typing import Any, Callable, Dict, Iterable, Optional, cast

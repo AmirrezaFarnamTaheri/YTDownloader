@@ -1,4 +1,4 @@
-# pylint: disable=line-too-long,too-many-locals,too-many-branches,too-many-statements,too-many-arguments,broad-exception-caught
+# pylint: disable=line-too-long,too-many-locals,too-many-branches,too-many-statements,too-many-arguments,broad-exception-caught,too-many-positional-arguments
 """
 Generic downloader engine using requests.
 Supports resumable downloads, retry with exponential backoff, and robust filename extraction.
@@ -27,6 +27,8 @@ class GenericDownloader:
     Generic downloader engine using requests.
     Supports resumable downloads, retry with exponential backoff, and robust filename extraction.
     """
+
+    # pylint: disable=too-few-public-methods
 
     @staticmethod
     def _get_filename_from_headers(url: str, headers: Mapping[str, str]) -> str:

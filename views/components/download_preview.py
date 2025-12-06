@@ -1,3 +1,10 @@
+"""
+Download Preview Card Component.
+
+Displays a preview of the video/content to be downloaded, including thumbnail,
+title, author, and duration.
+"""
+
 import flet as ft
 
 from localization_manager import LocalizationManager as LM
@@ -5,6 +12,18 @@ from theme import Theme
 
 
 class DownloadPreviewCard(ft.Container):
+    """
+    A card container for displaying video preview information.
+
+    Attributes:
+        thumbnail (ft.Image): The thumbnail image.
+        title_text (ft.Text): The video title text.
+        duration_text (ft.Text): The video duration text.
+        author_text (ft.Text): The video uploader/author text.
+    """
+
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(self):
         super().__init__()
         self.visible = False
@@ -54,6 +73,12 @@ class DownloadPreviewCard(ft.Container):
         )
 
     def update_info(self, info: dict):
+        """
+        Updates the preview card with video information.
+
+        Args:
+            info (dict): A dictionary containing video metadata (title, thumbnail, etc.).
+        """
         if not info:
             self.visible = False
             self.update()

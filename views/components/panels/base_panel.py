@@ -2,7 +2,7 @@
 Base class for download panels.
 """
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
 import flet as ft
 
