@@ -58,43 +58,33 @@ def _clipboard_loop(page, download_view):
 
                 if content and content != state.last_clipboard_content:
                     state.last_clipboard_content = content
-                    if validate_url(content) and download_view:
-                        # Only auto-paste if field is empty
-                        # pylint: disable=line-too-long
-                        # Need to check value in thread-safe way? Flet objects are generally not thread-safe for reading?
-                        # Actually value access is local property.
-                        if not download_view.url_input.value:
-                            logger.info("Clipboard URL detected: %s", content)
-                            download_view.url_input.value = content
+                    if validate_url(content) and download_view and page:
+                        logger.info("Clipboard URL detected: %s", content)
 
-                            # UI updates must be scheduled on the page
-                            if page:
-
-                                def update_ui():
-                                    try:
-                                        page.open(
-                                            ft.SnackBar(
-                                                content=ft.Text(
-                                                    f"URL detected: {content}"
-                                                )
-                                            )
-                                            # pylint: disable=line-too-long
-                                            # pylint: disable=broad-exception-caught
+                        # UI updates must be thread-safe - use page's event loop
+                        def update_ui():
+                            try:
+                                # Check if field is empty and update it (thread-safe)
+                                if not download_view.url_input.value:
+                                    download_view.url_input.value = content
+                                    page.open(
+                                        ft.SnackBar(
+                                            content=ft.Text(f"URL detected: {content}")
                                         )
-                                        download_view.update()  # Update the view so the input field shows the value
-                                    # pylint: disable=broad-exception-caught
-                                    except Exception as ex:
-                                        logger.warning(
-                                            "Failed to update UI from clipboard: %s",
-                                            ex,
-                                            # pylint: disable=line-too-long
-                                        )
+                                    )
+                                    download_view.update()
+                            except Exception as ex:
+                                logger.warning(
+                                    "Failed to update UI from clipboard: %s",
+                                    ex,
+                                )
 
-                                # Use page.run_task or just calling page.update if thread-safe enough?
-                                # Flet's page.update() is thread-safe wrapper.
-                                # But modify controls might not be if they are mid-render.
-                                # However, setting .value is just property setting.
-                                update_ui()
+                        # Schedule UI update on page's thread
+                        try:
+                            page.run_task(update_ui)
+                        except AttributeError:
+                            # Fallback for older Flet versions without run_task
+                            update_ui()
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 # Catch-all to prevent thread death

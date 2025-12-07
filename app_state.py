@@ -8,6 +8,7 @@ feature flags.
 
 import logging
 import threading
+from collections import OrderedDict
 from datetime import time
 from typing import Any, Dict, Optional
 
@@ -121,7 +122,8 @@ class AppState:
         self.high_contrast = self.config.get("high_contrast", False)
         self.compact_mode = self.config.get("compact_mode", False)
 
-        self._video_info_cache: Dict[str, Dict[str, Any]] = {}  # URL -> info
+        # Use OrderedDict for proper LRU cache implementation
+        self._video_info_cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
         self._video_info_max_size = 50  # Limit cache size
 
         # Try connecting to social - but with error isolation
@@ -164,21 +166,29 @@ class AppState:
             logger.debug("Queue manager cleanup error: %s", e)
 
     def get_video_info(self, url: str) -> Optional[Dict[str, Any]]:
-        """Get cached video info for URL."""
+        """Get cached video info for URL with LRU tracking."""
         info = self._video_info_cache.get(url)
         if info:
             logger.debug("Cache hit for video info: %s", url)
+            # Move to end to mark as recently used (LRU)
+            self._video_info_cache.move_to_end(url)
         else:
             logger.debug("Cache miss for video info: %s", url)
         return info
 
     def set_video_info(self, url: str, info: Dict[str, Any]):
-        """Cache video info for URL with size limit."""
-        # Implement LRU-like behavior
+        """Cache video info for URL with proper LRU eviction."""
+        # If URL already exists, remove it first so it goes to the end
+        if url in self._video_info_cache:
+            del self._video_info_cache[url]
+
+        # Evict least recently used entry if cache is full
         if len(self._video_info_cache) >= self._video_info_max_size:
-            # Remove oldest entry
+            # Remove oldest (least recently used) entry from the beginning
             oldest_key = next(iter(self._video_info_cache))
-            logger.debug("Evicting oldest video info cache entry: %s", oldest_key)
+            logger.debug(
+                "Evicting least recently used video info cache entry: %s", oldest_key
+            )
             del self._video_info_cache[oldest_key]
 
         logger.debug("Caching video info for: %s", url)

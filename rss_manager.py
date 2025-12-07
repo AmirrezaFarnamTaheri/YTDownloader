@@ -22,20 +22,34 @@ logger = logging.getLogger(__name__)
 
 
 def safe_log_warning(msg, *args):
-    """Safely log a warning message, ignoring closed stream errors."""
+    """
+    Safely log a warning message with defensive checks for shutdown scenarios.
+
+    This function provides robust logging that gracefully handles edge cases
+    during application shutdown, including:
+    - Closed stderr/stdout streams (interpreter shutdown)
+    - Missing or removed logging handlers
+    - I/O operations on closed files
+    - Main thread termination
+
+    Args:
+        msg: The warning message format string
+        *args: Arguments to format into the message
+
+    Note:
+        This defensive approach prevents logging from causing crashes during
+        cleanup, especially in daemon threads that may outlive the main thread.
+    """
     try:
         # Check if sys.stderr/stdout are closed (common during interpreter shutdown)
         if not sys or not sys.stderr or sys.stderr.closed:
             return
 
-        # pylint: disable=line-too-long
-        # Double check handlers to avoid "No handlers could be found" or closed file errors in handlers
+        # Double check handlers to avoid "No handlers could be found" or closed file errors
         if not logger.handlers and not logging.root.handlers:
             return
 
-        # Use a lock if available on the logger to prevent race during emit
-        # (Though logging module is thread-safe, the stream underneath might not be during shutdown)
-
+        # Thread-safe logging with shutdown awareness
         if logger.isEnabledFor(logging.WARNING):
             # Final check for shutdown
             if threading.main_thread().is_alive():
@@ -48,7 +62,24 @@ def safe_log_warning(msg, *args):
 
 
 def safe_log_error(msg, *args):
-    """Safely log an error message, ignoring closed stream errors."""
+    """
+    Safely log an error message with defensive checks for shutdown scenarios.
+
+    This function provides robust logging that gracefully handles edge cases
+    during application shutdown, including:
+    - Closed stderr/stdout streams (interpreter shutdown)
+    - Missing or removed logging handlers
+    - I/O operations on closed files
+    - Main thread termination
+
+    Args:
+        msg: The error message format string
+        *args: Arguments to format into the message
+
+    Note:
+        This defensive approach prevents logging from causing crashes during
+        cleanup, especially in daemon threads that may outlive the main thread.
+    """
     try:
         if not sys or not sys.stderr or sys.stderr.closed:
             return

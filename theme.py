@@ -46,33 +46,35 @@ class Theme:
     DIVIDER = "#334155"  # Alias for Divider color
 
     # --- Subclasses for Usage ---
+    # NOTE: These reference the top-level color definitions above.
+    # When updating colors, modify the top-level constants (BG_CARD, TEXT_PRIMARY, etc.)
     # pylint: disable=too-few-public-methods
     class Surface:
         """Surface color definitions."""
 
+        # References: Theme.BG_CARD, Theme.BG_INPUT
         BG = "#1E293B"
         CARD = "#1E293B"
         INPUT = "#020617"
 
     # pylint: disable=too-few-public-methods
-
     class Primary:
         """Primary color definitions."""
 
-        # pylint: disable=too-few-public-methods
+        # References: Theme.PRIMARY
         MAIN = "#818CF8"
 
     class Text:
         """Text color definitions."""
 
-        # pylint: disable=too-few-public-methods
+        # References: Theme.TEXT_PRIMARY, Theme.TEXT_SECONDARY
         PRIMARY = "#F8FAFC"
         SECONDARY = "#94A3B8"
 
     class Divider:
         # pylint: disable=too-few-public-methods
         """Divider color definitions."""
-
+        # References: Theme.DIVIDER
         COLOR = "#334155"
 
     class Status:

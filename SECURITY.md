@@ -6,7 +6,7 @@ At YTDownloader, we take security seriously. We are committed to protecting our 
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it to us as soon as possible by [opening an issue](https://github.com/your-username/ytdownloader/issues/new?template=security-vulnerability.md) with a detailed description of the vulnerability and steps to reproduce it.
+If you discover a security vulnerability, please report it to us as soon as possible by [opening an issue](https://github.com/AmirrezaFarnamTaheri/YTDownloader/issues/new) with a detailed description of the vulnerability and steps to reproduce it.
 
 Please do not disclose the vulnerability publicly until we have had a chance to investigate and address it.
 

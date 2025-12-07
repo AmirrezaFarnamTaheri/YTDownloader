@@ -19,11 +19,26 @@ class DownloadScheduler:
     ) -> Tuple[str, Optional[datetime]]:
         """
         Calculate status and scheduled datetime based on desired time.
+
+        Args:
+            scheduled_time: Time object (datetime.time) for scheduling, or None
+
+        Returns:
+            Tuple of (status_string, scheduled_datetime)
+
+        Raises:
+            TypeError: If scheduled_time is not None or datetime.time instance
         """
         status = "Queued"
         sched_dt = None
 
-        if scheduled_time:
+        if scheduled_time is not None:
+            # Validate input type
+            if not isinstance(scheduled_time, dt_time):
+                raise TypeError(
+                    f"scheduled_time must be datetime.time instance, got {type(scheduled_time)}"
+                )
+
             now = datetime.now()
             sched_dt = datetime.combine(now.date(), scheduled_time)
             if sched_dt < now:
