@@ -181,19 +181,31 @@ Keep the subject line to 50 characters.
 ## Project Structure
 
 ```
-StreamCatch/
-├── main.py                # GUI implementation (Flet)
-├── downloader.py          # Core download logic
-├── components.py          # UI components
+YTDownloader/
+├── main.py                # Application entry point
+├── app_state.py           # Global application state
+├── app_controller.py      # Application controller logic
+├── app_layout.py          # Main UI layout
+├── ui_manager.py          # UI view management
 ├── config_manager.py      # Configuration management
-├── history_manager.py     # History management
+├── history_manager.py     # Download history
 ├── queue_manager.py       # Download queue management
-├── requirements.txt       # Python dependencies
+├── tasks.py               # Background task processing
+├── downloader/            # Download engine package
+│   ├── core.py           # Core download logic
+│   ├── info.py           # Video info extraction
+│   ├── engines/          # Platform-specific downloaders
+│   └── extractors/       # Content extractors
+├── views/                 # UI views (Flet)
+│   ├── download_view.py  # Download interface
+│   ├── queue_view.py     # Queue management view
+│   ├── history_view.py   # History view
+│   ├── rss_view.py       # RSS feed manager
+│   └── settings_view.py  # Settings interface
 ├── tests/                 # Test suite
-└── docs/
-    ├── README.md          # User documentation
-    ├── CONTRIBUTING.md    # This file
-    └── CODE_OF_CONDUCT.md # Community guidelines
+├── scripts/               # Build and utility scripts
+├── .github/               # GitHub workflows (CI/CD)
+└── project_docs/          # Documentation
 ```
 
 ## Questions?

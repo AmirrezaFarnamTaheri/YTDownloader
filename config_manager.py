@@ -37,13 +37,11 @@ class ConfigManager:
     @staticmethod
     def _resolve_config_file() -> Path:
         """Resolve and return the correct config file path."""
-        # pylint: disable=global-statement
-        # pylint: disable=global-variable-not-assigned
-        global CONFIG_FILE
         try:
-            if not CONFIG_FILE.parent.exists():
-                CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-            return CONFIG_FILE
+            config_file = CONFIG_FILE
+            if not config_file.parent.exists():
+                config_file.parent.mkdir(parents=True, exist_ok=True)
+            return config_file
         except OSError:
             # Fallback to local
             return Path("config.json")
@@ -68,8 +66,9 @@ class ConfigManager:
             if not isinstance(val, str):
                 raise ValueError("gpu_accel must be a string")
             if val not in ["None", "auto", "cuda", "vulkan"]:
-                # We can be loose or strict here. The test expects strict.
-                pass
+                raise ValueError(
+                    f"gpu_accel must be one of: None, auto, cuda, vulkan. Got: {val}"
+                )
 
     @staticmethod
     def load_config() -> Dict[str, Any]:

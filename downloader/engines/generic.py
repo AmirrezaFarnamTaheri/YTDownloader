@@ -51,10 +51,13 @@ class GenericDownloader:
             filename = "downloaded_file"
 
         # Sanitize filename (Path Traversal Protection + General Safety)
-        # Remove null bytes, directory separators, and control chars
+        # Step 1: Strip any directory components and path separators
+        # This handles: ../../../etc/passwd, C:\path\file, /etc/passwd
         filename = os.path.basename(filename)
-        # Stricter allowlist approach (A-Z, a-z, 0-9, -, _, .)
-        # This replaces the blocklist approach to ensure safety across all filesystems
+
+        # Step 2: Stricter allowlist approach (A-Z, a-z, 0-9, -, _, .)
+        # This removes: colons (C:), null bytes, control chars, unicode, etc.
+        # Allowlist is more secure than blocklist for cross-platform safety
         filename = re.sub(r"[^A-Za-z0-9\-\_\.]", "", filename).strip()
 
         # Neutralize dot-only or traversal-like names

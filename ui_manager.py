@@ -12,13 +12,6 @@ import flet as ft
 from app_layout import AppLayout
 from app_state import state
 from views.base_view import BaseView
-
-# from views.dashboard_view import DashboardView # Dashboard removed from nav for now?
-# The AppLayout has 5 items: Download, Queue, History, RSS, Settings.
-# Dashboard seems extra or replaced by RSS/History?
-# Let's check AppLayout destinations. It has Icons.RSS_FEED but no Dashboard.
-# Wait, AppLayout has 5 destinations: Download, Queue, History, RSS, Settings.
-# The list in UIManager has 6. Index mismatch!
 from views.download_view import DownloadView
 from views.history_view import HistoryView
 from views.queue_view import QueueView

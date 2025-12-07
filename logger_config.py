@@ -7,16 +7,26 @@ import logging.handlers
 import sys
 from pathlib import Path
 
+# Module-level flag to prevent re-initialization
+_LOGGING_INITIALIZED = False
+
 
 def setup_logging():
     """Setup comprehensive logging configuration."""
+    global _LOGGING_INITIALIZED  # pylint: disable=global-statement
+
+    # Prevent re-initialization which would clear handlers from other modules
+    if _LOGGING_INITIALIZED:
+        logging.debug("Logging already initialized, skipping setup")
+        return
+
     log_formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 
-    # Clear existing handlers to prevent duplication
+    # Clear existing handlers only on first initialization
     if root_logger.handlers:
         root_logger.handlers.clear()
 
@@ -59,4 +69,5 @@ def setup_logging():
         except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"Failed to setup log file {log_file}: {e}", file=sys.stderr)
 
+    _LOGGING_INITIALIZED = True
     logging.info("Logging initialized successfully.")

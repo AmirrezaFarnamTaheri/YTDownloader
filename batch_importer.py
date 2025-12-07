@@ -3,7 +3,7 @@ Batch importer for download items.
 """
 
 import logging
-from typing import Any  # pylint: disable=unused-import
+from typing import Tuple
 
 from ui_utils import get_default_download_path
 
@@ -18,7 +18,7 @@ class BatchImporter:
         self.queue_manager = queue_manager
         self.config = config
 
-    def import_from_file(self, filepath: str) -> tuple[int, bool]:
+    def import_from_file(self, filepath: str) -> Tuple[int, bool]:
         """
         Import URLs from a text file.
         Returns a tuple of (number of items imported, whether the list was truncated).
@@ -61,4 +61,4 @@ class BatchImporter:
 
         except Exception as ex:
             logger.error("Failed to import batch file: %s", ex, exc_info=True)
-            raise ex
+            raise

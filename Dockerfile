@@ -11,6 +11,7 @@ ENV FLET_SERVER_PORT=8550
 WORKDIR /app
 
 # Install system dependencies
+# NOTE: For production, consider pinning package versions for reproducibility
 # ffmpeg: for video merging/processing
 # aria2: for download acceleration
 # git: often needed for pip installing from git repos
@@ -20,9 +21,12 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Install Python dependencies
+# NOTE: Ensure requirements.txt has pinned versions for security
+# For enhanced security, consider using: pip install --require-hashes -r requirements.txt
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .
