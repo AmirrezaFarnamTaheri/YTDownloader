@@ -34,25 +34,25 @@ jobs:
 
     steps:
     - name: Download Windows Artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427  # v4.1.4
       with:
         name: StreamCatch-Windows-Installer
         path: ./windows
 
     - name: Download Linux Artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427  # v4.1.4
       with:
         name: StreamCatch-Linux-Deb
         path: ./linux
 
     - name: Download macOS Artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427  # v4.1.4
       with:
         name: StreamCatch-macOS-Dmg
         path: ./macos
 
     - name: Download Android APK
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427  # v4.1.4
       with:
         name: StreamCatch-Android-APK
         path: ./android
@@ -83,7 +83,7 @@ jobs:
         ls -la release/
 
     - name: Create Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564  # v2.0.4
       with:
         tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
         draft: ${{ github.event_name == 'workflow_dispatch' }}

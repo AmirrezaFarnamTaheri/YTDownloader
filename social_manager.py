@@ -20,19 +20,14 @@ class SocialManager:
     def __init__(self):
         self.rpc = None
         self.connected = False
-        # Get client ID from env or use default/dummy
-        self._client_id = os.environ.get("DISCORD_CLIENT_ID", "123456789012345678")
+        # Get client ID from env - no default for security
+        self._client_id = os.environ.get("DISCORD_CLIENT_ID", "")
         self._lock = threading.Lock()
 
     def connect(self):
         """Connect to Discord RPC."""
-        # Simple check to avoid trying if ID is dummy/invalid
-        if (
-            not self._client_id
-            or self._client_id == "123456789012345678"
-            or not self._client_id.isdigit()
-        ):
-            # Silent fail or log debug
+        # Check if client ID is provided and valid
+        if not self._client_id or not self._client_id.isdigit():
             logger.debug("Discord RPC skipped: No valid Client ID provided")
             return
 

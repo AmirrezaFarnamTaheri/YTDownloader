@@ -221,6 +221,15 @@ class SyncManager:
             os.makedirs(parent, exist_ok=True)
 
         # Write to temp then move
+        # Validate the target path to prevent path traversal
+        target_db_resolved = os.path.abspath(target_db_path)
+        parent_resolved = os.path.abspath(parent)
+
+        # Ensure target is within expected directory
+        if not target_db_resolved.startswith(parent_resolved + os.sep):
+            logger.error("Invalid database path detected (path traversal attempt)")
+            return
+
         temp_db = target_db_path + ".tmp"
 
         try:
