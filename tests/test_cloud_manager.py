@@ -105,10 +105,14 @@ class TestCloudManagerPatched(unittest.TestCase):
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = None
 
-        # Ensure not headless
-        os.environ.pop("HEADLESS_MODE", None)
+        # Ensure not headless and not CI to allow interactive auth
+        with patch.dict(os.environ):
+            if "HEADLESS_MODE" in os.environ:
+                del os.environ["HEADLESS_MODE"]
+            if "CI" in os.environ:
+                del os.environ["CI"]
 
-        self.manager.upload_file("test.txt")
+            self.manager.upload_file("test.txt")
 
         mock_gauth.LocalWebserverAuth.assert_called()
 

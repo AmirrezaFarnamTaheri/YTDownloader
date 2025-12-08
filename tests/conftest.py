@@ -265,9 +265,25 @@ def mock_dependencies():
 
     # bs4
     if "bs4" not in sys.modules:
-        sys.modules["bs4"] = MagicMock()
-        sys.modules["bs4.BeautifulSoup"] = MagicMock()
-        sys.modules["bs4.Tag"] = MagicMock()
+        # Try to import real bs4 first
+        try:
+            import bs4
+            sys.modules["bs4"] = bs4
+        except ImportError:
+            bs4_mock = MagicMock()
+
+            class MockTag:
+                pass
+
+            bs4_mock.Tag = MockTag
+            bs4_mock.BeautifulSoup = MagicMock()
+
+            sys.modules["bs4"] = bs4_mock
+            sys.modules["bs4.BeautifulSoup"] = bs4_mock.BeautifulSoup
+            sys.modules["bs4.Tag"] = MockTag
+            # Also mock element submodule
+            sys.modules["bs4.element"] = MagicMock()
+            sys.modules["bs4.element"].Tag = MockTag
 
     # dateutil
     if "dateutil" not in sys.modules:
