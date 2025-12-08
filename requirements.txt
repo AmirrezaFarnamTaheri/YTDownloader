@@ -1,5 +1,5 @@
 flet==0.21.2
-yt-dlp
+yt-dlp>=2025.07.21
 requests
 pypresence
 PyDrive2
