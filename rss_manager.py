@@ -170,25 +170,21 @@ class RSSManager:
             content_text = content_text.strip()
 
             root = None
-            # Safe XML parsing
+            # Safe XML parsing - SECURITY: Only use defusedxml for untrusted content
             if safe_fromstring is not None:
                 try:
                     root = safe_fromstring(content_text)
                 # pylint: disable=broad-exception-caught
                 except Exception as e:
-                    # Fallback or error logging
-                    safe_log_warning("defusedxml parse error for %s: %s", url, e)
-
-            if root is None:
-                # If defusedxml failed or not available, try standard ET but careful
-                # pylint: disable=line-too-long
-                # Note: This is less secure against billionaire laughs etc but needed for some malformed feeds
-                # In production, we should stick to defusedxml for untrusted input.
-                try:
-                    root = ET.fromstring(content_text)
-                except ET.ParseError as e:
+                    # Log error and fail securely - do NOT fall back to unsafe parsing
                     safe_log_warning("XML parse error for %s: %s", url, e)
                     return []
+            else:
+                # defusedxml not available - fail securely
+                safe_log_error(
+                    "defusedxml not installed - cannot parse untrusted XML from %s", url
+                )
+                return []
 
             items: List[Dict[str, Any]] = []
             if "feed" in root.tag:  # Atom

@@ -31,8 +31,11 @@ class TestConfigManager(unittest.TestCase):
         # Check if os.replace called
         mock_replace.assert_called()
 
-        # Check permissions
-        mock_chmod.assert_called_with("/tmp/test_config.json", 0o600)
+        # Check permissions - should be called at least once on temp file
+        # Now also called on final file for security
+        assert mock_chmod.call_count >= 1
+        # Verify chmod was called with 0o600 at least once
+        assert any(call[0][1] == 0o600 for call in mock_chmod.call_args_list)
 
     def test_save_config_validation(self):
         # Invalid type should raise ValueError

@@ -40,8 +40,15 @@ class CloudManager:
     def __init__(self):
         logger.debug("Initializing CloudManager...")
         self.enabled = False
-        self.credentials_path = "client_secrets.json"
-        self.settings_path = "settings.yaml"
+        # Use environment variable or secure path in user directory
+        self.credentials_path = os.environ.get(
+            "GOOGLE_DRIVE_CREDENTIALS_PATH",
+            os.path.expanduser("~/.streamcatch/client_secrets.json"),
+        )
+        self.settings_path = os.environ.get(
+            "GOOGLE_DRIVE_SETTINGS_PATH",
+            os.path.expanduser("~/.streamcatch/settings.yaml"),
+        )
 
     def upload_file(self, file_path: str, provider: str = "google_drive"):
         """
@@ -102,12 +109,28 @@ class CloudManager:
             )
 
         # 2. Check for pre-authenticated creds in env var if file missing
-        if not os.path.exists("mycreds.txt"):
+        mycreds_path = os.path.expanduser("~/.streamcatch/mycreds.txt")
+        if not os.path.exists(mycreds_path):
             creds_content = os.environ.get("GOOGLE_CREDS_CONTENT")
             if creds_content:
                 logger.info("Restoring mycreds.txt from environment variable.")
-                with open("mycreds.txt", "w", encoding="utf-8") as f:
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(mycreds_path), exist_ok=True)
+                # Write with secure permissions (owner read/write only)
+                with open(
+                    mycreds_path,
+                    "w",
+                    encoding="utf-8",
+                    opener=lambda p, f: os.open(p, f, 0o600),
+                ) as f:
                     f.write(creds_content)
+                # Ensure permissions are set (in case opener didn't work on all platforms)
+                try:
+                    os.chmod(mycreds_path, 0o600)
+                except OSError:
+                    logger.warning(
+                        "Could not set secure permissions on credentials file"
+                    )
 
         try:
             # pylint: disable=import-outside-toplevel
@@ -119,8 +142,9 @@ class CloudManager:
             gauth = GoogleAuth()
 
             # Try to load saved credentials
-            if os.path.exists("mycreds.txt"):
-                gauth.LoadCredentialsFile("mycreds.txt")  # type: ignore
+            mycreds_path = os.path.expanduser("~/.streamcatch/mycreds.txt")
+            if os.path.exists(mycreds_path):
+                gauth.LoadCredentialsFile(mycreds_path)  # type: ignore
 
             if gauth.credentials is None:  # type: ignore
                 # In headless environments without pre-auth, this fails.
@@ -137,7 +161,15 @@ class CloudManager:
             else:
                 gauth.Authorize()  # type: ignore
 
-            gauth.SaveCredentialsFile("mycreds.txt")  # type: ignore
+            # Save credentials with secure permissions
+            mycreds_path = os.path.expanduser("~/.streamcatch/mycreds.txt")
+            os.makedirs(os.path.dirname(mycreds_path), exist_ok=True)
+            gauth.SaveCredentialsFile(mycreds_path)  # type: ignore
+            # Set secure permissions after save
+            try:
+                os.chmod(mycreds_path, 0o600)
+            except OSError:
+                logger.warning("Could not set secure permissions on credentials file")
             return GoogleDrive(gauth)  # type: ignore
 
         except ImportError as exc:
@@ -155,7 +187,10 @@ class CloudManager:
 
             file_name = os.path.basename(file_path)
 
-            query = f"title = '{file_name}' and trashed = false"
+            # Escape single quotes in filename to prevent query injection
+            # Google Drive API uses single quotes for string literals
+            escaped_name = file_name.replace("'", "\\'")
+            query = f"title = '{escaped_name}' and trashed = false"
             file_list = drive.ListFile({"q": query}).GetList()  # type: ignore
 
             if file_list:
@@ -178,8 +213,9 @@ class CloudManager:
         try:
             drive = self._get_google_drive_client()
 
-            # Search for file
-            query = f"title = '{filename}' and trashed = false"
+            # Search for file - escape single quotes to prevent query injection
+            escaped_filename = filename.replace("'", "\\'")
+            query = f"title = '{escaped_filename}' and trashed = false"
             file_list = drive.ListFile({"q": query}).GetList()  # type: ignore
 
             if not file_list:

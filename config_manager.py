@@ -143,6 +143,11 @@ class ConfigManager:
 
                 # Atomic replace
                 os.replace(temp_path, str(config_path))
+                # Ensure secure permissions on final file
+                try:
+                    os.chmod(str(config_path), 0o600)
+                except OSError:
+                    logger.warning("Could not set secure permissions on config file")
                 logger.info("Configuration saved.")
 
             # pylint: disable=try-except-raise

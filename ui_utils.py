@@ -208,8 +208,15 @@ def open_folder(path: str, page: Optional[ft.Page] = None) -> bool:
         return False
 
     try:
-        # Resolve path
+        # Resolve path with security checks
         abs_path = os.path.abspath(os.path.expanduser(path))
+
+        # Canonicalize path to prevent symlink attacks
+        try:
+            abs_path = os.path.realpath(abs_path)
+        except (OSError, ValueError) as e:
+            logger.warning("Failed to canonicalize path %s: %s", path, e)
+            return False
 
         # Security check: Ensure it's a directory
         if not os.path.exists(abs_path):
@@ -272,7 +279,20 @@ def play_file(path: str, page: Optional[ft.Page] = None) -> bool:
 
     try:
         abs_path = os.path.abspath(os.path.expanduser(path))
+
+        # Canonicalize path to prevent symlink attacks
+        try:
+            abs_path = os.path.realpath(abs_path)
+        except (OSError, ValueError) as e:
+            logger.warning("Failed to canonicalize path %s: %s", path, e)
+            return False
+
         if not os.path.exists(abs_path):
+            return False
+
+        # Ensure it's a file, not a directory
+        if not os.path.isfile(abs_path):
+            logger.warning("Path is not a file: %s", abs_path)
             return False
 
         # Mobile / Web Logic

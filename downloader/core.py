@@ -255,7 +255,12 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
         "outtmpl": f"{output_path}/{options.output_template}",
         "quiet": True,
         "no_warnings": True,
-        "nocheckcertificate": True,
+        # SECURITY: Verify SSL certificates by default - only disable if explicitly requested
+        "nocheckcertificate": (
+            options.no_check_certificate
+            if hasattr(options, "no_check_certificate")
+            else False
+        ),
         "ignoreerrors": True,
         "noplaylist": not options.playlist,
         "format": "bestvideo+bestaudio/best",

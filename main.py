@@ -139,8 +139,16 @@ def global_crash_handler(exctype, value, tb):
     try:
         log_path = Path.home() / ".streamcatch" / "crash.log"
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(log_path, "a", encoding="utf-8") as f:
+        # Write crash log with secure permissions
+        with open(
+            log_path, "a", encoding="utf-8", opener=lambda p, f: os.open(p, f, 0o600)
+        ) as f:
             f.write(crash_report)
+        # Ensure permissions are set
+        try:
+            os.chmod(log_path, 0o600)
+        except OSError:
+            pass
     except Exception:  # pylint: disable=broad-exception-caught
         # Fallback
         log_path = Path("crash.log")
@@ -159,10 +167,10 @@ def global_crash_handler(exctype, value, tb):
         pass
 
     try:
-        print("\n" + "=" * 60, file=sys.stderr)
-        print("CRITICAL ERROR - STREAMCATCH CRASHED", file=sys.stderr)
-        print(crash_report, file=sys.stderr)
-        print("=" * 60 + "\n", file=sys.stderr)
+        logger.critical("\n" + "=" * 60)
+        logger.critical("CRITICAL ERROR - STREAMCATCH CRASHED")
+        logger.critical(crash_report)
+        logger.critical("=" * 60 + "\n")
 
         if os.name == "nt":
             # Try to show message box in a separate thread to avoid blocking if possible,
@@ -186,15 +194,15 @@ def global_crash_handler(exctype, value, tb):
 if __name__ == "__main__":
     console_mode = "--console" in sys.argv or "--debug" in sys.argv
     if console_mode:
-        print("Console mode enabled - all output will be visible")
+        logger.info("Console mode enabled - all output will be visible")
 
     sys.excepthook = global_crash_handler
 
-    print("=" * 60)
-    print("StreamCatch Starting...")
-    print(f"Python: {sys.version}")
-    print(f"Working Directory: {os.getcwd()}")
-    print("=" * 60 + "\n")
+    logger.info("=" * 60)
+    logger.info("StreamCatch Starting...")
+    logger.info("Python: %s", sys.version)
+    logger.info("Working Directory: %s", os.getcwd())
+    logger.info("=" * 60 + "\n")
 
     try:
         # Initialize AppState first to fail fast if config/DB is broken

@@ -21,13 +21,13 @@ jobs:
     name: Lint & Format Check
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    
+
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c  # v5.0.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
@@ -64,10 +64,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c  # v5.0.0
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
@@ -95,7 +95,7 @@ jobs:
 
     - name: Upload coverage report
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@e0b68c6749509c5f83f984dd99a76a1c1a231044  # v4.0.1
       with:
         files: ./coverage.xml
         fail_ci_if_error: false
@@ -112,10 +112,10 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c  # v5.0.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
@@ -124,7 +124,8 @@ jobs:
       run: |
         pip install safety
 
-    - name: Check for vulnerabilities
+    - name: Check for vulnerabilities (BLOCKING)
       run: |
-        safety check -r requirements.txt --output text
+        # SECURITY: This check is now blocking - CI will fail if vulnerabilities found
+        safety check -r requirements.txt --output text || exit 1
 

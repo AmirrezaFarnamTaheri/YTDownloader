@@ -79,7 +79,15 @@ class HistoryManager:
         if not url or not isinstance(url, str):
             raise ValueError("URL must be a non-empty string")
         if len(url) > 2048:
-            raise ValueError("URL too long")
+            raise ValueError("URL too long (max 2048 characters)")
+
+        # Validate title length to prevent database bloat and display issues
+        if title and len(title) > 1000:
+            raise ValueError("Title too long (max 1000 characters)")
+
+        # Validate output_path length
+        if output_path and len(output_path) > 4096:
+            raise ValueError("Output path too long (max 4096 characters)")
 
         # Prevent null bytes
         if (
