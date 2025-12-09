@@ -96,6 +96,7 @@ class Text(Control):
         font_family: Any = None,
         style: Any = None,
         theme_style: Any = None,
+        visible: bool = True,
     ): ...
 
 class Icon(Control):
@@ -546,6 +547,9 @@ class ColorScheme:
     ): ...
 
 class VisualDensity:
+    COMFORTABLE: Any
+
+class ThemeVisualDensity:
     COMFORTABLE: Any
 
 class PageTransitionsTheme:

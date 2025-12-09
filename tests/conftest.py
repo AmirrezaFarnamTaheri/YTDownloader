@@ -276,16 +276,29 @@ def mock_dependencies():
         except ImportError:
             bs4_mock = MagicMock()
 
+            # Create a mock Tag class that can be used for isinstance checks
             class MockTag:
-                pass
+                def __init__(self, *args, **kwargs):
+                    pass
 
+                def get(self, key):
+                    return None
+
+            # Side effect for find/find_all to allow specific mocking in tests
+            def find_side_effect(*args, **kwargs):
+                return None
+
+            bs4_instance = MagicMock()
+            bs4_instance.find.side_effect = find_side_effect
+            # Allow constructor to return our instance
+            bs4_mock.BeautifulSoup.return_value = bs4_instance
+
+            # Assign Tag class
             bs4_mock.Tag = MockTag
-            bs4_mock.BeautifulSoup = MagicMock()
 
             sys.modules["bs4"] = bs4_mock
             sys.modules["bs4.BeautifulSoup"] = bs4_mock.BeautifulSoup
             sys.modules["bs4.Tag"] = MockTag
-            # Also mock element submodule
             sys.modules["bs4.element"] = MagicMock()
             sys.modules["bs4.element"].Tag = MockTag
 
