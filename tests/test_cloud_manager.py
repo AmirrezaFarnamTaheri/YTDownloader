@@ -43,7 +43,11 @@ class TestCloudManagerPatched(unittest.TestCase):
     @patch("pydrive2.drive.GoogleDrive")
     def test_upload_google_drive_success(self, MockDrive, MockAuth, mock_exists):
         def side_effect(path):
-            return path == "test.txt" or "client_secrets.json" in str(path)
+            return (
+                path == "test.txt"
+                or "client_secrets.json" in str(path)
+                or "mycreds.txt" in str(path)
+            )
 
         mock_exists.side_effect = side_effect
 
@@ -77,7 +81,11 @@ class TestCloudManagerPatched(unittest.TestCase):
     @patch("pydrive2.drive.GoogleDrive")
     def test_upload_google_drive_refresh_token(self, MockDrive, MockAuth, mock_exists):
         def side_effect(path):
-            return path == "test.txt" or "client_secrets.json" in str(path)
+            return (
+                path == "test.txt"
+                or "client_secrets.json" in str(path)
+                or "mycreds.txt" in str(path)
+            )
 
         mock_exists.side_effect = side_effect
 
@@ -95,7 +103,11 @@ class TestCloudManagerPatched(unittest.TestCase):
     @patch("pydrive2.auth.GoogleAuth")
     def test_upload_google_drive_no_creds_headless(self, MockAuth, mock_exists):
         def side_effect(path):
-            return path == "test.txt" or "client_secrets.json" in str(path)
+            return (
+                path == "test.txt"
+                or "client_secrets.json" in str(path)
+                or "mycreds.txt" in str(path)
+            )
 
         mock_exists.side_effect = side_effect
 
@@ -117,6 +129,7 @@ class TestCloudManagerPatched(unittest.TestCase):
         self, MockDrive, MockAuth, mock_exists
     ):
         def side_effect(path):
+            # No credentials file exists for this test case
             return path == "test.txt" or "client_secrets.json" in str(path)
 
         mock_exists.side_effect = side_effect
@@ -140,7 +153,11 @@ class TestCloudManagerPatched(unittest.TestCase):
     @patch("os.path.exists")
     def test_upload_google_drive_import_error(self, mock_exists):
         def side_effect(path):
-            return path == "test.txt" or "client_secrets.json" in str(path)
+            return (
+                path == "test.txt"
+                or "client_secrets.json" in str(path)
+                or "mycreds.txt" in str(path)
+            )
 
         mock_exists.side_effect = side_effect
 
@@ -156,7 +173,11 @@ class TestCloudManagerPatched(unittest.TestCase):
     @patch("pydrive2.auth.GoogleAuth")
     def test_upload_google_drive_general_exception(self, MockAuth, mock_exists):
         def side_effect(path):
-            return path == "test.txt" or "client_secrets.json" in str(path)
+            return (
+                path == "test.txt"
+                or "client_secrets.json" in str(path)
+                or "mycreds.txt" in str(path)
+            )
 
         mock_exists.side_effect = side_effect
 

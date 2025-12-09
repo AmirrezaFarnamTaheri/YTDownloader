@@ -1,12 +1,11 @@
 # pylint: disable=line-too-long, wrong-import-position, too-many-instance-attributes, too-many-public-methods, invalid-name, unused-variable, import-outside-toplevel
 # pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 import unittest
-from unittest.mock import ANY, MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import flet as ft
 
 from app_layout import AppLayout
-from theme import Theme
 from views.rss_view import RSSView
 from views.settings_view import SettingsView
 
@@ -176,7 +175,7 @@ class TestUIExtended(unittest.TestCase):
         self.mock_page.open = MagicMock()
         view.page = self.mock_page
 
-        view.proxy_input.value = "http://proxy:8080"
+        view.proxy_input.value = "http://example.com:8080"
         view.theme_mode_dd.value = "Light"
         view.output_template_input.value = "%(title)s.%(ext)s"
 
@@ -192,7 +191,7 @@ class TestUIExtended(unittest.TestCase):
                 args, _ = call_args
                 saved_config = args[0]
 
-                self.assertEqual(saved_config["proxy"], "http://proxy:8080")
+                self.assertEqual(saved_config["proxy"], "http://example.com:8080")
                 self.assertEqual(saved_config["theme_mode"], "Light")
                 self.assertEqual(saved_config["output_template"], "%(title)s.%(ext)s")
 

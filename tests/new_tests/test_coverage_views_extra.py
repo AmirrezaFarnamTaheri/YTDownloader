@@ -50,7 +50,7 @@ class TestSettingsView(unittest.TestCase):
     def test_save_settings(self):
         # Simulate changing a setting
         self.view.rate_limit_input.value = "100K"
-        self.view.proxy_input.value = ""
+        self.view.proxy_input.value = "http://example.com:8080"
         self.view.output_template_input.value = "%(title)s.%(ext)s"
 
         # Test save logic
