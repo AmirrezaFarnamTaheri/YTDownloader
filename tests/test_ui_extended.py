@@ -182,7 +182,16 @@ class TestUIExtended(unittest.TestCase):
 
         with patch("views.settings_view.ConfigManager.save_config") as mock_save:
             view.save_settings(None)
-            self.assertEqual(self.mock_config["proxy"], "http://proxy:8080")
-            self.assertEqual(self.mock_config["theme_mode"], "Light")
-            mock_save.assert_called()
+
+            # save_config is called with the config dict.
+            # We verify the config dict has correct values.
+            # mock_save.call_args[0][0] should be the config dict
+
+            args, _ = mock_save.call_args
+            saved_config = args[0]
+
+            self.assertEqual(saved_config["proxy"], "http://proxy:8080")
+            self.assertEqual(saved_config["theme_mode"], "Light")
+            self.assertEqual(saved_config["output_template"], "%(title)s.%(ext)s")
+
             self.mock_page.open.assert_called()

@@ -43,8 +43,6 @@ class TestTelegramExtractor(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual(info["url"], "http://vid.mp4")
         # If parsing works (either real BS4 or correctly mocked), it should extract "Title" from content
-        # If BS4 is not working/mocked poorly, it might fallback to "Telegram Video"
-        # Since we see "Title" in actual, it means parsing is working!
         self.assertEqual(info["title"], "Title")
 
     @patch("requests.get")
