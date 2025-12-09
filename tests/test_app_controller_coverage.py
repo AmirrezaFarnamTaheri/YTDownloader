@@ -81,6 +81,9 @@ class TestAppControllerCoverage(unittest.TestCase):
         self.mock_state.queue_manager.wait_for_items.assert_called()
 
     def test_background_loop_processing(self):
+        # Configure run_task to execute callback if called
+        self.mock_page.run_task.side_effect = lambda cb, *args, **kwargs: cb(*args, **kwargs)
+
         # Run loop once then shutdown
         self.mock_state.shutdown_flag.is_set.side_effect = [False, False, True]
         self.mock_state.queue_manager.wait_for_items.return_value = True
