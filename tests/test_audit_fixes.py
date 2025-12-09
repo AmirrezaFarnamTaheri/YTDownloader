@@ -49,7 +49,9 @@ class TestAuditFixes(unittest.TestCase):
         """Test safe path checking."""
         home = Path.home()
         safe_path = home / "Downloads" / "file.txt"
-        unsafe_path = Path("/etc/passwd") if os.name != "nt" else Path("C:\\Windows\\System32")
+        unsafe_path = (
+            Path("/etc/passwd") if os.name != "nt" else Path("C:\\Windows\\System32")
+        )
 
         self.assertTrue(is_safe_path(str(safe_path)))
         if os.name != "nt":
@@ -59,10 +61,10 @@ class TestAuditFixes(unittest.TestCase):
     def test_download_options_filename(self):
         """Test filename sanitization in DownloadOptions."""
         opts = DownloadOptions(url="http://example.com")
-        opts.validate() # Should pass
+        opts.validate()  # Should pass
 
         opts.filename = "clean_name.mp4"
-        opts.validate() # Should pass
+        opts.validate()  # Should pass
 
         opts.filename = "hacked/name.mp4"
         with self.assertRaises(ValueError):
@@ -107,6 +109,7 @@ class TestAuditFixes(unittest.TestCase):
         status, dt = DownloadScheduler.prepare_schedule(target)
         self.assertIn("2025-01-01", status)
         self.assertEqual(dt, target)
+
 
 if __name__ == "__main__":
     unittest.main()

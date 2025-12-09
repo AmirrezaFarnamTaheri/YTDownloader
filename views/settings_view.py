@@ -192,7 +192,9 @@ class SettingsView(BaseView):
             if self.page:
                 self.page.open(
                     ft.SnackBar(
-                        content=ft.Text("Invalid Output Template (must be relative path)"),
+                        content=ft.Text(
+                            "Invalid Output Template (must be relative path)"
+                        ),
                         bgcolor=Theme.Status.ERROR,
                     )
                 )
