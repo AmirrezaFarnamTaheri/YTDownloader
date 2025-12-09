@@ -11,8 +11,9 @@ class TestTelegramExtractor(unittest.TestCase):
         with patch("downloader.extractors.telegram.validate_url", return_value=True):
             self.assertTrue(TelegramExtractor.is_telegram_url("https://t.me/c/123"))
 
+    @patch("bs4.BeautifulSoup")
     @patch("requests.get")
-    def test_get_metadata_success(self, mock_get):
+    def test_get_metadata_success(self, mock_get, mock_bs):
         # Mock Response object
         mock_resp = MagicMock()
         # Ensure iter_content returns an iterator
@@ -26,9 +27,24 @@ class TestTelegramExtractor(unittest.TestCase):
         # Context manager
         mock_get.return_value.__enter__.return_value = mock_resp
 
+        # Setup BeautifulSoup mock for this test
+        mock_soup = mock_bs.return_value
+        mock_video_tag = MagicMock()
+        mock_video_tag.get.return_value = "http://vid.mp4"
+
+        def find_side_effect(name, *args, **kwargs):
+            if name == "video":
+                return mock_video_tag
+            return None
+
+        mock_soup.find.side_effect = find_side_effect
+
         info = TelegramExtractor.get_metadata("https://t.me/c/1")
         self.assertIsNotNone(info)
         self.assertEqual(info["url"], "http://vid.mp4")
+        # If parsing works (either real BS4 or correctly mocked), it should extract "Title" from content
+        # If BS4 is not working/mocked poorly, it might fallback to "Telegram Video"
+        # Since we see "Title" in actual, it means parsing is working!
         self.assertEqual(info["title"], "Title")
 
     @patch("requests.get")

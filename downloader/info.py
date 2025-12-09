@@ -231,3 +231,6 @@ def get_video_info(
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Unexpected error while fetching video info: %s", e, exc_info=True)
         return None
+
+    # Return None if no other return path was taken (implicit return fix)
+    return None

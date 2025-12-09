@@ -44,11 +44,15 @@ class TestCloudManagerPatched(unittest.TestCase):
     def test_upload_google_drive_success(self, MockDrive, MockAuth, mock_exists):
         def side_effect(path):
             return path == "test.txt" or "client_secrets.json" in str(path)
+
         mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = MagicMock()
         mock_gauth.access_token_expired = False
+
+        # Inject mock into existing manager
+        self.manager.gauth = mock_gauth
 
         mock_drive_instance = MockDrive.return_value
         mock_file = MagicMock()
@@ -74,11 +78,14 @@ class TestCloudManagerPatched(unittest.TestCase):
     def test_upload_google_drive_refresh_token(self, MockDrive, MockAuth, mock_exists):
         def side_effect(path):
             return path == "test.txt" or "client_secrets.json" in str(path)
+
         mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = MagicMock()
         mock_gauth.access_token_expired = True
+
+        self.manager.gauth = mock_gauth
 
         self.manager.upload_file("test.txt")
 
@@ -89,10 +96,13 @@ class TestCloudManagerPatched(unittest.TestCase):
     def test_upload_google_drive_no_creds_headless(self, MockAuth, mock_exists):
         def side_effect(path):
             return path == "test.txt" or "client_secrets.json" in str(path)
+
         mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = None
+
+        self.manager.gauth = mock_gauth
 
         with patch.dict(os.environ, {"HEADLESS_MODE": "1"}):
             with self.assertRaisesRegex(
@@ -108,10 +118,13 @@ class TestCloudManagerPatched(unittest.TestCase):
     ):
         def side_effect(path):
             return path == "test.txt" or "client_secrets.json" in str(path)
+
         mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = None
+
+        self.manager.gauth = mock_gauth
 
         # Ensure not headless and not CI to allow interactive auth
         with patch.dict(os.environ):
@@ -128,7 +141,11 @@ class TestCloudManagerPatched(unittest.TestCase):
     def test_upload_google_drive_import_error(self, mock_exists):
         def side_effect(path):
             return path == "test.txt" or "client_secrets.json" in str(path)
+
         mock_exists.side_effect = side_effect
+
+        # clear cached gauth to force re-initialization logic
+        self.manager.gauth = None
 
         # Simulate import error from pydrive2
         with patch("pydrive2.auth.GoogleAuth", side_effect=ImportError):
@@ -140,12 +157,15 @@ class TestCloudManagerPatched(unittest.TestCase):
     def test_upload_google_drive_general_exception(self, MockAuth, mock_exists):
         def side_effect(path):
             return path == "test.txt" or "client_secrets.json" in str(path)
+
         mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = MagicMock()
         mock_gauth.access_token_expired = False
         mock_gauth.Authorize.side_effect = Exception("Auth failed")
+
+        self.manager.gauth = mock_gauth
 
         with self.assertRaisesRegex(Exception, "Auth failed"):
             self.manager.upload_file("test.txt")

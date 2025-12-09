@@ -12,7 +12,6 @@ import main
 # It has a main(page: ft.Page) function.
 
 
-
 class TestMain(unittest.TestCase):
     @patch("main.AppController")
     @patch("main.UIManager")
