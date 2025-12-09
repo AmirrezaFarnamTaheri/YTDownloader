@@ -1,7 +1,9 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
+from bs4 import BeautifulSoup, Tag
+
 from downloader.extractors.telegram import TelegramExtractor
-from bs4 import Tag, BeautifulSoup
 
 
 class TestTelegramExtractor(unittest.TestCase):
@@ -17,7 +19,7 @@ class TestTelegramExtractor(unittest.TestCase):
         mock_resp.iter_content.return_value = iter(
             [
                 b'<html><meta property="og:description" content="Title">',
-                b'<meta property="og:video" content="http://vid.mp4"></html>',
+                b'<video src="http://vid.mp4"></video></html>',
             ]
         )
 

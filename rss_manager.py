@@ -9,8 +9,8 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
 
 import requests

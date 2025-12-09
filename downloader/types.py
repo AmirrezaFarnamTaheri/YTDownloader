@@ -5,8 +5,8 @@ Configuration dataclasses for the downloader.
 import ipaddress
 import re
 from dataclasses import dataclass
-from urllib.parse import urlparse
 from typing import Any, Callable, Dict, Optional
+from urllib.parse import urlparse
 
 
 @dataclass

@@ -1,12 +1,12 @@
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import sys
 
 import flet as ft
 
-from views.download_view import DownloadView
 from views.components.download_preview import DownloadPreviewCard
 from views.components.panels.youtube_panel import YouTubePanel
+from views.download_view import DownloadView
 
 
 class TestDownloadView(unittest.TestCase):

@@ -3,7 +3,8 @@ Module for fetching video metadata using yt-dlp or fallback extractors.
 """
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import yt_dlp

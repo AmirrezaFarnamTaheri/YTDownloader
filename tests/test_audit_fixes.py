@@ -41,7 +41,10 @@ class TestAuditFixes(unittest.TestCase):
         self.assertTrue(validate_output_template("folder/%(title)s.mp4"))
 
         # Invalid
-        self.assertFalse(validate_output_template("/absolute/path/%(title)s"))
+        abs_path = (
+            "C:\\path\\%(title)s" if os.name == "nt" else "/absolute/path/%(title)s"
+        )
+        self.assertFalse(validate_output_template(abs_path))
         self.assertFalse(validate_output_template("../parent/%(title)s"))
         self.assertFalse(validate_output_template("folder/../../hack"))
 
