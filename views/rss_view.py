@@ -13,6 +13,7 @@ import flet as ft
 from config_manager import ConfigManager
 from localization_manager import LocalizationManager as LM
 from rss_manager import RSSManager
+from ui_utils import validate_url
 from views.base_view import BaseView
 
 logger = logging.getLogger(__name__)
@@ -133,6 +134,11 @@ class RSSView(BaseView):
         """Add a new RSS feed."""
         new_url = self.rss_input.value
         if not new_url:
+            return
+
+        if not validate_url(new_url):
+            if self.page:
+                self.page.open(ft.SnackBar(content=ft.Text(LM.get("invalid_url"))))
             return
 
         feeds = self.config.get("rss_feeds", [])

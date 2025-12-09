@@ -1,6 +1,6 @@
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import sys
 
 import flet as ft
 
@@ -50,6 +50,8 @@ class TestSettingsView(unittest.TestCase):
     def test_save_settings(self):
         # Simulate changing a setting
         self.view.rate_limit_input.value = "100K"
+        self.view.proxy_input.value = ""
+        self.view.output_template_input.value = "%(title)s.%(ext)s"
 
         # Test save logic
         with patch("config_manager.ConfigManager.save_config") as mock_save:

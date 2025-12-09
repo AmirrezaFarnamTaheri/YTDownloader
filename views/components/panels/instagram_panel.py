@@ -20,7 +20,7 @@ class InstagramPanel(BasePanel):
         super().__init__(info, on_option_change)
 
         self.warning_text = ft.Text(
-            "Warning: Story downloads require authentication (cookies).",
+            "Warning: Story downloads require authentication. Please select your browser in 'Browser Cookies' (Advanced Options).",
             color=Theme.Status.ERROR,
             visible=False,
             size=12,

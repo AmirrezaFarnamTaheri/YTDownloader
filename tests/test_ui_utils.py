@@ -26,7 +26,7 @@ class TestUIUtils(unittest.TestCase):
 
     def test_validate_proxy(self):
         self.assertTrue(validate_proxy(""))
-        self.assertTrue(validate_proxy("http://127.0.0.1:8080"))
+        self.assertFalse(validate_proxy("http://127.0.0.1:8080"))
         self.assertFalse(validate_proxy("invalid"))
 
     def test_validate_rate_limit(self):

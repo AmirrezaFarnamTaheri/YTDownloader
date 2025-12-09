@@ -3,6 +3,7 @@ Utilities for UI components and platform interaction.
 Includes robust validation and secure operations.
 """
 
+import ipaddress
 import logging
 import os
 import platform
@@ -13,6 +14,7 @@ import sys
 import threading
 from pathlib import Path
 from typing import Optional, Union
+from urllib.parse import urlparse
 
 import flet as ft
 
@@ -82,6 +84,7 @@ def validate_proxy(proxy: str) -> bool:
     """
     Validate proxy format.
     Expected: scheme://[user:pass@]host:port
+    Restricts localhost and private IPs to prevent SSRF.
     """
     if not proxy or not isinstance(proxy, str):
         # Empty proxy is valid (no proxy)
@@ -95,39 +98,46 @@ def validate_proxy(proxy: str) -> bool:
     if len(proxy) > 2048:
         return False
 
-    # schemes: http, https, socks4, socks5
-    # Port is mandatory for proxy usage
-    # Host can be IP, domain, or localhost
-    # User/pass optional
-
-    regex = re.compile(
-        r"^(?:http|https|socks4|socks5)://" r"(?:[^:@]+:[^:@]+@)?"
-        # pylint: disable=line-too-long
-        r"(?:"
-        r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*|"
-        r"localhost|"
-        r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
-        r")"
-        r":\d{1,5}"
-        r"/?$",
-        re.IGNORECASE,
-    )
-
-    if not regex.match(proxy):
-        return False
-
-    # Extra check for port validity
     try:
-        parts = proxy.split(":")
-        # parts[-1] might be "8080/" or "8080"
-        port_str = parts[-1].rstrip("/")
-        port = int(port_str)
-        if not 1 <= port <= 65535:
+        parsed = urlparse(proxy)
+        if not parsed.scheme or not parsed.scheme.startswith(
+            ("http", "https", "socks4", "socks5")
+        ):
             return False
-    except ValueError:
-        pass
 
-    return True
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+
+        # Block localhost
+        if hostname in ("localhost", "127.0.0.1", "::1"):
+            return False
+
+        # Block private IPs
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback:
+                return False
+        except ValueError:
+            # Not an IP address, domain name is fine (unless it resolves to private,
+            # but that's handled at connection time usually,
+            # though here we just check format and obvious bad actors)
+            pass
+
+        # Port validation
+        if parsed.port is not None:
+            if not 1 <= parsed.port <= 65535:
+                return False
+        else:
+            # Proxy usually requires port? yt-dlp might default.
+            # But strict validation is better.
+            # If scheme is http/https, default ports exist.
+            pass
+
+        return True
+
+    except Exception:  # pylint: disable=broad-exception-caught
+        return False
 
 
 def validate_rate_limit(rate_limit: str) -> bool:
@@ -157,6 +167,40 @@ def validate_rate_limit(rate_limit: str) -> bool:
     with_unit = re.compile(r"^[1-9]\d*(\.\d+)?[KMGT](?:/s)?$", re.IGNORECASE)
 
     return bool(int_only.match(s) or with_unit.match(s))
+
+
+def validate_output_template(template: str) -> bool:
+    """
+    Validate output template.
+    Must not be absolute and must not contain parent directory references.
+    """
+    if not template or not isinstance(template, str):
+        return False
+
+    if ".." in template:
+        return False
+
+    try:
+        path = Path(template)
+        if path.is_absolute():
+            return False
+    except Exception:  # pylint: disable=broad-exception-caught
+        return False
+
+    return True
+
+
+def is_safe_path(filepath: str) -> bool:
+    """
+    Check if the filepath is within the user's home directory.
+    Prevents access to sensitive system files.
+    """
+    try:
+        path = Path(filepath).resolve()
+        home = Path.home().resolve()
+        return path.is_relative_to(home)
+    except Exception:  # pylint: disable=broad-exception-caught
+        return False
 
 
 def is_ffmpeg_available() -> bool:

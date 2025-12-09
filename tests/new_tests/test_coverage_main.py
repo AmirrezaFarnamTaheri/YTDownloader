@@ -1,6 +1,8 @@
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import sys
+
+import main
 
 # Main usually runs logic at module level if __name__ == "__main__", but has functions.
 # We want to test functions if any, or mock execution.
@@ -9,7 +11,6 @@ import sys
 # main.py does 'from app_controller import AppController' and 'import flet as ft'
 # It has a main(page: ft.Page) function.
 
-import main
 
 
 class TestMain(unittest.TestCase):

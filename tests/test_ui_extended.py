@@ -176,12 +176,13 @@ class TestUIExtended(unittest.TestCase):
         self.mock_page.open = MagicMock()
         view.page = self.mock_page
 
-        view.proxy_input.value = "http://proxy"
+        view.proxy_input.value = "http://proxy:8080"
         view.theme_mode_dd.value = "Light"
+        view.output_template_input.value = "%(title)s.%(ext)s"
 
         with patch("views.settings_view.ConfigManager.save_config") as mock_save:
             view.save_settings(None)
-            self.assertEqual(self.mock_config["proxy"], "http://proxy")
+            self.assertEqual(self.mock_config["proxy"], "http://proxy:8080")
             self.assertEqual(self.mock_config["theme_mode"], "Light")
             mock_save.assert_called()
             self.mock_page.open.assert_called()

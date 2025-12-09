@@ -124,7 +124,7 @@ class AppState:
 
         # Use OrderedDict for proper LRU cache implementation
         self._video_info_cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
-        self._video_info_max_size = 50  # Limit cache size
+        self._video_info_max_size = self.config.get("metadata_cache_size", 50)
 
         # Try connecting to social - but with error isolation
         def _safe_social_connect():

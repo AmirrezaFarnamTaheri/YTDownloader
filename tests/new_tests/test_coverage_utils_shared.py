@@ -1,7 +1,8 @@
-import unittest
 import os
 import signal
-from unittest.mock import patch, MagicMock
+import unittest
+from unittest.mock import MagicMock, patch
+
 from utils_shared import timeout_manager
 
 
@@ -11,6 +12,7 @@ class TestUtilsShared(unittest.TestCase):
             with timeout_manager(seconds=1):
                 pass
 
+    @unittest.skipIf(os.name == "nt", "Unix only")
     def test_timeout_manager_unix_success(self):
         with patch("os.name", "posix"), patch("signal.signal") as mock_signal, patch(
             "signal.alarm", create=True
@@ -22,6 +24,7 @@ class TestUtilsShared(unittest.TestCase):
             mock_alarm.assert_any_call(5)
             mock_alarm.assert_any_call(0)
 
+    @unittest.skipIf(os.name == "nt", "Unix only")
     def test_timeout_manager_unix_timeout(self):
         with patch("os.name", "posix"), patch("signal.signal") as mock_signal, patch(
             "signal.alarm", create=True

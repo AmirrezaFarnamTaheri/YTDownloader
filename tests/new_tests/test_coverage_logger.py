@@ -1,7 +1,8 @@
-import unittest
-import sys
 import logging
-from unittest.mock import patch, MagicMock
+import sys
+import unittest
+from unittest.mock import MagicMock, patch
+
 import logger_config
 
 

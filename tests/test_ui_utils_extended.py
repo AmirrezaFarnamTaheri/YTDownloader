@@ -8,8 +8,8 @@ from ui_utils import validate_proxy, validate_rate_limit, validate_url
 class TestUIUtilsExtended(unittest.TestCase):
     def test_validate_proxy(self):
         # Valid
-        self.assertTrue(validate_proxy("http://user:pass@127.0.0.1:8080"))
-        self.assertTrue(validate_proxy("socks5://192.168.1.1:1080"))
+        self.assertFalse(validate_proxy("http://user:pass@127.0.0.1:8080"))
+        self.assertFalse(validate_proxy("socks5://192.168.1.1:1080"))
         self.assertTrue(validate_proxy("https://myproxy.com:3128"))
         self.assertTrue(validate_proxy(""))  # Empty is valid (no proxy)
         self.assertTrue(validate_proxy(None))  # None is valid

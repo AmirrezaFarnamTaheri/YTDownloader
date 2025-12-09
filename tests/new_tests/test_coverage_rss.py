@@ -1,7 +1,8 @@
-import unittest
-from unittest.mock import MagicMock, patch
 import os
 import tempfile
+import unittest
+from unittest.mock import MagicMock, patch
+
 from rss_manager import RSSManager
 
 

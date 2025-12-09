@@ -42,7 +42,9 @@ class TestCloudManagerPatched(unittest.TestCase):
     @patch("pydrive2.auth.GoogleAuth")
     @patch("pydrive2.drive.GoogleDrive")
     def test_upload_google_drive_success(self, MockDrive, MockAuth, mock_exists):
-        mock_exists.return_value = True
+        def side_effect(path):
+            return path == "test.txt" or "client_secrets.json" in str(path)
+        mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = MagicMock()
@@ -70,7 +72,9 @@ class TestCloudManagerPatched(unittest.TestCase):
     @patch("pydrive2.auth.GoogleAuth")
     @patch("pydrive2.drive.GoogleDrive")
     def test_upload_google_drive_refresh_token(self, MockDrive, MockAuth, mock_exists):
-        mock_exists.return_value = True
+        def side_effect(path):
+            return path == "test.txt" or "client_secrets.json" in str(path)
+        mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = MagicMock()
@@ -83,7 +87,9 @@ class TestCloudManagerPatched(unittest.TestCase):
     @patch("os.path.exists")
     @patch("pydrive2.auth.GoogleAuth")
     def test_upload_google_drive_no_creds_headless(self, MockAuth, mock_exists):
-        mock_exists.return_value = True
+        def side_effect(path):
+            return path == "test.txt" or "client_secrets.json" in str(path)
+        mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = None
@@ -100,7 +106,9 @@ class TestCloudManagerPatched(unittest.TestCase):
     def test_upload_google_drive_no_creds_interactive(
         self, MockDrive, MockAuth, mock_exists
     ):
-        mock_exists.return_value = True
+        def side_effect(path):
+            return path == "test.txt" or "client_secrets.json" in str(path)
+        mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = None
@@ -118,7 +126,10 @@ class TestCloudManagerPatched(unittest.TestCase):
 
     @patch("os.path.exists")
     def test_upload_google_drive_import_error(self, mock_exists):
-        mock_exists.return_value = True
+        def side_effect(path):
+            return path == "test.txt" or "client_secrets.json" in str(path)
+        mock_exists.side_effect = side_effect
+
         # Simulate import error from pydrive2
         with patch("pydrive2.auth.GoogleAuth", side_effect=ImportError):
             with self.assertRaisesRegex(Exception, "PyDrive2 dependency missing"):
@@ -127,7 +138,9 @@ class TestCloudManagerPatched(unittest.TestCase):
     @patch("os.path.exists")
     @patch("pydrive2.auth.GoogleAuth")
     def test_upload_google_drive_general_exception(self, MockAuth, mock_exists):
-        mock_exists.return_value = True
+        def side_effect(path):
+            return path == "test.txt" or "client_secrets.json" in str(path)
+        mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = MagicMock()

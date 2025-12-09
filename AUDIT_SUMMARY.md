@@ -120,3 +120,18 @@ The codebase audit successfully identified and resolved 38 issues across all sev
 **Total Issues Found:** 38
 **Issues Resolved:** 38 (100%)
 **Test Pass Rate:** 100% (191/191)
+
+## Post-Audit Improvements (December 2025 Update)
+
+Following the initial audit, the following additional enhancements were implemented to address outstanding usability and security concerns:
+
+1.  **✅ Strict Proxy Validation**: Unified and strengthened proxy validation across UI and Core to strictly reject `localhost`, `127.0.0.1`, and private IP ranges, preventing SSRF risks and user confusion.
+2.  **✅ Settings UI Validation**: Added immediate input validation in the Settings View for Proxy, Rate Limit, and Output Template fields, providing instant feedback via SnackBars.
+3.  **✅ Secure Batch Import**: Restricted `BatchImporter` to only accept files located within the user's home directory, preventing arbitrary file read attempts.
+4.  **✅ Filename Sanitization**: Added explicit validation in `DownloadOptions` to reject filenames containing path separators (`/` or `\`) or directory traversal sequences (`..`).
+5.  **✅ Extended Scheduler Logic**: Updated `DownloadScheduler` to support full `datetime` objects, paving the way for advanced scheduling features.
+6.  **✅ Panel Enhancements**:
+    *   **Generic Panel**: Added a dropdown for format selection (Best Quality vs Audio Only).
+    *   **Instagram Panel**: Added clear instructions for using browser cookies for Story downloads.
+7.  **✅ RSS URL Validation**: Added immediate validation when adding new RSS feeds in the UI.
+8.  **✅ Configurable Cache Size**: Made the video metadata cache size configurable (`metadata_cache_size`) to manage memory usage.

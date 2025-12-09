@@ -3,9 +3,10 @@ Configuration dataclasses for the downloader.
 """
 
 import ipaddress
+import re
 from dataclasses import dataclass
-from urllib.parse import urlparse
 from typing import Any, Callable, Dict, Optional
+from urllib.parse import urlparse
 
 
 @dataclass
@@ -38,6 +39,12 @@ class DownloadOptions:
 
     def validate(self):
         """Perform validation on the options."""
+        self._validate_proxy()
+        self._validate_time()
+        self._validate_filename()
+
+    def _validate_proxy(self):
+        """Validate proxy settings."""
         if self.proxy:
             try:
                 parsed = urlparse(self.proxy)
@@ -61,6 +68,8 @@ class DownloadOptions:
             except Exception as e:
                 raise ValueError(f"Invalid proxy configuration: {e}") from e
 
+    def _validate_time(self):
+        """Validate time range settings."""
         start_sec = self.get_seconds(self.start_time)
         end_sec = self.get_seconds(self.end_time)
 
@@ -69,6 +78,14 @@ class DownloadOptions:
 
         if self.start_time and self.end_time and start_sec >= end_sec:
             raise ValueError("Start time must be before end time")
+
+    def _validate_filename(self):
+        """Validate filename settings."""
+        if self.filename:
+            if re.search(r"[/\\]", self.filename):
+                raise ValueError("Filename must not contain path separators")
+            if self.filename in (".", ".."):
+                raise ValueError("Invalid filename")
 
     @staticmethod
     def get_seconds(time_str: Optional[str]) -> float:

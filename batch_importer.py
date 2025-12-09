@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Tuple
 
-from ui_utils import get_default_download_path
+from ui_utils import get_default_download_path, is_safe_path
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,11 @@ class BatchImporter:
             path = Path(filepath)
             if not path.exists() or not path.is_file():
                 raise ValueError("Invalid file path")
+
+            if not is_safe_path(filepath):
+                raise ValueError(
+                    "Security: Batch import file must be located within your home directory"
+                )
 
             if path.suffix.lower() not in [".txt", ".csv"]:
                 raise ValueError("Invalid file type. Only .txt and .csv are allowed")

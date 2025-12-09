@@ -82,6 +82,7 @@ class TestAppControllerCoverage(unittest.TestCase):
 
     def test_background_loop_processing(self):
         # Configure run_task to execute callback if called
+        self.mock_page.run_task = MagicMock()
         self.mock_page.run_task.side_effect = lambda cb, *args, **kwargs: cb(
             *args, **kwargs
         )

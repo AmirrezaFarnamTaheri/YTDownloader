@@ -1,7 +1,9 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from downloader.engines.ytdlp import YTDLPWrapper
+
 import yt_dlp
+
+from downloader.engines.ytdlp import YTDLPWrapper
 
 
 class TestYTDLPWrapper(unittest.TestCase):
