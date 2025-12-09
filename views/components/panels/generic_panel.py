@@ -23,6 +23,18 @@ class GenericPanel(BasePanel):
         # pylint: disable=import-outside-toplevel
         from localization_manager import LocalizationManager as LM
 
+        self.format_dd = ft.Dropdown(
+            label=LM.get("video_format", "Format"),
+            options=[
+                ft.dropdown.Option("best", "Best Quality"),
+                ft.dropdown.Option("audio", "Audio Only"),
+            ],
+            value="best",
+            on_change=lambda e: self.on_option_change(),
+            border_color=Theme.BORDER,
+            border_radius=8,
+        )
+
         return ft.Column(
             [
                 ft.Text(
@@ -31,11 +43,12 @@ class GenericPanel(BasePanel):
                     color=Theme.Primary.MAIN,
                 ),
                 ft.Text(LM.get("generic_download_mode"), color=Theme.Text.SECONDARY),
+                self.format_dd,
             ],
             spacing=10,
         )
 
     def get_options(self) -> Dict[str, Any]:
         return {
-            "video_format": "best",
+            "video_format": self.format_dd.value,
         }

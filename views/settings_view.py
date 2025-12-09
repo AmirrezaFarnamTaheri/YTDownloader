@@ -5,6 +5,7 @@ import flet as ft
 from config_manager import ConfigManager
 from localization_manager import LocalizationManager as LM
 from theme import Theme
+from ui_utils import validate_output_template, validate_proxy, validate_rate_limit
 
 from .base_view import BaseView
 
@@ -161,9 +162,45 @@ class SettingsView(BaseView):
     # pylint: disable=missing-function-docstring, unused-argument
 
     def save_settings(self, e):
-        self.config["proxy"] = self.proxy_input.value
-        self.config["rate_limit"] = self.rate_limit_input.value
-        self.config["output_template"] = self.output_template_input.value
+        # Input Validation
+        proxy_val = self.proxy_input.value
+        if not validate_proxy(proxy_val):
+            if self.page:
+                self.page.open(
+                    ft.SnackBar(
+                        content=ft.Text(
+                            "Invalid Proxy URL (must be http/https/socks and not local)"
+                        ),
+                        bgcolor=Theme.Status.ERROR,
+                    )
+                )
+            return
+
+        rate_val = self.rate_limit_input.value
+        if not validate_rate_limit(rate_val):
+            if self.page:
+                self.page.open(
+                    ft.SnackBar(
+                        content=ft.Text("Invalid Rate Limit (e.g. 1.5M, 500K)"),
+                        bgcolor=Theme.Status.ERROR,
+                    )
+                )
+            return
+
+        tmpl_val = self.output_template_input.value
+        if not validate_output_template(tmpl_val):
+            if self.page:
+                self.page.open(
+                    ft.SnackBar(
+                        content=ft.Text("Invalid Output Template (must be relative path)"),
+                        bgcolor=Theme.Status.ERROR,
+                    )
+                )
+            return
+
+        self.config["proxy"] = proxy_val
+        self.config["rate_limit"] = rate_val
+        self.config["output_template"] = tmpl_val
         self.config["use_aria2c"] = self.use_aria2c_cb.value
         self.config["gpu_accel"] = self.gpu_accel_dd.value
         self.config["theme_mode"] = self.theme_mode_dd.value
