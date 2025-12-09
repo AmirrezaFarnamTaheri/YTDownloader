@@ -23,6 +23,11 @@ class LocalizationManager:
     @classmethod
     def load_language(cls, lang_code: str):
         """Load a language file."""
+        # Security: Prevent path traversal
+        if ".." in lang_code or "/" in lang_code or "\\" in lang_code:
+            logger.warning("Invalid language code detected: %s", lang_code)
+            lang_code = "en"
+
         cls._current_lang = lang_code
         cls._strings = {}
 

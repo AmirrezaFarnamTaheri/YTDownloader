@@ -58,14 +58,14 @@ class QueueManager:
         with self._lock:
             for item in self._queue:
                 if item.get("id") == item_id:
-                    return item
+                    return item.copy()
         return None
 
     def get_item_by_index(self, index: int) -> Optional[Dict[str, Any]]:
         """Get item by its index in the queue."""
         with self._lock:
             if 0 <= index < len(self._queue):
-                return self._queue[index]
+                return self._queue[index].copy()
         return None
 
     def any_downloading(self) -> bool:

@@ -2,11 +2,14 @@
 RSS Manager module for fetching and parsing RSS feeds.
 """
 
+import ipaddress
 import logging
+import socket
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from urllib.parse import urlparse
 from typing import Any, Dict, List, Optional
 from xml.etree import ElementTree as ET
 
@@ -147,11 +150,43 @@ class RSSManager:
         return RSSManager.parse_feed(url, self)
 
     @staticmethod
+    def _validate_url(url: str) -> bool:
+        """Validate URL for SSRF protection."""
+        try:
+            parsed = urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                safe_log_warning("Invalid scheme for RSS feed: %s", url)
+                return False
+
+            hostname = parsed.hostname
+            if not hostname:
+                return False
+
+            if hostname in ("localhost", "127.0.0.1", "::1"):
+                safe_log_warning("Localhost RSS feed blocked: %s", url)
+                return False
+
+            try:
+                ip = ipaddress.ip_address(hostname)
+                if ip.is_private or ip.is_loopback:
+                    safe_log_warning("Private IP RSS feed blocked: %s", url)
+                    return False
+            except ValueError:
+                pass  # Not an IP address
+
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
     def parse_feed(
         url: str, instance: Optional["RSSManager"] = None
     ) -> List[Dict[str, Any]]:
         """Fetch and parse a single RSS feed safely."""
         try:
+            if not RSSManager._validate_url(url):
+                return []
+
             logger.debug("Fetching RSS feed: %s", url)
             # Strict timeout
             response = requests.get(url, timeout=(5, 10))

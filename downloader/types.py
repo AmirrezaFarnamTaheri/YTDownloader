@@ -2,7 +2,9 @@
 Configuration dataclasses for the downloader.
 """
 
+import ipaddress
 from dataclasses import dataclass
+from urllib.parse import urlparse
 from typing import Any, Callable, Dict, Optional
 
 
@@ -36,10 +38,26 @@ class DownloadOptions:
 
     def validate(self):
         """Perform validation on the options."""
-        if self.proxy and not (
-            self.proxy.startswith("http") or self.proxy.startswith("socks")
-        ):
-            raise ValueError("Invalid proxy URL. Must start with http/https/socks")
+        if self.proxy:
+            try:
+                parsed = urlparse(self.proxy)
+                if not parsed.scheme or not parsed.scheme.startswith(("http", "socks")):
+                    raise ValueError("Invalid proxy URL. Must start with http/https/socks")
+
+                hostname = parsed.hostname
+                if hostname:
+                    if hostname in ("localhost", "127.0.0.1", "::1"):
+                        raise ValueError("Local proxies are not allowed")
+                    try:
+                        ip = ipaddress.ip_address(hostname)
+                        if ip.is_private or ip.is_loopback:
+                            raise ValueError("Private IP proxies are not allowed")
+                    except ValueError:
+                        pass
+            except ValueError as e:
+                raise ValueError(str(e))
+            except Exception as e:
+                raise ValueError(f"Invalid proxy configuration: {e}") from e
 
         start_sec = self.get_seconds(self.start_time)
         end_sec = self.get_seconds(self.end_time)
