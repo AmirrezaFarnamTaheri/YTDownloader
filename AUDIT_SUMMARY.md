@@ -134,3 +134,4 @@ Following the initial audit, the following additional enhancements were implemen
     *   **Generic Panel**: Added a dropdown for format selection (Best Quality vs Audio Only).
     *   **Instagram Panel**: Added clear instructions for using browser cookies for Story downloads.
 7.  **✅ RSS URL Validation**: Added immediate validation when adding new RSS feeds in the UI.
+8.  **✅ Configurable Cache Size**: Made the video metadata cache size configurable (`metadata_cache_size`) to manage memory usage.
