@@ -20,7 +20,7 @@ class TestTelegramExtractor(unittest.TestCase):
         mock_resp.iter_content.return_value = iter(
             [
                 b'<html><meta property="og:description" content="Title">',
-                b'<video src="http://vid.mp4"></video></html>',
+                b'<video src="http://example.com/vid.mp4"></video></html>',
             ]
         )
 
@@ -30,7 +30,7 @@ class TestTelegramExtractor(unittest.TestCase):
         # Setup BeautifulSoup mock for this test
         mock_soup = mock_bs.return_value
         mock_video_tag = MagicMock()
-        mock_video_tag.get.return_value = "http://vid.mp4"
+        mock_video_tag.get.return_value = "http://example.com/vid.mp4"
 
         def find_side_effect(name, *args, **kwargs):
             if name == "video":
@@ -41,7 +41,7 @@ class TestTelegramExtractor(unittest.TestCase):
 
         info = TelegramExtractor.get_metadata("https://t.me/c/1")
         self.assertIsNotNone(info)
-        self.assertEqual(info["url"], "http://vid.mp4")
+        self.assertEqual(info["url"], "http://example.com/vid.mp4")
         # If parsing works (either real BS4 or correctly mocked), it should extract "Title" from content
         self.assertEqual(info["title"], "Title")
 
