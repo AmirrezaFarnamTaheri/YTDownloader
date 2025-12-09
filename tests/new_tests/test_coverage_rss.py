@@ -1,9 +1,9 @@
-
 import unittest
 from unittest.mock import MagicMock, patch
 import os
 import tempfile
 from rss_manager import RSSManager
+
 
 class TestRSSManager(unittest.TestCase):
     def setUp(self):
@@ -11,16 +11,18 @@ class TestRSSManager(unittest.TestCase):
         self.mock_config.get.return_value = []
         self.manager = RSSManager(self.mock_config)
 
-    def test_add_feed(self):
+    @patch("config_manager.ConfigManager")
+    def test_add_feed(self, MockConfig):
         self.manager.add_feed("http://feed.com")
-        self.mock_config.save_config.assert_called()
+        MockConfig.save_config.assert_called()
         self.assertEqual(len(self.manager.feeds), 1)
-        self.assertEqual(self.manager.feeds[0]['url'], "http://feed.com")
+        self.assertEqual(self.manager.feeds[0]["url"], "http://feed.com")
 
-    def test_remove_feed(self):
-        self.manager.feeds = [{'url': 'http://feed.com', 'name': 'Test'}]
+    @patch("config_manager.ConfigManager")
+    def test_remove_feed(self, MockConfig):
+        self.manager.feeds = [{"url": "http://feed.com", "name": "Test"}]
         self.manager.remove_feed("http://feed.com")
-        self.mock_config.save_config.assert_called()
+        MockConfig.save_config.assert_called()
         self.assertEqual(len(self.manager.feeds), 0)
 
     @patch("rss_manager.requests.get")
@@ -42,7 +44,7 @@ class TestRSSManager(unittest.TestCase):
 
         items = self.manager.parse_feed("http://feed.com")
         self.assertEqual(len(items), 1)
-        self.assertEqual(items[0]['title'], "Video Title")
+        self.assertEqual(items[0]["title"], "Video Title")
 
     @patch("rss_manager.requests.get")
     def test_parse_feed_error(self, mock_get):

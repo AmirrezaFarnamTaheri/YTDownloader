@@ -11,7 +11,7 @@ services:
       # Downloads volume - requires write access for downloaded files
       - ./downloads:/app/downloads
       # Config volume - requires write access for configuration updates
-      - ./config:/root/.streamcatch
+      - ./config:/home/streamcatch/.streamcatch
     environment:
       - FLET_WEB=1
       - FLET_SERVER_PORT=8550

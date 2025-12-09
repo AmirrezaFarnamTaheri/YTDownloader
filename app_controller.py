@@ -98,7 +98,10 @@ class AppController:
 
                 # Check scheduled items
                 if state.queue_manager.update_scheduled_items(datetime.now()) > 0:
-                    self.ui.update_queue_view()
+                    if hasattr(self.page, "run_task"):
+                        self.page.run_task(self.ui.update_queue_view)
+                    else:
+                        self.ui.update_queue_view()
 
                 # Process queue
                 process_queue()

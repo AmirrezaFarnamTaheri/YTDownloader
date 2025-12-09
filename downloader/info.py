@@ -3,13 +3,13 @@ Module for fetching video metadata using yt-dlp or fallback extractors.
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import yt_dlp
 
 from downloader.extractors.generic import GenericExtractor
 from downloader.extractors.telegram import TelegramExtractor
-from utils_shared import timeout_manager
 
 logger = logging.getLogger(__name__)
 
@@ -176,15 +176,22 @@ def get_video_info(
 
         logger.info("Fetching video info for: %s", url)
 
-        # Wrap extraction in timeout
-        with timeout_manager(45, "Info extraction timed out"):
+        # Execute extraction with cross-platform timeout
+        def _fetch():
             # pylint: disable=line-too-long
-            # Explicitly cast to Any or suppress error because YoutubeDL expects _Params but we pass Dict
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
-                # Cast result to Dict[str, Any] as extract_info returns Any (usually dict)
-                info_dict = cast(Dict[str, Any], ydl.extract_info(url, download=False))
+                return cast(Dict[str, Any], ydl.extract_info(url, download=False))
 
-            # Check if yt-dlp fell back to generic and didn't find much
+        try:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_fetch)
+                info_dict = future.result(timeout=45)
+        except FuturesTimeoutError as exc:
+            logger.error("Info extraction timed out after 45s")
+            raise TimeoutError("Info extraction timed out") from exc
+
+        # Check if yt-dlp fell back to generic and didn't find much
+        if info_dict:
             extractor = info_dict.get("extractor_key", "")
             formats = info_dict.get("formats", [])
 

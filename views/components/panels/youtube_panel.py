@@ -23,6 +23,7 @@ class YouTubePanel(BasePanel):
         self.video_format_dd = ft.Dropdown(
             label=LM.get("format"),
             expand=True,
+            on_change=lambda e: self.on_option_change(),
             **Theme.get_input_decoration(hint_text=LM.get("select_format")),
         )
 
@@ -30,6 +31,7 @@ class YouTubePanel(BasePanel):
             label=LM.get("audio_stream"),
             expand=True,
             visible=False,
+            on_change=lambda e: self.on_option_change(),
             **Theme.get_input_decoration(hint_text=LM.get("select_audio")),
         )
 
@@ -38,24 +40,28 @@ class YouTubePanel(BasePanel):
             expand=True,
             options=[ft.dropdown.Option("None", "None")],
             value="None",
+            on_change=lambda e: self.on_option_change(),
             **Theme.get_input_decoration(hint_text=LM.get("select_subtitles")),
         )
 
         self.sponsorblock_cb = ft.Checkbox(
             label=LM.get("sponsorblock"),
             value=False,
+            on_change=lambda e: self.on_option_change(),
             fill_color=Theme.Primary.MAIN,
         )
 
         self.playlist_cb = ft.Checkbox(
             label=LM.get("playlist"),
             value=False,
+            on_change=lambda e: self.on_option_change(),
             fill_color=Theme.Primary.MAIN,
         )
 
         self.chapters_cb = ft.Checkbox(
             label=LM.get("split_chapters"),
             value=False,
+            on_change=lambda e: self.on_option_change(),
             fill_color=Theme.Primary.MAIN,
         )
 
@@ -88,15 +94,21 @@ class YouTubePanel(BasePanel):
 
         if "video_streams" in self.info:
             for s in self.info["video_streams"]:
-                # Simple label
+                fid = s.get("format_id")
+                if not fid:
+                    continue
+
                 res = s.get("resolution", "Unknown")
                 ext = s.get("ext", "")
-                size = s.get("filesize_str", "") or s.get("filesize", "")
-                if size and isinstance(size, int):
-                    size = f"{size / 1024 / 1024:.1f}MB"
 
-                label = f"{res} ({ext}) {size}"
-                video_opts.append(ft.dropdown.Option(s.get("format_id"), label))
+                size_val = s.get("filesize")
+                if size_val and isinstance(size_val, (int, float)):
+                    size_str = f"{size_val / (1024 * 1024):.1f} MB"
+                else:
+                    size_str = s.get("filesize_str", "") or ""
+
+                label = f"{res} ({ext}) {size_str}".strip()
+                video_opts.append(ft.dropdown.Option(fid, label))
 
         self.video_format_dd.options = video_opts
         self.video_format_dd.value = "best"

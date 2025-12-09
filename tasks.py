@@ -58,12 +58,17 @@ def process_queue():
             # Try to acquire a slot without blocking
             # pylint: disable=consider-using-with
             if _SUBMISSION_THROTTLE.acquire(blocking=False):
-                # We acquired a slot, check if there is work
-                item = state.queue_manager.claim_next_downloadable()
-                if not item:
-                    # No work, release slot immediately
+                try:
+                    # We acquired a slot, check if there is work
+                    item = state.queue_manager.claim_next_downloadable()
+                    if not item:
+                        # No work, release slot immediately
+                        _SUBMISSION_THROTTLE.release()
+                        break
+                except Exception:
+                    # Ensure release if claim fails
                     _SUBMISSION_THROTTLE.release()
-                    break
+                    raise
             else:
                 # No slots available
                 break

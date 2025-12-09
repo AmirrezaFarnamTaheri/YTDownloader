@@ -37,20 +37,32 @@ def fetch_info_task(url: str, download_view, page: Optional[ft.Page]):
         )
         logger.debug("Metadata keys: %s", list(info.keys()))
 
-        if download_view:
-            logger.debug("Updating DownloadView with new info")
-            download_view.update_info(info)
+        def update_ui_success():
+            if download_view:
+                logger.debug("Updating DownloadView with new info")
+                download_view.update_info(info)
+                download_view.fetch_btn.disabled = False
+            if page:
+                page.open(ft.SnackBar(content=ft.Text("Metadata fetched successfully")))
+                page.update()
 
-        # We need to be careful updating UI from background thread
-        # Flet is usually thread-safe for page.update() but it's good practice to verify
-        if page:
-            page.open(ft.SnackBar(content=ft.Text("Metadata fetched successfully")))
+        if page and hasattr(page, "run_task"):
+            page.run_task(update_ui_success)
+        else:
+            update_ui_success()
+
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Fetch error: %s", e)
-        if page:
-            page.open(ft.SnackBar(content=ft.Text(f"Error: {e}")))
-    finally:
-        if download_view:
-            download_view.fetch_btn.disabled = False
-        if page:
-            page.update()
+
+        def update_ui_error():
+            if download_view:
+                download_view.fetch_btn.disabled = False
+                download_view.update()
+            if page:
+                page.open(ft.SnackBar(content=ft.Text(f"Error: {e}")))
+                page.update()
+
+        if page and hasattr(page, "run_task"):
+            page.run_task(update_ui_error)
+        else:
+            update_ui_error()

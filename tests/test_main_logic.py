@@ -290,6 +290,9 @@ class TestMainLogic(unittest.TestCase):
         mock_view = MagicMock()
         mock_page = MagicMock()
 
+        # Simulate run_task executing the callback
+        mock_page.run_task.side_effect = lambda func, *args: func(*args)
+
         fetch_info_task("http://video", mock_view, mock_page)
 
         self.assertEqual(self.mock_state.video_info["title"], "Test Video")
@@ -301,6 +304,9 @@ class TestMainLogic(unittest.TestCase):
         mock_get_info.return_value = None
         mock_view = MagicMock()
         mock_page = MagicMock()
+
+        # Simulate run_task executing the callback
+        mock_page.run_task.side_effect = lambda func, *args: func(*args)
 
         fetch_info_task("http://video", mock_view, mock_page)
 

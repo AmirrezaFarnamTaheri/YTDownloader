@@ -220,6 +220,18 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
     # 1. Validation
     options.validate()
 
+    # Sanitize output_template to prevent path traversal
+    # It should not be absolute and should not contain '..' segments
+    tmpl = Path(options.output_template)
+    if tmpl.is_absolute():
+        raise ValueError("Output template must be a relative path")
+    if ".." in options.output_template.split(
+        os.path.sep
+    ) or ".." in options.output_template.split("/"):
+        raise ValueError(
+            "Output template must not contain parent directory references ('..')"
+        )
+
     # 2. Handle Output Path
     output_path = _sanitize_output_path(options.output_path)
     if not os.path.exists(output_path):

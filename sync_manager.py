@@ -77,7 +77,12 @@ class SyncManager:
 
     def sync_up(self):
         """Uploads local config and history to cloud."""
-        with self._lock:
+        # pylint: disable=consider-using-with
+        if not self._lock.acquire(blocking=False):
+            logger.warning("Sync already in progress, skipping sync_up.")
+            return
+
+        try:
             try:
                 logger.info("Starting sync UP...")
 
@@ -114,10 +119,17 @@ class SyncManager:
             except Exception as e:
                 logger.error("Sync UP failed: %s", e)
                 raise
+        finally:
+            self._lock.release()
 
     def sync_down(self):
         """Downloads config and history from cloud and applies them."""
-        with self._lock:
+        # pylint: disable=consider-using-with
+        if not self._lock.acquire(blocking=False):
+            logger.warning("Sync already in progress, skipping sync_down.")
+            return
+
+        try:
             try:
                 logger.info("Starting sync DOWN...")
 
@@ -144,6 +156,8 @@ class SyncManager:
             except Exception as e:
                 logger.error("Sync DOWN failed: %s", e)
                 raise
+        finally:
+            self._lock.release()
 
     def _write_temp_json(self, data: Dict) -> str:
         fd, path = tempfile.mkstemp(suffix=".json")

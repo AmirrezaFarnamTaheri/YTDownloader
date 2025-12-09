@@ -3,6 +3,7 @@ Batch importer for download items.
 """
 
 import logging
+from pathlib import Path
 from typing import Tuple
 
 from ui_utils import get_default_download_path
@@ -24,6 +25,13 @@ class BatchImporter:
         Returns a tuple of (number of items imported, whether the list was truncated).
         """
         try:
+            path = Path(filepath)
+            if not path.exists() or not path.is_file():
+                raise ValueError("Invalid file path")
+
+            if path.suffix.lower() not in [".txt", ".csv"]:
+                raise ValueError("Invalid file type. Only .txt and .csv are allowed")
+
             with open(filepath, "r", encoding="utf-8") as f:
                 urls = [line.strip() for line in f if line.strip()]
 

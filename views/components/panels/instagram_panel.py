@@ -19,6 +19,13 @@ class InstagramPanel(BasePanel):
     def __init__(self, info: Dict[str, Any], on_option_change: Callable):
         super().__init__(info, on_option_change)
 
+        self.warning_text = ft.Text(
+            "Warning: Story downloads require authentication (cookies).",
+            color=Theme.Status.ERROR,
+            visible=False,
+            size=12,
+        )
+
         self.download_type = ft.RadioGroup(
             content=ft.Row(
                 [
@@ -27,9 +34,16 @@ class InstagramPanel(BasePanel):
                 ]
             ),
             value="post",
+            on_change=self._on_type_change,
         )
 
         self.content = self.build()
+
+    def _on_type_change(self, e):
+        # pylint: disable=unused-argument
+        self.warning_text.visible = self.download_type.value == "story"
+        self.warning_text.update()
+        self.on_option_change()
 
     def build(self):
         return ft.Column(
@@ -40,6 +54,7 @@ class InstagramPanel(BasePanel):
                     color=Theme.Primary.MAIN,
                 ),
                 self.download_type,
+                self.warning_text,
             ],
             spacing=10,
         )
