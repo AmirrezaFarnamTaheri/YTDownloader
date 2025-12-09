@@ -82,7 +82,9 @@ class TestAppControllerCoverage(unittest.TestCase):
 
     def test_background_loop_processing(self):
         # Configure run_task to execute callback if called
-        self.mock_page.run_task.side_effect = lambda cb, *args, **kwargs: cb(*args, **kwargs)
+        self.mock_page.run_task.side_effect = lambda cb, *args, **kwargs: cb(
+            *args, **kwargs
+        )
 
         # Run loop once then shutdown
         self.mock_state.shutdown_flag.is_set.side_effect = [False, False, True]

@@ -225,8 +225,12 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
     tmpl = Path(options.output_template)
     if tmpl.is_absolute():
         raise ValueError("Output template must be a relative path")
-    if ".." in options.output_template.split(os.path.sep) or ".." in options.output_template.split("/"):
-         raise ValueError("Output template must not contain parent directory references ('..')")
+    if ".." in options.output_template.split(
+        os.path.sep
+    ) or ".." in options.output_template.split("/"):
+        raise ValueError(
+            "Output template must not contain parent directory references ('..')"
+        )
 
     # 2. Handle Output Path
     output_path = _sanitize_output_path(options.output_path)

@@ -1,8 +1,8 @@
-
 import unittest
 from unittest.mock import MagicMock, patch
 from downloader.engines.ytdlp import YTDLPWrapper
 import yt_dlp
+
 
 class TestYTDLPWrapper(unittest.TestCase):
     def setUp(self):
@@ -15,27 +15,28 @@ class TestYTDLPWrapper(unittest.TestCase):
     def test_download_success(self, MockYTDL):
         mock_instance = MockYTDL.return_value.__enter__.return_value
         mock_instance.extract_info.return_value = {
-            "title": "Video", "duration": 10, "thumbnail": "t", "uploader": "u"
+            "title": "Video",
+            "duration": 10,
+            "thumbnail": "t",
+            "uploader": "u",
         }
         mock_instance.prepare_filename.return_value = "Video.mp4"
 
         with patch("os.path.basename", side_effect=lambda p: p):
             res = self.wrapper.download("http://url.com")
 
-        self.assertEqual(res['filename'], "Video.mp4")
-        self.assertEqual(res['type'], "video")
+        self.assertEqual(res["filename"], "Video.mp4")
+        self.assertEqual(res["type"], "video")
 
     @patch("yt_dlp.YoutubeDL")
     def test_download_playlist(self, MockYTDL):
         mock_instance = MockYTDL.return_value.__enter__.return_value
-        mock_instance.extract_info.return_value = {
-            "title": "PL", "entries": [1, 2, 3]
-        }
+        mock_instance.extract_info.return_value = {"title": "PL", "entries": [1, 2, 3]}
 
         res = self.wrapper.download("http://pl.com")
 
-        self.assertEqual(res['type'], "playlist")
-        self.assertEqual(res['entries'], 3)
+        self.assertEqual(res["type"], "playlist")
+        self.assertEqual(res["entries"], 3)
 
     @patch("yt_dlp.YoutubeDL")
     def test_download_cancel(self, MockYTDL):
@@ -48,7 +49,7 @@ class TestYTDLPWrapper(unittest.TestCase):
             call_args = MockYTDL.call_args
             if call_args:
                 options = call_args[0][0]
-                hooks = options.get('progress_hooks', [])
+                hooks = options.get("progress_hooks", [])
                 for h in hooks:
                     h({})
             return {}

@@ -42,7 +42,9 @@ class DownloadOptions:
             try:
                 parsed = urlparse(self.proxy)
                 if not parsed.scheme or not parsed.scheme.startswith(("http", "socks")):
-                    raise ValueError("Invalid proxy URL. Must start with http/https/socks")
+                    raise ValueError(
+                        "Invalid proxy URL. Must start with http/https/socks"
+                    )
 
                 hostname = parsed.hostname
                 if hostname:
@@ -55,7 +57,7 @@ class DownloadOptions:
                     except ValueError:
                         pass
             except ValueError as e:
-                raise ValueError(str(e))
+                raise ValueError(str(e)) from e
             except Exception as e:
                 raise ValueError(f"Invalid proxy configuration: {e}") from e
 

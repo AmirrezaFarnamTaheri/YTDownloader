@@ -1,8 +1,8 @@
-
 import unittest
 from datetime import datetime, time
 from unittest.mock import patch
 from download_scheduler import DownloadScheduler
+
 
 class TestDownloadScheduler(unittest.TestCase):
     def test_prepare_schedule_none(self):

@@ -3,11 +3,11 @@ Module for fetching video metadata using yt-dlp or fallback extractors.
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import yt_dlp
 
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from downloader.extractors.generic import GenericExtractor
 from downloader.extractors.telegram import TelegramExtractor
 
@@ -180,15 +180,15 @@ def get_video_info(
         def _fetch():
             # pylint: disable=line-too-long
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
-                 return cast(Dict[str, Any], ydl.extract_info(url, download=False))
+                return cast(Dict[str, Any], ydl.extract_info(url, download=False))
 
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(_fetch)
                 info_dict = future.result(timeout=45)
-        except FuturesTimeoutError:
-             logger.error("Info extraction timed out after 45s")
-             raise TimeoutError("Info extraction timed out")
+        except FuturesTimeoutError as exc:
+            logger.error("Info extraction timed out after 45s")
+            raise TimeoutError("Info extraction timed out") from exc
 
         # Check if yt-dlp fell back to generic and didn't find much
         if info_dict:

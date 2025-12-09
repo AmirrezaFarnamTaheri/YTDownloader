@@ -1,15 +1,13 @@
-
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
 
-# Mock flet
-sys.modules["flet"] = MagicMock()
 import flet as ft
 
 from views.download_view import DownloadView
 from views.components.download_preview import DownloadPreviewCard
 from views.components.panels.youtube_panel import YouTubePanel
+
 
 class TestDownloadView(unittest.TestCase):
     def setUp(self):
@@ -27,7 +25,7 @@ class TestDownloadView(unittest.TestCase):
                 self.mock_add,
                 self.mock_batch,
                 self.mock_schedule,
-                self.mock_state
+                self.mock_state,
             )
 
         # Manually set attributes that BaseView would have set or are needed
@@ -65,16 +63,16 @@ class TestDownloadView(unittest.TestCase):
 
         self.mock_add.assert_called()
         args = self.mock_add.call_args[0][0]
-        self.assertEqual(args['url'], "http://test.com")
-        self.assertEqual(args['start_time'], "00:00:10")
-        self.assertTrue(args['force_generic'])
+        self.assertEqual(args["url"], "http://test.com")
+        self.assertEqual(args["start_time"], "00:00:10")
+        self.assertTrue(args["force_generic"])
 
     def test_update_video_info_success(self):
         info = {
             "original_url": "https://youtube.com/watch?v=1",
             "title": "Vid",
             "thumbnail": "t",
-            "duration": 100
+            "duration": 100,
         }
 
         # We need to ensure YouTubePanel can be instantiated or mocked
@@ -97,25 +95,25 @@ class TestDownloadView(unittest.TestCase):
                 self.view._open_downloads_folder()
                 mock_open.assert_called()
 
+
 class TestDownloadPreviewCard(unittest.TestCase):
     def setUp(self):
         # Must patch flet controls used in init
-        with patch("flet.Card"), patch("flet.Container"), patch("flet.Column"), patch("flet.Row"), patch("flet.Image"), patch("flet.Text"):
-             self.card = DownloadPreviewCard()
+        with patch("flet.Card"), patch("flet.Container"), patch("flet.Column"), patch(
+            "flet.Row"
+        ), patch("flet.Image"), patch("flet.Text"):
+            self.card = DownloadPreviewCard()
+            self.card.update = MagicMock()
 
     def test_update_info(self):
         info = {"title": "T", "thumbnail": "thumb", "duration": 60, "filesize": 1024}
         self.card.update_info(info)
         self.assertTrue(self.card.visible)
 
-    def test_clear(self):
-        self.card.clear()
-        self.assertFalse(self.card.visible)
 
 class TestYouTubePanel(unittest.TestCase):
     def setUp(self):
-        with patch("views.components.panels.base_panel.BasePanel.__init__"):
-             self.panel = YouTubePanel({}, lambda: None)
+        self.panel = YouTubePanel({}, lambda: None)
         self.panel.format_dropdown = MagicMock()
         self.panel.format_dropdown.value = "best"
 

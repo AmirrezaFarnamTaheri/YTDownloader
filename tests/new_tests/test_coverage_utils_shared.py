@@ -1,9 +1,9 @@
-
 import unittest
 import os
 import signal
 from unittest.mock import patch, MagicMock
 from utils_shared import timeout_manager
+
 
 class TestUtilsShared(unittest.TestCase):
     def test_timeout_manager_windows(self):
@@ -12,9 +12,9 @@ class TestUtilsShared(unittest.TestCase):
                 pass
 
     def test_timeout_manager_unix_success(self):
-        with patch("os.name", "posix"), \
-             patch("signal.signal") as mock_signal, \
-             patch("signal.alarm") as mock_alarm:
+        with patch("os.name", "posix"), patch("signal.signal") as mock_signal, patch(
+            "signal.alarm", create=True
+        ) as mock_alarm:
 
             with timeout_manager(seconds=5):
                 pass
@@ -23,11 +23,12 @@ class TestUtilsShared(unittest.TestCase):
             mock_alarm.assert_any_call(0)
 
     def test_timeout_manager_unix_timeout(self):
-        with patch("os.name", "posix"), \
-             patch("signal.signal") as mock_signal, \
-             patch("signal.alarm") as mock_alarm:
+        with patch("os.name", "posix"), patch("signal.signal") as mock_signal, patch(
+            "signal.alarm", create=True
+        ) as mock_alarm:
 
             handler_ref = []
+
             def side_effect(sig, handler):
                 if sig == signal.SIGALRM:
                     handler_ref.append(handler)

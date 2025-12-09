@@ -1,7 +1,7 @@
-
 import unittest
 from unittest.mock import patch
 from rate_limiter import RateLimiter
+
 
 class TestRateLimiter(unittest.TestCase):
     def test_init(self):

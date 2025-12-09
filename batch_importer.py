@@ -30,7 +30,7 @@ class BatchImporter:
                 raise ValueError("Invalid file path")
 
             if path.suffix.lower() not in [".txt", ".csv"]:
-                 raise ValueError("Invalid file type. Only .txt and .csv are allowed")
+                raise ValueError("Invalid file type. Only .txt and .csv are allowed")
 
             with open(filepath, "r", encoding="utf-8") as f:
                 urls = [line.strip() for line in f if line.strip()]

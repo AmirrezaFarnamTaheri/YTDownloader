@@ -174,6 +174,9 @@ def mock_dependencies():
     flet_mock.NavigationRailLabelType = MagicMock()
     flet_mock.NavigationRailLabelType.ALL = "all"
 
+    flet_mock.VisualDensity = MagicMock()
+    flet_mock.VisualDensity.COMFORTABLE = "comfortable"
+
     # Mock colors and icons
     flet_mock.colors = MagicMock()
     flet_mock.icons = MagicMock()
@@ -268,6 +271,7 @@ def mock_dependencies():
         # Try to import real bs4 first
         try:
             import bs4
+
             sys.modules["bs4"] = bs4
         except ImportError:
             bs4_mock = MagicMock()

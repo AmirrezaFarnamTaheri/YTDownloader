@@ -53,6 +53,7 @@ def fetch_info_task(url: str, download_view, page: Optional[ft.Page]):
 
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Fetch error: %s", e)
+
         def update_ui_error():
             if download_view:
                 download_view.fetch_btn.disabled = False

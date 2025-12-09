@@ -142,7 +142,7 @@ class Theme:
                 # pylint: disable=no-member
             ),
             # pylint: disable=no-member
-            visual_density=ft.VisualDensity.COMFORTABLE,
+            visual_density=ft.ThemeVisualDensity.COMFORTABLE,
             page_transitions=ft.PageTransitionsTheme(
                 android=ft.PageTransitionTheme.ZOOM,
                 ios=ft.PageTransitionTheme.CUPERTINO,

@@ -20,10 +20,10 @@ class InstagramPanel(BasePanel):
         super().__init__(info, on_option_change)
 
         self.warning_text = ft.Text(
-             "Warning: Story downloads require authentication (cookies).",
-             color=Theme.Colors.ERROR,
-             visible=False,
-             size=12
+            "Warning: Story downloads require authentication (cookies).",
+            color=Theme.Status.ERROR,
+            visible=False,
+            size=12,
         )
 
         self.download_type = ft.RadioGroup(
@@ -34,14 +34,14 @@ class InstagramPanel(BasePanel):
                 ]
             ),
             value="post",
-            on_change=self._on_type_change
+            on_change=self._on_type_change,
         )
 
         self.content = self.build()
 
     def _on_type_change(self, e):
         # pylint: disable=unused-argument
-        self.warning_text.visible = (self.download_type.value == "story")
+        self.warning_text.visible = self.download_type.value == "story"
         self.warning_text.update()
         self.on_option_change()
 

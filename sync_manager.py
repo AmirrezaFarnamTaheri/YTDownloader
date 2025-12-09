@@ -77,6 +77,7 @@ class SyncManager:
 
     def sync_up(self):
         """Uploads local config and history to cloud."""
+        # pylint: disable=consider-using-with
         if not self._lock.acquire(blocking=False):
             logger.warning("Sync already in progress, skipping sync_up.")
             return
@@ -123,6 +124,7 @@ class SyncManager:
 
     def sync_down(self):
         """Downloads config and history from cloud and applies them."""
+        # pylint: disable=consider-using-with
         if not self._lock.acquire(blocking=False):
             logger.warning("Sync already in progress, skipping sync_down.")
             return
