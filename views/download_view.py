@@ -66,6 +66,11 @@ class DownloadView(BaseView):
             expand=True,
             autofocus=True,
             on_submit=lambda e: self._on_fetch_click(e),
+            suffix=ft.IconButton(
+                icon=ft.icons.CONTENT_PASTE,
+                tooltip=LM.get("paste_from_clipboard") or "Paste from clipboard",
+                on_click=self._on_paste_click,
+            ),
             **Theme.get_input_decoration(
                 hint_text=LM.get("url_placeholder"), prefix_icon=ft.icons.LINK
             )
@@ -273,6 +278,18 @@ class DownloadView(BaseView):
                 expand=True,
             )
         ]
+
+    def _on_paste_click(self, e):
+        # pylint: disable=unused-argument
+        try:
+            content = e.page.get_clipboard()
+            if content:
+                self.url_input.value = content
+                self.url_input.error_text = None
+                self.url_input.focus()
+                self.update()
+        except Exception as ex:
+            logger.warning("Failed to paste: %s", ex)
 
     def _on_fetch_click(self, e):
         # pylint: disable=unused-argument
