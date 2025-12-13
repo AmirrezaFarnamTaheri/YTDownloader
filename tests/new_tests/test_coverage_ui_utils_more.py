@@ -10,7 +10,9 @@ class TestUIUtilsMore(unittest.TestCase):
         page.platform = "linux"
         with patch("subprocess.Popen") as mock_popen, patch(
             "os.path.isdir", return_value=True
-        ), patch("os.path.exists", return_value=True):
+        ), patch("os.path.exists", return_value=True), patch(
+            "platform.system", return_value="Linux"
+        ):
             ui_utils.open_folder("/tmp", page)
             mock_popen.assert_called()
 

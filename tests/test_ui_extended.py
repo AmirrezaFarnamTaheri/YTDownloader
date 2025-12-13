@@ -186,10 +186,13 @@ class TestUIExtended(unittest.TestCase):
         view.config["rss_feeds"] = []
 
         # Patch validation
-        with patch("views.settings_view.validate_proxy", return_value=True), \
-             patch("views.settings_view.validate_rate_limit", return_value=True), \
-             patch("views.settings_view.validate_output_template", return_value=True), \
-             patch("views.settings_view.ConfigManager.save_config") as mock_save:
+        with patch("views.settings_view.validate_proxy", return_value=True), patch(
+            "views.settings_view.validate_rate_limit", return_value=True
+        ), patch(
+            "views.settings_view.validate_output_template", return_value=True
+        ), patch(
+            "views.settings_view.ConfigManager.save_config"
+        ) as mock_save:
             view.save_settings(None)
 
             # Verify save_config was called
@@ -208,6 +211,8 @@ class TestUIExtended(unittest.TestCase):
                 # Let's be explicit
                 self.assertEqual(saved_config.get("proxy"), "http://example.com:8080")
                 self.assertEqual(saved_config.get("theme_mode"), "Light")
-                self.assertEqual(saved_config.get("output_template"), "%(title)s.%(ext)s")
+                self.assertEqual(
+                    saved_config.get("output_template"), "%(title)s.%(ext)s"
+                )
 
             self.mock_page.open.assert_called()

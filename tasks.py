@@ -67,6 +67,7 @@ _SUBMISSION_THROTTLE = threading.Semaphore(DEFAULT_MAX_WORKERS)
 # Lock for protecting the queue processing loop
 _PROCESS_QUEUE_LOCK = threading.RLock()
 
+
 def process_queue():
     """
     Process items in the queue.
