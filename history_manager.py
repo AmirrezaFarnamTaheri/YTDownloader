@@ -36,8 +36,10 @@ class HistoryManager:
     @staticmethod
     def _resolve_db_file() -> Path:
         """Return the configured DB path."""
-        # Use module level DB_FILE but allow for testing overrides via class attribute if needed
-        return getattr(HistoryManager, "DB_FILE", DB_FILE)
+        # Use class attribute if set (for testing), otherwise use module-level default
+        if hasattr(HistoryManager, "_test_db_file"):
+            return HistoryManager._test_db_file
+        return DB_FILE
 
     @staticmethod
     def _get_connection(timeout: float = 5.0) -> sqlite3.Connection:

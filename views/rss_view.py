@@ -139,6 +139,8 @@ class RSSView(BaseView):
         if not validate_url(new_url):
             if self.page:
                 self.page.open(ft.SnackBar(content=ft.Text(LM.get("invalid_url"))))
+            self.rss_input.error_text = "Invalid URL format"
+            self.rss_input.update()
             return
 
         feeds = self.config.get("rss_feeds", [])
@@ -156,6 +158,7 @@ class RSSView(BaseView):
             ConfigManager.save_config(self.config)
             self.load_feeds_list()
             self.rss_input.value = ""
+            self.rss_input.error_text = None
             self.update()
 
     def remove_rss(self, feed):

@@ -22,9 +22,8 @@ class TestHistoryManager(unittest.TestCase):
             os.remove(self.db_file)
 
         # Patch the class-level DB_FILE via a property or by patching the module level
-        # HistoryManager._resolve_db_file uses getattr(HistoryManager, "DB_FILE", module.DB_FILE)
-        # So we can set it on the class.
-        HistoryManager.DB_FILE = self.db_file
+        # HistoryManager._resolve_db_file uses _test_db_file if present
+        HistoryManager._test_db_file = self.db_file
 
     def tearDown(self):
         if self.db_file.exists():
@@ -33,8 +32,8 @@ class TestHistoryManager(unittest.TestCase):
             except OSError:
                 pass
         # Reset
-        if hasattr(HistoryManager, "DB_FILE"):
-            del HistoryManager.DB_FILE
+        if hasattr(HistoryManager, "_test_db_file"):
+            del HistoryManager._test_db_file
 
     def test_init_db(self):
         HistoryManager.init_db()

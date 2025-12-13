@@ -143,6 +143,45 @@ class DownloadView(BaseView):
         # Build UI
         self._build_ui()
 
+    def _build_advanced_section(self, advanced_row):
+        """Build advanced options section with fallback for missing ExpansionTile."""
+        try:
+            # Try ExpansionTile if available (Flet >= 0.22)
+            return ft.ExpansionTile(
+                title=ft.Text(LM.get("advanced_options"), weight=ft.FontWeight.BOLD),
+                controls=[
+                    ft.Container(
+                        content=ft.Column(
+                            [advanced_row, self.force_generic_cb], spacing=10
+                        ),
+                        padding=10,
+                    )
+                ],
+                collapsed_text_color=Theme.Text.SECONDARY,
+                text_color=Theme.Primary.MAIN,
+                icon_color=Theme.Primary.MAIN,
+            )
+        except AttributeError:
+            # Fallback for older Flet versions
+            return ft.Column(
+                [
+                    ft.Text(
+                        LM.get("advanced_options"),
+                        weight=ft.FontWeight.BOLD,
+                        color=Theme.Primary.MAIN,
+                    ),
+                    ft.Container(
+                        content=ft.Column(
+                            [advanced_row, self.force_generic_cb], spacing=10
+                        ),
+                        padding=10,
+                        bgcolor=Theme.Surface.CARD,
+                        border_radius=8,
+                    ),
+                ],
+                spacing=5,
+            )
+
     def _build_ui(self):
         """Constructs the UI layout."""
 
@@ -209,23 +248,8 @@ class DownloadView(BaseView):
                     # Dynamic Options Panel
                     self.options_container,
                     ft.Container(height=10),
-                    # Advanced Collapsible (Simplified for now)
-                    ft.ExpansionTile(
-                        title=ft.Text(
-                            LM.get("advanced_options"), weight=ft.FontWeight.BOLD
-                        ),
-                        controls=[
-                            ft.Container(
-                                content=ft.Column(
-                                    [advanced_row, self.force_generic_cb], spacing=10
-                                ),
-                                padding=10,
-                            )
-                        ],
-                        collapsed_text_color=Theme.Text.SECONDARY,
-                        text_color=Theme.Primary.MAIN,
-                        icon_color=Theme.Primary.MAIN,
-                    ),
+                    # Advanced Options Section
+                    self._build_advanced_section(advanced_row),
                 ],
                 spacing=10,
             ),
@@ -282,12 +306,17 @@ class DownloadView(BaseView):
     def _on_paste_click(self, e):
         # pylint: disable=unused-argument
         try:
-            content = e.page.get_clipboard()
-            if content:
-                self.url_input.value = content
-                self.url_input.error_text = None
-                self.url_input.focus()
-                self.update()
+            import pyperclip
+
+            try:
+                content = pyperclip.paste()
+                if content:
+                    self.url_input.value = content.strip()
+                    self.url_input.error_text = None
+                    self.url_input.focus()
+                    self.update()
+            except pyperclip.PyperclipException:
+                logger.warning("Clipboard access not available")
         except Exception as ex:
             logger.warning("Failed to paste: %s", ex)
 
@@ -360,7 +389,6 @@ class DownloadView(BaseView):
 
             # Determine Panel Type
             url = info.get("original_url", "")
-            extractor = info.get("extractor", "").lower()
 
             # Simple heuristic
             if "youtube" in url or "youtu.be" in url:

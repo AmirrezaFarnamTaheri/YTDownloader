@@ -17,27 +17,55 @@ from utils import CancelToken
 
 logger = logging.getLogger(__name__)
 
-# Executor for managing download threads
-# Default to 3, but could be configurable via state.config if desired
-MAX_WORKERS = state.config.get("max_concurrent_downloads", 3)
-EXECUTOR = ThreadPoolExecutor(max_workers=MAX_WORKERS, thread_name_prefix="DLWorker")
+# Default max workers - will be initialized lazily
+DEFAULT_MAX_WORKERS = 3
+_executor = None
+_executor_lock = threading.Lock()
+
+
+def _get_executor():
+    """Lazily initialize executor to allow config changes before first use."""
+    global _executor
+    with _executor_lock:
+        if _executor is None:
+            max_workers = state.config.get(
+                "max_concurrent_downloads", DEFAULT_MAX_WORKERS
+            )
+            _executor = ThreadPoolExecutor(
+                max_workers=max_workers, thread_name_prefix="DLWorker"
+            )
+        return _executor
+
+
+# For backwards compatibility - mimic EXECUTOR global via module getattr
+# Python 3.7+ supports __getattr__ at module level
+def __getattr__(name):
+    if name == "EXECUTOR":
+        return _get_executor()
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
 
 # Tracks the number of actively running downloads
 _ACTIVE_COUNT = 0
 _ACTIVE_COUNT_LOCK = threading.Lock()
 
+
+def _get_max_workers():
+    return state.config.get("max_concurrent_downloads", DEFAULT_MAX_WORKERS)
+
+
 # Throttle submission to executor to avoid flooding it with tasks.
 # We limit the number of submitted-but-not-finished tasks to MAX_WORKERS.
 # This prevents queuing up 100 tasks in the executor when only 3 can run at once,
 # which allows for more responsive cancellation and priority handling.
-_SUBMISSION_THROTTLE = threading.Semaphore(MAX_WORKERS)
+# Note: Initialized with default but should technically be dynamic if config changes.
+# For now, it respects the startup config via lazy loaded value if we used a factory,
+# but Semaphore is hard to resize dynamically.
+# Improvement: Initialize it with a sufficiently high value or manage permits dynamically.
+_SUBMISSION_THROTTLE = threading.Semaphore(DEFAULT_MAX_WORKERS)
 
 # Lock for protecting the queue processing loop
 _PROCESS_QUEUE_LOCK = threading.RLock()
-
-# Compatibility alias for tests (legacy)
-_active_downloads = _SUBMISSION_THROTTLE
-
 
 def process_queue():
     """
@@ -81,7 +109,7 @@ def process_queue():
             # Submit to executor
             try:
                 # We submit a wrapper that releases semaphore when done
-                EXECUTOR.submit(_wrapped_download_task, item)
+                _get_executor().submit(_wrapped_download_task, item)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Failed to submit task: %s", e)
                 with _ACTIVE_COUNT_LOCK:

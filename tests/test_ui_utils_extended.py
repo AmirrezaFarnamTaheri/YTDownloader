@@ -42,7 +42,8 @@ class TestUIUtilsExtended(unittest.TestCase):
 
     def test_validate_url(self):
         self.assertTrue(validate_url("https://youtube.com/watch?v=123"))
-        self.assertTrue(validate_url("http://localhost:8080"))
+        # Localhost should now be blocked for SSRF protection
+        self.assertFalse(validate_url("http://localhost:8080"))
         self.assertFalse(validate_url("ftp://example.com"))
         self.assertFalse(validate_url("javascript:alert(1)"))
         self.assertFalse(validate_url("http://"))

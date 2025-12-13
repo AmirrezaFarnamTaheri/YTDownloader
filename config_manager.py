@@ -70,6 +70,12 @@ class ConfigManager:
                     f"gpu_accel must be one of: None, auto, cuda, vulkan. Got: {val}"
                 )
 
+        # Validate metadata_cache_size if present
+        if "metadata_cache_size" in config:
+            val = config["metadata_cache_size"]
+            if not isinstance(val, int) or val < 1:
+                raise ValueError("metadata_cache_size must be a positive integer")
+
     @staticmethod
     def load_config() -> Dict[str, Any]:
         """

@@ -11,7 +11,7 @@ class TestTelegramExtractor(unittest.TestCase):
         with patch("downloader.extractors.telegram.validate_url", return_value=True):
             self.assertTrue(TelegramExtractor.is_telegram_url("https://t.me/c/123"))
 
-    @patch("bs4.BeautifulSoup")
+    @patch("downloader.extractors.telegram.BeautifulSoup")
     @patch("requests.get")
     def test_get_metadata_success(self, mock_get, mock_bs):
         # Mock Response object
@@ -28,21 +28,33 @@ class TestTelegramExtractor(unittest.TestCase):
         mock_get.return_value.__enter__.return_value = mock_resp
 
         # Setup BeautifulSoup mock for this test
-        mock_soup = mock_bs.return_value
-        mock_video_tag = MagicMock()
+        # We need to ensure we're mocking the instance returned by the constructor
+        mock_soup_instance = mock_bs.return_value
+
+        # Prepare mock tags
+        mock_video_tag = MagicMock(spec=Tag)
         mock_video_tag.get.return_value = "http://example.com/vid.mp4"
 
-        def find_side_effect(name, *args, **kwargs):
+        mock_title_tag = MagicMock(spec=Tag)
+        mock_title_tag.get.return_value = "Title"
+
+        # Side effect to return specific tags based on arguments
+        def find_side_effect(name, property=None, **kwargs):
             if name == "video":
                 return mock_video_tag
+            if name == "meta" and property == "og:description":
+                return mock_title_tag
             return None
 
-        mock_soup.find.side_effect = find_side_effect
+        mock_soup_instance.find.side_effect = find_side_effect
+
+        # Ensure that when BS is instantiated, it returns our configured mock instance
+        # Note: The test patches 'bs4.BeautifulSoup'
+        # TelegramExtractor calls BeautifulSoup(content, "html.parser")
 
         info = TelegramExtractor.get_metadata("https://t.me/c/1")
         self.assertIsNotNone(info)
         self.assertEqual(info["url"], "http://example.com/vid.mp4")
-        # If parsing works (either real BS4 or correctly mocked), it should extract "Title" from content
         self.assertEqual(info["title"], "Title")
 
     @patch("requests.get")

@@ -51,7 +51,7 @@ class AppState:
 
     _instance = None
     _instance_lock = threading.RLock()  # RLock allows re-entrance
-    _init_lock = threading.Lock()  # Separate lock for initialization
+    _init_lock = threading.RLock()  # Use RLock for consistency and safety
 
     def __new__(cls):
         """

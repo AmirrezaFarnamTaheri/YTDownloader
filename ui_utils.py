@@ -70,14 +70,32 @@ def validate_url(url: str) -> bool:
         r"^(?:http|https)://"  # http:// or https://
         # pylint: disable=line-too-long
         r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|"  # domain...
-        r"localhost|"  # localhost...
         r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
         r"(?::\d+)?"  # optional port
         r"(?:/?|[/?]\S+)$",
         re.IGNORECASE,
     )
 
-    return bool(regex.match(url))
+    if not regex.match(url):
+        return False
+
+    # Additional SSRF protection: block localhost and private IPs
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if hostname:
+            if hostname.lower() in ("localhost", "127.0.0.1", "::1"):
+                return False
+            try:
+                ip = ipaddress.ip_address(hostname)
+                if ip.is_private or ip.is_loopback:
+                    return False
+            except ValueError:
+                pass  # Not an IP, hostname is fine
+    except Exception:  # pylint: disable=broad-exception-caught
+        return False
+
+    return True
 
 
 def validate_proxy(proxy: str) -> bool:
