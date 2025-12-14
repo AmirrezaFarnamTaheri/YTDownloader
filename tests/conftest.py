@@ -69,6 +69,19 @@ def mock_dependencies():
             if value is not None:
                 self.value = value
 
+    class MockTextField(MockControl):
+        pass
+
+    class MockCheckbox(MockControl):
+        pass
+
+    class MockDropdown(MockControl):
+        class Option:
+             def __init__(self, key, text=None):
+                 self.key = key
+                 self.text = text
+        pass
+
     class MockListView(MockControl):
         pass
 
@@ -144,6 +157,12 @@ def mock_dependencies():
     flet_mock.Control = MockControl
     flet_mock.SnackBar = MockSnackBar
     flet_mock.Text = MockText
+    flet_mock.TextField = MockTextField
+    flet_mock.Checkbox = MockCheckbox
+    flet_mock.Dropdown = MockDropdown
+    flet_mock.dropdown = MagicMock()
+    flet_mock.dropdown.Option = MockDropdown.Option
+
     flet_mock.ListView = MockListView
     flet_mock.Tabs = MockTabs
     flet_mock.NavigationRail = MockNavigationRail

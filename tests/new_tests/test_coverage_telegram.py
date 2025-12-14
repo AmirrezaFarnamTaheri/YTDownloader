@@ -1,8 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from bs4 import BeautifulSoup, Tag
-
 from downloader.extractors.telegram import TelegramExtractor
 
 
@@ -11,7 +9,8 @@ class TestTelegramExtractor(unittest.TestCase):
         with patch("downloader.extractors.telegram.validate_url", return_value=True):
             self.assertTrue(TelegramExtractor.is_telegram_url("https://t.me/c/123"))
 
-    @patch("bs4.BeautifulSoup")
+    @patch("downloader.extractors.telegram.Tag", new=MagicMock)
+    @patch("downloader.extractors.telegram.BeautifulSoup")
     @patch("requests.get")
     def test_get_metadata_success(self, mock_get, mock_bs):
         # Mock Response object
@@ -43,6 +42,32 @@ class TestTelegramExtractor(unittest.TestCase):
         self.assertIsNotNone(info)
         self.assertEqual(info["url"], "http://example.com/vid.mp4")
         # If parsing works (either real BS4 or correctly mocked), it should extract "Title" from content
+        # Note: In our mock setup above, we mocked 'video' tag finding but not 'meta' tag for title.
+        # The code tries to find title via og:description.
+        # Since find_side_effect returns None for anything other than "video", title will be default "Telegram Video"
+        # unless we improve the mock.
+        # But let's check what the code expects. The code init title = "Telegram Video".
+        # So it should be "Telegram Video".
+        # Wait, the test asserted "Title".
+        # I should probably update the mock to return title tag too.
+
+        # Updating side effect to support title extraction
+        mock_title_tag = MagicMock()
+        mock_title_tag.get.return_value = "Title"
+
+        def find_side_effect_improved(name, *args, **kwargs):
+            if name == "video":
+                return mock_video_tag
+            if name == "meta" and kwargs.get("property") == "og:description":
+                return mock_title_tag
+            return None
+
+        mock_soup.find.side_effect = find_side_effect_improved
+
+        # Re-run extraction with improved mock
+        info = TelegramExtractor.get_metadata("https://t.me/c/1")
+        self.assertIsNotNone(info)
+        self.assertEqual(info["url"], "http://example.com/vid.mp4")
         self.assertEqual(info["title"], "Title")
 
     @patch("requests.get")

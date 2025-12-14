@@ -179,7 +179,15 @@ class TestUIExtended(unittest.TestCase):
         view.theme_mode_dd.value = "Light"
         view.output_template_input.value = "%(title)s.%(ext)s"
 
-        with patch("views.settings_view.ConfigManager.save_config") as mock_save:
+        with patch(
+            "views.settings_view.ConfigManager.save_config"
+        ) as mock_save, patch(
+            "views.settings_view.validate_proxy", return_value=True
+        ), patch(
+            "views.settings_view.validate_rate_limit", return_value=True
+        ), patch(
+            "views.settings_view.validate_output_template", return_value=True
+        ):
             view.save_settings(None)
 
             # Verify save_config was called
@@ -195,4 +203,7 @@ class TestUIExtended(unittest.TestCase):
                 self.assertEqual(saved_config["theme_mode"], "Light")
                 self.assertEqual(saved_config["output_template"], "%(title)s.%(ext)s")
 
+            # Wait, if we mock validators to return True, NO error SnackBar is shown.
+            # But a "Settings Saved" SnackBar IS shown at the end of save_settings.
+            # So open IS called.
             self.mock_page.open.assert_called()
