@@ -51,6 +51,11 @@ We provide security updates for the following versions:
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it responsibly via GitHub Security Advisories.
+If you discover a security vulnerability, please report it responsibly:
+
+1. **Preferred**: Use [GitHub Security Advisories](https://github.com/yourusername/streamcatch/security/advisories/new) to privately report the issue.
+2. **Alternative**: Email security concerns to security@streamcatch.app (replace with actual email).
+
+Please do NOT open a public issue for security vulnerabilities.
 
 **Last Updated**: December 2025

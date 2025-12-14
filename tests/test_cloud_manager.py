@@ -29,7 +29,7 @@ class TestCloudManagerPatched(unittest.TestCase):
         def side_effect(path):
             if path == "test.txt":
                 return True
-            if path == "client_secrets.json":
+            if "client_secrets.json" in str(path):
                 return False
             return False
 
@@ -52,12 +52,10 @@ class TestCloudManagerPatched(unittest.TestCase):
         mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
+        # Important: set credentials to truthy to avoid "None" check
         mock_gauth.credentials = MagicMock()
+        # Important: set access_token_expired to False to avoid Refresh branch
         mock_gauth.access_token_expired = False
-
-        # Inject mock into existing manager (though code uses global imports now,
-        # patching cloud_manager.GoogleAuth handles it)
-        # self.manager.gauth = mock_gauth # Not needed
 
         mock_drive_instance = MockDrive.return_value
         mock_file = MagicMock()
@@ -92,6 +90,7 @@ class TestCloudManagerPatched(unittest.TestCase):
 
         mock_gauth = MockAuth.return_value
         mock_gauth.credentials = MagicMock()
+        # Force expired token
         mock_gauth.access_token_expired = True
 
         self.manager.upload_file("test.txt")
@@ -102,15 +101,13 @@ class TestCloudManagerPatched(unittest.TestCase):
     @patch("cloud_manager.GoogleAuth")
     def test_upload_google_drive_no_creds_headless(self, MockAuth, mock_exists):
         def side_effect(path):
-            return (
-                path == "test.txt"
-                or "client_secrets.json" in str(path)
-                or "mycreds.txt" in str(path)
-            )
+            # NO credentials file
+            return path == "test.txt" or "client_secrets.json" in str(path)
 
         mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
+        # Explicitly None to trigger auth flow
         mock_gauth.credentials = None
 
         with patch.dict(os.environ, {"HEADLESS_MODE": "1"}):
@@ -132,6 +129,7 @@ class TestCloudManagerPatched(unittest.TestCase):
         mock_exists.side_effect = side_effect
 
         mock_gauth = MockAuth.return_value
+        # Explicitly None to trigger auth flow
         mock_gauth.credentials = None
 
         # Ensure not headless and not CI to allow interactive auth

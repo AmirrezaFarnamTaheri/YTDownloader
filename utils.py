@@ -10,13 +10,13 @@ from typing import Any
 class CancelToken:
     """Token for managing download cancellation and pause/resume with thread safety."""
 
-    def __init__(self, pause_timeout: float = 3600.0):
+    def __init__(self, pause_timeout: float = 300.0):
         """
         Initialize CancelToken.
 
         Args:
             pause_timeout: Maximum time (in seconds) to wait in paused state before auto-resuming.
-                          Default is 1 hour. Set to 0 for infinite wait (not recommended).
+                          Default is 5 minutes. Set to 0 for infinite wait (not recommended).
         """
         self._cancelled = False
         self._is_paused = False

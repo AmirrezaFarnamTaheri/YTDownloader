@@ -82,8 +82,9 @@ class TestHistoryViewCoverage(unittest.TestCase):
     def test_open_folder_safe(self, mock_open_folder):
         """Test safe folder opening."""
         view = HistoryView()
+        view.page = self.mock_page
         view.open_folder_safe("/tmp/path")
-        mock_open_folder.assert_called_with("/tmp/path")
+        mock_open_folder.assert_called_with("/tmp/path", self.mock_page)
 
         # Test exception
         mock_open_folder.side_effect = Exception("Fail")

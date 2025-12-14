@@ -178,16 +178,21 @@ class TestUIExtended(unittest.TestCase):
         view.proxy_input.value = "http://example.com:8080"
         view.theme_mode_dd.value = "Light"
         view.output_template_input.value = "%(title)s.%(ext)s"
+        # Must pass validations
+        view.config["gpu_accel"] = "None"
+        view.config["use_aria2c"] = False
+        view.config["high_contrast"] = False
+        view.config["compact_mode"] = False
+        view.config["rss_feeds"] = []
 
-        with patch(
-            "views.settings_view.ConfigManager.save_config"
-        ) as mock_save, patch(
-            "views.settings_view.validate_proxy", return_value=True
-        ), patch(
+        # Patch validation
+        with patch("views.settings_view.validate_proxy", return_value=True), patch(
             "views.settings_view.validate_rate_limit", return_value=True
         ), patch(
             "views.settings_view.validate_output_template", return_value=True
-        ):
+        ), patch(
+            "views.settings_view.ConfigManager.save_config"
+        ) as mock_save:
             view.save_settings(None)
 
             # Verify save_config was called
@@ -199,9 +204,16 @@ class TestUIExtended(unittest.TestCase):
                 args, _ = call_args
                 saved_config = args[0]
 
-                self.assertEqual(saved_config["proxy"], "http://example.com:8080")
-                self.assertEqual(saved_config["theme_mode"], "Light")
-                self.assertEqual(saved_config["output_template"], "%(title)s.%(ext)s")
+                # The config object passed might not be updated in place or logic differs
+                # But here we expect the dictionary passed to contain updates
+                # NOTE: The test failure shows '%(title)s.%(ext)s' != 'http://example.com:8080'
+                # This suggests keys might be shuffled or I'm accessing wrong key in test assertions
+                # Let's be explicit
+                self.assertEqual(saved_config.get("proxy"), "http://example.com:8080")
+                self.assertEqual(saved_config.get("theme_mode"), "Light")
+                self.assertEqual(
+                    saved_config.get("output_template"), "%(title)s.%(ext)s"
+                )
 
             # Wait, if we mock validators to return True, NO error SnackBar is shown.
             # But a "Settings Saved" SnackBar IS shown at the end of save_settings.

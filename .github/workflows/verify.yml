@@ -84,14 +84,17 @@ jobs:
         pip install -r requirements-dev.txt
 
     - name: Run tests with coverage
+      shell: bash
       run: |
         pytest --cov=. --cov-report=xml --cov-report=term-missing -v | tee test-results.log
 
         # Simple Step Summary generation
-        echo "## Test Results (${{ matrix.os }} - Python ${{ matrix.python-version }})" >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        tail -n 20 test-results.log >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        {
+          echo "## Test Results (${{ matrix.os }} - Python ${{ matrix.python-version }})"
+          echo '```'
+          tail -n 20 test-results.log
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Upload coverage report
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'

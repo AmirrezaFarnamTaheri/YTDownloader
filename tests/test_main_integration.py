@@ -28,9 +28,11 @@ class TestMainIntegration(unittest.TestCase):
         self.state.shutdown_flag.is_set.return_value = False
 
         # Patch active_downloads to avoid thread pool execution if needed
-        # Or patch executor.submit
-        self.patcher_executor = patch("tasks.EXECUTOR")
-        self.mock_executor = self.patcher_executor.start()
+        # Or patch executor.submit - NOW using _get_executor
+        self.patcher_executor = patch("tasks._get_executor")
+        self.mock_get_executor = self.patcher_executor.start()
+        self.mock_executor = MagicMock()
+        self.mock_get_executor.return_value = self.mock_executor
 
         # We need to make sure process_queue submits
         self.patcher_sem = patch("tasks._SUBMISSION_THROTTLE", create=True)

@@ -137,6 +137,10 @@ class SettingsView(BaseView):
                 self.page.theme_mode = ft.ThemeMode.LIGHT
             else:
                 self.page.theme_mode = ft.ThemeMode.SYSTEM
+
+            # Auto-save theme preference for better UX
+            self.config["theme_mode"] = mode
+            ConfigManager.save_config(self.config)
             self.page.update()
 
     def _on_high_contrast_change(self, e):

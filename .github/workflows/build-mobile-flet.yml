@@ -13,6 +13,11 @@ on:
         required: false
         default: false
         type: boolean
+      tag_name:
+        description: 'Tag name for release (e.g. v1.0.0)'
+        required: false
+        default: ''
+        type: string
   workflow_dispatch:
     inputs:
       build_android:
@@ -25,6 +30,11 @@ on:
         required: false
         default: false
         type: boolean
+      tag_name:
+        description: 'Tag name for release (e.g. v1.0.0)'
+        required: false
+        default: ''
+        type: string
 
 env:
   PYTHON_VERSION: "3.12"
@@ -34,7 +44,7 @@ jobs:
   version:
     uses: ./.github/workflows/get-version.yml
     with:
-      tag_name: ${{ github.event.inputs.tag_name }}
+      tag_name: ${{ inputs.tag_name }}
 
   # ===========================================================================
   # Android Build
@@ -95,7 +105,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: StreamCatch-Android-APK
-        path: build/apk/app-release.apk
+        path: |
+          build/apk/*.apk
+          build/**/*.apk
         if-no-files-found: warn
 
   # ===========================================================================

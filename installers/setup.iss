@@ -16,7 +16,8 @@
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
-; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
+; IMPORTANT: This GUID should be regenerated for production releases.
+; To generate a new GUID, click Tools | Generate GUID inside Inno Setup IDE.
 AppId={{D1A3B4C5-D6E7-F8G9-H0I1-J2K3L4M5N6O7}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}

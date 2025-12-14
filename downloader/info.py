@@ -14,6 +14,9 @@ from downloader.extractors.telegram import TelegramExtractor
 
 logger = logging.getLogger(__name__)
 
+# Configurable timeout for info extraction (can be overridden)
+INFO_EXTRACTION_TIMEOUT = 45
+
 
 def _extract_telegram_info(url: str) -> Optional[Dict[str, Any]]:
     """Attempt to scrape Telegram URL."""
@@ -186,9 +189,9 @@ def get_video_info(
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(_fetch)
-                info_dict = future.result(timeout=45)
+                info_dict = future.result(timeout=INFO_EXTRACTION_TIMEOUT)
         except FuturesTimeoutError as exc:
-            logger.error("Info extraction timed out after 45s")
+            logger.error("Info extraction timed out after %ds", INFO_EXTRACTION_TIMEOUT)
             raise TimeoutError("Info extraction timed out") from exc
 
         # Check if yt-dlp fell back to generic and didn't find much

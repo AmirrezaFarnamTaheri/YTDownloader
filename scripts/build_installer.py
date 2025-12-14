@@ -152,10 +152,15 @@ def build_installer():
         win_version += ".0" * (3 - win_version.count("."))
 
     if os.name == "nt":
+        icon_path = root / "assets" / "icon.ico"
+        if not icon_path.exists():
+            # Fallback: try to use logo.svg or skip icon
+            print(f"WARNING: {icon_path} not found, building without icon")
+        else:
+            cmd.append(f"--windows-icon-from-ico={icon_path}")
         cmd.extend(
             [
                 "--windows-console-mode=disable",
-                "--windows-icon-from-ico=assets/icon.ico",
                 "--company-name=StreamCatch",
                 "--product-name=StreamCatch",
                 f"--file-version={win_version}",
@@ -165,10 +170,11 @@ def build_installer():
         )
     elif sys.platform == "darwin":
         # MacOS specific flags
+        icon_path = root / "assets" / "icon.icns"
         cmd.extend(
             [
                 "--macos-create-app-bundle",
-                "--macos-app-icon=assets/icon.icns",  # Assuming icon exists
+                f"--macos-app-icon={icon_path}" if icon_path.exists() else "",
                 "--macos-app-name=StreamCatch",
                 f"--macos-app-version={version_str}",
             ]

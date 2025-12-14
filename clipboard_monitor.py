@@ -13,6 +13,9 @@ import pyperclip
 from app_state import state
 from ui_utils import validate_url
 
+# Lock for clipboard state access
+_clipboard_state_lock = threading.Lock()
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,8 +59,13 @@ def _clipboard_loop(page, download_view):
                     logger.warning("Clipboard access lost, disabling monitor")
                     continue
 
-                if content and content != state.last_clipboard_content:
-                    state.last_clipboard_content = content
+                should_process = False
+                with _clipboard_state_lock:
+                    if content and content != state.last_clipboard_content:
+                        state.last_clipboard_content = content
+                        should_process = True
+
+                if should_process:
                     if validate_url(content) and download_view and page:
                         logger.info("Clipboard URL detected: %s", content)
 

@@ -25,7 +25,12 @@ class SyncManager:
         self.config = config_manager
         self.history = history_manager
         self._lock = threading.RLock()
-        self.auto_sync_interval = 3600.0  # 1 hour
+        # Read from config or default to 1 hour
+        self.auto_sync_interval = (
+            float(config_manager.get("auto_sync_interval", 3600.0))
+            if hasattr(config_manager, "get")
+            else 3600.0
+        )
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -229,20 +234,19 @@ class SyncManager:
 
         target_db_path = str(target_db)
 
+        # Security: Validate path BEFORE any file operations
+        parent = os.path.dirname(target_db_path) if target_db_path else ""
+        if parent:
+            target_db_resolved = os.path.abspath(target_db_path)
+            parent_resolved = os.path.abspath(parent)
+            # Ensure target is within expected directory
+            if not target_db_resolved.startswith(parent_resolved + os.sep):
+                logger.error("Invalid database path detected (path traversal attempt)")
+                return
+
         # Ensure directory exists
-        parent = os.path.dirname(target_db_path)
         if parent and not os.path.exists(parent):
             os.makedirs(parent, exist_ok=True)
-
-        # Write to temp then move
-        # Validate the target path to prevent path traversal
-        target_db_resolved = os.path.abspath(target_db_path)
-        parent_resolved = os.path.abspath(parent)
-
-        # Ensure target is within expected directory
-        if not target_db_resolved.startswith(parent_resolved + os.sep):
-            logger.error("Invalid database path detected (path traversal attempt)")
-            return
 
         temp_db = target_db_path + ".tmp"
 

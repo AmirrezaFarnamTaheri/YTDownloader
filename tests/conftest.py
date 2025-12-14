@@ -49,6 +49,10 @@ def mock_dependencies():
         def update(self):
             pass
 
+        def run_task(self, func, *args, **kwargs):
+            # Mock behavior for page.run_task
+            pass
+
     class MockContainer(MockControl):
         pass
 
@@ -149,6 +153,13 @@ def mock_dependencies():
     class MockAlertDialog(MockControl):
         pass
 
+    class MockExpansionTile(MockControl):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.title = kwargs.get("title")
+            self.subtitle = kwargs.get("subtitle")
+            self.controls = kwargs.get("controls", [])
+
     # Assign classes to the mock
     flet_mock.Container = MockContainer
     flet_mock.UserControl = MockUserControl
@@ -174,6 +185,11 @@ def mock_dependencies():
     flet_mock.IconButton = MockIconButton
     flet_mock.OutlinedButton = MockOutlinedButton
     flet_mock.AlertDialog = MockAlertDialog
+    flet_mock.ExpansionTile = MockExpansionTile
+    # Explicitly map inputs to MockControl to ensure they maintain state (value)
+    flet_mock.TextField = MockControl
+    flet_mock.Dropdown = MockControl
+    flet_mock.Checkbox = MockControl
 
     # Mock Enums
     flet_mock.PagePlatform = MagicMock()

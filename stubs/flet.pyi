@@ -445,6 +445,49 @@ class ProgressRing(Control):
         color: Any = None,
     ): ...
 
+class ExpansionTile(Control):
+    def __init__(
+        self,
+        title: Any = None,
+        subtitle: Any = None,
+        controls: Any = None,
+        initially_expanded: bool = False,
+        maintain_state: bool = False,
+        tile_padding: Any = None,
+        expanded_alignment: Any = None,
+        expanded_cross_axis_alignment: Any = None,
+        controls_padding: Any = None,
+        bgcolor: Any = None,
+        collapsed_bgcolor: Any = None,
+        text_color: Any = None,
+        collapsed_text_color: Any = None,
+        icon_color: Any = None,
+        collapsed_icon_color: Any = None,
+        shape: Any = None,
+        collapsed_shape: Any = None,
+        on_change: Any = None,
+    ): ...
+
+class OutlinedButton(Control):
+    def __init__(
+        self,
+        text: str = "",
+        icon: Any = None,
+        on_click: Any = None,
+        style: Any = None,
+    ): ...
+
+class Card(Control):
+    def __init__(
+        self,
+        content: Any = None,
+        margin: Any = None,
+        elevation: Any = None,
+        color: Any = None,
+        shadow_color: Any = None,
+        surface_tint_color: Any = None,
+    ): ...
+
 class InputBorder:
     NONE: Any
     OUTLINE: Any
