@@ -2,7 +2,6 @@
 
 from views.base_view import BaseView
 
-# from views.dashboard_view import DashboardView # Removed
 from views.download_view import DownloadView
 from views.history_view import HistoryView
 from views.queue_view import QueueView

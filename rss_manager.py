@@ -4,7 +4,6 @@ RSS Manager module for fetching and parsing RSS feeds.
 
 import ipaddress
 import logging
-import socket
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed

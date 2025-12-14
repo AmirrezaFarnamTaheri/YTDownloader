@@ -112,6 +112,6 @@ class HistoryView(BaseView):
     def open_folder_safe(self, path):
         """Safely opens the folder containing the downloaded file."""
         try:
-            open_folder(path)
+            open_folder(path, self.page)
         except Exception as ex:  # pylint: disable=broad-exception-caught
             logging.error("Failed to open folder: %s", ex)

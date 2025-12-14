@@ -34,8 +34,11 @@ class TestMainLogic(unittest.TestCase):
         # Also patch tasks.state directly because tasks.py imports state
         self.patcher_tasks_direct = patch("tasks.state", self.mock_state)
 
-        # Patch executor
-        self.patcher_executor = patch("tasks.EXECUTOR")
+        # Patch executor - NOW using _get_executor
+        self.patcher_executor = patch("tasks._get_executor")
+        self.mock_get_executor = self.patcher_executor.start()
+        self.mock_executor = MagicMock()
+        self.mock_get_executor.return_value = self.mock_executor
 
         # Patch submission throttle semaphore mock
         # Note: tasks.py now uses _SUBMISSION_THROTTLE
@@ -48,7 +51,8 @@ class TestMainLogic(unittest.TestCase):
         self.patcher_main.start()
         self.patcher_tasks.start()
         self.patcher_tasks_direct.start()
-        self.mock_executor = self.patcher_executor.start()
+        # mock_executor is already set by _get_executor patch above
+        # self.mock_executor = self.patcher_executor.start()
         self.mock_sem = self.patcher_sem.start()
         self.patcher_lock.start()
 

@@ -55,6 +55,13 @@ class LocalizationManager:
         Supports string formatting if args are provided.
         """
         val = cls._strings.get(key, key)
+
+        # Log warning for missing keys in development
+        if val == key and key not in ("", None):
+            logger.debug(
+                "Missing localization key: %s (lang=%s)", key, cls._current_lang
+            )
+
         if args:
             try:
                 return val.format(*args)

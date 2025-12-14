@@ -82,6 +82,8 @@ class DownloadOptions:
     def _validate_filename(self):
         """Validate filename settings."""
         if self.filename:
+            if "\x00" in self.filename:
+                raise ValueError("Filename must not contain null bytes")
             if re.search(r"[/\\]", self.filename):
                 raise ValueError("Filename must not contain path separators")
             if self.filename in (".", ".."):

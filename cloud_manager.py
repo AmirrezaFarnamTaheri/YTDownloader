@@ -114,9 +114,7 @@ class CloudManager:
 
         # 1. Check for client_secrets.json
         if not os.path.exists(self.credentials_path):
-            logger.warning(
-                "Google Drive %s not found. Skipping auth.", self.credentials_path
-            )
+            logger.warning("Google Drive credentials file not found. Skipping auth.")
             # pylint: disable=broad-exception-raised
             raise Exception(
                 "Google Drive not configured (missing client_secrets.json)."

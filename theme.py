@@ -48,40 +48,41 @@ class Theme:
     # --- Subclasses for Usage ---
     # NOTE: These reference the top-level color definitions above.
     # When updating colors, modify the top-level constants (BG_CARD, TEXT_PRIMARY, etc.)
+    # Note: Due to Python class initialization order, inner classes cannot directly
+    # reference outer class attributes during class creation. Keep these as explicit
+    # values but document that they should match the parent class constants.
+
     # pylint: disable=too-few-public-methods
     class Surface:
-        """Surface color definitions."""
+        """Surface color definitions. Must match Theme.BG_CARD/BG_INPUT."""
 
-        # References: Theme.BG_CARD, Theme.BG_INPUT
-        BG = "#1E293B"
-        CARD = "#1E293B"
-        INPUT = "#020617"
+        BG = "#1E293B"  # Theme.BG_CARD
+        CARD = "#1E293B"  # Theme.BG_CARD
+        INPUT = "#020617"  # Theme.BG_INPUT
 
     # pylint: disable=too-few-public-methods
     class Primary:
-        """Primary color definitions."""
+        """Primary color definitions. Must match Theme.PRIMARY."""
 
-        # References: Theme.PRIMARY
-        MAIN = "#818CF8"
+        MAIN = "#818CF8"  # Theme.PRIMARY
 
     class Text:
-        """Text color definitions."""
+        """Text color definitions. Must match Theme.TEXT_PRIMARY/SECONDARY."""
 
-        # References: Theme.TEXT_PRIMARY, Theme.TEXT_SECONDARY
-        PRIMARY = "#F8FAFC"
-        SECONDARY = "#94A3B8"
+        PRIMARY = "#F8FAFC"  # Theme.TEXT_PRIMARY
+        SECONDARY = "#94A3B8"  # Theme.TEXT_SECONDARY
 
     class Divider:
         # pylint: disable=too-few-public-methods
-        """Divider color definitions."""
-        # References: Theme.DIVIDER
-        COLOR = "#334155"
+        """Divider color definitions. Must match Theme.DIVIDER."""
+
+        COLOR = "#334155"  # Theme.DIVIDER
 
     class Status:
-        """Status color definitions."""
+        """Status color definitions. Must match Theme.SUCCESS/ERROR."""
 
-        SUCCESS = "#34D399"
-        ERROR = "#EF4444"
+        SUCCESS = "#34D399"  # Theme.SUCCESS
+        ERROR = "#EF4444"  # Theme.ERROR
 
     @staticmethod
     def get_high_contrast_theme() -> ft.Theme:

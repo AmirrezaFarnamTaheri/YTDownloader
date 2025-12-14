@@ -117,6 +117,7 @@ class QueueManager:
         with self._lock:
             if len(self._queue) >= self.MAX_QUEUE_SIZE:
                 raise ValueError("Queue is full")
+            # Note: Item addition happens below, after the check, within the same lock
 
             # Ensure ID
             if "id" not in item:

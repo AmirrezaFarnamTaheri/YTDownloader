@@ -34,3 +34,6 @@ ipa-output/
 
 # Verification artifacts
 verification_*.png
+
+# Backup files
+backup.zip

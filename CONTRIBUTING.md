@@ -10,7 +10,7 @@ Please note that this project is released with a [Contributor Code of Conduct](C
 
 ### Reporting Bugs
 
-Found a bug? Please help us fix it by [opening an issue](https://github.com/AmirrezaFarnamTaheri/YTDownloader/issues) with:
+Found a bug? Please help us fix it by [opening an issue](https://github.com/yourusername/streamcatch/issues) with:
 
 - **Clear title**: "Bug: Issue description"
 - **Reproduction steps**: How to reliably reproduce the issue
@@ -25,7 +25,7 @@ Found a bug? Please help us fix it by [opening an issue](https://github.com/Amir
 
 ### Suggesting Features
 
-Have an idea for improvement? [Open an issue](https://github.com/AmirrezaFarnamTaheri/YTDownloader/issues) with:
+Have an idea for improvement? [Open an issue](https://github.com/yourusername/streamcatch/issues) with:
 
 - **Clear title**: "Feature: Brief description"
 - **Use case**: Why would this be useful?
@@ -40,7 +40,7 @@ Have an idea for improvement? [Open an issue](https://github.com/AmirrezaFarnamT
 
 2. **Clone your fork**:
    ```bash
-   git clone https://github.com/your-username/StreamCatch.git
+   git clone https://github.com/yourusername/streamcatch.git
    cd StreamCatch
    ```
 
@@ -211,7 +211,7 @@ YTDownloader/
 ## Questions?
 
 - Check [README.md](README.md) for documentation
-- Look at existing [issues](https://github.com/AmirrezaFarnamTaheri/YTDownloader/issues)
+- Look at existing [issues](https://github.com/yourusername/streamcatch/issues)
 - Join discussions in issue comments
 
 ## Recognition
