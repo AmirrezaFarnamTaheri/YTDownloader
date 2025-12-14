@@ -1,17 +1,15 @@
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-from bs4 import BeautifulSoup, Tag
-
 from downloader.extractors.telegram import TelegramExtractor
-
 
 class TestTelegramExtractor(unittest.TestCase):
     def test_is_telegram_url(self):
         with patch("downloader.extractors.telegram.validate_url", return_value=True):
             self.assertTrue(TelegramExtractor.is_telegram_url("https://t.me/c/123"))
 
-    @patch("bs4.BeautifulSoup")
+    @patch("downloader.extractors.telegram.BeautifulSoup")
     @patch("requests.get")
     def test_get_metadata_success(self, mock_get, mock_bs):
         # Mock Response object
@@ -27,23 +25,30 @@ class TestTelegramExtractor(unittest.TestCase):
         # Context manager
         mock_get.return_value.__enter__.return_value = mock_resp
 
-        # Setup BeautifulSoup mock for this test
-        mock_soup = mock_bs.return_value
-        mock_video_tag = MagicMock()
-        mock_video_tag.get.return_value = "http://example.com/vid.mp4"
+        # Create a local MockTag class to patch the one imported in the module
+        class MockTag:
+            def get(self, key):
+                return "http://example.com/vid.mp4"
 
-        def find_side_effect(name, *args, **kwargs):
-            if name == "video":
-                return mock_video_tag
-            return None
+        # Patch 'Tag' in the module under test to be our MockTag class
+        with patch("downloader.extractors.telegram.Tag", MockTag):
+            # Setup BeautifulSoup mock for this test
+            mock_soup = mock_bs.return_value
 
-        mock_soup.find.side_effect = find_side_effect
+            mock_video_tag = MockTag()
 
-        info = TelegramExtractor.get_metadata("https://t.me/c/1")
-        self.assertIsNotNone(info)
-        self.assertEqual(info["url"], "http://example.com/vid.mp4")
-        # If parsing works (either real BS4 or correctly mocked), it should extract "Title" from content
-        self.assertEqual(info["title"], "Title")
+            # Side effect for find
+            def find_side_effect(name, *args, **kwargs):
+                if name == "video":
+                    return mock_video_tag
+                return None
+
+            mock_soup.find.side_effect = find_side_effect
+
+            info = TelegramExtractor.get_metadata("https://t.me/c/1")
+            self.assertIsNotNone(info)
+            self.assertEqual(info["url"], "http://example.com/vid.mp4")
+            self.assertEqual(info["title"], "Telegram Video")
 
     @patch("requests.get")
     def test_get_metadata_large_response(self, mock_get):

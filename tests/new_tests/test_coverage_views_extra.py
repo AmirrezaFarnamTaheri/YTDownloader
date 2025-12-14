@@ -54,7 +54,8 @@ class TestSettingsView(unittest.TestCase):
         self.view.output_template_input.value = "%(title)s.%(ext)s"
 
         # Test save logic
-        # Patch ConfigManager where it is used in views.settings_view
-        with patch("views.settings_view.ConfigManager.save_config") as mock_save:
+        # Patch ConfigManager.save_config directly on the module where class is defined
+        # This is more robust than patching where it is imported
+        with patch("config_manager.ConfigManager.save_config") as mock_save:
             self.view.save_settings(None)
             mock_save.assert_called()

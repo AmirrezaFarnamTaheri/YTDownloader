@@ -8,7 +8,8 @@ class TestUIUtilsMore(unittest.TestCase):
     def test_open_folder(self):
         page = MagicMock()
         page.platform = "linux"
-        with patch("subprocess.Popen") as mock_popen, patch(
+        # Patch subprocess in ui_utils to ensure the mock is used regardless of how it's imported
+        with patch("ui_utils.subprocess.Popen") as mock_popen, patch(
             "os.path.isdir", return_value=True
         ), patch("os.path.exists", return_value=True):
             ui_utils.open_folder("/tmp", page)
@@ -28,7 +29,7 @@ class TestUIUtilsMore(unittest.TestCase):
     def test_play_file(self):
         page = MagicMock()
         page.platform = "linux"
-        with patch("subprocess.Popen") as mock_popen, patch(
+        with patch("ui_utils.subprocess.Popen") as mock_popen, patch(
             "os.path.exists", return_value=True
         ), patch("os.path.isfile", return_value=True), patch(
             "platform.system", return_value="Linux"
