@@ -215,4 +215,7 @@ class TestUIExtended(unittest.TestCase):
                     saved_config.get("output_template"), "%(title)s.%(ext)s"
                 )
 
+            # Wait, if we mock validators to return True, NO error SnackBar is shown.
+            # But a "Settings Saved" SnackBar IS shown at the end of save_settings.
+            # So open IS called.
             self.mock_page.open.assert_called()

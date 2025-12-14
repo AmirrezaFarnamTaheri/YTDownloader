@@ -1,8 +1,5 @@
-import sys
 import unittest
 from unittest.mock import MagicMock, patch
-
-import flet as ft
 
 from views.rss_view import RSSView
 from views.settings_view import SettingsView
