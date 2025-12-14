@@ -30,6 +30,14 @@ try:  # pragma: no cover - environment dependent
 except Exception:  # pylint: disable=broad-exception-caught
     pass
 
+# Import PyDrive2 classes at module level
+try:
+    from pydrive2.auth import GoogleAuth  # type: ignore
+    from pydrive2.drive import GoogleDrive  # type: ignore
+except (ImportError, Exception):  # pylint: disable=broad-exception-caught
+    GoogleAuth = None
+    GoogleDrive = None
+
 
 class CloudManager:
     """
@@ -98,6 +106,12 @@ class CloudManager:
 
     def _get_google_drive_client(self):
         """Helper to authenticate and return a GoogleDrive client."""
+        # Check if PyDrive2 is installed
+        if GoogleAuth is None or GoogleDrive is None:
+            logger.error("PyDrive2 not installed.")
+            # pylint: disable=broad-exception-raised
+            raise Exception("PyDrive2 dependency missing.")
+
         # 1. Check for client_secrets.json
         if not os.path.exists(self.credentials_path):
             logger.warning(
@@ -133,10 +147,6 @@ class CloudManager:
                     )
 
         try:
-            # pylint: disable=import-outside-toplevel
-            from pydrive2.auth import GoogleAuth  # type: ignore
-            from pydrive2.drive import GoogleDrive  # type: ignore
-
             # Automatic authentication
             logger.debug("Authenticating with Google Drive...")
             gauth = GoogleAuth()
@@ -173,6 +183,7 @@ class CloudManager:
             return GoogleDrive(gauth)  # type: ignore
 
         except ImportError as exc:
+            # Should be caught by top check, but safe guard
             logger.error("PyDrive2 not installed.")
             # pylint: disable=broad-exception-raised
             raise Exception("PyDrive2 dependency missing.") from exc

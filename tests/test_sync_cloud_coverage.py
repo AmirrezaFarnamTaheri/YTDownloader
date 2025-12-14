@@ -108,8 +108,8 @@ class TestCloudManagerCoverage(unittest.TestCase):
 
         self.assertIn("not configured", str(cm.exception))
 
-    @patch("pydrive2.auth.GoogleAuth")
-    @patch("pydrive2.drive.GoogleDrive")
+    @patch("cloud_manager.GoogleAuth")
+    @patch("cloud_manager.GoogleDrive")
     @patch("cloud_manager.os.path.exists")
     def test_get_google_drive_client_success(self, mock_exists, mock_drive, mock_gauth):
         # Clean environment to prevent CI/Headless logic from triggering
