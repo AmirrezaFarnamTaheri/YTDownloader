@@ -27,6 +27,11 @@ class AppLayout(ft.Row):
         # Define Navigation Destinations
         self.destinations = [
             ft.NavigationRailDestination(
+                icon=ft.icons.DASHBOARD_OUTLINED,
+                selected_icon=ft.icons.DASHBOARD_ROUNDED,
+                label=LM.get("dashboard", "Dashboard"),
+            ),
+            ft.NavigationRailDestination(
                 icon=ft.icons.DOWNLOAD_OUTLINED,
                 selected_icon=ft.icons.DOWNLOAD_ROUNDED,
                 label=LM.get("download"),
