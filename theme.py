@@ -46,43 +46,35 @@ class Theme:
     DIVIDER = "#334155"  # Alias for Divider color
 
     # --- Subclasses for Usage ---
-    # NOTE: These reference the top-level color definitions above.
-    # When updating colors, modify the top-level constants (BG_CARD, TEXT_PRIMARY, etc.)
-    # Note: Due to Python class initialization order, inner classes cannot directly
-    # reference outer class attributes during class creation. Keep these as explicit
-    # values but document that they should match the parent class constants.
-
     # pylint: disable=too-few-public-methods
     class Surface:
-        """Surface color definitions. Must match Theme.BG_CARD/BG_INPUT."""
+        """Surface color definitions."""
 
-        BG = "#1E293B"  # Theme.BG_CARD
-        CARD = "#1E293B"  # Theme.BG_CARD
-        INPUT = "#020617"  # Theme.BG_INPUT
+        BG = "#1E293B"
+        CARD = "#1E293B"
+        INPUT = "#020617"
 
-    # pylint: disable=too-few-public-methods
     class Primary:
-        """Primary color definitions. Must match Theme.PRIMARY."""
+        """Primary color definitions."""
 
-        MAIN = "#818CF8"  # Theme.PRIMARY
+        MAIN = "#818CF8"
 
     class Text:
-        """Text color definitions. Must match Theme.TEXT_PRIMARY/SECONDARY."""
+        """Text color definitions."""
 
-        PRIMARY = "#F8FAFC"  # Theme.TEXT_PRIMARY
-        SECONDARY = "#94A3B8"  # Theme.TEXT_SECONDARY
+        PRIMARY = "#F8FAFC"
+        SECONDARY = "#94A3B8"
 
     class Divider:
-        # pylint: disable=too-few-public-methods
-        """Divider color definitions. Must match Theme.DIVIDER."""
+        """Divider color definitions."""
 
-        COLOR = "#334155"  # Theme.DIVIDER
+        COLOR = "#334155"
 
     class Status:
-        """Status color definitions. Must match Theme.SUCCESS/ERROR."""
+        """Status color definitions."""
 
-        SUCCESS = "#34D399"  # Theme.SUCCESS
-        ERROR = "#EF4444"  # Theme.ERROR
+        SUCCESS = "#34D399"
+        ERROR = "#EF4444"
 
     @staticmethod
     def get_high_contrast_theme() -> ft.Theme:
@@ -105,7 +97,7 @@ class Theme:
                 on_inverse_surface=ft.colors.BLACK,
             ),
             # pylint: disable=no-member
-            visual_density=ft.VisualDensity.COMFORTABLE,
+            visual_density=ft.ThemeVisualDensity.COMFORTABLE,
             page_transitions=ft.PageTransitionsTheme(
                 android=ft.PageTransitionTheme.ZOOM,
                 ios=ft.PageTransitionTheme.CUPERTINO,
@@ -136,7 +128,7 @@ class Theme:
                 on_secondary=Theme.BG_DARK,
                 on_background=Theme.TEXT_PRIMARY,
                 on_surface=Theme.TEXT_PRIMARY,
-                surface_tint=ft.colors.TRANSPARENT,  # Removing tint for cleaner look
+                surface_tint=ft.colors.TRANSPARENT,
                 outline=Theme.BORDER,
                 inverse_surface=Theme.TEXT_PRIMARY,
                 on_inverse_surface=Theme.BG_DARK,
@@ -151,7 +143,6 @@ class Theme:
                 linux=ft.PageTransitionTheme.ZOOM,
                 windows=ft.PageTransitionTheme.ZOOM,
             ),
-            # Scrollbar theme for better visibility
             scrollbar_theme=ft.ScrollbarTheme(
                 thumb_color=Theme.BG_HOVER,
                 radius=4,
@@ -162,27 +153,44 @@ class Theme:
 
     @staticmethod
     def get_input_decoration(
-        hint_text: str = "", prefix_icon: Optional[str] = None
+        hint_text: str = "",
+        prefix_icon: Optional[str] = None,
+        suffix_icon: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Standardized Input Decoration properties.
-        Returns a dictionary of properties to be unpacked into a TextField.
         """
-        # Flet's TextField does not have an 'input_decoration' property.
-        # It has direct properties for decoration.
-        return {
+        data = {
             "filled": True,
             "bgcolor": Theme.BG_INPUT,
             "hint_text": hint_text,
             "hint_style": ft.TextStyle(color=Theme.TEXT_MUTED),
             "border": ft.InputBorder.OUTLINE,
-            # pylint: disable=line-too-long
-            "border_width": 0,  # Simulate 'no border' initially if desired, or use transparent color
+            "border_width": 0,
             "border_color": ft.colors.TRANSPARENT,
             "focused_border_color": Theme.PRIMARY,
             "focused_border_width": 1,
             "content_padding": 15,
-            "prefix_icon": prefix_icon,
             "dense": True,
             "border_radius": 8,
+        }
+        if prefix_icon:
+            data["prefix_icon"] = prefix_icon
+        if suffix_icon:
+            data["suffix_icon"] = suffix_icon
+        return data
+
+    @staticmethod
+    def get_card_decoration() -> Dict[str, Any]:
+        """
+        Standardized Card Decoration.
+        """
+        return {
+            "bgcolor": Theme.BG_CARD,
+            "border_radius": 12,
+            "padding": 20,
+            "shadow": ft.BoxShadow(
+                blur_radius=10,
+                color=ft.colors.with_opacity(0.1, ft.colors.BLACK),
+            ),
         }

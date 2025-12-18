@@ -9,6 +9,7 @@ class TestTelegramExtractor(unittest.TestCase):
         with patch("downloader.extractors.telegram.validate_url", return_value=True):
             self.assertTrue(TelegramExtractor.is_telegram_url("https://t.me/c/123"))
 
+    @patch("downloader.extractors.telegram.Tag", MagicMock)
     @patch("downloader.extractors.telegram.BeautifulSoup")
     @patch("requests.get")
     def test_get_metadata_success(self, mock_get, mock_bs):
@@ -26,14 +27,14 @@ class TestTelegramExtractor(unittest.TestCase):
         mock_get.return_value.__enter__.return_value = mock_resp
 
         # Setup BeautifulSoup mock for this test
-        # We need to ensure we're mocking the instance returned by the constructor
         mock_soup_instance = mock_bs.return_value
 
-        # Prepare mock tags
-        mock_video_tag = MagicMock(spec=Tag)
+        # Prepare mock tags that will pass the isinstance(tag, Tag) check
+        # because Tag is patched to be MagicMock, and these are MagicMocks.
+        mock_video_tag = MagicMock()
         mock_video_tag.get.return_value = "http://example.com/vid.mp4"
 
-        mock_title_tag = MagicMock(spec=Tag)
+        mock_title_tag = MagicMock()
         mock_title_tag.get.return_value = "Title"
 
         # Side effect to return specific tags based on arguments
@@ -45,10 +46,6 @@ class TestTelegramExtractor(unittest.TestCase):
             return None
 
         mock_soup_instance.find.side_effect = find_side_effect
-
-        # Ensure that when BS is instantiated, it returns our configured mock instance
-        # Note: The test patches 'bs4.BeautifulSoup'
-        # TelegramExtractor calls BeautifulSoup(content, "html.parser")
 
         info = TelegramExtractor.get_metadata("https://t.me/c/1")
         self.assertIsNotNone(info)

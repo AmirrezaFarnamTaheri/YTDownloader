@@ -17,33 +17,30 @@ class SettingsView(BaseView):
         super().__init__(LM.get("settings"), ft.icons.SETTINGS)
         self.config = config
 
+        # Network Section
         self.proxy_input = ft.TextField(
             label=LM.get("proxy"),
             value=self.config.get("proxy", ""),
-            border_color=Theme.BORDER,
-            border_radius=8,
-            bgcolor=Theme.BG_CARD,
+            **Theme.get_input_decoration(prefix_icon=ft.icons.VPN_LOCK),
         )
         self.rate_limit_input = ft.TextField(
             label=LM.get("rate_limit"),
             value=self.config.get("rate_limit", ""),
-            border_color=Theme.BORDER,
-            border_radius=8,
-            bgcolor=Theme.BG_CARD,
+            **Theme.get_input_decoration(prefix_icon=ft.icons.SPEED),
         )
         self.output_template_input = ft.TextField(
             label=LM.get("output_template"),
             value=self.config.get("output_template", "%(title)s.%(ext)s"),
-            border_color=Theme.BORDER,
-            border_radius=8,
-            bgcolor=Theme.BG_CARD,
+            **Theme.get_input_decoration(prefix_icon=ft.icons.FOLDER_SHARED),
         )
 
-        self.use_aria2c_cb = ft.Checkbox(
+        # Performance Section
+        self.use_aria2c_switch = ft.Switch(
             label=LM.get("use_aria2c"),
             value=self.config.get("use_aria2c", False),
-            fill_color=Theme.PRIMARY,
+            active_color=Theme.Primary.MAIN,
         )
+
         self.gpu_accel_dd = ft.Dropdown(
             label=LM.get("gpu_acceleration"),
             options=[
@@ -53,12 +50,10 @@ class SettingsView(BaseView):
                 ft.dropdown.Option("vulkan"),
             ],
             value=self.config.get("gpu_accel", "None"),
-            border_color=Theme.BORDER,
-            border_radius=8,
-            bgcolor=Theme.BG_CARD,
+            **Theme.get_input_decoration(prefix_icon=ft.icons.MEMORY),
         )
 
-        # Theme Toggle
+        # Appearance Section
         self.theme_mode_dd = ft.Dropdown(
             label=LM.get("theme_mode"),
             options=[
@@ -67,68 +62,97 @@ class SettingsView(BaseView):
                 ft.dropdown.Option("System", LM.get("system")),
             ],
             value=self.config.get("theme_mode", "Dark"),
-            border_color=Theme.BORDER,
-            border_radius=8,
-            bgcolor=Theme.BG_CARD,
             on_change=self._on_theme_change,
+            **Theme.get_input_decoration(prefix_icon=ft.icons.BRIGHTNESS_6),
         )
 
-        # High Contrast
-        self.high_contrast_cb = ft.Checkbox(
+        self.high_contrast_switch = ft.Switch(
             label=LM.get("high_contrast_mode"),
             value=self.config.get("high_contrast", False),
-            fill_color=Theme.PRIMARY,
+            active_color=Theme.Primary.MAIN,
             on_change=self._on_high_contrast_change,
         )
 
-        # Compact Mode
-        self.compact_mode_cb = ft.Checkbox(
+        self.compact_mode_switch = ft.Switch(
             label=LM.get("compact_mode"),
             value=self.config.get("compact_mode", False),
-            fill_color=Theme.PRIMARY,
+            active_color=Theme.Primary.MAIN,
         )
 
         self.save_btn = ft.ElevatedButton(
             LM.get("save_settings"),
             on_click=self.save_settings,
-            bgcolor=Theme.PRIMARY,
-            color=ft.colors.WHITE,
+            icon=ft.icons.SAVE,
+            bgcolor=Theme.Primary.MAIN,
+            color=Theme.Text.PRIMARY,
             style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=8)),
+            tooltip=LM.get("save_settings_tooltip", "Save all changes"),
         )
 
-        self.add_control(self.proxy_input)
-        self.add_control(self.rate_limit_input)
-        self.add_control(self.output_template_input)
-        self.add_control(ft.Container(height=20))
-        self.add_control(
-            ft.Text(
-                LM.get("performance"),
-                size=18,
-                weight=ft.FontWeight.W_600,
-                color=Theme.TEXT_PRIMARY,
+        # Layout Construction
+        self.content_column = ft.Column(spacing=20, scroll=ft.ScrollMode.AUTO)
+
+        # Helper to create sections
+        def create_section(title, controls):
+            return ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text(
+                            title,
+                            size=18,
+                            weight=ft.FontWeight.BOLD,
+                            color=Theme.Text.PRIMARY,
+                        ),
+                        ft.Column(controls, spacing=15),
+                    ],
+                    spacing=15,
+                ),
+                **Theme.get_card_decoration(),
+            )
+
+        # General / Network
+        self.content_column.controls.append(
+            create_section(
+                LM.get("general_settings", "General & Network"),
+                [self.proxy_input, self.rate_limit_input, self.output_template_input],
             )
         )
-        self.add_control(self.use_aria2c_cb)
-        self.add_control(self.gpu_accel_dd)
-        self.add_control(ft.Container(height=20))
-        self.add_control(
-            ft.Text(
+
+        # Performance
+        self.content_column.controls.append(
+            create_section(
+                LM.get("performance"), [self.use_aria2c_switch, self.gpu_accel_dd]
+            )
+        )
+
+        # Appearance
+        self.content_column.controls.append(
+            create_section(
                 LM.get("appearance"),
-                size=18,
-                weight=ft.FontWeight.W_600,
-                color=Theme.TEXT_PRIMARY,
+                [
+                    self.theme_mode_dd,
+                    self.high_contrast_switch,
+                    self.compact_mode_switch,
+                ],
             )
         )
-        self.add_control(self.theme_mode_dd)
-        self.add_control(self.high_contrast_cb)
-        self.add_control(self.compact_mode_cb)
-        self.add_control(ft.Container(height=1, bgcolor=Theme.BORDER))
-        self.add_control(ft.Container(height=20))
-        # pylint: disable=unused-argument
-        self.add_control(self.save_btn)
+
+        # Save Button
+        self.content_column.controls.append(
+            ft.Container(
+                content=self.save_btn,
+                alignment=ft.alignment.center_right,
+                padding=ft.padding.only(top=10),
+            )
+        )
+
+        self.add_control(
+            ft.Container(content=self.content_column, expand=True, padding=10)
+        )
 
     # pylint: disable=unused-argument
     def _on_theme_change(self, e):
+        # Allow calling manually without 'e' to refresh
         mode = self.theme_mode_dd.value
         if self.page:
             if mode == "Dark":
@@ -150,18 +174,8 @@ class SettingsView(BaseView):
                 if e.control.value
                 else Theme.get_theme()
             )
-
-            # Also re-apply theme mode
-            mode = self.theme_mode_dd.value
-            if mode == "Dark":
-                self.page.theme_mode = ft.ThemeMode.DARK
-            elif mode == "Light":
-                self.page.theme_mode = ft.ThemeMode.LIGHT
-            else:
-                self.page.theme_mode = ft.ThemeMode.SYSTEM
-            # pylint: disable=missing-function-docstring, unused-argument
-
-            self.page.update()
+            # Re-apply mode
+            self._on_theme_change(None)
 
     # pylint: disable=missing-function-docstring, unused-argument
 
@@ -207,11 +221,11 @@ class SettingsView(BaseView):
         self.config["proxy"] = proxy_val
         self.config["rate_limit"] = rate_val
         self.config["output_template"] = tmpl_val
-        self.config["use_aria2c"] = self.use_aria2c_cb.value
+        self.config["use_aria2c"] = self.use_aria2c_switch.value
         self.config["gpu_accel"] = self.gpu_accel_dd.value
         self.config["theme_mode"] = self.theme_mode_dd.value
-        self.config["high_contrast"] = self.high_contrast_cb.value
-        self.config["compact_mode"] = self.compact_mode_cb.value
+        self.config["high_contrast"] = self.high_contrast_switch.value
+        self.config["compact_mode"] = self.compact_mode_switch.value
         ConfigManager.save_config(self.config)
         if self.page:
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("settings_saved"))))

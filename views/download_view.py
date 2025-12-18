@@ -89,7 +89,7 @@ class DownloadView(BaseView):
         )
 
         # 2. Dynamic Options Panel Container
-        self.options_container = ft.Container()
+        self.options_container = ft.Container(animate_opacity=300)
 
         # 3. Global Advanced (Time / Cookies)
         self.time_start = ft.TextField(
@@ -142,45 +142,6 @@ class DownloadView(BaseView):
 
         # Build UI
         self._build_ui()
-
-    def _build_advanced_section(self, advanced_row):
-        """Build advanced options section with fallback for missing ExpansionTile."""
-        try:
-            # Try ExpansionTile if available (Flet >= 0.22)
-            return ft.ExpansionTile(
-                title=ft.Text(LM.get("advanced_options"), weight=ft.FontWeight.BOLD),
-                controls=[
-                    ft.Container(
-                        content=ft.Column(
-                            [advanced_row, self.force_generic_cb], spacing=10
-                        ),
-                        padding=10,
-                    )
-                ],
-                collapsed_text_color=Theme.Text.SECONDARY,
-                text_color=Theme.Primary.MAIN,
-                icon_color=Theme.Primary.MAIN,
-            )
-        except AttributeError:
-            # Fallback for older Flet versions
-            return ft.Column(
-                [
-                    ft.Text(
-                        LM.get("advanced_options"),
-                        weight=ft.FontWeight.BOLD,
-                        color=Theme.Primary.MAIN,
-                    ),
-                    ft.Container(
-                        content=ft.Column(
-                            [advanced_row, self.force_generic_cb], spacing=10
-                        ),
-                        padding=10,
-                        bgcolor=Theme.Surface.CARD,
-                        border_radius=8,
-                    ),
-                ],
-                spacing=5,
-            )
 
     def _build_ui(self):
         """Constructs the UI layout."""
@@ -239,7 +200,27 @@ class DownloadView(BaseView):
             [self.time_start, self.time_end, self.cookies_dd], spacing=10, wrap=True
         )
 
-        # Input Card Container
+        # Advanced Options Section using ExpansionTile
+        advanced_section = ft.ExpansionTile(
+            title=ft.Text(LM.get("advanced_options"), weight=ft.FontWeight.BOLD),
+            controls=[
+                ft.Container(
+                    content=ft.Column(
+                        [advanced_row, self.force_generic_cb], spacing=10
+                    ),
+                    padding=10,
+                )
+            ],
+            collapsed_text_color=Theme.Text.SECONDARY,
+            text_color=Theme.Primary.MAIN,
+            icon_color=Theme.Primary.MAIN,
+        )
+
+        # Input Card Container with standardized decoration
+        input_container_props = Theme.get_card_decoration()
+        # Ensure we have border defined if not in decoration (it is not in get_card_decoration usually, but theme file might have it)
+        # Adding specific border for input area if desired, or stick to theme defaults.
+        # Overriding specific props for this container:
         input_container = ft.Container(
             content=ft.Column(
                 [
@@ -249,18 +230,11 @@ class DownloadView(BaseView):
                     self.options_container,
                     ft.Container(height=10),
                     # Advanced Options Section
-                    self._build_advanced_section(advanced_row),
+                    advanced_section,
                 ],
                 spacing=10,
             ),
-            bgcolor=Theme.Surface.CARD,
-            padding=20,
-            border_radius=12,
-            border=ft.border.all(1, Theme.Divider.COLOR),
-            shadow=ft.BoxShadow(
-                blur_radius=10,
-                color=ft.colors.with_opacity(0.1, ft.colors.BLACK),
-            ),
+            **input_container_props
         )
 
         # Actions

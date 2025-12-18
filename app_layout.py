@@ -27,28 +27,28 @@ class AppLayout(ft.Row):
         # Define Navigation Destinations
         self.destinations = [
             ft.NavigationRailDestination(
-                icon=ft.icons.DOWNLOAD,
+                icon=ft.icons.DOWNLOAD_OUTLINED,
                 selected_icon=ft.icons.DOWNLOAD_ROUNDED,
                 label=LM.get("download"),
             ),
             ft.NavigationRailDestination(
-                icon=ft.icons.LIST,
-                selected_icon=ft.icons.LIST_ALT,
+                icon=ft.icons.LIST_ALT_OUTLINED,
+                selected_icon=ft.icons.LIST_ALT_ROUNDED,
                 label=LM.get("queue"),
             ),
             ft.NavigationRailDestination(
-                icon=ft.icons.HISTORY,
-                selected_icon=ft.icons.HISTORY_TOGGLE_OFF,
+                icon=ft.icons.HISTORY_TOGGLE_OFF_OUTLINED,
+                selected_icon=ft.icons.HISTORY_ROUNDED,
                 label=LM.get("history"),
             ),
             ft.NavigationRailDestination(
-                icon=ft.icons.RSS_FEED,
+                icon=ft.icons.RSS_FEED_OUTLINED,
                 selected_icon=ft.icons.RSS_FEED_ROUNDED,
                 label=LM.get("rss"),
             ),
             ft.NavigationRailDestination(
-                icon=ft.icons.SETTINGS,
-                selected_icon=ft.icons.SETTINGS_SUGGEST,
+                icon=ft.icons.SETTINGS_OUTLINED,
+                selected_icon=ft.icons.SETTINGS_ROUNDED,
                 label=LM.get("settings"),
             ),
         ]
@@ -60,6 +60,7 @@ class AppLayout(ft.Row):
             on_change=self.on_nav_change,
             destinations=self.destinations,
             bgcolor=Theme.BG_LIGHT,
+            indicator_color=Theme.Primary.MAIN,
             extended=True,
             min_width=72,
             min_extended_width=200,

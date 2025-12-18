@@ -41,6 +41,14 @@ class DownloadItemControl(ft.Container):
         self.on_play = on_play
         self.on_open_folder = on_open_folder
 
+        # Apply standardized card decoration
+        card_style = Theme.get_card_decoration()
+        for key, value in card_style.items():
+            setattr(self, key, value)
+
+        # Override padding if needed or use from decoration
+        self.padding = 15  # slightly tighter for list items
+
         # UI Components
         self.title_text = ft.Text(
             item.get("title", item.get("url", "Unknown")),
@@ -51,10 +59,18 @@ class DownloadItemControl(ft.Container):
             color=Theme.Text.PRIMARY,
         )
 
+        # Status Badge
         self.status_text = ft.Text(
             item.get("status", "Queued"),
             size=12,
-            color=Theme.Text.SECONDARY,
+            weight=ft.FontWeight.BOLD,
+            color=Theme.Text.PRIMARY,
+        )
+        self.status_badge = ft.Container(
+            content=self.status_text,
+            padding=ft.padding.symmetric(horizontal=8, vertical=4),
+            border_radius=4,
+            bgcolor=Theme.BG_HOVER,  # Default
         )
 
         self.progress_bar = ft.ProgressBar(
@@ -68,38 +84,36 @@ class DownloadItemControl(ft.Container):
 
         self.action_row = ft.Row(spacing=0)
 
-        # Main Layout
+        # Main Layout: Row with Icon | Content | Actions
         self.content = ft.Column(
             [
                 ft.Row(
                     [
                         # Icon based on URL/Type
                         self._get_platform_icon(item.get("url", "")),
+                        ft.Container(width=10),  # Spacer
+                        # Title and Info
                         ft.Column(
-                            [self.title_text, self.status_text],
-                            spacing=2,
+                            [
+                                self.title_text,
+                                ft.Row(
+                                    [self.status_badge, self.info_text],
+                                    spacing=10,
+                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                ),
+                            ],
+                            spacing=4,
                             expand=True,
                         ),
+                        # Actions
                         self.action_row,
                     ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
+                ft.Container(height=5),
                 self.progress_bar,
-                ft.Row(
-                    [self.info_text],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                ),
             ],
-            spacing=8,
-        )
-
-        self.padding = 15
-        self.border_radius = 10
-        self.bgcolor = Theme.Surface.CARD
-        # self.border = ft.border.all(1, Theme.Divider.COLOR) # Cleaner without border?
-        self.shadow = ft.BoxShadow(
-            blur_radius=5,
-            color=ft.colors.with_opacity(0.05, ft.colors.BLACK),
+            spacing=0,
         )
 
         # Attach to item for updates
@@ -110,12 +124,12 @@ class DownloadItemControl(ft.Container):
     def _get_platform_icon(self, url: str) -> ft.Icon:
         """Returns an icon based on the URL."""
         if "youtube" in url or "youtu.be" in url:
-            return ft.Icon(ft.icons.VIDEO_LIBRARY, color=ft.colors.RED_400, size=30)
+            return ft.Icon(ft.icons.VIDEO_LIBRARY, color=ft.colors.RED_400, size=32)
         if "instagram" in url:
-            return ft.Icon(ft.icons.PHOTO_CAMERA, color=ft.colors.PINK_400, size=30)
+            return ft.Icon(ft.icons.PHOTO_CAMERA, color=ft.colors.PINK_400, size=32)
         if "twitter" in url or "x.com" in url:
-            return ft.Icon(ft.icons.ALTERNATE_EMAIL, color=ft.colors.BLUE_400, size=30)
-        return ft.Icon(ft.icons.LINK, color=Theme.Primary.MAIN, size=30)
+            return ft.Icon(ft.icons.ALTERNATE_EMAIL, color=ft.colors.BLUE_400, size=32)
+        return ft.Icon(ft.icons.LINK, color=Theme.Primary.MAIN, size=32)
 
     def update_progress(self):
         """Update progress bar and text (External Call)."""
@@ -146,15 +160,21 @@ class DownloadItemControl(ft.Container):
 
         # Status Coloring
         if status == "Downloading":
+            self.status_badge.bgcolor = ft.colors.with_opacity(0.2, Theme.Primary.MAIN)
             self.status_text.color = Theme.Primary.MAIN
         elif status == "Completed":
+            self.status_badge.bgcolor = ft.colors.with_opacity(
+                0.2, Theme.Status.SUCCESS
+            )
             self.status_text.color = Theme.Status.SUCCESS
             self.progress_bar.value = 1.0
             self.progress_bar.color = Theme.Status.SUCCESS
         elif status == "Error":
+            self.status_badge.bgcolor = ft.colors.with_opacity(0.2, Theme.Status.ERROR)
             self.status_text.color = Theme.Status.ERROR
             self.progress_bar.color = Theme.Status.ERROR
         else:
+            self.status_badge.bgcolor = Theme.BG_HOVER
             self.status_text.color = Theme.Text.SECONDARY
 
         self.update_actions()
@@ -166,54 +186,63 @@ class DownloadItemControl(ft.Container):
         status = self.item.get("status", "Unknown")
         self.action_row.controls.clear()
 
+        # Helper to create styled buttons
+        def create_action_btn(icon, tooltip, color, on_click):
+            return ft.IconButton(
+                icon,
+                tooltip=tooltip,
+                icon_color=color,
+                on_click=on_click,
+                semantics_label=tooltip,  # Accessibility
+            )
+
         # Play Button (Completed)
         if status == "Completed":
             self.action_row.controls.append(
-                ft.IconButton(
+                create_action_btn(
                     ft.icons.PLAY_ARROW,
-                    tooltip="Play",
-                    icon_color=Theme.Status.SUCCESS,
-                    on_click=lambda _: self.on_play(self.item),
+                    "Play",
+                    Theme.Status.SUCCESS,
+                    lambda _: self.on_play(self.item),
                 )
             )
             self.action_row.controls.append(
-                ft.IconButton(
+                create_action_btn(
                     ft.icons.FOLDER_OPEN,
-                    tooltip="Open Folder",
-                    icon_color=Theme.Text.SECONDARY,
-                    on_click=lambda _: self.on_open_folder(self.item),
+                    "Open Folder",
+                    Theme.Text.SECONDARY,
+                    lambda _: self.on_open_folder(self.item),
                 )
             )
 
         # Cancel Button (Active)
         if status in ("Downloading", "Queued", "Processing"):
             self.action_row.controls.append(
-                ft.IconButton(
+                create_action_btn(
                     ft.icons.CANCEL,
-                    tooltip="Cancel",
-                    icon_color=Theme.Status.ERROR,
-                    on_click=lambda _: self.on_cancel(self.item),
+                    "Cancel",
+                    Theme.Status.ERROR,
+                    lambda _: self.on_cancel(self.item),
                 )
             )
 
         # Retry Button (Error/Cancelled)
         if status in ("Error", "Cancelled"):
             self.action_row.controls.append(
-                ft.IconButton(
+                create_action_btn(
                     ft.icons.REFRESH,
-                    tooltip="Retry",
-                    icon_color=Theme.Primary.MAIN,
-                    on_click=lambda _: self.on_retry(self.item),
+                    "Retry",
+                    Theme.Primary.MAIN,
+                    lambda _: self.on_retry(self.item),
                 )
             )
 
-        # Remove Button (Always available mostly, or specialized)
-        # Maybe show 'Close' or 'Delete' icon always?
+        # Remove Button
         self.action_row.controls.append(
-            ft.IconButton(
+            create_action_btn(
                 ft.icons.DELETE_OUTLINE,
-                tooltip="Remove",
-                icon_color=Theme.TEXT_MUTED,
-                on_click=lambda _: self.on_remove(self.item),
+                "Remove",
+                Theme.TEXT_MUTED,
+                lambda _: self.on_remove(self.item),
             )
         )
