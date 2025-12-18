@@ -31,21 +31,26 @@ class GenericPanel(BasePanel):
             ],
             value="best",
             on_change=lambda e: self.on_option_change(),
-            border_color=Theme.BORDER,
-            border_radius=8,
+            **Theme.get_input_decoration(prefix_icon=ft.icons.SETTINGS_ETHERNET)
         )
 
-        return ft.Column(
-            [
-                ft.Text(
-                    LM.get("download_options"),
-                    weight=ft.FontWeight.BOLD,
-                    color=Theme.Primary.MAIN,
-                ),
-                ft.Text(LM.get("generic_download_mode"), color=Theme.Text.SECONDARY),
-                self.format_dd,
-            ],
-            spacing=10,
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(
+                        LM.get("download_options"),
+                        size=16,
+                        weight=ft.FontWeight.BOLD,
+                        color=Theme.Primary.MAIN,
+                    ),
+                    ft.Text(
+                        LM.get("generic_download_mode"), color=Theme.Text.SECONDARY
+                    ),
+                    self.format_dd,
+                ],
+                spacing=15,
+            ),
+            **Theme.get_card_decoration()
         )
 
     def get_options(self) -> Dict[str, Any]:

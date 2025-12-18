@@ -12,6 +12,7 @@ import flet as ft
 from app_layout import AppLayout
 from app_state import state
 from views.base_view import BaseView
+from views.dashboard_view import DashboardView
 from views.download_view import DownloadView
 from views.history_view import HistoryView
 from views.queue_view import QueueView
@@ -29,6 +30,7 @@ class UIManager:
     # pylint: disable=too-many-instance-attributes
     def __init__(self, page: ft.Page):
         self.page = page
+        self.dashboard_view: Optional[DashboardView] = None
         self.download_view: Optional[DownloadView] = None
         self.queue_view: Optional[QueueView] = None
         self.history_view: Optional[HistoryView] = None
@@ -62,6 +64,14 @@ class UIManager:
 
         logger.debug("Initializing views...")
 
+        # Initialize Dashboard (Index 0)
+        self.dashboard_view = DashboardView(
+            on_navigate=self.navigate_to,
+            on_paste_url=self._on_dashboard_paste_url,
+            on_batch_import=on_batch_import_callback,
+            queue_manager=state.queue_manager,
+        )
+
         self.download_view = DownloadView(
             on_fetch_info_callback,
             on_add_to_queue_callback,
@@ -85,8 +95,9 @@ class UIManager:
         self.settings_view = SettingsView(state.config)
 
         # Match the order in AppLayout.destinations:
-        # 0: Download, 1: Queue, 2: History, 3: RSS, 4: Settings
+        # 0: Dashboard, 1: Download, 2: Queue, 3: History, 4: RSS, 5: Settings
         self.views_list = [
+            self.dashboard_view,
             self.download_view,
             self.queue_view,
             self.history_view,
@@ -101,7 +112,10 @@ class UIManager:
             self.navigate_to(idx)
 
         self.app_layout = AppLayout(self.page, on_nav_change)
-        self.app_layout.set_content(self.download_view)
+        # Set initial content to Dashboard
+        self.app_layout.set_content(self.dashboard_view)
+        # Ensure Dashboard loads
+        self.dashboard_view.load()
 
         # Handle responsive layout logic if needed (AppLayout does basic rail toggle)
         # We can add listener here if we want automatic compact mode
@@ -114,6 +128,17 @@ class UIManager:
 
         return self.app_layout
 
+    def _on_dashboard_paste_url(self, url: str):
+        """Handle pasting URL from Dashboard."""
+        if self.download_view:
+            # Set value
+            self.download_view.url_input.value = url
+            # Navigate to download view
+            self.navigate_to(1)
+            # Focus input (if possible)
+            self.download_view.url_input.focus()
+            self.download_view.update()
+
     def navigate_to(self, index: int):
         """Navigate to the specified view index."""
         if self.app_layout and 0 <= index < len(self.views_list):
@@ -123,12 +148,12 @@ class UIManager:
             self.app_layout.set_content(view)
 
             # Refresh view if needed
-            if isinstance(view, HistoryView):
+            if hasattr(view, "load"):
                 view.load()
-            elif isinstance(view, RSSView):
-                view.load()
-            elif isinstance(view, QueueView):
+            elif hasattr(view, "rebuild"):
                 view.rebuild()
+
+            # Special case for DownloadView to focus if coming from Dashboard maybe?
 
             # Sync Rail index if navigated programmatically (not via click)
             self.app_layout.set_navigation_index(index)

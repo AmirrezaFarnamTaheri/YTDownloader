@@ -81,9 +81,10 @@ def mock_dependencies():
 
     class MockDropdown(MockControl):
         class Option:
-             def __init__(self, key, text=None):
-                 self.key = key
-                 self.text = text
+            def __init__(self, key, text=None):
+                self.key = key
+                self.text = text
+
         pass
 
     class MockListView(MockControl):

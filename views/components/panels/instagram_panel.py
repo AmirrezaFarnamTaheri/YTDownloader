@@ -19,19 +19,40 @@ class InstagramPanel(BasePanel):
     def __init__(self, info: Dict[str, Any], on_option_change: Callable):
         super().__init__(info, on_option_change)
 
-        self.warning_text = ft.Text(
-            "Warning: Story downloads require authentication. Please select your browser in 'Browser Cookies' (Advanced Options).",
-            color=Theme.Status.ERROR,
+        self.warning_text = ft.Container(
+            content=ft.Row(
+                [
+                    ft.Icon(ft.icons.WARNING_AMBER, color=Theme.Status.WARNING),
+                    ft.Text(
+                        "Story downloads require browser cookies authentication.",
+                        color=Theme.Status.WARNING,
+                        size=12,
+                        expand=True,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.START,
+            ),
             visible=False,
-            size=12,
+            padding=10,
+            bgcolor=ft.colors.with_opacity(0.1, Theme.Status.WARNING),
+            border_radius=8,
         )
 
         self.download_type = ft.RadioGroup(
             content=ft.Row(
                 [
-                    ft.Radio(value="post", label=LM.get("instagram_post_reel")),
-                    ft.Radio(value="story", label=LM.get("instagram_story")),
-                ]
+                    ft.Radio(
+                        value="post",
+                        label=LM.get("instagram_post_reel"),
+                        active_color=Theme.Primary.MAIN,
+                    ),
+                    ft.Radio(
+                        value="story",
+                        label=LM.get("instagram_story"),
+                        active_color=Theme.Primary.MAIN,
+                    ),
+                ],
+                spacing=20,
             ),
             value="post",
             on_change=self._on_type_change,
@@ -46,17 +67,21 @@ class InstagramPanel(BasePanel):
         self.on_option_change()
 
     def build(self):
-        return ft.Column(
-            [
-                ft.Text(
-                    LM.get("instagram_options"),
-                    weight=ft.FontWeight.BOLD,
-                    color=Theme.Primary.MAIN,
-                ),
-                self.download_type,
-                self.warning_text,
-            ],
-            spacing=10,
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(
+                        LM.get("instagram_options"),
+                        size=16,
+                        weight=ft.FontWeight.BOLD,
+                        color=Theme.Primary.MAIN,
+                    ),
+                    self.download_type,
+                    self.warning_text,
+                ],
+                spacing=15,
+            ),
+            **Theme.get_card_decoration()
         )
 
     def get_options(self) -> Dict[str, Any]:

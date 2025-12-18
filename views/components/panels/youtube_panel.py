@@ -24,7 +24,9 @@ class YouTubePanel(BasePanel):
             label=LM.get("format"),
             expand=True,
             on_change=lambda e: self.on_option_change(),
-            **Theme.get_input_decoration(hint_text=LM.get("select_format")),
+            **Theme.get_input_decoration(
+                hint_text=LM.get("select_format"), prefix_icon=ft.icons.VIDEO_SETTINGS
+            ),
         )
 
         self.audio_format_dd = ft.Dropdown(
@@ -32,7 +34,9 @@ class YouTubePanel(BasePanel):
             expand=True,
             visible=False,
             on_change=lambda e: self.on_option_change(),
-            **Theme.get_input_decoration(hint_text=LM.get("select_audio")),
+            **Theme.get_input_decoration(
+                hint_text=LM.get("select_audio"), prefix_icon=ft.icons.AUDIOTRACK
+            ),
         )
 
         self.subtitle_dd = ft.Dropdown(
@@ -41,49 +45,58 @@ class YouTubePanel(BasePanel):
             options=[ft.dropdown.Option("None", "None")],
             value="None",
             on_change=lambda e: self.on_option_change(),
-            **Theme.get_input_decoration(hint_text=LM.get("select_subtitles")),
+            **Theme.get_input_decoration(
+                hint_text=LM.get("select_subtitles"), prefix_icon=ft.icons.SUBTITLES
+            ),
         )
 
-        self.sponsorblock_cb = ft.Checkbox(
+        # Switches instead of Checkboxes for modern feel
+        self.sponsorblock_cb = ft.Switch(
             label=LM.get("sponsorblock"),
             value=False,
+            active_color=Theme.Primary.MAIN,
             on_change=lambda e: self.on_option_change(),
-            fill_color=Theme.Primary.MAIN,
         )
 
-        self.playlist_cb = ft.Checkbox(
+        self.playlist_cb = ft.Switch(
             label=LM.get("playlist"),
             value=False,
+            active_color=Theme.Primary.MAIN,
             on_change=lambda e: self.on_option_change(),
-            fill_color=Theme.Primary.MAIN,
         )
 
-        self.chapters_cb = ft.Checkbox(
+        self.chapters_cb = ft.Switch(
             label=LM.get("split_chapters"),
             value=False,
+            active_color=Theme.Primary.MAIN,
             on_change=lambda e: self.on_option_change(),
-            fill_color=Theme.Primary.MAIN,
         )
 
         self.content = self.build()
         self._populate_options()
 
     def build(self):
-        return ft.Column(
-            [
-                ft.Text(
-                    LM.get("youtube_options"),
-                    weight=ft.FontWeight.BOLD,
-                    color=Theme.Primary.MAIN,
-                ),
-                ft.Row([self.video_format_dd, self.audio_format_dd], spacing=10),
-                self.subtitle_dd,
-                ft.Row(
-                    [self.playlist_cb, self.sponsorblock_cb, self.chapters_cb],
-                    wrap=True,
-                ),
-            ],
-            spacing=10,
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(
+                        LM.get("youtube_options"),
+                        size=16,
+                        weight=ft.FontWeight.BOLD,
+                        color=Theme.Primary.MAIN,
+                    ),
+                    ft.Row([self.video_format_dd, self.audio_format_dd], spacing=15),
+                    self.subtitle_dd,
+                    ft.Divider(color=Theme.DIVIDER),
+                    ft.Row(
+                        [self.playlist_cb, self.sponsorblock_cb, self.chapters_cb],
+                        wrap=True,
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    ),
+                ],
+                spacing=15,
+            ),
+            **Theme.get_card_decoration(),
         )
 
     def _populate_options(self):
