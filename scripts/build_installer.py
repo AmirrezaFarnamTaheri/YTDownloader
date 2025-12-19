@@ -140,6 +140,11 @@ def build_installer():
             "--include-package=pypresence",
             "--include-package=pydrive2",
             "--include-package=defusedxml",
+            "--include-package=flet",
+            "--include-package-data=flet",
+            "--include-package=flet_runtime",
+            "--include-package-data=flet_runtime",
+            "--include-module=flet_desktop",
         ]
     )
 
