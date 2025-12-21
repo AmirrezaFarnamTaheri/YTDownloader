@@ -8,10 +8,10 @@
 
 Detailed documentation is available in our **[Wiki](wiki/Home.md)**:
 
-*   **[User Guide](wiki/User-Guide.md)**: Installation, usage, scheduling, and configuration.
-*   **[Developer Guide](wiki/Developer-Guide.md)**: Architecture, setup, testing, and contribution.
+*   **[Architecture](wiki/Architecture.md)**: High-level system design and component interactions.
+*   **[Core Concepts](wiki/Concepts.md)**: Explanation of key concepts like Downloaders, Extractors, and Managers.
+*   **[API Reference](wiki/API.md)**: Internal API documentation for developers.
 *   **[Troubleshooting](wiki/Troubleshooting.md)**: Solutions to common issues.
-*   **[Roadmap](wiki/Roadmap.md)**: Upcoming features and plans.
 
 ## ✨ Features
 
@@ -35,7 +35,7 @@ Detailed documentation is available in our **[Wiki](wiki/Home.md)**:
 
 ## 🚀 Installation & Building
 
-Please see the [Installation Guide](wiki/Installation.md) for detailed instructions.
+See the [Troubleshooting Guide](wiki/Troubleshooting.md) for common installation issues.
 
 ### Quick Start (Source)
 
