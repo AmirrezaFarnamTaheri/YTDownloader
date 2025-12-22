@@ -193,7 +193,6 @@ class DownloadItemControl(ft.Container):
                 tooltip=tooltip,
                 icon_color=color,
                 on_click=on_click,
-                semantics_label=tooltip,  # Accessibility
             )
 
         # Play Button (Completed)

@@ -45,28 +45,31 @@ class DashboardView(BaseView):
 
         self.recent_history_list = ft.Column(spacing=10)
 
-        self.content_area = ft.Column(
-            [
-                # Welcome & Quick Actions
-                self._build_header_section(),
-                ft.Container(height=20),
-                # System Status (Disk, etc)
-                self._build_status_section(),
-                ft.Container(height=20),
-                # Recent History
-                ft.Text(
-                    LM.get("recent_history", "Recent History"),
-                    size=20,
-                    weight=ft.FontWeight.BOLD,
-                    color=Theme.Text.PRIMARY,
-                ),
-                ft.Container(
-                    content=self.recent_history_list, **Theme.get_card_decoration()
-                ),
-            ],
-            scroll=ft.ScrollMode.AUTO,
-            expand=True,
+        self.content_area = ft.Container(
+            content=ft.Column(
+                [
+                    # Welcome & Quick Actions
+                    self._build_header_section(),
+                    ft.Container(height=20),
+                    # System Status (Disk, etc)
+                    self._build_status_section(),
+                    ft.Container(height=20),
+                    # Recent History
+                    ft.Text(
+                        LM.get("recent_history", "Recent History"),
+                        size=20,
+                        weight=ft.FontWeight.BOLD,
+                        color=Theme.Text.PRIMARY,
+                    ),
+                    ft.Container(
+                        content=self.recent_history_list, **Theme.get_card_decoration()
+                    ),
+                ],
+                scroll=ft.ScrollMode.AUTO,
+                expand=True,
+            ),
             padding=10,
+            expand=True,
         )
 
         self.controls = [self.content_area]
@@ -155,7 +158,8 @@ class DashboardView(BaseView):
         """Refreshes the dashboard data."""
         self._refresh_storage()
         self._refresh_history()
-        self.update()
+        if self.page:
+            self.update()
 
     def _refresh_storage(self):
         """Updates storage usage bar."""

@@ -86,5 +86,17 @@
     "youtube_options": "YouTube Options",
     "instagram_options": "Instagram Options",
     "high_contrast_mode": "High Contrast Mode",
-    "compact_mode": "Compact Mode (Requires Restart)"
+    "compact_mode": "Compact Mode (Requires Restart)",
+    "dashboard_welcome": "Welcome back!",
+    "dashboard_subtitle": "Ready to download something new?",
+    "quick_download": "New Download",
+    "system_status": "System Storage",
+    "recent_history": "Recent History",
+    "paste_from_clipboard": "Paste from clipboard",
+    "no_history": "No history found",
+    "general_settings": "General & Network",
+    "save_settings_tooltip": "Save all changes",
+    "refresh_feeds": "Refresh",
+    "remove_feed": "Remove Feed",
+    "invalid_url": "Invalid URL format"
 }
