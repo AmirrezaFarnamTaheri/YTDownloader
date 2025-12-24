@@ -11,22 +11,24 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import flet as ft
 
+from localization_manager import LocalizationManager as LM
 from views.components.download_item import DownloadItemControl
 
 
 class TestDownloadItemControl(unittest.TestCase):
     def setUp(self):
+        LM.load_language("en")
         self.item = {"url": "http://test", "status": "Queued", "title": "Test Video"}
         self.on_cancel = MagicMock()
+        self.on_retry = MagicMock()
         self.on_remove = MagicMock()
-        self.on_reorder = MagicMock()
 
     def test_init(self):
         control = DownloadItemControl(
             self.item,
             self.on_cancel,
+            self.on_retry,
             self.on_remove,
-            self.on_reorder,
             MagicMock(),  # on_play
             MagicMock(),  # on_open_folder
         )
@@ -37,8 +39,8 @@ class TestDownloadItemControl(unittest.TestCase):
         control = DownloadItemControl(
             self.item,
             self.on_cancel,
+            self.on_retry,
             self.on_remove,
-            self.on_reorder,
             MagicMock(),  # on_play
             MagicMock(),  # on_open_folder
         )

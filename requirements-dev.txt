@@ -13,4 +13,3 @@ types-python-dateutil
 types-setuptools
 types-defusedxml
 types-Pillow
-types-requests

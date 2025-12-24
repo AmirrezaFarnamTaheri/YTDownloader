@@ -11,7 +11,7 @@
   #endif
 #endif
 #define MyAppPublisher "StreamCatch Team"
-#define MyAppURL "https://github.com/user/streamcatch"
+#define MyAppURL "https://github.com/AmirrezaFarnamTaheri/YTDownloader"
 #define MyAppExeName "StreamCatch.exe"
 
 [Setup]

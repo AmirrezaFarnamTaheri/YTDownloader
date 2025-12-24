@@ -31,7 +31,13 @@ class TestUIExtended(unittest.TestCase):
 
     def setUp(self):
         self.mock_page = DummyPage()
-        self.mock_config = {"rss_feeds": ["http://feed.com"], "theme_mode": "Dark"}
+        self.mock_config = {
+            "rss_feeds": ["http://feed.com"],
+            "theme_mode": "Dark",
+            "language": "en",
+            "download_path": "",
+            "max_concurrent_downloads": 3,
+        }
 
     # --- RSSView Tests ---
 
@@ -178,6 +184,9 @@ class TestUIExtended(unittest.TestCase):
         view.proxy_input.value = "http://example.com:8080"
         view.theme_mode_dd.value = "Light"
         view.output_template_input.value = "%(title)s.%(ext)s"
+        view.download_path_input.value = ""
+        view.max_concurrent_input.value = "3"
+        view.language_dd.value = "en"
         # Must pass validations
         view.config["gpu_accel"] = "None"
         view.config["use_aria2c"] = False
@@ -190,6 +199,10 @@ class TestUIExtended(unittest.TestCase):
             "views.settings_view.validate_rate_limit", return_value=True
         ), patch(
             "views.settings_view.validate_output_template", return_value=True
+        ), patch(
+            "views.settings_view.validate_download_path", return_value=True
+        ), patch(
+            "tasks.configure_concurrency", return_value=True
         ), patch(
             "views.settings_view.ConfigManager.save_config"
         ) as mock_save:

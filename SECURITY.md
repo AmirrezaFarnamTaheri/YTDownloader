@@ -53,8 +53,8 @@ We provide security updates for the following versions:
 
 If you discover a security vulnerability, please report it responsibly:
 
-1. **Preferred**: Use [GitHub Security Advisories](https://github.com/yourusername/streamcatch/security/advisories/new) to privately report the issue.
-2. **Alternative**: Email security concerns to security@streamcatch.app (replace with actual email).
+1. **Preferred**: Use [GitHub Security Advisories](https://github.com/AmirrezaFarnamTaheri/YTDownloader/security/advisories/new) to privately report the issue.
+2. **Alternative**: Email security concerns to security@streamcatch.app.
 
 Please do NOT open a public issue for security vulnerabilities.
 

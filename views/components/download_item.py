@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict
 
 import flet as ft
 
+from localization_manager import LocalizationManager as LM
 from theme import Theme
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,7 @@ class DownloadItemControl(ft.Container):
 
         # UI Components
         self.title_text = ft.Text(
-            item.get("title", item.get("url", "Unknown")),
+            item.get("title", item.get("url", LM.get("unknown_title"))),
             weight=ft.FontWeight.BOLD,
             size=16,
             no_wrap=True,
@@ -61,7 +62,7 @@ class DownloadItemControl(ft.Container):
 
         # Status Badge
         self.status_text = ft.Text(
-            item.get("status", "Queued"),
+            self._get_status_label(item.get("status", "Queued")),
             size=12,
             weight=ft.FontWeight.BOLD,
             color=Theme.Text.PRIMARY,
@@ -141,7 +142,7 @@ class DownloadItemControl(ft.Container):
         progress = self.item.get("progress", 0)
 
         self.progress_bar.value = progress
-        self.status_text.value = status
+        self.status_text.value = self._get_status_label(status)
 
         # Detailed info
         speed = self.item.get("speed", "")
@@ -154,14 +155,17 @@ class DownloadItemControl(ft.Container):
         if speed:
             info_parts.append(speed)
         if eta:
-            info_parts.append(f"ETA: {eta}")
+            info_parts.append(f"{LM.get('eta_label')} {eta}")
 
-        self.info_text.value = " • ".join(info_parts)
+        self.info_text.value = " | ".join(info_parts)
 
         # Status Coloring
         if status == "Downloading":
             self.status_badge.bgcolor = ft.colors.with_opacity(0.2, Theme.Primary.MAIN)
             self.status_text.color = Theme.Primary.MAIN
+        elif status == "Allocating":
+            self.status_badge.bgcolor = ft.colors.with_opacity(0.2, Theme.INFO)
+            self.status_text.color = Theme.INFO
         elif status == "Completed":
             self.status_badge.bgcolor = ft.colors.with_opacity(
                 0.2, Theme.Status.SUCCESS
@@ -169,10 +173,19 @@ class DownloadItemControl(ft.Container):
             self.status_text.color = Theme.Status.SUCCESS
             self.progress_bar.value = 1.0
             self.progress_bar.color = Theme.Status.SUCCESS
+        elif status == "Processing":
+            self.status_badge.bgcolor = ft.colors.with_opacity(0.2, Theme.ACCENT)
+            self.status_text.color = Theme.ACCENT
         elif status == "Error":
             self.status_badge.bgcolor = ft.colors.with_opacity(0.2, Theme.Status.ERROR)
             self.status_text.color = Theme.Status.ERROR
             self.progress_bar.color = Theme.Status.ERROR
+        elif status == "Cancelled":
+            self.status_badge.bgcolor = ft.colors.with_opacity(0.2, Theme.TEXT_MUTED)
+            self.status_text.color = Theme.TEXT_MUTED
+        elif str(status).startswith("Scheduled"):
+            self.status_badge.bgcolor = ft.colors.with_opacity(0.2, Theme.WARNING)
+            self.status_text.color = Theme.WARNING
         else:
             self.status_badge.bgcolor = Theme.BG_HOVER
             self.status_text.color = Theme.Text.SECONDARY
@@ -201,7 +214,7 @@ class DownloadItemControl(ft.Container):
             self.action_row.controls.append(
                 create_action_btn(
                     ft.icons.PLAY_ARROW,
-                    "Play",
+                    LM.get("play"),
                     Theme.Status.SUCCESS,
                     lambda _: self.on_play(self.item),
                 )
@@ -209,18 +222,20 @@ class DownloadItemControl(ft.Container):
             self.action_row.controls.append(
                 create_action_btn(
                     ft.icons.FOLDER_OPEN,
-                    "Open Folder",
+                    LM.get("open_folder"),
                     Theme.Text.SECONDARY,
                     lambda _: self.on_open_folder(self.item),
                 )
             )
 
         # Cancel Button (Active)
-        if status in ("Downloading", "Queued", "Processing"):
+        if status in ("Downloading", "Queued", "Processing", "Allocating") or str(
+            status
+        ).startswith("Scheduled"):
             self.action_row.controls.append(
                 create_action_btn(
                     ft.icons.CANCEL,
-                    "Cancel",
+                    LM.get("cancel"),
                     Theme.Status.ERROR,
                     lambda _: self.on_cancel(self.item),
                 )
@@ -231,7 +246,7 @@ class DownloadItemControl(ft.Container):
             self.action_row.controls.append(
                 create_action_btn(
                     ft.icons.REFRESH,
-                    "Retry",
+                    LM.get("retry"),
                     Theme.Primary.MAIN,
                     lambda _: self.on_retry(self.item),
                 )
@@ -241,8 +256,34 @@ class DownloadItemControl(ft.Container):
         self.action_row.controls.append(
             create_action_btn(
                 ft.icons.DELETE_OUTLINE,
-                "Remove",
+                LM.get("remove"),
                 Theme.TEXT_MUTED,
                 lambda _: self.on_remove(self.item),
             )
         )
+
+    def _get_status_label(self, status: str) -> str:
+        """Return a localized status label for display."""
+        if not status:
+            return LM.get("status_unknown")
+
+        if str(status).startswith("Scheduled"):
+            label = str(status)
+            if "(" in label and ")" in label:
+                time_part = label[label.find("(") + 1 : label.rfind(")")]
+                if time_part:
+                    return LM.get("status_scheduled_time", time_part)
+            return LM.get("status_scheduled")
+
+        status_map = {
+            "Queued": "status_queued",
+            "Allocating": "status_allocating",
+            "Downloading": "status_downloading",
+            "Processing": "status_processing",
+            "Completed": "status_completed",
+            "Error": "status_error",
+            "Cancelled": "status_cancelled",
+        }
+
+        key = status_map.get(status)
+        return LM.get(key) if key else str(status)

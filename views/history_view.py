@@ -54,7 +54,7 @@ class HistoryView(BaseView):
                         [
                             ft.Icon(ft.icons.HISTORY, size=64, color=Theme.TEXT_MUTED),
                             ft.Text(
-                                LM.get("no_history", "No history found"),
+                                LM.get("no_history"),
                                 color=Theme.Text.SECONDARY,
                             ),
                         ],
@@ -87,9 +87,22 @@ class HistoryView(BaseView):
             self.page.close(dlg)
 
         def confirm_clear(e):
-            HistoryManager.clear_history()
-            self.load()
-            self.page.close(dlg)
+            try:
+                HistoryManager.clear_history()
+                self.load()
+                if self.page:
+                    self.page.open(
+                        ft.SnackBar(content=ft.Text(LM.get("history_cleared")))
+                    )
+            except Exception as ex:  # pylint: disable=broad-exception-caught
+                logging.error("Failed to clear history: %s", ex)
+                if self.page:
+                    self.page.open(
+                        ft.SnackBar(content=ft.Text(LM.get("history_clear_failed")))
+                    )
+            finally:
+                if self.page:
+                    self.page.close(dlg)
 
         # Configure dialog
         dlg.title = ft.Text(LM.get("confirm_clear_history"))
@@ -108,3 +121,7 @@ class HistoryView(BaseView):
                 open_folder(path, self.page)
         except Exception as ex:  # pylint: disable=broad-exception-caught
             logging.error("Failed to open folder: %s", ex)
+            if self.page:
+                self.page.open(
+                    ft.SnackBar(content=ft.Text(LM.get("open_folder_failed")))
+                )

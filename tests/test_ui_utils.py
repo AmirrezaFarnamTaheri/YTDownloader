@@ -10,6 +10,7 @@ from unittest.mock import patch
 from ui_utils import (
     format_file_size,
     is_ffmpeg_available,
+    validate_download_path,
     validate_proxy,
     validate_rate_limit,
     validate_url,
@@ -34,6 +35,11 @@ class TestUIUtils(unittest.TestCase):
         self.assertTrue(validate_rate_limit("50K"))
         self.assertTrue(validate_rate_limit("10M"))
         self.assertFalse(validate_rate_limit("invalid"))
+
+    def test_validate_download_path(self):
+        self.assertTrue(validate_download_path(""))
+        self.assertTrue(validate_download_path(None))
+        self.assertFalse(validate_download_path(123))
 
     def test_format_file_size(self):
         self.assertEqual(format_file_size(None), "N/A")

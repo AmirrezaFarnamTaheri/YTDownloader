@@ -42,7 +42,7 @@ class YouTubePanel(BasePanel):
         self.subtitle_dd = ft.Dropdown(
             label=LM.get("subtitles"),
             expand=True,
-            options=[ft.dropdown.Option("None", "None")],
+            options=[ft.dropdown.Option("None", LM.get("none"))],
             value="None",
             on_change=lambda e: self.on_option_change(),
             **Theme.get_input_decoration(
@@ -111,7 +111,7 @@ class YouTubePanel(BasePanel):
                 if not fid:
                     continue
 
-                res = s.get("resolution", "Unknown")
+                res = s.get("resolution", LM.get("status_unknown"))
                 ext = s.get("ext", "")
 
                 size_val = s.get("filesize")
@@ -142,7 +142,7 @@ class YouTubePanel(BasePanel):
             self.audio_format_dd.visible = False
 
         # 3. Subtitles
-        sub_opts = [ft.dropdown.Option("None", "None")]
+        sub_opts = [ft.dropdown.Option("None", LM.get("none"))]
         if "subtitles" in self.info:
             for lang, _ in self.info["subtitles"].items():
                 sub_opts.append(ft.dropdown.Option(lang, lang))

@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional
 from app_state import state
 from downloader.core import download_video
 from downloader.types import DownloadOptions
+from ui_utils import get_default_download_path
 from utils import CancelToken
 
 logger = logging.getLogger(__name__)
@@ -51,18 +52,17 @@ _ACTIVE_COUNT_LOCK = threading.Lock()
 
 
 def _get_max_workers():
-    return state.config.get("max_concurrent_downloads", DEFAULT_MAX_WORKERS)
+    try:
+        return int(state.config.get("max_concurrent_downloads", DEFAULT_MAX_WORKERS))
+    except Exception:  # pylint: disable=broad-exception-caught
+        return DEFAULT_MAX_WORKERS
 
 
 # Throttle submission to executor to avoid flooding it with tasks.
 # We limit the number of submitted-but-not-finished tasks to MAX_WORKERS.
 # This prevents queuing up 100 tasks in the executor when only 3 can run at once,
 # which allows for more responsive cancellation and priority handling.
-# Note: Initialized with default but should technically be dynamic if config changes.
-# For now, it respects the startup config via lazy loaded value if we used a factory,
-# but Semaphore is hard to resize dynamically.
-# Improvement: Initialize it with a sufficiently high value or manage permits dynamically.
-_SUBMISSION_THROTTLE = threading.Semaphore(DEFAULT_MAX_WORKERS)
+_SUBMISSION_THROTTLE = threading.Semaphore(_get_max_workers())
 
 # Lock for protecting the queue processing loop
 _PROCESS_QUEUE_LOCK = threading.RLock()
@@ -94,6 +94,9 @@ def process_queue():
                         # No work, release slot immediately
                         _SUBMISSION_THROTTLE.release()
                         break
+                    logger.debug(
+                        "Claimed item for download: %s", item.get("id", "unknown")
+                    )
                 except Exception:
                     # Ensure release if claim fails
                     _SUBMISSION_THROTTLE.release()
@@ -146,6 +149,7 @@ def _wrapped_download_task(item):
         _SUBMISSION_THROTTLE.release()
         with _ACTIVE_COUNT_LOCK:
             _ACTIVE_COUNT -= 1
+            logger.debug("Active downloads decremented to %d", _ACTIVE_COUNT)
 
         # Notify queue manager that a slot opened up
         try:
@@ -155,6 +159,49 @@ def _wrapped_download_task(item):
                 state.queue_manager._has_work.notify_all()
         except Exception:  # pylint: disable=broad-exception-caught
             pass
+
+
+def configure_concurrency(max_workers: Optional[int] = None) -> bool:
+    """
+    Update executor/semaphore concurrency. Returns True if applied.
+    Will not modify when active downloads are running.
+    """
+    global _executor, _SUBMISSION_THROTTLE
+
+    if max_workers is None:
+        max_workers = _get_max_workers()
+
+    try:
+        max_workers = int(max_workers)
+    except (ValueError, TypeError):
+        logger.warning("Invalid max_workers value: %s", max_workers)
+        return False
+
+    if max_workers < 1:
+        logger.warning("max_workers must be >= 1")
+        return False
+
+    with _ACTIVE_COUNT_LOCK:
+        if _ACTIVE_COUNT > 0:
+            logger.warning(
+                "Skipping concurrency update while %d downloads are active",
+                _ACTIVE_COUNT,
+            )
+            return False
+
+    with _executor_lock:
+        if _executor is not None:
+            try:
+                _executor.shutdown(wait=False)
+            except Exception:  # pylint: disable=broad-exception-caught
+                logger.debug("Executor shutdown failed during reconfigure", exc_info=True)
+            _executor = ThreadPoolExecutor(
+                max_workers=max_workers, thread_name_prefix="DLWorker"
+            )
+
+    _SUBMISSION_THROTTLE = threading.Semaphore(max_workers)
+    logger.info("Updated concurrency limit to %d", max_workers)
+    return True
 
 
 def _update_progress_ui(item: Dict[str, Any]):
@@ -241,6 +288,20 @@ def download_task(item: Dict[str, Any]):
     url = item["url"]
     item_id = item.get("id")
 
+    if item_id:
+        current = state.queue_manager.get_item_by_id(item_id)
+        if not current:
+            logger.info("Skipping removed item before download start: %s", item_id)
+            return
+        if str(current.get("status")) == "Cancelled":
+            logger.info("Skipping cancelled item before download start: %s", item_id)
+            state.queue_manager.update_item_status(item_id, "Cancelled")
+            return
+
+    if str(item.get("status")) == "Cancelled":
+        logger.info("Skipping cancelled item before download start: %s", item_id)
+        return
+
     # Create and register CancelToken
     cancel_token = CancelToken()
     if item_id:
@@ -255,10 +316,36 @@ def download_task(item: Dict[str, Any]):
         # Prepare hooks and execute
         phook = _progress_hook_factory(item, cancel_token)
 
+        preferred_path = None
+        if hasattr(state, "config") and hasattr(state.config, "get"):
+            preferred_path = state.config.get("download_path")
+        output_path = item.get("output_path") or get_default_download_path(preferred_path)
+        if not item.get("output_path"):
+            item["output_path"] = output_path
+        logger.debug("Resolved output path for %s: %s", url, output_path)
+
+        proxy = item.get("proxy")
+        if not proxy and hasattr(state, "config") and hasattr(state.config, "get"):
+            cfg_proxy = state.config.get("proxy")
+            proxy = cfg_proxy if isinstance(cfg_proxy, str) and cfg_proxy else None
+        if proxy:
+            logger.debug("Proxy enabled for %s", url)
+
+        rate_limit = item.get("rate_limit")
+        if (
+            not rate_limit
+            and hasattr(state, "config")
+            and hasattr(state.config, "get")
+        ):
+            cfg_rate = state.config.get("rate_limit")
+            rate_limit = cfg_rate if isinstance(cfg_rate, str) and cfg_rate else None
+        if rate_limit:
+            logger.debug("Rate limit set for %s: %s", url, rate_limit)
+
         # Map dict item to DownloadOptions
         options = DownloadOptions(
             url=url,
-            output_path=item.get("output_path", "."),
+            output_path=output_path,
             video_format=item.get("video_format", "best"),
             progress_hook=phook,
             cancel_token=cancel_token,
@@ -271,6 +358,11 @@ def download_task(item: Dict[str, Any]):
             end_time=item.get("end_time"),
             force_generic=item.get("force_generic", False),
             cookies_from_browser=item.get("cookies_from_browser"),
+            subtitle_lang=item.get("subtitle_lang"),
+            subtitle_format=item.get("subtitle_format"),
+            split_chapters=item.get("chapters", False),
+            proxy=proxy,
+            rate_limit=rate_limit,
             download_item=item,  # Pass item for advanced callbacks/debugging
         )
 
@@ -286,6 +378,7 @@ def download_task(item: Dict[str, Any]):
                 "progress": 1.0,
             },
         )
+        logger.info("Download completed: %s", url)
         # Update the item dict in place because download_task caller might hold reference
         # But queue manager update_item_status does it for the queue.
         item["status"] = (

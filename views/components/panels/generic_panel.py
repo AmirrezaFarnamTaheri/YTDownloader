@@ -26,8 +26,8 @@ class GenericPanel(BasePanel):
         self.format_dd = ft.Dropdown(
             label=LM.get("video_format", "Format"),
             options=[
-                ft.dropdown.Option("best", "Best Quality"),
-                ft.dropdown.Option("audio", "Audio Only"),
+                ft.dropdown.Option("best", LM.get("best_quality")),
+                ft.dropdown.Option("audio", LM.get("audio_only")),
             ],
             value="best",
             on_change=lambda e: self.on_option_change(),

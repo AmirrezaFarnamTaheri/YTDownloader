@@ -11,6 +11,7 @@ import time
 import pyperclip
 
 from app_state import state
+from localization_manager import LocalizationManager as LM
 from ui_utils import validate_url
 
 # Lock for clipboard state access
@@ -77,7 +78,9 @@ def _clipboard_loop(page, download_view):
                                     download_view.url_input.value = content
                                     page.open(
                                         ft.SnackBar(
-                                            content=ft.Text(f"URL detected: {content}")
+                                            content=ft.Text(
+                                                LM.get("clipboard_url_detected", content)
+                                            )
                                         )
                                     )
                                     download_view.update()

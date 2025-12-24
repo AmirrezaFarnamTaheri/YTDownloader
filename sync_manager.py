@@ -92,31 +92,21 @@ class SyncManager:
                 logger.info("Starting sync UP...")
 
                 # 1. Export Config
-                if hasattr(self.config, "load_config"):
-                    config_data = self.config.load_config()
-                elif hasattr(self.config, "get_all"):
-                    config_data = self.config.get_all()
-                else:
-                    config_data = {}
-
-                config_file = self._write_temp_json(config_data)
+                config_data = self._get_config_snapshot()
+                config_file = self._write_temp_json(config_data, filename="config.json")
 
                 # 2. Export History (if available)
                 if self.history:
                     try:
-                        db_path = getattr(self.history, "DB_FILE", None)
-                        if not db_path:
-                            db_path = os.path.expanduser("~/.streamcatch/history.db")
-
-                        db_path_str = str(db_path)
+                        db_path_str = self._resolve_history_db_path()
                         if os.path.exists(db_path_str):
-                            self.cloud.upload_file(db_path_str, "history.db")
+                            self.cloud.upload_file(db_path_str)
                     except Exception as e:  # pylint: disable=broad-exception-caught
                         logger.warning("Failed to upload history DB: %s", e)
 
                 # 3. Upload Config
                 if config_file:
-                    self.cloud.upload_file(config_file, "config.json")
+                    self.cloud.upload_file(config_file)
                     os.remove(config_file)
 
                 logger.info("Sync UP completed successfully")
@@ -146,17 +136,23 @@ class SyncManager:
                     with open(local_config_path, "r", encoding="utf-8") as f:
                         new_config = json.load(f)
 
-                    # Update config
-                    if hasattr(self.config, "save_config"):
-                        self.config.save_config(new_config)
-                    elif hasattr(self.config, "set"):
-                        for k, v in new_config.items():
-                            self.config.set(k, v)
+                    self._apply_config_snapshot(new_config)
 
                     os.remove(local_config_path)
                     logger.info("Config synced from cloud")
                 else:
                     logger.warning("No remote config found")
+
+                # 2. Download History
+                if self.history:
+                    local_history_path = os.path.join(
+                        tempfile.gettempdir(), "history_downloaded.db"
+                    )
+                    if self.cloud.download_file("history.db", local_history_path):
+                        self._replace_history_db(local_history_path)
+                        logger.info("History synced from cloud")
+                    else:
+                        logger.warning("No remote history DB found")
 
             except Exception as e:
                 logger.error("Sync DOWN failed: %s", e)
@@ -164,9 +160,9 @@ class SyncManager:
         finally:
             self._lock.release()
 
-    def _write_temp_json(self, data: Dict) -> str:
-        fd, path = tempfile.mkstemp(suffix=".json")
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
+    def _write_temp_json(self, data: Dict, filename: str = "config.json") -> str:
+        path = os.path.join(tempfile.gettempdir(), filename)
+        with open(path, "w", encoding="utf-8") as f:
             # Handle non-serializable objects (like Mocks in tests)
             def default_serializer(obj):
                 return str(obj)
@@ -174,17 +170,73 @@ class SyncManager:
             json.dump(data, f, indent=2, default=default_serializer)
         return path
 
+    def _get_config_snapshot(self) -> Dict:
+        """Return a JSON-serializable snapshot of the config."""
+        if hasattr(self.config, "load_config"):
+            return self.config.load_config()
+        if hasattr(self.config, "get_all"):
+            return self.config.get_all()
+        if isinstance(self.config, dict):
+            return dict(self.config)
+        if hasattr(self.config, "items"):
+            return dict(self.config.items())
+        return {}
+
+    def _apply_config_snapshot(self, new_config: Dict) -> None:
+        """Apply a config snapshot to the active config container."""
+        if hasattr(self.config, "save_config"):
+            self.config.save_config(new_config)
+            return
+        if isinstance(self.config, dict):
+            self.config.clear()
+            self.config.update(new_config)
+            return
+        if hasattr(self.config, "set"):
+            for k, v in new_config.items():
+                self.config.set(k, v)
+
+    def _resolve_history_db_path(self) -> str:
+        """Return the resolved history database path."""
+        if self.history:
+            if hasattr(self.history, "_resolve_db_file"):
+                try:
+                    return str(self.history._resolve_db_file())
+                except Exception:  # pylint: disable=broad-exception-caught
+                    pass
+            db_path = getattr(self.history, "DB_FILE", None)
+            if db_path:
+                return str(db_path)
+        return os.path.expanduser("~/.streamcatch/history.db")
+
+    def _replace_history_db(self, source_path: str) -> None:
+        """Replace the local history DB with a downloaded file."""
+        target_db_path = self._resolve_history_db_path()
+        parent = os.path.dirname(target_db_path)
+        if parent and not os.path.exists(parent):
+            os.makedirs(parent, exist_ok=True)
+
+        try:
+            os.replace(source_path, target_db_path)
+        except OSError as e:
+            logger.warning("Failed to replace history DB: %s", e)
+            try:
+                shutil.copy2(source_path, target_db_path)
+            except Exception as copy_exc:  # pylint: disable=broad-exception-caught
+                logger.error("Failed to copy history DB: %s", copy_exc)
+        finally:
+            if os.path.exists(source_path):
+                try:
+                    os.remove(source_path)
+                except OSError:
+                    pass
+
     def export_data(self, export_path: str):
         """Exports all app data to a zip file."""
         try:
             logger.info("Exporting data to %s", export_path)
             with zipfile.ZipFile(export_path, "w", zipfile.ZIP_DEFLATED) as zf:
                 # Add Config
-                config_data = {}
-                if hasattr(self.config, "load_config"):
-                    config_data = self.config.load_config()
-                elif hasattr(self.config, "get_all"):
-                    config_data = self.config.get_all()
+                config_data = self._get_config_snapshot()
 
                 # Handle potential non-serializable objects (e.g. from mocks)
                 def default_serializer(obj):
@@ -196,12 +248,7 @@ class SyncManager:
                 zf.writestr("config.json", config_str)
 
                 # Add History DB if exists
-                db_path = None
-                if self.history:
-                    db_path = getattr(self.history, "DB_FILE", None)
-
-                if not db_path:
-                    db_path = "history.db"
+                db_path = self._resolve_history_db_path()
 
                 # Robust path handling
                 try:
@@ -225,14 +272,7 @@ class SyncManager:
         if "history.db" not in zf.namelist():
             return
 
-        target_db = None
-        if self.history:
-            target_db = getattr(self.history, "DB_FILE", None)
-
-        if not target_db:
-            target_db = os.path.expanduser("~/.streamcatch/history.db")
-
-        target_db_path = str(target_db)
+        target_db_path = self._resolve_history_db_path()
 
         # Security: Validate path BEFORE any file operations
         parent = os.path.dirname(target_db_path) if target_db_path else ""

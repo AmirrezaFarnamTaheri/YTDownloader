@@ -62,7 +62,8 @@ class DownloadOptions:
                         if ip.is_private or ip.is_loopback:
                             raise ValueError("Private IP proxies are not allowed")
                     except ValueError:
-                        pass
+                        if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname):
+                            raise ValueError("Invalid proxy host IP") from None
             except ValueError as e:
                 raise ValueError(str(e)) from e
             except Exception as e:

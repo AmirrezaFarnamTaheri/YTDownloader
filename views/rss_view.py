@@ -97,15 +97,7 @@ class RSSView(BaseView):
     def load_feeds_list(self):
         """Render the list of subscribed feeds."""
         self.feed_list.controls.clear()
-        feeds = self.config.get("rss_feeds", [])
-
-        # Normalize feeds
-        normalized_feeds = []
-        for f in feeds:
-            if isinstance(f, str):
-                normalized_feeds.append({"url": f, "name": f})
-            else:
-                normalized_feeds.append(f)
+        normalized_feeds = self.rss_manager.get_feeds()
 
         if not normalized_feeds:
             self.feed_list.controls.append(
@@ -168,43 +160,22 @@ class RSSView(BaseView):
         if not validate_url(new_url):
             if self.page:
                 self.page.open(ft.SnackBar(content=ft.Text(LM.get("invalid_url"))))
-            self.rss_input.error_text = "Invalid URL format"
+            self.rss_input.error_text = LM.get("invalid_url")
             self.rss_input.update()
             return
 
-        feeds = self.config.get("rss_feeds", [])
-
-        exists = False
-        for f in feeds:
-            f_url = f if isinstance(f, str) else f.get("url")
-            if f_url == new_url:
-                exists = True
-                break
-
-        if not exists:
-            feeds.append({"url": new_url, "name": new_url})
-            self.config["rss_feeds"] = feeds
-            ConfigManager.save_config(self.config)
-            self.load_feeds_list()
-            self.rss_input.value = ""
-            self.rss_input.error_text = None
-            self.update()
+        self.rss_manager.add_feed(new_url)
+        self.load_feeds_list()
+        self.rss_input.value = ""
+        self.rss_input.error_text = None
+        self.update()
 
     def remove_rss(self, feed):
         """Remove an RSS feed."""
-        feeds = self.config.get("rss_feeds", [])
         target_url = feed.get("url") if isinstance(feed, dict) else feed
-        new_feeds = [
-            f
-            for f in feeds
-            if (f if isinstance(f, str) else f.get("url")) != target_url
-        ]
-
-        if len(new_feeds) != len(feeds):
-            self.config["rss_feeds"] = new_feeds
-            ConfigManager.save_config(self.config)
-            self.load_feeds_list()
-            self.update()
+        self.rss_manager.remove_feed(target_url)
+        self.load_feeds_list()
+        self.update()
 
     # pylint: disable=unused-argument
 
@@ -218,54 +189,60 @@ class RSSView(BaseView):
     def _fetch_feeds_task(self):
         """Task to fetch feeds."""
         items = self.rss_manager.get_all_items()
-        self.items_list.controls.clear()
-        if not items:
-            self.items_list.controls.append(
-                ft.Text(LM.get("no_items_found"), color=Theme.TEXT_MUTED)
-            )
-        else:
-            for item in items:
-                # News Item Card
-                card_style = Theme.get_card_decoration()
+
+        def apply_updates():
+            self.items_list.controls.clear()
+            if not items:
                 self.items_list.controls.append(
-                    ft.Container(
-                        content=ft.Column(
-                            [
-                                ft.Text(
-                                    item["title"],
-                                    weight=ft.FontWeight.BOLD,
-                                    color=Theme.Text.PRIMARY,
-                                ),
-                                ft.Text(
-                                    f"{item['feed_name']} - {item['published']}",
-                                    size=12,
-                                    color=Theme.Text.SECONDARY,
-                                ),
-                                ft.Row(
-                                    [
-                                        ft.ElevatedButton(
-                                            "Open",
-                                            icon=ft.icons.OPEN_IN_NEW,
-                                            style=ft.ButtonStyle(
-                                                bgcolor=Theme.Surface.BG,
-                                                color=Theme.Primary.MAIN,
-                                            ),
-                                            on_click=lambda e, url=item[
-                                                "link"
-                                            ]: self.page.launch_url(url),
-                                        ),
-                                    ],
-                                    alignment=ft.MainAxisAlignment.END,
-                                ),
-                            ]
-                        ),
-                        **card_style,
-                    )
+                    ft.Text(LM.get("no_items_found"), color=Theme.TEXT_MUTED)
                 )
-        self.update()
-        # Also refresh list names in case they updated
-        # pylint: disable=unused-argument
-        self.load_feeds_list()
+            else:
+                for item in items:
+                    # News Item Card
+                    card_style = Theme.get_card_decoration()
+                    self.items_list.controls.append(
+                        ft.Container(
+                            content=ft.Column(
+                                [
+                                    ft.Text(
+                                        item["title"],
+                                        weight=ft.FontWeight.BOLD,
+                                        color=Theme.Text.PRIMARY,
+                                    ),
+                                    ft.Text(
+                                        f"{item['feed_name']} - {item['published']}",
+                                        size=12,
+                                        color=Theme.Text.SECONDARY,
+                                    ),
+                                    ft.Row(
+                                        [
+                                            ft.ElevatedButton(
+                                                LM.get("open"),
+                                                icon=ft.icons.OPEN_IN_NEW,
+                                                style=ft.ButtonStyle(
+                                                    bgcolor=Theme.Surface.BG,
+                                                    color=Theme.Primary.MAIN,
+                                                ),
+                                                on_click=lambda e, url=item[
+                                                    "link"
+                                                ]: self.page.launch_url(url),
+                                            ),
+                                        ],
+                                        alignment=ft.MainAxisAlignment.END,
+                                    ),
+                                ]
+                            ),
+                            **card_style,
+                        )
+                    )
+            self.update()
+            # Also refresh list names in case they updated
+            self.load_feeds_list()
+
+        if self.page and hasattr(self.page, "run_task"):
+            self.page.run_task(apply_updates)
+        else:
+            apply_updates()
 
     def on_tab_change(self, e):
         """Handle tab change."""

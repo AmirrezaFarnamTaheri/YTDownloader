@@ -1,10 +1,10 @@
-# StreamCatch 🎥
+# StreamCatch
 
 **StreamCatch** (formerly YTDownloader) is a modern, robust, and feature-rich media downloader built with [Flet](https://flet.dev) (Flutter for Python) and [yt-dlp](https://github.com/yt-dlp/yt-dlp). It supports downloading videos and audio from thousands of websites, including YouTube, Telegram, Twitter/X, Instagram, and generic file hosts.
 
 ![StreamCatch Banner](assets/logo.svg)
 
-## 📚 Documentation
+## Documentation
 
 Detailed documentation is available in our **[Wiki](wiki/Home.md)**:
 
@@ -13,7 +13,7 @@ Detailed documentation is available in our **[Wiki](wiki/Home.md)**:
 *   **[Troubleshooting](wiki/Troubleshooting.md)**: Solutions to common issues.
 *   **[Roadmap](wiki/Roadmap.md)**: Upcoming features and plans.
 
-## ✨ Features
+## Features
 
 *   **Modern UI/UX**: Built with Material Design 3, responsive layout, and a soulful dark theme.
 *   **Robust Downloading**: Powered by `yt-dlp` for maximum compatibility.
@@ -33,16 +33,22 @@ Detailed documentation is available in our **[Wiki](wiki/Home.md)**:
 *   **Clipboard Monitor**: Automatically detect copied links.
 *   **SponsorBlock**: Skip non-content segments automatically.
 
-## 🚀 Installation & Building
+## Installation & Building
 
 Please see the [Installation Guide](wiki/Installation.md) for detailed instructions.
+
+Native desktop builds are produced with **Nuitka** (compiled binaries) via:
+
+```bash
+python scripts/build_installer.py
+```
 
 ### Quick Start (Source)
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/yourusername/streamcatch.git
-    cd streamcatch
+    git clone https://github.com/AmirrezaFarnamTaheri/YTDownloader.git
+    cd YTDownloader
     ```
 
 2.  **Install dependencies:**
@@ -55,7 +61,7 @@ Please see the [Installation Guide](wiki/Installation.md) for detailed instructi
     python main.py
     ```
 
-## 🧪 Testing
+## Testing
 
 Run the test suite to ensure robustness:
 
@@ -64,10 +70,10 @@ Run the test suite to ensure robustness:
 pytest --cov=.
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 📄 License
+## License
 
 Distributed under the GNU Affero General Public License v3.0 (AGPLv3). See `LICENSE` for more information.

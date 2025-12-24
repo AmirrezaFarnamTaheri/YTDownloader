@@ -98,7 +98,7 @@ jobs:
           --org "com.jules.streamcatch" \
           --product "StreamCatch" \
           --description "Ultimate Video Downloader" \
-          --include-packages yt_dlp,requests,urllib3,certifi,idna,charset_normalizer \
+          --include-packages yt_dlp,requests,urllib3,certifi,idna,charset_normalizer,defusedxml,dateutil,bs4,PIL,pyperclip \
           main.py
 
     - name: Upload APK
@@ -150,7 +150,7 @@ jobs:
           --project-name "StreamCatch" \
           --org "com.jules.streamcatch" \
           --product "StreamCatch" \
-          --include-packages yt_dlp,requests,urllib3,certifi,idna,charset_normalizer \
+          --include-packages yt_dlp,requests,urllib3,certifi,idna,charset_normalizer,defusedxml,dateutil,bs4,PIL,pyperclip \
           main.py
 
     - name: Upload iOS Archive

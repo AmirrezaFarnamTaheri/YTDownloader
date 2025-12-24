@@ -8,6 +8,8 @@ from typing import Any, Dict, Optional
 
 import requests
 
+from ui_utils import validate_url
+
 
 class GenericExtractor:
     """
@@ -22,6 +24,8 @@ class GenericExtractor:
         Attempt to get metadata via HEAD request.
         """
         try:
+            if not validate_url(url):
+                return None
             # Simple HEAD to get content type/length
             response = requests.head(url, timeout=5, allow_redirects=True)
             content_type = response.headers.get("Content-Type", "")

@@ -150,6 +150,12 @@ class QueueManager:
         with self._lock:
             for item in self._queue:
                 if item.get("id") == item_id:
+                    logger.debug(
+                        "Updating status for item %s: %s -> %s",
+                        item_id,
+                        item.get("status"),
+                        status,
+                    )
                     item["status"] = status
                     if updates:
                         item.update(updates)
@@ -190,6 +196,7 @@ class QueueManager:
                     break
 
             if target:
+                logger.info("Removing item from queue: %s", item_id)
                 # Cancel if running
                 token = self._cancel_tokens.get(item_id)
                 if token:
@@ -315,3 +322,44 @@ class QueueManager:
                     break
 
         self._notify_listeners_safe()
+
+    def retry_item(self, item_id: Optional[str]) -> bool:
+        """Retry a cancelled or failed item by resetting its status and progress."""
+        if not item_id:
+            return False
+
+        updated = False
+        with self._lock:
+            for item in self._queue:
+                if item.get("id") != item_id:
+                    continue
+
+                if item.get("status") not in ("Error", "Cancelled"):
+                    logger.debug(
+                        "Retry ignored for item %s with status %s",
+                        item_id,
+                        item.get("status"),
+                    )
+                    return False
+
+                item.update(
+                    {
+                        "status": "Queued",
+                        "scheduled_time": None,
+                        "progress": 0,
+                        "speed": "",
+                        "eta": "",
+                        "size": "",
+                        "error": None,
+                    }
+                )
+                updated = True
+                break
+
+            if updated:
+                logger.info("Retrying item ID: %s", item_id)
+                self._has_work.notify_all()
+
+        if updated:
+            self._notify_listeners_safe()
+        return updated

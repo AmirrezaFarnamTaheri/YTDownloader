@@ -34,6 +34,17 @@ class TestQueueManagerBasic(unittest.TestCase):
         self.assertEqual(items[0], item2)
         self.assertEqual(items[1], item1)
 
+    def test_retry_item(self):
+        item = {"id": "retry-1", "url": "http://test", "status": "Error"}
+        self.qm.add_item(item)
+
+        updated = self.qm.retry_item("retry-1")
+        self.assertTrue(updated)
+
+        updated_item = self.qm.get_item_by_id("retry-1")
+        self.assertEqual(updated_item["status"], "Queued")
+        self.assertEqual(updated_item.get("progress"), 0)
+
     def test_threading_lock(self):
         # Basic race condition check for standard add (not claim)
         threads = []

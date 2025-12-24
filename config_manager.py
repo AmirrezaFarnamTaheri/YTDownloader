@@ -32,6 +32,15 @@ class ConfigManager:
         "use_aria2c": False,
         "gpu_accel": "None",
         "rss_feeds": [],
+        "proxy": "",
+        "rate_limit": "",
+        "max_concurrent_downloads": 3,
+        "download_path": "",
+        "auto_sync_enabled": False,
+        "auto_sync_interval": 3600.0,
+        "high_contrast": False,
+        "compact_mode": False,
+        "metadata_cache_size": 50,
     }
 
     @staticmethod
@@ -75,6 +84,62 @@ class ConfigManager:
             val = config["metadata_cache_size"]
             if not isinstance(val, int) or val < 1:
                 raise ValueError("metadata_cache_size must be a positive integer")
+
+        if "theme_mode" in config:
+            val = config["theme_mode"]
+            if not isinstance(val, str):
+                raise ValueError("theme_mode must be a string")
+            if val.lower() not in ["system", "light", "dark"]:
+                raise ValueError("theme_mode must be one of: System, Light, Dark")
+
+        if "language" in config and not isinstance(config["language"], str):
+            raise ValueError("language must be a string")
+
+        if "proxy" in config and config["proxy"] is not None:
+            if not isinstance(config["proxy"], str):
+                raise ValueError("proxy must be a string")
+
+        if "rate_limit" in config and config["rate_limit"] is not None:
+            if not isinstance(config["rate_limit"], str):
+                raise ValueError("rate_limit must be a string")
+
+        if "output_template" in config:
+            val = config["output_template"]
+            if not isinstance(val, str):
+                raise ValueError("output_template must be a string")
+            # Basic path traversal guard
+            if ".." in val.split(os.path.sep) or ".." in val.split("/"):
+                raise ValueError("output_template must not contain '..'")
+            try:
+                if Path(val).is_absolute():
+                    raise ValueError("output_template must be a relative path")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                raise ValueError(f"Invalid output_template: {e}") from e
+
+        if "max_concurrent_downloads" in config:
+            val = config["max_concurrent_downloads"]
+            if not isinstance(val, int) or val < 1:
+                raise ValueError("max_concurrent_downloads must be a positive integer")
+
+        if "download_path" in config and config["download_path"] is not None:
+            if not isinstance(config["download_path"], str):
+                raise ValueError("download_path must be a string")
+
+        if "auto_sync_enabled" in config and not isinstance(
+            config["auto_sync_enabled"], bool
+        ):
+            raise ValueError("auto_sync_enabled must be a boolean")
+
+        if "auto_sync_interval" in config:
+            val = config["auto_sync_interval"]
+            if not isinstance(val, (int, float)) or val <= 0:
+                raise ValueError("auto_sync_interval must be a positive number")
+
+        if "high_contrast" in config and not isinstance(config["high_contrast"], bool):
+            raise ValueError("high_contrast must be a boolean")
+
+        if "compact_mode" in config and not isinstance(config["compact_mode"], bool):
+            raise ValueError("compact_mode must be a boolean")
 
     @staticmethod
     def load_config() -> Dict[str, Any]:

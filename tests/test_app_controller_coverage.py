@@ -10,11 +10,13 @@ from unittest.mock import ANY, MagicMock, patch
 import flet as ft
 
 from app_controller import AppController
+from localization_manager import LocalizationManager as LM
 from ui_manager import UIManager
 
 
 class TestAppControllerCoverage(unittest.TestCase):
     def setUp(self):
+        LM.load_language("en")
         self.mock_page = MagicMock(spec=ft.Page)
         self.mock_page.open = MagicMock()
         self.mock_page.overlay = []
@@ -131,7 +133,7 @@ class TestAppControllerCoverage(unittest.TestCase):
         args = self.mock_page.open.call_args[0][0]
         # ft.SnackBar is a MagicMock class, so instance check might fail if not careful
         # self.assertIsInstance(args, ft.SnackBar)
-        self.assertEqual(args.content.value, "Please enter a URL")
+        self.assertEqual(args.content.value, LM.get("url_required"))
 
     @patch("app_controller.validate_url")
     def test_on_fetch_info_invalid(self, mock_validate):
@@ -139,7 +141,7 @@ class TestAppControllerCoverage(unittest.TestCase):
         self.controller.on_fetch_info("invalid")
         self.mock_page.open.assert_called()
         snack_bar = self.mock_page.open.call_args[0][0]
-        self.assertIn("valid http/https URL", snack_bar.content.value)
+        self.assertEqual(snack_bar.content.value, LM.get("error_invalid_url"))
 
     @patch("app_controller.validate_url")
     @patch("app_controller.get_default_download_path")
@@ -165,7 +167,7 @@ class TestAppControllerCoverage(unittest.TestCase):
             # Depending on how MagicMock propagates, content.value might be another mock
             # We access the arguments directly
             snack_bar = self.mock_page.open.call_args[0][0]
-            self.assertIn("Please wait", snack_bar.content.value)
+            self.assertEqual(snack_bar.content.value, LM.get("rate_limited"))
 
     def test_on_cancel_item(self):
         item = {"id": "123", "title": "Test"}
@@ -220,7 +222,7 @@ class TestAppControllerCoverage(unittest.TestCase):
         self.controller.on_play_item({})
         self.mock_page.open.assert_called()
         snack_bar = self.mock_page.open.call_args[0][0]
-        self.assertIn("path unknown", snack_bar.content.value)
+        self.assertEqual(snack_bar.content.value, LM.get("file_path_unknown"))
 
     @patch("app_controller.open_folder")
     def test_on_open_folder(self, mock_open):

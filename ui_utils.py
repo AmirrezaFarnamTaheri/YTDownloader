@@ -91,7 +91,10 @@ def validate_url(url: str) -> bool:
                 if ip.is_private or ip.is_loopback:
                     return False
             except ValueError:
-                pass  # Not an IP, hostname is fine
+                # Reject invalid numeric IPs like 999.999.999.999
+                if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname):
+                    return False
+                # Not an IP, hostname is fine
     except Exception:  # pylint: disable=broad-exception-caught
         return False
 
@@ -137,6 +140,9 @@ def validate_proxy(proxy: str) -> bool:
             if ip.is_private or ip.is_loopback:
                 return False
         except ValueError:
+            # Reject invalid numeric IPs like 999.999.999.999
+            if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname):
+                return False
             # Not an IP address, domain name is fine (unless it resolves to private,
             # but that's handled at connection time usually,
             # though here we just check format and obvious bad actors)
@@ -208,6 +214,29 @@ def validate_output_template(template: str) -> bool:
     return True
 
 
+def validate_download_path(path_str: Optional[str]) -> bool:
+    """
+    Validate download path. Empty/None is allowed (defaults apply).
+    Attempts to create the directory if it doesn't exist.
+    """
+    if not path_str:
+        return True
+
+    if not isinstance(path_str, str):
+        return False
+
+    try:
+        raw_path = Path(path_str).expanduser()
+        if not raw_path.is_absolute():
+            raw_path = (Path.cwd() / raw_path).resolve()
+
+        raw_path.mkdir(parents=True, exist_ok=True)
+        return raw_path.exists() and raw_path.is_dir() and os.access(raw_path, os.W_OK)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.warning("Invalid download path '%s': %s", path_str, e)
+        return False
+
+
 def is_safe_path(filepath: str) -> bool:
     """
     Check if the filepath is within the user's home directory.
@@ -240,8 +269,32 @@ def is_ffmpeg_available() -> bool:
     return result[0]
 
 
-def get_default_download_path() -> str:
+def _resolve_preferred_download_path(preferred_path: Optional[str]) -> Optional[str]:
+    """Resolve a preferred download path if provided and writable."""
+    if not preferred_path or not isinstance(preferred_path, str):
+        return None
+
+    try:
+        raw_path = Path(preferred_path).expanduser()
+        if not raw_path.is_absolute():
+            raw_path = (Path.cwd() / raw_path).resolve()
+
+        # Create if missing
+        raw_path.mkdir(parents=True, exist_ok=True)
+
+        if raw_path.exists() and raw_path.is_dir() and os.access(raw_path, os.W_OK):
+            return str(raw_path)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.warning("Preferred download path invalid: %s", e)
+    return None
+
+
+def get_default_download_path(preferred_path: Optional[str] = None) -> str:
     """Get a safe default download path for the current platform."""
+    resolved = _resolve_preferred_download_path(preferred_path)
+    if resolved:
+        return resolved
+
     try:
         # Check for Android/iOS specific
         home = Path.home()

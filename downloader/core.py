@@ -109,10 +109,6 @@ def _configure_format_selection(
     ydl_opts: Dict[str, Any], options: DownloadOptions, ffmpeg_available: bool
 ) -> None:
     """Configure format selection options."""
-    if not ffmpeg_available and options.video_format != "audio":
-        ydl_opts["format"] = "best"
-        return
-
     if options.video_format == "audio":
         ydl_opts["format"] = "bestaudio/best"
         if ffmpeg_available:
@@ -130,6 +126,11 @@ def _configure_format_selection(
                 pp_args["preferredquality"] = "192"
 
             ydl_opts.setdefault("postprocessors", []).append(pp_args)
+        return
+
+    if not ffmpeg_available and options.video_format != "audio":
+        ydl_opts["format"] = "best"
+        return
 
     elif options.video_format in ["4k", "1440p", "1080p", "720p", "480p"]:
         height_map = {
@@ -147,6 +148,17 @@ def _configure_format_selection(
             f"bestvideo[height>={h}]+bestaudio/best/"
             f"best"
         )
+    else:
+        # Explicit format id selection or best + custom audio
+        if options.video_format and options.video_format != "best":
+            if options.audio_format:
+                ydl_opts["format"] = (
+                    f"{options.video_format}+{options.audio_format}/best"
+                )
+            else:
+                ydl_opts["format"] = options.video_format
+        elif options.audio_format:
+            ydl_opts["format"] = f"bestvideo+{options.audio_format}/best"
 
 
 def _configure_advanced_options(
@@ -162,17 +174,21 @@ def _configure_advanced_options(
     # Subtitles
     if options.subtitle_lang:
         ydl_opts["subtitles"] = options.subtitle_lang
+        # yt-dlp expects a list for subtitleslangs
+        ydl_opts["subtitleslangs"] = [options.subtitle_lang]
         ydl_opts["writesubtitles"] = True
         if options.subtitle_format:
             ydl_opts["subtitlesformat"] = options.subtitle_format
 
     # Download Sections (Time Range)
     if (options.start_time or options.end_time) and ffmpeg_available:
-        start_sec = options.get_seconds(options.start_time)
-        end_sec = options.get_seconds(options.end_time)
+        start_sec = options.get_seconds(options.start_time) if options.start_time else 0
+        end_sec = (
+            options.get_seconds(options.end_time) if options.end_time else None
+        )
         logger.info("Downloading range: %s - %s", options.start_time, options.end_time)
         ydl_opts["download_ranges"] = yt_dlp.utils.download_range_func(
-            [], [(start_sec, end_sec)]  # type: ignore
+            [], [(start_sec, end_sec)]  # type: ignore[arg-type]
         )
 
     # Aria2c
@@ -263,8 +279,9 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
         )
 
     # 4. Configure yt-dlp options
+    outtmpl_path = str(Path(output_path) / options.output_template)
     ydl_opts: Dict[str, Any] = {
-        "outtmpl": f"{output_path}/{options.output_template}",
+        "outtmpl": outtmpl_path,
         "quiet": True,
         "no_warnings": True,
         # SECURITY: Verify SSL certificates by default - only disable if explicitly requested
@@ -279,6 +296,8 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
         "merge_output_format": "mp4",
         "writethumbnail": True,
     }
+
+    logger.debug("yt-dlp outtmpl resolved to: %s", outtmpl_path)
 
     # 4a. Check FFmpeg availability
     # Check directly instead of relying on global state

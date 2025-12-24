@@ -16,7 +16,7 @@ import flet as ft
 from app_state import AppState
 from localization_manager import LocalizationManager as LM
 from theme import Theme
-from ui_utils import open_folder
+from ui_utils import get_default_download_path, open_folder
 from views.base_view import BaseView
 from views.components.download_preview import DownloadPreviewCard
 from views.components.panels.base_panel import BasePanel
@@ -68,7 +68,7 @@ class DownloadView(BaseView):
             on_submit=lambda e: self._on_fetch_click(e),
             suffix=ft.IconButton(
                 icon=ft.icons.CONTENT_PASTE,
-                tooltip=LM.get("paste_from_clipboard") or "Paste from clipboard",
+                tooltip=LM.get("paste_from_clipboard"),
                 on_click=self._on_paste_click,
             ),
             **Theme.get_input_decoration(
@@ -97,27 +97,27 @@ class DownloadView(BaseView):
             width=140,
             disabled=True,
             text_size=12,
-            **Theme.get_input_decoration(hint_text="00:00:00")
+            **Theme.get_input_decoration(hint_text=LM.get("time_placeholder"))
         )
         self.time_end = ft.TextField(
             label=LM.get("time_end"),
             width=140,
             disabled=True,
             text_size=12,
-            **Theme.get_input_decoration(hint_text="00:00:00")
+            **Theme.get_input_decoration(hint_text=LM.get("time_placeholder"))
         )
 
         self.cookies_dd = ft.Dropdown(
             label=LM.get("browser_cookies"),
             width=200,
             options=[
-                ft.dropdown.Option("None", "None"),
-                ft.dropdown.Option("chrome", "Chrome"),
-                ft.dropdown.Option("firefox", "Firefox"),
-                ft.dropdown.Option("edge", "Edge"),
+                ft.dropdown.Option("None", LM.get("none")),
+                ft.dropdown.Option("chrome", LM.get("browser_chrome")),
+                ft.dropdown.Option("firefox", LM.get("browser_firefox")),
+                ft.dropdown.Option("edge", LM.get("browser_edge")),
             ],
             value="None",
-            **Theme.get_input_decoration(hint_text="Select Cookies")
+            **Theme.get_input_decoration(hint_text=LM.get("select_cookies"))
         )
 
         self.force_generic_cb = ft.Checkbox(label=LM.get("force_generic"), value=False)
@@ -398,7 +398,11 @@ class DownloadView(BaseView):
         from pathlib import Path
 
         try:
-            path = Path.home() / "Downloads"
-            open_folder(str(path), self.page)
+            preferred = self.state.config.get("download_path")
+            path = Path(get_default_download_path(preferred))
+            if not open_folder(str(path), self.page) and self.page:
+                self.page.open(
+                    ft.SnackBar(content=ft.Text(LM.get("open_folder_failed")))
+                )
         except Exception as e:
             logger.error("Failed to open folder: %s", e)

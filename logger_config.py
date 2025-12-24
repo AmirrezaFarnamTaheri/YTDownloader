@@ -21,7 +21,7 @@ def setup_logging():
         return
 
     log_formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "%(asctime)s - %(levelname)s - %(name)s - %(threadName)s - %(message)s"
     )
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)

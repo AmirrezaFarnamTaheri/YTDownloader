@@ -28,7 +28,7 @@
 **Solution**:
 1.  Resize the window; this forces a redraw.
 2.  If persistent, clear the configuration file:
-    -   **Windows**: Delete `%APPDATA%\StreamCatch\config.json`
+    -   **Windows**: Delete `%USERPROFILE%\\.streamcatch\\config.json`
     -   **Linux**: Delete `~/.streamcatch/config.json`
 
 ## Reporting Bugs
@@ -36,7 +36,7 @@
 If you encounter a bug not listed here:
 1.  Open the application.
 2.  Reproduce the error.
-3.  Check the crash log: `~/.streamcatch/crash.log` (Linux/Mac) or `%APPDATA%\StreamCatch\crash.log` (Windows).
+3.  Check the crash log: `~/.streamcatch/crash.log` (Linux/Mac) or `%USERPROFILE%\\.streamcatch\\crash.log` (Windows).
 4.  Open an issue on GitHub with:
     -   Steps to reproduce.
     -   The crash log content.

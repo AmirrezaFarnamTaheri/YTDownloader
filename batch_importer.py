@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Tuple
 
-from ui_utils import get_default_download_path, is_safe_path
+from ui_utils import get_default_download_path, is_safe_path, validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +46,28 @@ class BatchImporter:
                 urls = urls[:max_batch]
                 truncated = True
 
-            dl_path = get_default_download_path()
+            preferred_path = None
+            output_template = "%(title)s.%(ext)s"
+            proxy = None
+            rate_limit = None
+
+            if hasattr(self.config, "get"):
+                preferred_path = self.config.get("download_path") or None
+                output_template = self.config.get(
+                    "output_template", "%(title)s.%(ext)s"
+                )
+                proxy = self.config.get("proxy") or None
+                rate_limit = self.config.get("rate_limit") or None
+
+            dl_path = get_default_download_path(preferred_path)
             count = 0
+            invalid = 0
             for url in urls:
                 if not url:
+                    continue
+                if not validate_url(url):
+                    invalid += 1
+                    logger.warning("Skipping invalid URL in batch import: %s", url)
                     continue
                 item = {
                     "url": url,
@@ -62,14 +80,20 @@ class BatchImporter:
                     "sponsorblock": False,
                     "use_aria2c": self.config.get("use_aria2c", False),
                     "gpu_accel": self.config.get("gpu_accel", "None"),
-                    "output_template": "%(title)s.%(ext)s",
+                    "output_template": output_template,
                     "start_time": None,
                     "end_time": None,
                     "force_generic": False,
                     "cookies_from_browser": None,
+                    "proxy": proxy,
+                    "rate_limit": rate_limit,
                 }
                 self.queue_manager.add_item(item)
                 count += 1
+
+            if invalid:
+                logger.info("Batch import skipped %d invalid URLs", invalid)
+            logger.info("Batch import completed: %d items (truncated=%s)", count, truncated)
             return count, truncated
 
         except Exception as ex:

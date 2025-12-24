@@ -24,7 +24,7 @@ class InstagramPanel(BasePanel):
                 [
                     ft.Icon(ft.icons.WARNING_AMBER, color=Theme.Status.WARNING),
                     ft.Text(
-                        "Story downloads require browser cookies authentication.",
+                        LM.get("instagram_story_requires_cookies"),
                         color=Theme.Status.WARNING,
                         size=12,
                         expand=True,

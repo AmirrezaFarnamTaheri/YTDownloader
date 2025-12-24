@@ -30,8 +30,8 @@ StreamCatch is designed for **Robustness**, **Modularity**, and **Speed**.
 ### Installation
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/your-repo/streamcatch.git
-    cd streamcatch
+    git clone https://github.com/AmirrezaFarnamTaheri/YTDownloader.git
+    cd YTDownloader
     ```
 
 2.  **Create Virtual Environment**:

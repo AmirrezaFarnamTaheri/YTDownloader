@@ -30,7 +30,7 @@ class DashboardView(BaseView):
         on_batch_import: Callable,
         queue_manager,
     ):
-        super().__init__("Dashboard", ft.icons.DASHBOARD)
+        super().__init__(LM.get("dashboard"), ft.icons.DASHBOARD)
         self.on_navigate = on_navigate
         self.on_paste_url = on_paste_url
         self.on_batch_import = on_batch_import
@@ -41,7 +41,9 @@ class DashboardView(BaseView):
         self.storage_progress = ft.ProgressBar(
             value=0, color=Theme.Primary.MAIN, bgcolor=Theme.Surface.BG
         )
-        self.storage_text = ft.Text("Calculating...", size=12, color=Theme.TEXT_MUTED)
+        self.storage_text = ft.Text(
+            LM.get("storage_calculating"), size=12, color=Theme.TEXT_MUTED
+        )
 
         self.recent_history_list = ft.Column(spacing=10)
 
@@ -174,11 +176,11 @@ class DashboardView(BaseView):
             else:
                 self.storage_progress.color = Theme.Status.SUCCESS
 
-            self.storage_text.value = (
-                f"{used/gb:.1f} GB used of {total/gb:.1f} GB ({free/gb:.1f} GB free)"
+            self.storage_text.value = LM.get(
+                "storage_usage", used / gb, total / gb, free / gb
             )
         except Exception:
-            self.storage_text.value = "Storage info unavailable"
+            self.storage_text.value = LM.get("storage_info_unavailable")
 
     def _refresh_history(self):
         """Updates recent history list."""
@@ -187,7 +189,11 @@ class DashboardView(BaseView):
 
         if not items:
             self.recent_history_list.controls.append(
-                ft.Text("No recent downloads", italic=True, color=Theme.TEXT_MUTED)
+                ft.Text(
+                    LM.get("no_recent_downloads"),
+                    italic=True,
+                    color=Theme.TEXT_MUTED,
+                )
             )
         else:
             for item in items:

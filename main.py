@@ -17,6 +17,7 @@ import flet as ft
 
 from app_controller import AppController
 from app_state import state
+from localization_manager import LocalizationManager as LM
 from logger_config import setup_logging
 from theme import Theme
 from ui_manager import UIManager
@@ -39,13 +40,19 @@ def main(pg: ft.Page):
 
     logger.info("Initializing main UI...")
 
-    PAGE.title = "StreamCatch - Ultimate Downloader"
+    # Load localization before creating any UI controls
+    LM.load_language(state.config.get("language", "en"))
+
+    PAGE.title = LM.get("app_title", "StreamCatch - Ultimate Downloader")
 
     # Load Theme Mode from Config
-    theme_mode_str = state.config.get("theme_mode", "dark").lower()
-    PAGE.theme_mode = (
-        ft.ThemeMode.LIGHT if theme_mode_str == "light" else ft.ThemeMode.DARK
-    )
+    theme_mode_str = str(state.config.get("theme_mode", "dark")).lower()
+    if theme_mode_str == "light":
+        PAGE.theme_mode = ft.ThemeMode.LIGHT
+    elif theme_mode_str == "system":
+        PAGE.theme_mode = ft.ThemeMode.SYSTEM
+    else:
+        PAGE.theme_mode = ft.ThemeMode.DARK
 
     PAGE.padding = 0
     PAGE.window_min_width = 1100

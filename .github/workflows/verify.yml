@@ -47,7 +47,7 @@ jobs:
 
     - name: Run pylint
       run: |
-        pylint --exit-zero --output-format=colorized *.py
+        pylint --exit-zero --output-format=colorized $(git ls-files '*.py')
 
   # ===========================================================================
   # Unit Tests

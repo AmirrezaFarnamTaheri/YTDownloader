@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict
 
 import flet as ft
 
+from localization_manager import LocalizationManager as LM
 from theme import Theme
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ class HistoryItemControl(ft.Container):
         self.padding = 15
 
         # UI Components
-        title = item.get("title", item.get("url", "Unknown"))
+        title = item.get("title", item.get("url", LM.get("unknown_title")))
         self.title_text = ft.Text(
             title,
             weight=ft.FontWeight.BOLD,
@@ -52,10 +53,10 @@ class HistoryItemControl(ft.Container):
             color=Theme.Text.PRIMARY,
         )
 
-        timestamp = item.get("timestamp", "Unknown Date")
-        filesize = item.get("file_size", "N/A")
+        timestamp = item.get("timestamp", LM.get("unknown_date"))
+        filesize = item.get("file_size", LM.get("not_available"))
         self.meta_text = ft.Text(
-            f"{timestamp} • {filesize}",
+            f"{timestamp} | {filesize}",
             size=12,
             color=Theme.Text.SECONDARY,
         )
@@ -68,7 +69,7 @@ class HistoryItemControl(ft.Container):
             controls=[
                 ft.IconButton(
                     ft.icons.FOLDER_OPEN,
-                    tooltip="Open Folder",
+                    tooltip=LM.get("open_folder"),
                     icon_color=Theme.Primary.MAIN,
                     on_click=lambda _: self.on_open_folder(
                         self.item.get("output_path")
@@ -76,7 +77,7 @@ class HistoryItemControl(ft.Container):
                 ),
                 ft.IconButton(
                     ft.icons.CONTENT_COPY,
-                    tooltip="Copy URL",
+                    tooltip=LM.get("copy_url"),
                     icon_color=Theme.Text.SECONDARY,
                     on_click=lambda _: self.on_copy_url(self.item.get("url")),
                 ),

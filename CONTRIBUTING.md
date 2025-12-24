@@ -1,6 +1,6 @@
 # Contributing to StreamCatch
 
-Thank you for your interest in contributing to StreamCatch! We welcome contributions from the community. This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to StreamCatch! We welcome community contributions. This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -10,7 +10,7 @@ Please note that this project is released with a [Contributor Code of Conduct](C
 
 ### Reporting Bugs
 
-Found a bug? Please help us fix it by [opening an issue](https://github.com/yourusername/streamcatch/issues) with:
+Found a bug? Please help us fix it by [opening an issue](https://github.com/AmirrezaFarnamTaheri/YTDownloader/issues) with:
 
 - **Clear title**: "Bug: Issue description"
 - **Reproduction steps**: How to reliably reproduce the issue
@@ -20,12 +20,12 @@ Found a bug? Please help us fix it by [opening an issue](https://github.com/your
   - Operating System (Windows/macOS/Linux)
   - Python version (`python --version`)
   - Application version
-- **Error details**: Include output from `ytdownloader.log` if available
+- **Error details**: Include output from `ytdownloader.log` or `~/.streamcatch/app.log` if available
 - **Screenshots**: Visual issues are helpful to include
 
 ### Suggesting Features
 
-Have an idea for improvement? [Open an issue](https://github.com/yourusername/streamcatch/issues) with:
+Have an idea for improvement? [Open an issue](https://github.com/AmirrezaFarnamTaheri/YTDownloader/issues) with:
 
 - **Clear title**: "Feature: Brief description"
 - **Use case**: Why would this be useful?
@@ -36,19 +36,16 @@ Have an idea for improvement? [Open an issue](https://github.com/yourusername/st
 
 #### Setup Development Environment
 
-1. **Fork the Repository** on GitHub
-
+1. **Fork the repository** on GitHub.
 2. **Clone your fork**:
    ```bash
-   git clone https://github.com/yourusername/streamcatch.git
-   cd StreamCatch
+   git clone https://github.com/AmirrezaFarnamTaheri/YTDownloader.git
+   cd YTDownloader
    ```
-
 3. **Create a feature branch**:
    ```bash
    git checkout -b feature/your-feature-name
    ```
-
 4. **Create a virtual environment**:
    ```bash
    python -m venv venv
@@ -57,43 +54,30 @@ Have an idea for improvement? [Open an issue](https://github.com/yourusername/st
    # On macOS/Linux:
    source venv/bin/activate
    ```
-
 5. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
 
 #### Making Changes
 
-1. **Make your changes** following the coding standards (see below)
-
+1. **Make your changes** following the coding standards (see below).
 2. **Add/update tests** for your changes:
    ```bash
-   # Run tests
-   python -m unittest discover -s tests -p "test_*.py" -v
+   pytest -v
    ```
-
-3. **Check code quality** (optional):
+3. **Check code quality**:
    ```bash
-   # Format code
-   black main.py downloader.py tests/
-
-   # Type checking
-   mypy main.py downloader.py
-
-   # Linting
-   pylint main.py downloader.py
+   black .
+   isort .
+   pylint $(git ls-files '*.py')
    ```
-
-4. **Update documentation** if needed (README, docstrings, etc.)
-
+4. **Update documentation** if needed (README, docstrings, etc.).
 5. **Verify everything works**:
    ```bash
-   # Run the app
    python main.py
-
-   # Run full test suite
-   python -m unittest discover -s tests -p "test_*.py" -v
+   pytest
    ```
 
 #### Submitting a Pull Request
@@ -102,24 +86,22 @@ Have an idea for improvement? [Open an issue](https://github.com/yourusername/st
    ```bash
    git push origin feature/your-feature-name
    ```
-
 2. **Create a Pull Request** on GitHub with:
    - **Title**: Clear, descriptive title
    - **Description**: Explain what changes were made and why
    - **Related issues**: Reference any related issues (#123)
    - **Screenshots**: If UI changes were made
-
-3. **Respond to feedback** - Maintainers will review and suggest changes if needed
+3. **Respond to feedback** - Maintainers will review and suggest changes if needed.
 
 ## Coding Standards
 
 ### Python Style Guide
 
-- Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) standards
-- Use 4 spaces for indentation (not tabs)
-- Maximum line length: 100 characters
-- Use type hints for function signatures
-- Write docstrings for all public functions/classes
+- Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) standards.
+- Use 4 spaces for indentation (not tabs).
+- Maximum line length: 100 characters.
+- Use type hints for function signatures.
+- Write docstrings for all public functions/classes.
 
 ### Naming Conventions
 
@@ -130,37 +112,16 @@ Have an idea for improvement? [Open an issue](https://github.com/yourusername/st
 
 ### Documentation
 
-- Include docstrings with Args, Returns, Raises sections:
-  ```python
-  def download_video(url: str, output_path: str = '.') -> None:
-      """
-      Download a video from the given URL.
-
-      Args:
-          url: The URL of the video to download.
-          output_path: Directory to save the file (default: current directory).
-
-      Raises:
-          ValueError: If the URL is invalid.
-          DownloadError: If the download fails.
-      """
-  ```
-
-- Update docstrings when modifying functions
-- Include inline comments for complex logic
-- Update README/CHANGELOG for user-facing changes
+- Include docstrings with Args, Returns, Raises sections.
+- Update docstrings when modifying functions.
+- Include inline comments for complex logic.
+- Update README/CHANGELOG for user-facing changes.
 
 ### Testing Requirements
 
-- Write unit tests for new functionality
-- Maintain or improve test coverage
-- Run full test suite before submitting PR:
-  ```bash
-  python -m unittest discover -s tests -p "test_*.py" -v
-  ```
-
-- Test edge cases and error handling
-- Mock external dependencies (yt-dlp, HTTP requests, etc.)
+- Write unit tests for new functionality.
+- Maintain or improve test coverage.
+- Run the full test suite before submitting PRs.
 
 ### Commit Messages
 
@@ -173,52 +134,44 @@ Longer explanation of what was changed and why, if needed.
 Keep the subject line to 50 characters.
 ```
 
-- Use imperative mood ("Add feature" not "Added feature")
-- Reference issues when relevant: "Fixes #123"
-- Keep first line under 50 characters
-- Add detail in body if needed
+- Use imperative mood ("Add feature" not "Added feature").
+- Reference issues when relevant: "Fixes #123".
+- Keep the first line under 50 characters.
 
 ## Project Structure
 
 ```
 YTDownloader/
-├── main.py                # Application entry point
-├── app_state.py           # Global application state
-├── app_controller.py      # Application controller logic
-├── app_layout.py          # Main UI layout
-├── ui_manager.py          # UI view management
-├── config_manager.py      # Configuration management
-├── history_manager.py     # Download history
-├── queue_manager.py       # Download queue management
-├── tasks.py               # Background task processing
-├── downloader/            # Download engine package
-│   ├── core.py           # Core download logic
-│   ├── info.py           # Video info extraction
-│   ├── engines/          # Platform-specific downloaders
-│   └── extractors/       # Content extractors
-├── views/                 # UI views (Flet)
-│   ├── download_view.py  # Download interface
-│   ├── queue_view.py     # Queue management view
-│   ├── history_view.py   # History view
-│   ├── rss_view.py       # RSS feed manager
-│   └── settings_view.py  # Settings interface
-├── tests/                 # Test suite
-├── scripts/               # Build and utility scripts
-├── .github/               # GitHub workflows (CI/CD)
-└── project_docs/          # Documentation
+|-- main.py
+|-- app_state.py
+|-- app_controller.py
+|-- app_layout.py
+|-- ui_manager.py
+|-- config_manager.py
+|-- history_manager.py
+|-- queue_manager.py
+|-- tasks.py
+|-- downloader/
+|   |-- core.py
+|   |-- info.py
+|   |-- engines/
+|   |-- extractors/
+|-- views/
+|   |-- download_view.py
+|   |-- queue_view.py
+|   |-- history_view.py
+|   |-- rss_view.py
+|   |-- settings_view.py
+|-- tests/
+|-- scripts/
+|-- .github/
+|-- project_docs/
 ```
 
 ## Questions?
 
-- Check [README.md](README.md) for documentation
-- Look at existing [issues](https://github.com/yourusername/streamcatch/issues)
-- Join discussions in issue comments
+- Check [README.md](README.md) for documentation.
+- Look at existing [issues](https://github.com/AmirrezaFarnamTaheri/YTDownloader/issues).
+- Join discussions in issue comments.
 
-## Recognition
-
-Contributors will be recognized in:
-- The CONTRIBUTORS file
-- Release notes for features/bug fixes
-- GitHub contributors page
-
-Thank you for making StreamCatch better! 🎉
+Thank you for making StreamCatch better!

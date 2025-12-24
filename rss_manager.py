@@ -4,6 +4,7 @@ RSS Manager module for fetching and parsing RSS feeds.
 
 import ipaddress
 import logging
+import re
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -108,8 +109,22 @@ class RSSManager:
         # Config wrapper (should be dict-like or have set/get)
         self.config_manager = config_manager
         # Cache feeds locally from config
-        self.feeds: List[Dict[str, str]] = self.config_manager.get("rss_feeds", [])
+        self.feeds: List[Dict[str, str]] = self._normalize_feeds(
+            self.config_manager.get("rss_feeds", [])
+        )
         self._lock = threading.RLock()
+
+    @staticmethod
+    def _normalize_feeds(feeds: List[Any]) -> List[Dict[str, str]]:
+        """Normalize feed entries into dicts with url/name."""
+        normalized = []
+        for f in feeds:
+            if isinstance(f, str):
+                normalized.append({"url": f, "name": f})
+            elif isinstance(f, dict) and f.get("url"):
+                name = f.get("name", f["url"])
+                normalized.append({"url": f["url"], "name": name})
+        return normalized
 
     def _save_feeds(self):
         """Persist feeds to config."""
@@ -121,6 +136,9 @@ class RSSManager:
             full_config = ConfigManager.load_config()
             full_config["rss_feeds"] = self.feeds
             ConfigManager.save_config(full_config)
+            # Keep in-memory config dicts in sync when applicable
+            if isinstance(self.config_manager, dict):
+                self.config_manager["rss_feeds"] = list(self.feeds)
 
     def get_feeds(self) -> List[Dict[str, str]]:
         """Return list of feeds."""
@@ -171,6 +189,9 @@ class RSSManager:
                     safe_log_warning("Private IP RSS feed blocked: %s", url)
                     return False
             except ValueError:
+                if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname or ""):
+                    safe_log_warning("Invalid IP RSS feed blocked: %s", url)
+                    return False
                 pass  # Not an IP address
 
             return True

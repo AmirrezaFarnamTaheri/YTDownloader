@@ -73,9 +73,10 @@ class CancelToken:
                 if self._pause_timeout > 0:
                     elapsed = time.time() - pause_start
                     if elapsed > self._pause_timeout:
-                        # Auto-resume after timeout
+                        # Auto-cancel after timeout to avoid indefinite pause
                         with self._lock:
                             self._is_paused = False
-                        raise RuntimeError(
-                            f"Download paused for too long ({elapsed:.0f}s), auto-cancelled."
+                            self._cancelled = True
+                        raise InterruptedError(
+                            f"Download Cancelled by pause timeout ({elapsed:.0f}s)."
                         )

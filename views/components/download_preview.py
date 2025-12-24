@@ -58,7 +58,10 @@ class DownloadPreviewCard(ft.Container):
         )
 
         self.duration_text = ft.Text(
-            "00:00", size=13, color=Theme.TEXT_MUTED, weight=ft.FontWeight.W_500
+            LM.get("duration_placeholder"),
+            size=13,
+            color=Theme.TEXT_MUTED,
+            weight=ft.FontWeight.W_500,
         )
 
         self.author_text = ft.Text(
@@ -129,7 +132,7 @@ class DownloadPreviewCard(ft.Container):
         self.title_text.value = info.get("title", LM.get("unknown_title"))
         self.thumbnail.src = info.get("thumbnail", "")
         duration = info.get("duration_string") or info.get("duration")
-        self.duration_text.value = str(duration) if duration else "N/A"
+        self.duration_text.value = str(duration) if duration else LM.get("not_available")
         self.author_text.value = info.get("uploader", LM.get("unknown_channel"))
 
         self.visible = True

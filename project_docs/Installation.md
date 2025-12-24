@@ -1,7 +1,7 @@
 # Installation
 
 ## Windows
-1.  Download the latest `StreamCatch_Setup_vX.X.X.exe` from the [Releases](https://github.com/your-repo/streamcatch/releases) page.
+1.  Download the latest `StreamCatch_Setup_vX.X.X.exe` from the [Releases](https://github.com/AmirrezaFarnamTaheri/YTDownloader/releases) page.
 2.  Double-click the installer.
 3.  Follow the on-screen prompts.
 4.  StreamCatch will be added to your Start Menu.

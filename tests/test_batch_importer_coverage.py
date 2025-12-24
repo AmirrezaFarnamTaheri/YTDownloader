@@ -54,12 +54,11 @@ class TestBatchImporterCoverage(unittest.TestCase):
         mock_path_obj.suffix = ".txt"
         mock_is_safe.return_value = True
 
-        # Logic in BatchImporter doesn't validate URLs, it just skips empty lines
+        # Logic now validates URLs and skips invalid entries
         count, truncated = self.importer.import_from_file("test.txt")
 
-        # It adds both because the simplistic check only skips empty
-        self.assertEqual(count, 2)
-        self.assertEqual(self.mock_queue.add_item.call_count, 2)
+        self.assertEqual(count, 1)
+        self.assertEqual(self.mock_queue.add_item.call_count, 1)
 
     @patch("batch_importer.Path")
     def test_import_from_file_not_found(self, MockPath):

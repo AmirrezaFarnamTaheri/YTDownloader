@@ -17,6 +17,7 @@ from app_state import state
 from batch_importer import BatchImporter
 from clipboard_monitor import start_clipboard_monitor
 from download_scheduler import DownloadScheduler
+from localization_manager import LocalizationManager as LM
 
 # Helpers
 from rate_limiter import RateLimiter
@@ -49,9 +50,9 @@ class AppController:
         # Initialize Pickers
         self.file_picker = ft.FilePicker()
         self.time_picker = ft.TimePicker(
-            confirm_text="Schedule",
-            error_invalid_text="Time invalid",
-            help_text="Select time for download to start",
+            confirm_text=LM.get("schedule_download"),
+            error_invalid_text=LM.get("time_invalid"),
+            help_text=LM.get("schedule_help_text"),
         )
         self.page.overlay.append(self.file_picker)
         self.page.overlay.append(self.time_picker)
@@ -117,11 +118,11 @@ class AppController:
         """Callback to fetch video information."""
         logger.info("User requested video info fetch for: %s", url)
         if not url:
-            self.page.open(ft.SnackBar(content=ft.Text("Please enter a URL")))
+            self.page.open(ft.SnackBar(content=ft.Text(LM.get("url_required"))))
             return
         if not validate_url(url):
             self.page.open(
-                ft.SnackBar(content=ft.Text("Please enter a valid http/https URL"))
+                ft.SnackBar(content=ft.Text(LM.get("error_invalid_url")))
             )
             return
 
@@ -141,7 +142,7 @@ class AppController:
         logger.info("User requested add to queue: %s", data.get("url"))
         if not validate_url(data.get("url", "")):
             self.page.open(
-                ft.SnackBar(content=ft.Text("Please enter a valid http/https URL"))
+                ft.SnackBar(content=ft.Text(LM.get("error_invalid_url")))
             )
             return
 
@@ -149,7 +150,7 @@ class AppController:
         if not self.rate_limiter.check():
             self.page.open(
                 ft.SnackBar(
-                    content=ft.Text("Please wait before adding another download")
+                    content=ft.Text(LM.get("rate_limited"))
                 )
             )
             return
@@ -160,7 +161,10 @@ class AppController:
             self.page.open(
                 ft.SnackBar(
                     content=ft.Text(
-                        f"Download scheduled for {sched_dt.strftime('%Y-%m-%d %H:%M')}"
+                        LM.get(
+                            "download_scheduled",
+                            sched_dt.strftime("%Y-%m-%d %H:%M"),
+                        )
                     )
                 )
             )
@@ -176,6 +180,10 @@ class AppController:
         ):
             title = state.video_info.get("title", data["url"])
 
+        download_path = get_default_download_path(state.config.get("download_path"))
+        proxy = state.config.get("proxy") or None
+        rate_limit = state.config.get("rate_limit") or None
+
         item = {
             "url": data["url"],
             "title": title,
@@ -184,7 +192,7 @@ class AppController:
             "video_format": data.get("video_format"),
             "audio_format": data.get("audio_format"),
             "subtitle_lang": data.get("subtitle_lang"),
-            "output_path": get_default_download_path(),
+            "output_path": download_path,
             "playlist": data.get("playlist", False),
             "sponsorblock": data.get("sponsorblock", False),
             "use_aria2c": state.config.get("use_aria2c", False),
@@ -196,6 +204,8 @@ class AppController:
             "cookies_from_browser": data.get("cookies_from_browser"),
             "chapters": data.get("chapters", False),
             "insta_type": data.get("insta_type"),
+            "proxy": proxy,
+            "rate_limit": rate_limit,
         }
         state.queue_manager.add_item(item)
         state.scheduled_time = None
@@ -203,7 +213,7 @@ class AppController:
         self.ui.update_queue_view()
 
         if status == "Queued":
-            self.page.open(ft.SnackBar(content=ft.Text("Added to queue")))
+            self.page.open(ft.SnackBar(content=ft.Text(LM.get("success_added"))))
 
     def on_cancel_item(self, item: Dict[str, Any]):
         """Callback to cancel a download item."""
@@ -265,24 +275,30 @@ class AppController:
 
     def on_play_item(self, item: Dict[str, Any]):
         """Callback to open/play the downloaded file."""
-        output_path = item.get("output_path", get_default_download_path())
-        filename = item.get("filename")
+        filepath = item.get("filepath")
+        if not filepath:
+            output_path = item.get("output_path", get_default_download_path())
+            filename = item.get("filename")
+            if not filename:
+                self.page.open(
+                    ft.SnackBar(content=ft.Text(LM.get("file_path_unknown")))
+                )
+                return
+            filepath = os.path.join(output_path, filename)
 
-        if not filename:
-            self.page.open(ft.SnackBar(content=ft.Text("File path unknown")))
-            return
-
-        full_path = os.path.join(output_path, filename)
-        if not play_file(full_path, self.page):
+        if not play_file(filepath, self.page):
             self.page.open(
-                ft.SnackBar(content=ft.Text("Failed to open file or file not found"))
+                ft.SnackBar(content=ft.Text(LM.get("open_file_failed")))
             )
 
     def on_open_folder(self, item: Dict[str, Any]):
         """Callback to open the folder containing the file."""
         output_path = item.get("output_path", get_default_download_path())
+        filepath = item.get("filepath")
+        if filepath and isinstance(filepath, str):
+            output_path = os.path.dirname(filepath)
         if not open_folder(output_path, self.page):
-            self.page.open(ft.SnackBar(content=ft.Text("Failed to open folder")))
+            self.page.open(ft.SnackBar(content=ft.Text(LM.get("open_folder_failed"))))
 
     def on_batch_file_result(self, e: ft.FilePickerResultEvent):
         """Callback when a file is selected for batch import."""
@@ -294,15 +310,17 @@ class AppController:
             count, truncated = self.batch_importer.import_from_file(path)
             self.ui.update_queue_view()
 
-            msg = f"Imported {count} URLs"
+            msg = LM.get("batch_imported", count)
             if truncated:
-                msg += " (Truncated to limit of 100)"
+                msg += f" {LM.get('batch_import_truncated')}"
 
             self.page.open(ft.SnackBar(content=ft.Text(msg)))
 
         except Exception as ex:  # pylint: disable=broad-exception-caught
             logger.error("Failed to import batch file: %s", ex, exc_info=True)
-            self.page.open(ft.SnackBar(content=ft.Text(f"Failed to import: {ex}")))
+            self.page.open(
+                ft.SnackBar(content=ft.Text(LM.get("batch_import_failed", str(ex))))
+            )
 
     def on_batch_import(self):
         """Trigger batch import file picker."""
@@ -317,7 +335,10 @@ class AppController:
             self.page.open(
                 ft.SnackBar(
                     content=ft.Text(
-                        f"Next download will be scheduled at {e.value.strftime('%H:%M')}"
+                        LM.get(
+                            "next_scheduled_download",
+                            e.value.strftime("%H:%M"),
+                        )
                     )
                 )
             )
@@ -330,5 +351,9 @@ class AppController:
     def on_toggle_clipboard(self, active: bool):
         """Callback to toggle clipboard monitor."""
         state.clipboard_monitor_active = active
-        msg = "Clipboard Monitor Enabled" if active else "Clipboard Monitor Disabled"
+        msg = (
+            LM.get("clipboard_monitor_enabled")
+            if active
+            else LM.get("clipboard_monitor_disabled")
+        )
         self.page.open(ft.SnackBar(content=ft.Text(msg)))
