@@ -8,15 +8,15 @@ import sys
 from pathlib import Path
 
 # Module-level flag to prevent re-initialization
-_LOGGING_INITIALIZED = False
+_logging_initialized = False
 
 
 def setup_logging():
     """Setup comprehensive logging configuration."""
-    global _LOGGING_INITIALIZED  # pylint: disable=global-statement
+    global _logging_initialized  # pylint: disable=global-statement
 
     # Prevent re-initialization which would clear handlers from other modules
-    if _LOGGING_INITIALIZED:
+    if _logging_initialized:
         logging.debug("Logging already initialized, skipping setup")
         return
 
@@ -69,5 +69,5 @@ def setup_logging():
         except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"Failed to setup log file {log_file}: {e}", file=sys.stderr)
 
-    _LOGGING_INITIALIZED = True
+    _logging_initialized = True
     logging.info("Logging initialized successfully.")

@@ -2,10 +2,13 @@
 Download scheduler logic.
 """
 
+import logging
 from datetime import datetime
 from datetime import time as dt_time
 from datetime import timedelta
 from typing import Optional, Tuple, Union
+
+logger = logging.getLogger(__name__)
 
 
 class DownloadScheduler:
@@ -37,15 +40,24 @@ class DownloadScheduler:
             if isinstance(scheduled_time, datetime):
                 sched_dt = scheduled_time
                 status = f"Scheduled ({sched_dt.strftime('%Y-%m-%d %H:%M')})"
+                logger.info("Download scheduled for %s", sched_dt)
             elif isinstance(scheduled_time, dt_time):
                 now = datetime.now()
                 sched_dt = datetime.combine(now.date(), scheduled_time)
                 if sched_dt < now:
                     sched_dt += timedelta(days=1)
                 status = f"Scheduled ({sched_dt.strftime('%H:%M')})"
+                logger.info("Download scheduled for %s", sched_dt)
             else:
-                raise TypeError(
-                    f"scheduled_time must be datetime.time or datetime instance, got {type(scheduled_time)}"
+                logger.warning(
+                    "Invalid schedule type provided: %s", type(scheduled_time)
                 )
+                msg = (
+                    "scheduled_time must be datetime.time or datetime instance, "
+                    f"got {type(scheduled_time)}"
+                )
+                raise TypeError(msg)
+        else:
+            logger.debug("No schedule requested; using queued status")
 
         return status, sched_dt

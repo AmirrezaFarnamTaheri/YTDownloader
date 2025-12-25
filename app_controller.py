@@ -41,6 +41,7 @@ class AppController:
         self.page = page
         self.ui = ui_manager
         self.active_threads: list[threading.Thread] = []
+        self._clipboard_monitor_started = False
 
         # Delegates
         self.rate_limiter = RateLimiter(0.5)
@@ -72,7 +73,9 @@ class AppController:
     def start_clipboard_monitor(self):
         """Starts the clipboard monitor."""
         if self.ui.download_view:
-            start_clipboard_monitor(self.page, self.ui.download_view)
+            started = start_clipboard_monitor(self.page, self.ui.download_view)
+            if started:
+                self._clipboard_monitor_started = True
 
     def cleanup(self):
         """Clean up resources on shutdown."""
@@ -121,9 +124,7 @@ class AppController:
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("url_required"))))
             return
         if not validate_url(url):
-            self.page.open(
-                ft.SnackBar(content=ft.Text(LM.get("error_invalid_url")))
-            )
+            self.page.open(ft.SnackBar(content=ft.Text(LM.get("error_invalid_url"))))
             return
 
         if self.ui.download_view:
@@ -141,18 +142,12 @@ class AppController:
         """Callback to add an item to the download queue."""
         logger.info("User requested add to queue: %s", data.get("url"))
         if not validate_url(data.get("url", "")):
-            self.page.open(
-                ft.SnackBar(content=ft.Text(LM.get("error_invalid_url")))
-            )
+            self.page.open(ft.SnackBar(content=ft.Text(LM.get("error_invalid_url"))))
             return
 
         # Rate limiting
         if not self.rate_limiter.check():
-            self.page.open(
-                ft.SnackBar(
-                    content=ft.Text(LM.get("rate_limited"))
-                )
-            )
+            self.page.open(ft.SnackBar(content=ft.Text(LM.get("rate_limited"))))
             return
 
         # Scheduling
@@ -259,18 +254,23 @@ class AppController:
     def on_retry_item(self, item: Dict[str, Any]):
         """Callback to retry a failed/cancelled item."""
         item_id = item.get("id")
+        updated = False
         if item_id:
-            state.queue_manager.update_item_status(
-                item_id,
-                "Queued",
-                updates={
-                    "speed": "",
-                    "eta": "",
-                    "size": "",
-                    "progress": 0,
-                    "error": None,
-                },
-            )
+            updated = state.queue_manager.retry_item(item_id)
+        if not updated:
+            # Fallback for legacy items without IDs
+            if item.get("status") in ("Error", "Cancelled"):
+                item.update(
+                    {
+                        "status": "Queued",
+                        "scheduled_time": None,
+                        "progress": 0,
+                        "speed": "",
+                        "eta": "",
+                        "size": "",
+                        "error": None,
+                    }
+                )
         self.ui.update_queue_view()
 
     def on_play_item(self, item: Dict[str, Any]):
@@ -287,9 +287,7 @@ class AppController:
             filepath = os.path.join(output_path, filename)
 
         if not play_file(filepath, self.page):
-            self.page.open(
-                ft.SnackBar(content=ft.Text(LM.get("open_file_failed")))
-            )
+            self.page.open(ft.SnackBar(content=ft.Text(LM.get("open_file_failed"))))
 
     def on_open_folder(self, item: Dict[str, Any]):
         """Callback to open the folder containing the file."""
@@ -348,12 +346,15 @@ class AppController:
         # pylint: disable=unused-argument
         self.page.open(self.time_picker)
 
-    def on_toggle_clipboard(self, active: bool):
+    def on_toggle_clipboard(self, active: bool, show_message: bool = True):
         """Callback to toggle clipboard monitor."""
         state.clipboard_monitor_active = active
-        msg = (
-            LM.get("clipboard_monitor_enabled")
-            if active
-            else LM.get("clipboard_monitor_disabled")
-        )
-        self.page.open(ft.SnackBar(content=ft.Text(msg)))
+        if active and not self._clipboard_monitor_started:
+            self.start_clipboard_monitor()
+        if show_message:
+            msg = (
+                LM.get("clipboard_monitor_enabled")
+                if active
+                else LM.get("clipboard_monitor_disabled")
+            )
+            self.page.open(ft.SnackBar(content=ft.Text(msg)))

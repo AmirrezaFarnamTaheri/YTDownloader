@@ -6,14 +6,14 @@ active download summaries, and recent history.
 """
 
 import shutil
-import threading
-from typing import Callable, Optional
+from typing import Callable
 
 import flet as ft
 
 from history_manager import HistoryManager
 from localization_manager import LocalizationManager as LM
 from theme import Theme
+from ui_utils import open_folder
 from views.base_view import BaseView
 from views.components.history_item import HistoryItemControl
 
@@ -47,27 +47,29 @@ class DashboardView(BaseView):
 
         self.recent_history_list = ft.Column(spacing=10)
 
-        self.content_area = ft.Column(
-            [
-                # Welcome & Quick Actions
-                self._build_header_section(),
-                ft.Container(height=20),
-                # System Status (Disk, etc)
-                self._build_status_section(),
-                ft.Container(height=20),
-                # Recent History
-                ft.Text(
-                    LM.get("recent_history", "Recent History"),
-                    size=20,
-                    weight=ft.FontWeight.BOLD,
-                    color=Theme.Text.PRIMARY,
-                ),
-                ft.Container(
-                    content=self.recent_history_list, **Theme.get_card_decoration()
-                ),
-            ],
-            scroll=ft.ScrollMode.AUTO,
-            expand=True,
+        self.content_area = ft.Container(
+            content=ft.Column(
+                [
+                    # Welcome & Quick Actions
+                    self._build_header_section(),
+                    ft.Container(height=20),
+                    # System Status (Disk, etc)
+                    self._build_status_section(),
+                    ft.Container(height=20),
+                    # Recent History
+                    ft.Text(
+                        LM.get("recent_history", "Recent History"),
+                        size=20,
+                        weight=ft.FontWeight.BOLD,
+                        color=Theme.Text.PRIMARY,
+                    ),
+                    ft.Container(
+                        content=self.recent_history_list, **Theme.get_card_decoration()
+                    ),
+                ],
+                scroll=ft.ScrollMode.AUTO,
+                expand=True,
+            ),
             padding=10,
         )
 
@@ -157,7 +159,8 @@ class DashboardView(BaseView):
         """Refreshes the dashboard data."""
         self._refresh_storage()
         self._refresh_history()
-        self.update()
+        if self.page:
+            self.update()
 
     def _refresh_storage(self):
         """Updates storage usage bar."""
@@ -197,18 +200,20 @@ class DashboardView(BaseView):
             )
         else:
             for item in items:
-                # We reuse HistoryItemControl but maybe simplified or same
-                # Just use the standard one, it looks good
                 ctrl = HistoryItemControl(
                     item,
-                    on_open_folder=lambda p: None,  # We might not pass full context here or need imports
-                    on_copy_url=lambda u: self.page.set_clipboard(u),
+                    on_open_folder=self._open_history_folder,
+                    on_copy_url=self._copy_history_url,
                     on_delete=lambda x: None,
                 )
-                # Hack to disable open folder if we don't have easy access to ui_utils without circular imports
-                # Actually we can import ui_utils inside the method
-                from ui_utils import open_folder
-
-                ctrl.on_open_folder = lambda p: open_folder(p, self.page) if p else None
-
                 self.recent_history_list.controls.append(ctrl)
+
+    def _open_history_folder(self, path: str):
+        """Open the download folder for a history item."""
+        if path and self.page:
+            open_folder(path, self.page)
+
+    def _copy_history_url(self, url: str):
+        """Copy the URL for a history item."""
+        if url and self.page:
+            self.page.set_clipboard(url)

@@ -122,8 +122,9 @@ class RSSManager:
             if isinstance(f, str):
                 normalized.append({"url": f, "name": f})
             elif isinstance(f, dict) and f.get("url"):
-                name = f.get("name", f["url"])
-                normalized.append({"url": f["url"], "name": name})
+                url = str(f["url"])
+                name = str(f.get("name", url))
+                normalized.append({"url": url, "name": name})
         return normalized
 
     def _save_feeds(self):

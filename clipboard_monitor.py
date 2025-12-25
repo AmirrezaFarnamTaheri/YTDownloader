@@ -16,12 +16,20 @@ from ui_utils import validate_url
 
 # Lock for clipboard state access
 _clipboard_state_lock = threading.Lock()
+_monitor_lock = threading.Lock()
+_monitor_thread = None
 
 logger = logging.getLogger(__name__)
 
 
 def start_clipboard_monitor(page, download_view):
     """Starts the clipboard monitor thread with error handling."""
+    global _monitor_thread
+    with _monitor_lock:
+        if _monitor_thread and _monitor_thread.is_alive():
+            logger.debug("Clipboard monitor already running.")
+            return True
+
     # Test clipboard access first
     try:
         pyperclip.paste()
@@ -29,14 +37,18 @@ def start_clipboard_monitor(page, download_view):
     except pyperclip.PyperclipException as e:
         logger.warning("Clipboard access not available: %s", e)
         logger.warning("Clipboard monitor will be disabled")
-        return  # Don't start monitor if clipboard isn't available
+        return False  # Don't start monitor if clipboard isn't available
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Unexpected clipboard error: %s", e)
-        return
+        return False
 
-    threading.Thread(
+    thread = threading.Thread(
         target=_clipboard_loop, args=(page, download_view), daemon=True
-    ).start()
+    )
+    _monitor_thread = thread
+    thread.start()
+    logger.info("Clipboard monitor thread started.")
+    return True
 
 
 def _clipboard_loop(page, download_view):
@@ -79,7 +91,9 @@ def _clipboard_loop(page, download_view):
                                     page.open(
                                         ft.SnackBar(
                                             content=ft.Text(
-                                                LM.get("clipboard_url_detected", content)
+                                                LM.get(
+                                                    "clipboard_url_detected", content
+                                                )
                                             )
                                         )
                                     )

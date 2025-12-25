@@ -1,6 +1,7 @@
 """Settings View"""
 
 import logging
+from typing import Callable, Optional
 
 import flet as ft
 
@@ -20,10 +21,13 @@ from .base_view import BaseView
 
 
 class SettingsView(BaseView):
-    def __init__(self, config):
+    def __init__(
+        self, config, on_toggle_clipboard: Optional[Callable[..., None]] = None
+    ):
         super().__init__(LM.get("settings"), ft.icons.SETTINGS)
         self.config = config
         self.logger = logging.getLogger(__name__)
+        self.on_toggle_clipboard = on_toggle_clipboard
 
         # General / Network Section
         self.proxy_input = ft.TextField(
@@ -70,8 +74,14 @@ class SettingsView(BaseView):
             label=LM.get("max_concurrent_downloads"),
             value=str(self.config.get("max_concurrent_downloads", 3)),
             keyboard_type=ft.KeyboardType.NUMBER,
-            input_filter=ft.InputFilter(allow=r"\\d+"),
+            input_filter=ft.InputFilter(r"\d+"),
             **Theme.get_input_decoration(prefix_icon=ft.icons.FILTER_3),
+        )
+
+        self.clipboard_monitor_switch = ft.Switch(
+            label=LM.get("clipboard_monitor"),
+            value=self.config.get("clipboard_monitor_enabled", False),
+            active_color=Theme.Primary.MAIN,
         )
 
         # Performance Section
@@ -159,6 +169,7 @@ class SettingsView(BaseView):
                     self.output_template_input,
                     self.language_dd,
                     self.max_concurrent_input,
+                    self.clipboard_monitor_switch,
                 ],
             )
         )
@@ -294,6 +305,7 @@ class SettingsView(BaseView):
             return
 
         language_before = self.config.get("language")
+        clipboard_before = self.config.get("clipboard_monitor_enabled", False)
         language_after = self.language_dd.value
 
         self.config["download_path"] = download_path_val
@@ -307,6 +319,8 @@ class SettingsView(BaseView):
         self.config["compact_mode"] = self.compact_mode_switch.value
         self.config["language"] = language_after
         self.config["max_concurrent_downloads"] = max_concurrent
+        clipboard_after = bool(self.clipboard_monitor_switch.value)
+        self.config["clipboard_monitor_enabled"] = clipboard_after
         ConfigManager.save_config(self.config)
         self.logger.info(
             "Settings saved (language=%s, max_concurrent=%s)",
@@ -331,6 +345,20 @@ class SettingsView(BaseView):
                 if new_title and new_title != "app_title":
                     self.page.title = new_title
             messages.append(LM.get("language_restart_required"))
+        if clipboard_before != clipboard_after:
+            if self.on_toggle_clipboard:
+                try:
+                    self.on_toggle_clipboard(clipboard_after, show_message=False)
+                except TypeError:
+                    # Backwards compatibility with older callback signatures
+                    self.on_toggle_clipboard(clipboard_after)
+            messages.append(
+                LM.get(
+                    "clipboard_monitor_enabled"
+                    if clipboard_after
+                    else "clipboard_monitor_disabled"
+                )
+            )
         if not concurrency_applied:
             messages.append(LM.get("concurrency_update_deferred"))
 

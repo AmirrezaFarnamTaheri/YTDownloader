@@ -132,7 +132,7 @@ def _configure_format_selection(
         ydl_opts["format"] = "best"
         return
 
-    elif options.video_format in ["4k", "1440p", "1080p", "720p", "480p"]:
+    if options.video_format in ["4k", "1440p", "1080p", "720p", "480p"]:
         height_map = {
             "4k": 2160,
             "1440p": 1440,
@@ -182,13 +182,15 @@ def _configure_advanced_options(
 
     # Download Sections (Time Range)
     if (options.start_time or options.end_time) and ffmpeg_available:
-        start_sec = options.get_seconds(options.start_time) if options.start_time else 0
+        start_sec = (
+            int(options.get_seconds(options.start_time)) if options.start_time else 0
+        )
         end_sec = (
-            options.get_seconds(options.end_time) if options.end_time else None
+            int(options.get_seconds(options.end_time)) if options.end_time else None
         )
         logger.info("Downloading range: %s - %s", options.start_time, options.end_time)
         ydl_opts["download_ranges"] = yt_dlp.utils.download_range_func(
-            [], [(start_sec, end_sec)]  # type: ignore[arg-type]
+            [], [(start_sec, end_sec)]  # type: ignore[arg-type,list-item]
         )
 
     # Aria2c

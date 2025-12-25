@@ -18,8 +18,8 @@ try:
     try:
         if not DB_FILE.parent.exists():
             DB_FILE.parent.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        pass
+    except OSError as exc:
+        logger.warning("Failed to create history directory: %s", exc)
 except Exception:  # pylint: disable=broad-exception-caught
     DB_FILE = Path("history.db")
 

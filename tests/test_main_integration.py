@@ -35,7 +35,7 @@ class TestMainIntegration(unittest.TestCase):
         self.mock_get_executor.return_value = self.mock_executor
 
         # We need to make sure process_queue submits
-        self.patcher_sem = patch("tasks._SUBMISSION_THROTTLE", create=True)
+        self.patcher_sem = patch("tasks._submission_throttle", create=True)
         self.mock_sem = self.patcher_sem.start()
         self.mock_sem.acquire.return_value = True
 

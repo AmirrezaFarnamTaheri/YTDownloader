@@ -98,7 +98,7 @@ class TestUIExtended(unittest.TestCase):
         # Actually add_rss calls refresh_feeds via load_feeds_list? No.
         view.refresh_feeds = MagicMock()
 
-        with patch("views.rss_view.ConfigManager.save_config") as mock_save:
+        with patch("config_manager.ConfigManager.save_config") as mock_save:
             view.add_rss(None)
 
             found = False

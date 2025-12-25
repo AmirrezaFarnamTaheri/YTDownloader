@@ -114,7 +114,9 @@ class AppState:
         )
 
         self.scheduled_time: Optional[time] = None
-        self.clipboard_monitor_active = False
+        self.clipboard_monitor_active = self.config.get(
+            "clipboard_monitor_enabled", False
+        )
         self.last_clipboard_content = ""
         self.shutdown_flag = threading.Event()
 

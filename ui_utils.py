@@ -3,6 +3,8 @@ Utilities for UI components and platform interaction.
 Includes robust validation and secure operations.
 """
 
+# pylint: disable=too-many-return-statements
+
 import ipaddress
 import logging
 import os
@@ -303,8 +305,8 @@ def get_default_download_path(preferred_path: Optional[str] = None) -> str:
             return str(downloads)
         if os.access(home, os.W_OK):
             return str(home)
-    except Exception:  # pylint: disable=broad-exception-caught
-        pass
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.debug("Failed to resolve default download path: %s", exc)
     return "."
 
 

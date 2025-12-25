@@ -20,6 +20,7 @@
   "clear_history": "Clear History",
   "clipboard_monitor_disabled": "Clipboard Monitor Disabled",
   "clipboard_monitor_enabled": "Clipboard Monitor Enabled",
+  "clipboard_monitor": "Clipboard Monitor",
   "clipboard_url_detected": "URL detected: {0}",
   "compact_mode": "Compact Mode (Requires Restart)",
   "concurrency_update_deferred": "Concurrency change will apply after active downloads finish.",

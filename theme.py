@@ -75,6 +75,8 @@ class Theme:
 
         SUCCESS = "#34D399"
         ERROR = "#EF4444"
+        WARNING = "#FBBF24"
+        INFO = "#60A5FA"
 
     @staticmethod
     def get_high_contrast_theme() -> ft.Theme:

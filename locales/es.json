@@ -20,6 +20,7 @@
   "clear_history": "Borrar historial",
   "clipboard_monitor_disabled": "Monitor del portapapeles desactivado",
   "clipboard_monitor_enabled": "Monitor del portapapeles activado",
+  "clipboard_monitor": "Monitor del portapapeles",
   "clipboard_url_detected": "URL detectada: {0}",
   "compact_mode": "Modo compacto (requiere reinicio)",
   "concurrency_update_deferred": "El cambio de concurrencia se aplicará cuando terminen las descargas activas.",

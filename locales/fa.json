@@ -20,6 +20,7 @@
   "clear_history": "پاک کردن تاریخچه",
   "clipboard_monitor_disabled": "پایش کلیپ‌بورد غیرفعال شد",
   "clipboard_monitor_enabled": "پایش کلیپ‌بورد فعال شد",
+  "clipboard_monitor": "پایش کلیپ‌بورد",
   "clipboard_url_detected": "URL شناسایی شد: {0}",
   "compact_mode": "حالت فشرده (نیاز به راه‌اندازی مجدد)",
   "concurrency_update_deferred": "تغییر هم‌زمانی پس از پایان دانلودهای فعال اعمال می‌شود.",

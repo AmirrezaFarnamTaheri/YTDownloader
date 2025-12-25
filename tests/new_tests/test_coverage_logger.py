@@ -9,10 +9,10 @@ import logger_config
 class TestLoggerConfig(unittest.TestCase):
     def setUp(self):
         # Reset the global flag before each test
-        logger_config._LOGGING_INITIALIZED = False
+        logger_config._logging_initialized = False
 
     def tearDown(self):
-        logger_config._LOGGING_INITIALIZED = False
+        logger_config._logging_initialized = False
 
     def test_setup_logging_first_run(self):
         with patch("logging.getLogger") as mock_get_logger, patch(
@@ -30,11 +30,11 @@ class TestLoggerConfig(unittest.TestCase):
             logger_config.setup_logging()
 
             mock_logger.setLevel.assert_called_with(logging.DEBUG)
-            self.assertTrue(logger_config._LOGGING_INITIALIZED)
+            self.assertTrue(logger_config._logging_initialized)
             self.assertTrue(mock_logger.addHandler.called)
 
     def test_setup_logging_already_initialized(self):
-        logger_config._LOGGING_INITIALIZED = True
+        logger_config._logging_initialized = True
         with patch("logging.getLogger") as mock_get_logger:
             logger_config.setup_logging()
             mock_get_logger.assert_not_called()

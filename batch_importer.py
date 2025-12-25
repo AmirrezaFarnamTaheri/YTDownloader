@@ -93,7 +93,9 @@ class BatchImporter:
 
             if invalid:
                 logger.info("Batch import skipped %d invalid URLs", invalid)
-            logger.info("Batch import completed: %d items (truncated=%s)", count, truncated)
+            logger.info(
+                "Batch import completed: %d items (truncated=%s)", count, truncated
+            )
             return count, truncated
 
         except Exception as ex:

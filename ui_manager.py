@@ -92,7 +92,7 @@ class UIManager:
 
         self.history_view = HistoryView()
         self.rss_view = RSSView(state.config)
-        self.settings_view = SettingsView(state.config)
+        self.settings_view = SettingsView(state.config, on_toggle_clipboard_callback)
 
         # Match the order in AppLayout.destinations:
         # 0: Dashboard, 1: Download, 2: Queue, 3: History, 4: RSS, 5: Settings

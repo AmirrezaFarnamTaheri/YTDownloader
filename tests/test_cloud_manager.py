@@ -39,8 +39,8 @@ class TestCloudManagerPatched(unittest.TestCase):
             self.manager.upload_file("test.txt", provider="google_drive")
 
     @patch("os.path.exists")
-    @patch("cloud_manager.GoogleAuth")
-    @patch("cloud_manager.GoogleDrive")
+    @patch("cloud_manager.google_auth_cls")
+    @patch("cloud_manager.google_drive_cls")
     def test_upload_google_drive_success(self, MockDrive, MockAuth, mock_exists):
         def side_effect(path):
             return (
@@ -76,8 +76,8 @@ class TestCloudManagerPatched(unittest.TestCase):
         mock_file.Upload.assert_called()
 
     @patch("os.path.exists")
-    @patch("cloud_manager.GoogleAuth")
-    @patch("cloud_manager.GoogleDrive")
+    @patch("cloud_manager.google_auth_cls")
+    @patch("cloud_manager.google_drive_cls")
     def test_upload_google_drive_refresh_token(self, MockDrive, MockAuth, mock_exists):
         def side_effect(path):
             return (
@@ -98,7 +98,7 @@ class TestCloudManagerPatched(unittest.TestCase):
         mock_gauth.Refresh.assert_called()
 
     @patch("os.path.exists")
-    @patch("cloud_manager.GoogleAuth")
+    @patch("cloud_manager.google_auth_cls")
     def test_upload_google_drive_no_creds_headless(self, MockAuth, mock_exists):
         def side_effect(path):
             # NO credentials file
@@ -117,8 +117,8 @@ class TestCloudManagerPatched(unittest.TestCase):
                 self.manager.upload_file("test.txt")
 
     @patch("os.path.exists")
-    @patch("cloud_manager.GoogleAuth")
-    @patch("cloud_manager.GoogleDrive")
+    @patch("cloud_manager.google_auth_cls")
+    @patch("cloud_manager.google_drive_cls")
     def test_upload_google_drive_no_creds_interactive(
         self, MockDrive, MockAuth, mock_exists
     ):
@@ -154,14 +154,14 @@ class TestCloudManagerPatched(unittest.TestCase):
 
         mock_exists.side_effect = side_effect
 
-        # Force GoogleAuth to be None in cloud_manager
-        with patch("cloud_manager.GoogleAuth", None):
-            with patch("cloud_manager.GoogleDrive", None):
+        # Force google_auth_cls to be None in cloud_manager
+        with patch("cloud_manager.google_auth_cls", None):
+            with patch("cloud_manager.google_drive_cls", None):
                 with self.assertRaisesRegex(Exception, "PyDrive2 dependency missing"):
                     self.manager.upload_file("test.txt")
 
     @patch("os.path.exists")
-    @patch("cloud_manager.GoogleAuth")
+    @patch("cloud_manager.google_auth_cls")
     def test_upload_google_drive_general_exception(self, MockAuth, mock_exists):
         def side_effect(path):
             return (

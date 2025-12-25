@@ -10,7 +10,6 @@ import threading
 
 import flet as ft
 
-from config_manager import ConfigManager
 from localization_manager import LocalizationManager as LM
 from rss_manager import RSSManager
 from theme import Theme

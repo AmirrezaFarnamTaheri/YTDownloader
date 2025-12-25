@@ -159,8 +159,9 @@ class GenericDownloader:
                 filename = GenericDownloader._get_filename_from_headers(url, h.headers)
         except InterruptedError:
             raise
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             # Fallback if HEAD fails (some servers block HEAD)
+            logger.debug("HEAD request failed for %s: %s", url, exc)
             final_url = url
             total_size = 0
             if not filename:
@@ -233,7 +234,7 @@ class GenericDownloader:
                     # Update total size if not known or changed (e.g. server ignored Range)
                     if r.status_code == 206:
                         # Partial content
-                        pass
+                        logger.debug("Server supports resume for %s", url)
                     elif r.status_code == 200:
                         # Server ignored range, resetting
                         if downloaded > 0:

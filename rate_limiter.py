@@ -2,8 +2,11 @@
 Rate limiter for application actions.
 """
 
+import logging
 import threading
 import time
+
+logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-few-public-methods
@@ -27,6 +30,12 @@ class RateLimiter:
         with self._lock:
             now = time.time()
             if now - self._last_action_time < self._limit_seconds:
+                logger.debug(
+                    "Rate limit hit: %.2fs since last action (limit=%.2fs)",
+                    now - self._last_action_time,
+                    self._limit_seconds,
+                )
                 return False
             self._last_action_time = now
+            logger.debug("Rate limiter allow after %.2fs", self._limit_seconds)
             return True

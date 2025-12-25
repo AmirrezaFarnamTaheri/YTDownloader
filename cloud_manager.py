@@ -4,6 +4,11 @@ Cloud Manager module.
 
 import logging
 import os
+from typing import TYPE_CHECKING, Optional, Type
+
+if TYPE_CHECKING:
+    from pydrive2.auth import GoogleAuth as GoogleAuthType
+    from pydrive2.drive import GoogleDrive as GoogleDriveType
 
 logger = logging.getLogger(__name__)
 
@@ -17,26 +22,37 @@ try:  # pragma: no cover - environment dependent
 
         if not hasattr(_pyd2, "auth"):
             _pyd2.auth = _pyd2_auth  # type: ignore[attr-defined]
-    except Exception:  # pylint: disable=broad-exception-caught
-        pass
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.debug("PyDrive2 auth compat shim failed: %s", exc)
 
     try:
         from pydrive2 import drive as _pyd2_drive  # type: ignore
 
         if not hasattr(_pyd2, "drive"):
             _pyd2.drive = _pyd2_drive  # type: ignore[attr-defined]
-    except Exception:  # pylint: disable=broad-exception-caught
-        pass
-except Exception:  # pylint: disable=broad-exception-caught
-    pass
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.debug("PyDrive2 drive compat shim failed: %s", exc)
+except Exception as exc:  # pylint: disable=broad-exception-caught
+    logger.debug("PyDrive2 compat shim unavailable: %s", exc)
+
+google_auth_cls: Optional[Type["GoogleAuthType"]] = None
+google_drive_cls: Optional[Type["GoogleDriveType"]] = None
 
 # Import PyDrive2 classes at module level
 try:
-    from pydrive2.auth import GoogleAuth  # type: ignore
-    from pydrive2.drive import GoogleDrive  # type: ignore
-except (ImportError, Exception):  # pylint: disable=broad-exception-caught
-    GoogleAuth = None
-    GoogleDrive = None
+    from pydrive2.auth import GoogleAuth as _GoogleAuth  # type: ignore
+    from pydrive2.drive import GoogleDrive as _GoogleDrive  # type: ignore
+
+    google_auth_cls = _GoogleAuth
+    google_drive_cls = _GoogleDrive
+except ImportError as exc:
+    logger.debug("PyDrive2 not installed: %s", exc)
+    google_auth_cls = None
+    google_drive_cls = None
+except Exception as exc:  # pylint: disable=broad-exception-caught
+    logger.warning("Failed to import PyDrive2: %s", exc)
+    google_auth_cls = None
+    google_drive_cls = None
 
 
 class CloudManager:
@@ -107,7 +123,7 @@ class CloudManager:
     def _get_google_drive_client(self):
         """Helper to authenticate and return a GoogleDrive client."""
         # Check if PyDrive2 is installed
-        if GoogleAuth is None or GoogleDrive is None:
+        if google_auth_cls is None or google_drive_cls is None:
             logger.error("PyDrive2 not installed.")
             # pylint: disable=broad-exception-raised
             raise Exception("PyDrive2 dependency missing.")
@@ -147,7 +163,7 @@ class CloudManager:
         try:
             # Automatic authentication
             logger.debug("Authenticating with Google Drive...")
-            gauth = GoogleAuth()
+            gauth = google_auth_cls()
 
             # Try to load saved credentials
             mycreds_path = os.path.expanduser("~/.streamcatch/mycreds.txt")
@@ -178,7 +194,7 @@ class CloudManager:
                 os.chmod(mycreds_path, 0o600)
             except OSError:
                 logger.warning("Could not set secure permissions on credentials file")
-            return GoogleDrive(gauth)  # type: ignore
+            return google_drive_cls(gauth)  # type: ignore
 
         except ImportError as exc:
             # Should be caught by top check, but safe guard

@@ -57,5 +57,6 @@ In the **Settings** tab, you can configure:
 -   **Downloads Folder**: Set the default location for saved files.
 -   **Output Template**: Customize how filenames are generated.
 -   **Max Concurrent Downloads**: Limit how many files download at once.
+-   **Clipboard Monitor**: Auto-detect URLs copied to your clipboard and prefill the download field.
 -   **Proxy**: Configure a proxy server (HTTP/SOCKS) to bypass geo-restrictions.
 -   **Rate Limit**: Set a speed limit (e.g., `5M`, `500K`) to prevent bandwidth saturation.

@@ -6,6 +6,8 @@ import os
 import signal
 from contextlib import contextmanager
 
+# pylint: disable=no-member
+
 
 @contextmanager
 def timeout_manager(seconds=30, error_message="Operation timed out"):

@@ -201,8 +201,8 @@ class SyncManager:
             if hasattr(self.history, "_resolve_db_file"):
                 try:
                     return str(self.history._resolve_db_file())
-                except Exception:  # pylint: disable=broad-exception-caught
-                    pass
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    logger.debug("Failed to resolve history DB path: %s", exc)
             db_path = getattr(self.history, "DB_FILE", None)
             if db_path:
                 return str(db_path)
@@ -227,8 +227,12 @@ class SyncManager:
             if os.path.exists(source_path):
                 try:
                     os.remove(source_path)
-                except OSError:
-                    pass
+                except OSError as exc:
+                    logger.debug(
+                        "Failed to remove temporary history DB %s: %s",
+                        source_path,
+                        exc,
+                    )
 
     def export_data(self, export_path: str):
         """Exports all app data to a zip file."""

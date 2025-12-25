@@ -200,9 +200,7 @@ class TestAppControllerCoverage(unittest.TestCase):
     def test_on_retry_item(self):
         item = {"id": "123"}
         self.controller.on_retry_item(item)
-        self.mock_state.queue_manager.update_item_status.assert_called_with(
-            "123", "Queued", updates=ANY
-        )
+        self.mock_state.queue_manager.retry_item.assert_called_with("123")
         self.mock_ui.update_queue_view.assert_called()
 
     @patch("app_controller.play_file")
@@ -278,6 +276,7 @@ class TestAppControllerCoverage(unittest.TestCase):
         self.mock_page.open.assert_called_with(self.controller.time_picker)
 
     def test_on_toggle_clipboard(self):
+        self.controller._clipboard_monitor_started = True
         self.controller.on_toggle_clipboard(True)
         self.assertTrue(self.mock_state.clipboard_monitor_active)
         self.mock_page.open.assert_called()

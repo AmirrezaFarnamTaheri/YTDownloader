@@ -47,8 +47,8 @@ def __getattr__(name):
 
 
 # Tracks the number of actively running downloads
-_ACTIVE_COUNT = 0
-_ACTIVE_COUNT_LOCK = threading.Lock()
+_active_count = 0
+_active_count_lock = threading.Lock()
 
 
 def _get_max_workers():
@@ -62,7 +62,7 @@ def _get_max_workers():
 # We limit the number of submitted-but-not-finished tasks to MAX_WORKERS.
 # This prevents queuing up 100 tasks in the executor when only 3 can run at once,
 # which allows for more responsive cancellation and priority handling.
-_SUBMISSION_THROTTLE = threading.Semaphore(_get_max_workers())
+_submission_throttle = threading.Semaphore(_get_max_workers())
 
 # Lock for protecting the queue processing loop
 _PROCESS_QUEUE_LOCK = threading.RLock()
@@ -74,7 +74,7 @@ def process_queue():
     Submits new downloads to the executor if slots are available.
     """
     # pylint: disable=global-statement
-    global _ACTIVE_COUNT
+    global _active_count
 
     if state.shutdown_flag.is_set():
         return
@@ -86,20 +86,20 @@ def process_queue():
 
             # Try to acquire a slot without blocking
             # pylint: disable=consider-using-with
-            if _SUBMISSION_THROTTLE.acquire(blocking=False):
+            if _submission_throttle.acquire(blocking=False):
                 try:
                     # We acquired a slot, check if there is work
                     item = state.queue_manager.claim_next_downloadable()
                     if not item:
                         # No work, release slot immediately
-                        _SUBMISSION_THROTTLE.release()
+                        _submission_throttle.release()
                         break
                     logger.debug(
                         "Claimed item for download: %s", item.get("id", "unknown")
                     )
                 except Exception:
                     # Ensure release if claim fails
-                    _SUBMISSION_THROTTLE.release()
+                    _submission_throttle.release()
                     raise
             else:
                 # No slots available
@@ -107,8 +107,8 @@ def process_queue():
 
             # Increment active count for monitoring
             # pylint: disable=consider-using-with
-            with _ACTIVE_COUNT_LOCK:
-                _ACTIVE_COUNT += 1
+            with _active_count_lock:
+                _active_count += 1
 
             # Submit to executor
             try:
@@ -116,9 +116,9 @@ def process_queue():
                 _get_executor().submit(_wrapped_download_task, item)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Failed to submit task: %s", e)
-                with _ACTIVE_COUNT_LOCK:
-                    _ACTIVE_COUNT -= 1
-                _SUBMISSION_THROTTLE.release()
+                with _active_count_lock:
+                    _active_count -= 1
+                _submission_throttle.release()
 
                 state.queue_manager.update_item_status(
                     item.get("id"), "Error", {"error": "Failed to start"}
@@ -131,7 +131,7 @@ def _wrapped_download_task(item):
     Guarantees semaphore is released even if download_task fails or app shuts down.
     """
     # pylint: disable=global-statement
-    global _ACTIVE_COUNT
+    global _active_count
     try:
         if not state.shutdown_flag.is_set():
             download_task(item)
@@ -146,10 +146,10 @@ def _wrapped_download_task(item):
                 logger.exception("Failed to mark item as cancelled on shutdown.")
     finally:
         # ALWAYS release semaphore and decrement count
-        _SUBMISSION_THROTTLE.release()
-        with _ACTIVE_COUNT_LOCK:
-            _ACTIVE_COUNT -= 1
-            logger.debug("Active downloads decremented to %d", _ACTIVE_COUNT)
+        _submission_throttle.release()
+        with _active_count_lock:
+            _active_count -= 1
+            logger.debug("Active downloads decremented to %d", _active_count)
 
         # Notify queue manager that a slot opened up
         try:
@@ -157,8 +157,12 @@ def _wrapped_download_task(item):
             # pylint: disable=protected-access
             with state.queue_manager._has_work:
                 state.queue_manager._has_work.notify_all()
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.debug(
+                "Failed to notify queue manager for slot release: %s",
+                exc,
+                exc_info=True,
+            )
 
 
 def configure_concurrency(max_workers: Optional[int] = None) -> bool:
@@ -166,7 +170,7 @@ def configure_concurrency(max_workers: Optional[int] = None) -> bool:
     Update executor/semaphore concurrency. Returns True if applied.
     Will not modify when active downloads are running.
     """
-    global _executor, _SUBMISSION_THROTTLE
+    global _executor, _submission_throttle
 
     if max_workers is None:
         max_workers = _get_max_workers()
@@ -181,11 +185,11 @@ def configure_concurrency(max_workers: Optional[int] = None) -> bool:
         logger.warning("max_workers must be >= 1")
         return False
 
-    with _ACTIVE_COUNT_LOCK:
-        if _ACTIVE_COUNT > 0:
+    with _active_count_lock:
+        if _active_count > 0:
             logger.warning(
                 "Skipping concurrency update while %d downloads are active",
-                _ACTIVE_COUNT,
+                _active_count,
             )
             return False
 
@@ -194,12 +198,14 @@ def configure_concurrency(max_workers: Optional[int] = None) -> bool:
             try:
                 _executor.shutdown(wait=False)
             except Exception:  # pylint: disable=broad-exception-caught
-                logger.debug("Executor shutdown failed during reconfigure", exc_info=True)
+                logger.debug(
+                    "Executor shutdown failed during reconfigure", exc_info=True
+                )
             _executor = ThreadPoolExecutor(
                 max_workers=max_workers, thread_name_prefix="DLWorker"
             )
 
-    _SUBMISSION_THROTTLE = threading.Semaphore(max_workers)
+    _submission_throttle = threading.Semaphore(max_workers)
     logger.info("Updated concurrency limit to %d", max_workers)
     return True
 
@@ -209,8 +215,8 @@ def _update_progress_ui(item: Dict[str, Any]):
     if "control" in item:
         try:
             item["control"].update_progress()
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.debug("Failed to update progress UI: %s", exc, exc_info=True)
 
 
 def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
@@ -319,7 +325,9 @@ def download_task(item: Dict[str, Any]):
         preferred_path = None
         if hasattr(state, "config") and hasattr(state.config, "get"):
             preferred_path = state.config.get("download_path")
-        output_path = item.get("output_path") or get_default_download_path(preferred_path)
+        output_path = item.get("output_path") or get_default_download_path(
+            preferred_path
+        )
         if not item.get("output_path"):
             item["output_path"] = output_path
         logger.debug("Resolved output path for %s: %s", url, output_path)
@@ -332,17 +340,17 @@ def download_task(item: Dict[str, Any]):
             logger.debug("Proxy enabled for %s", url)
 
         rate_limit = item.get("rate_limit")
-        if (
-            not rate_limit
-            and hasattr(state, "config")
-            and hasattr(state.config, "get")
-        ):
+        if not rate_limit and hasattr(state, "config") and hasattr(state.config, "get"):
             cfg_rate = state.config.get("rate_limit")
             rate_limit = cfg_rate if isinstance(cfg_rate, str) and cfg_rate else None
         if rate_limit:
             logger.debug("Rate limit set for %s: %s", url, rate_limit)
 
         # Map dict item to DownloadOptions
+        output_template = item.get("output_template") or "%(title)s.%(ext)s"
+        if not isinstance(output_template, str):
+            output_template = "%(title)s.%(ext)s"
+
         options = DownloadOptions(
             url=url,
             output_path=output_path,
@@ -353,7 +361,7 @@ def download_task(item: Dict[str, Any]):
             sponsorblock=item.get("sponsorblock", False),
             use_aria2c=item.get("use_aria2c", False),
             gpu_accel=item.get("gpu_accel"),
-            output_template=item.get("output_template", "%(title)s.%(ext)s"),
+            output_template=output_template,
             start_time=item.get("start_time"),
             end_time=item.get("end_time"),
             force_generic=item.get("force_generic", False),

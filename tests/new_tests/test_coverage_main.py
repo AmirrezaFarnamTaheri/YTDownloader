@@ -17,6 +17,7 @@ class TestMain(unittest.TestCase):
     @patch("main.UIManager")
     def test_main_function(self, MockUIManager, MockAppController):
         page = MagicMock()
+        main.state.clipboard_monitor_active = True
 
         main.main(page)
 

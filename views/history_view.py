@@ -11,6 +11,8 @@ from ui_utils import open_folder
 from views.base_view import BaseView
 from views.components.history_item import HistoryItemControl
 
+logger = logging.getLogger(__name__)
+
 
 class HistoryView(BaseView):
     """View for displaying download history."""
@@ -44,10 +46,12 @@ class HistoryView(BaseView):
 
     def load(self):
         """Loads history items from the database."""
+        logger.debug("Loading history items")
         self.history_list.controls.clear()
         items = HistoryManager.get_history(limit=50)
 
         if not items:
+            logger.info("History list is empty")
             self.history_list.controls.append(
                 ft.Container(
                     content=ft.Column(
@@ -66,6 +70,7 @@ class HistoryView(BaseView):
                 )
             )
         else:
+            logger.debug("Rendering %d history items", len(items))
             for item in items:
                 control = HistoryItemControl(
                     item,
@@ -88,6 +93,7 @@ class HistoryView(BaseView):
 
         def confirm_clear(e):
             try:
+                logger.info("User confirmed history clear")
                 HistoryManager.clear_history()
                 self.load()
                 if self.page:
@@ -95,7 +101,7 @@ class HistoryView(BaseView):
                         ft.SnackBar(content=ft.Text(LM.get("history_cleared")))
                     )
             except Exception as ex:  # pylint: disable=broad-exception-caught
-                logging.error("Failed to clear history: %s", ex)
+                logger.error("Failed to clear history: %s", ex)
                 if self.page:
                     self.page.open(
                         ft.SnackBar(content=ft.Text(LM.get("history_clear_failed")))
@@ -118,9 +124,10 @@ class HistoryView(BaseView):
         """Safely opens the folder containing the downloaded file."""
         try:
             if path:
+                logger.debug("Opening history folder: %s", path)
                 open_folder(path, self.page)
         except Exception as ex:  # pylint: disable=broad-exception-caught
-            logging.error("Failed to open folder: %s", ex)
+            logger.error("Failed to open folder: %s", ex)
             if self.page:
                 self.page.open(
                     ft.SnackBar(content=ft.Text(LM.get("open_folder_failed")))

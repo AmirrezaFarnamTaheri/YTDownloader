@@ -8,6 +8,7 @@ ensuring consistent behavior for cancellation and progress reporting.
 
 import logging
 import os
+from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Optional, cast
 
 import yt_dlp
@@ -64,11 +65,13 @@ class YTDLPWrapper:
 
         # Handle path override
         if output_path and "outtmpl" in options:
-            # Basic replacement if outtmpl starts with old path?
-            # Or just assume caller handled options before passing here.
-            # Ideally options already has correct path.
-            # If output_path is passed, we might need to update outtmpl if it was just a filename template.
-            pass
+            try:
+                current = options.get("outtmpl")
+                template_name = Path(str(current)).name if current else "%(title)s.%(ext)s"
+                options["outtmpl"] = str(Path(output_path) / template_name)
+                logger.debug("yt-dlp outtmpl overridden to %s", options["outtmpl"])
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                logger.warning("Failed to apply output path override: %s", exc)
 
         # Add progress hooks
         hooks = options.setdefault("progress_hooks", [])

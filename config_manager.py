@@ -41,6 +41,7 @@ class ConfigManager:
         "high_contrast": False,
         "compact_mode": False,
         "metadata_cache_size": 50,
+        "clipboard_monitor_enabled": False,
     }
 
     @staticmethod
@@ -141,6 +142,11 @@ class ConfigManager:
         if "compact_mode" in config and not isinstance(config["compact_mode"], bool):
             raise ValueError("compact_mode must be a boolean")
 
+        if "clipboard_monitor_enabled" in config and not isinstance(
+            config["clipboard_monitor_enabled"], bool
+        ):
+            raise ValueError("clipboard_monitor_enabled must be a boolean")
+
     @staticmethod
     def load_config() -> Dict[str, Any]:
         """
@@ -172,8 +178,8 @@ class ConfigManager:
                     if os.path.exists(backup):
                         os.unlink(backup)
                     config_path.rename(backup)
-                except OSError:
-                    pass
+                except OSError as exc:
+                    logger.warning("Failed to backup corrupted config: %s", exc)
                 return config
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Failed to load config: %s", e)
@@ -235,5 +241,7 @@ class ConfigManager:
             if temp_path and os.path.exists(temp_path):
                 try:
                     os.unlink(temp_path)
-                except OSError:
-                    pass
+                except OSError as exc:
+                    logger.warning(
+                        "Failed to remove temp config file %s: %s", temp_path, exc
+                    )

@@ -1,4 +1,4 @@
-# pylint: disable=unnecessary-lambda
+# pylint: disable=unnecessary-lambda,import-outside-toplevel,broad-exception-caught
 """
 Download View Module.
 

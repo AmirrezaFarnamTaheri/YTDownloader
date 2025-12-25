@@ -6,12 +6,12 @@
 
 ## Documentation
 
-Detailed documentation is available in our **[Wiki](wiki/Home.md)**:
+Detailed documentation is available in **[Project Docs](project_docs/Home.md)**:
 
-*   **[User Guide](wiki/User-Guide.md)**: Installation, usage, scheduling, and configuration.
-*   **[Developer Guide](wiki/Developer-Guide.md)**: Architecture, setup, testing, and contribution.
-*   **[Troubleshooting](wiki/Troubleshooting.md)**: Solutions to common issues.
-*   **[Roadmap](wiki/Roadmap.md)**: Upcoming features and plans.
+*   **[User Guide](project_docs/User-Guide.md)**: Installation, usage, scheduling, and configuration.
+*   **[Developer Guide](project_docs/Developer-Guide.md)**: Architecture, setup, testing, and contribution.
+*   **[Troubleshooting](project_docs/Troubleshooting.md)**: Solutions to common issues.
+*   **[Roadmap](project_docs/Roadmap.md)**: Upcoming features and plans.
 
 ## Features
 

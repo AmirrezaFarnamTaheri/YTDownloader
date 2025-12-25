@@ -30,10 +30,10 @@ class TestPipelineIntegration(unittest.TestCase):
         # Ensure we don't have residual threads from other tests
         # We can't easily kill threads, but we can ensure shutdown flag is clear.
 
-        # Patch tasks._SUBMISSION_THROTTLE (was _active_downloads) to avoid interference
+        # Patch tasks._submission_throttle (was _active_downloads) to avoid interference
         # We use the new name but patch legacy alias is also possible if tasks.py still uses it.
-        # tasks.py aliases _active_downloads = _SUBMISSION_THROTTLE, so patching _SUBMISSION_THROTTLE is correct.
-        self.patcher_sem = patch("tasks._SUBMISSION_THROTTLE", threading.Semaphore(3))
+        # tasks.py aliases _active_downloads = _submission_throttle, so patching _submission_throttle is correct.
+        self.patcher_sem = patch("tasks._submission_throttle", threading.Semaphore(3))
         self.patcher_sem.start()
 
     def tearDown(self):

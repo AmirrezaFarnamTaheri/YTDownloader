@@ -41,8 +41,8 @@ class TestMainLogic(unittest.TestCase):
         self.mock_get_executor.return_value = self.mock_executor
 
         # Patch submission throttle semaphore mock
-        # Note: tasks.py now uses _SUBMISSION_THROTTLE
-        self.patcher_sem = patch("tasks._SUBMISSION_THROTTLE", create=True)
+        # Note: tasks.py now uses _submission_throttle
+        self.patcher_sem = patch("tasks._submission_throttle", create=True)
 
         self.patcher_lock = patch(
             "tasks._PROCESS_QUEUE_LOCK", threading.RLock(), create=True

@@ -7,6 +7,7 @@ Extracts metadata and media URLs from public Telegram posts (t.me/...).
 import logging
 import re
 from typing import Any, Callable, Dict, Optional, Union
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup, Tag
@@ -88,7 +89,8 @@ class TelegramExtractor:
             # Validate extracted URL
             if video_url and not video_url.startswith("http"):
                 # Handle relative URLs if any (unlikely for og tags but possible in src)
-                pass
+                video_url = urljoin(url, video_url)
+                logger.debug("Resolved relative Telegram URL to %s", video_url)
 
             if not video_url:
                 logger.warning("No video found in Telegram link: %s", url)

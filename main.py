@@ -27,6 +27,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # Global instances
+# pylint: disable=invalid-name
 UI: Optional[UIManager] = None
 PAGE: Optional[ft.Page] = None
 CONTROLLER: Optional[AppController] = None
@@ -116,7 +117,8 @@ def main(pg: ft.Page):
 
     # Start Background Services
     CONTROLLER.start_background_loop()
-    CONTROLLER.start_clipboard_monitor()
+    if state.clipboard_monitor_active:
+        CONTROLLER.start_clipboard_monitor()
 
     def cleanup_on_disconnect(e):
         # pylint: disable=unused-argument
@@ -154,30 +156,31 @@ def global_crash_handler(exctype, value, tb):
         # Ensure permissions are set
         try:
             os.chmod(log_path, 0o600)
-        except OSError:
-            pass
-    except Exception:  # pylint: disable=broad-exception-caught
+        except OSError as exc:
+            logger.warning("Failed to set crash log permissions: %s", exc)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.error("Failed to write crash log in user directory: %s", exc)
         # Fallback
         log_path = Path("crash.log")
         try:
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(crash_report)
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
+        except Exception as fallback_exc:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to write fallback crash log: %s", fallback_exc)
 
     # Also write to local
     try:
         local_crash = Path("streamcatch_crash.log")
         with open(local_crash, "w", encoding="utf-8") as f:
             f.write(crash_report)
-    except Exception:  # pylint: disable=broad-exception-caught
-        pass
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.error("Failed to write local crash log: %s", exc)
 
     try:
-        logger.critical("\n" + "=" * 60)
-        logger.critical("CRITICAL ERROR - STREAMCATCH CRASHED")
-        logger.critical(crash_report)
-        logger.critical("=" * 60 + "\n")
+        logger.critical("%s", "\n" + "=" * 60)
+        logger.critical("%s", "CRITICAL ERROR - STREAMCATCH CRASHED")
+        logger.critical("%s", crash_report)
+        logger.critical("%s", "=" * 60 + "\n")
 
         if os.name == "nt":
             # Try to show message box in a separate thread to avoid blocking if possible,
@@ -188,12 +191,12 @@ def global_crash_handler(exctype, value, tb):
                 # MessageBoxW blocks, but since we are crashing, it's fine.
                 msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
                 ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
-            except OSError:
-                pass
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
-    except Exception:  # pylint: disable=broad-exception-caught
-        pass
+            except OSError as exc:
+                logger.debug("Failed to display crash dialog: %s", exc)
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                logger.debug("Unexpected error showing crash dialog: %s", exc)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.debug("Failed to log crash details: %s", exc)
 
     sys.exit(1)
 
@@ -205,11 +208,11 @@ if __name__ == "__main__":
 
     sys.excepthook = global_crash_handler
 
-    logger.info("=" * 60)
-    logger.info("StreamCatch Starting...")
+    logger.info("%s", "=" * 60)
+    logger.info("%s", "StreamCatch Starting...")
     logger.info("Python: %s", sys.version)
     logger.info("Working Directory: %s", os.getcwd())
-    logger.info("=" * 60 + "\n")
+    logger.info("%s", "=" * 60 + "\n")
 
     try:
         # Initialize AppState first to fail fast if config/DB is broken
