@@ -363,3 +363,123 @@ class QueueManager:
         if updated:
             self._notify_listeners_safe()
         return updated
+
+    def cancel_all(self):
+        """Cancel all active downloads in the queue."""
+        cancelled_count = 0
+        with self._lock:
+            for item in self._queue:
+                item_id = item.get("id")
+                status = item.get("status", "")
+
+                # Only cancel active items
+                if status in ("Queued", "Allocating", "Downloading", "Processing"):
+                    # Cancel the token if exists
+                    token = self._cancel_tokens.get(item_id)
+                    if token:
+                        token.cancel()
+
+                    item["status"] = "Cancelled"
+                    cancelled_count += 1
+
+                # Also cancel scheduled items
+                elif status.startswith("Scheduled"):
+                    item["status"] = "Cancelled"
+                    item["scheduled_time"] = None
+                    cancelled_count += 1
+
+        if cancelled_count > 0:
+            logger.info("Cancelled %d downloads", cancelled_count)
+            self._notify_listeners_safe()
+
+        return cancelled_count
+
+    def pause_all(self):
+        """Pause all queued downloads (prevents new downloads from starting)."""
+        paused_count = 0
+        with self._lock:
+            for item in self._queue:
+                if item.get("status") == "Queued":
+                    item["status"] = "Paused"
+                    item["_was_queued"] = True
+                    paused_count += 1
+
+        if paused_count > 0:
+            logger.info("Paused %d queued downloads", paused_count)
+            self._notify_listeners_safe()
+
+        return paused_count
+
+    def resume_all(self):
+        """Resume all paused downloads."""
+        resumed_count = 0
+        with self._lock:
+            for item in self._queue:
+                if item.get("status") == "Paused":
+                    item["status"] = "Queued"
+                    item.pop("_was_queued", None)
+                    resumed_count += 1
+
+            if resumed_count > 0:
+                self._has_work.notify_all()
+
+        if resumed_count > 0:
+            logger.info("Resumed %d downloads", resumed_count)
+            self._notify_listeners_safe()
+
+        return resumed_count
+
+    def get_statistics(self) -> Dict[str, int]:
+        """Get queue statistics."""
+        with self._lock:
+            stats = {
+                "total": len(self._queue),
+                "queued": 0,
+                "downloading": 0,
+                "processing": 0,
+                "completed": 0,
+                "failed": 0,
+                "cancelled": 0,
+                "paused": 0,
+                "scheduled": 0,
+            }
+
+            for item in self._queue:
+                status = item.get("status", "")
+                if status == "Queued":
+                    stats["queued"] += 1
+                elif status == "Downloading":
+                    stats["downloading"] += 1
+                elif status in ("Processing", "Allocating"):
+                    stats["processing"] += 1
+                elif status == "Completed":
+                    stats["completed"] += 1
+                elif status == "Error":
+                    stats["failed"] += 1
+                elif status == "Cancelled":
+                    stats["cancelled"] += 1
+                elif status == "Paused":
+                    stats["paused"] += 1
+                elif status.startswith("Scheduled"):
+                    stats["scheduled"] += 1
+
+            return stats
+
+    def clear_completed(self) -> int:
+        """Remove all completed, errored, and cancelled items."""
+        removed_count = 0
+        with self._lock:
+            items_to_remove = [
+                item
+                for item in self._queue
+                if item.get("status") in ("Completed", "Error", "Cancelled")
+            ]
+            for item in items_to_remove:
+                self._queue.remove(item)
+                removed_count += 1
+
+        if removed_count > 0:
+            logger.info("Cleared %d completed/failed items", removed_count)
+            self._notify_listeners_safe()
+
+        return removed_count

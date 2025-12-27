@@ -162,10 +162,19 @@ class AppState:
             logger.debug("Sync manager cleanup error: %s", e)
 
         try:
-            logger.debug("Closing queue manager...")
-            # If QueueManager had cleanup
+            logger.debug("Cleaning up queue manager...")
+            if self.queue_manager:
+                self.queue_manager.cancel_all()
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.debug("Queue manager cleanup error: %s", e)
+
+        try:
+            logger.debug("Saving configuration...")
+            ConfigManager.save_config(self.config)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.debug("Config save error during cleanup: %s", e)
+
+        logger.info("AppState cleanup complete")
 
     def get_video_info(self, url: str) -> Optional[Dict[str, Any]]:
         """Get cached video info for URL with LRU tracking."""

@@ -311,3 +311,268 @@ class HistoryManager:
         except Exception as e:
             logger.error("Failed to clear history: %s", e)
             raise e  # Raise to satisfy tests expecting errors on failure
+
+    @staticmethod
+    def search_history(
+        query: str,
+        limit: int = 50,
+        offset: int = 0,
+        search_in: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Search history entries by title, URL, or both.
+
+        Args:
+            query: Search query string
+            limit: Maximum number of results
+            offset: Offset for pagination
+            search_in: List of fields to search in ('title', 'url'). Default: both
+
+        Returns:
+            Dictionary with entries, total count, and pagination info
+        """
+        if not query or not query.strip():
+            return HistoryManager.get_history_paginated(offset=offset, limit=limit)
+
+        if search_in is None:
+            search_in = ["title", "url"]
+
+        logger.debug("Searching history for: %s", query)
+        conn = None
+        entries = []
+        total = 0
+
+        try:
+            conn = HistoryManager._get_connection()
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            # Build search conditions
+            conditions = []
+            params = []
+            search_pattern = f"%{query}%"
+
+            if "title" in search_in:
+                conditions.append("title LIKE ?")
+                params.append(search_pattern)
+            if "url" in search_in:
+                conditions.append("url LIKE ?")
+                params.append(search_pattern)
+
+            where_clause = " OR ".join(conditions) if conditions else "1=1"
+
+            # Get total count
+            count_query = f"SELECT COUNT(*) FROM history WHERE {where_clause}"
+            cursor.execute(count_query, params)
+            result = cursor.fetchone()
+            total = result[0] if result else 0
+
+            # Get entries
+            search_query = f"""
+                SELECT * FROM history
+                WHERE {where_clause}
+                ORDER BY timestamp DESC
+                LIMIT ? OFFSET ?
+            """
+            cursor.execute(search_query, params + [limit, offset])
+            rows = cursor.fetchall()
+            entries = [dict(row) for row in rows]
+
+            logger.debug("Search found %d entries", len(entries))
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error searching history: %s", e)
+        finally:
+            if conn:
+                conn.close()
+
+        return {
+            "entries": entries,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "query": query,
+            "has_more": (offset + limit) < total,
+        }
+
+    @staticmethod
+    def get_history_by_date_range(
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get history entries within a date range.
+
+        Args:
+            start_date: Start of date range (inclusive)
+            end_date: End of date range (inclusive)
+            limit: Maximum number of results
+
+        Returns:
+            List of matching history entries
+        """
+        logger.debug("Fetching history by date range: %s to %s", start_date, end_date)
+        conn = None
+        entries = []
+
+        try:
+            conn = HistoryManager._get_connection()
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            conditions = []
+            params: List[Any] = []
+
+            if start_date:
+                conditions.append("timestamp >= ?")
+                params.append(start_date.isoformat())
+            if end_date:
+                conditions.append("timestamp <= ?")
+                params.append(end_date.isoformat())
+
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+            query = f"""
+                SELECT * FROM history
+                WHERE {where_clause}
+                ORDER BY timestamp DESC
+                LIMIT ?
+            """
+            cursor.execute(query, params + [limit])
+            rows = cursor.fetchall()
+            entries = [dict(row) for row in rows]
+
+            logger.debug("Date range query found %d entries", len(entries))
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error fetching history by date: %s", e)
+        finally:
+            if conn:
+                conn.close()
+
+        return entries
+
+    @staticmethod
+    def get_history_stats() -> Dict[str, Any]:
+        """
+        Get statistics about download history.
+
+        Returns:
+            Dictionary with total count, status breakdown, and date range
+        """
+        logger.debug("Getting history statistics")
+        conn = None
+        stats: Dict[str, Any] = {
+            "total": 0,
+            "by_status": {},
+            "oldest_entry": None,
+            "newest_entry": None,
+        }
+
+        try:
+            conn = HistoryManager._get_connection()
+            cursor = conn.cursor()
+
+            # Total count
+            cursor.execute("SELECT COUNT(*) FROM history")
+            result = cursor.fetchone()
+            stats["total"] = result[0] if result else 0
+
+            # Count by status
+            cursor.execute(
+                "SELECT status, COUNT(*) FROM history GROUP BY status"
+            )
+            for row in cursor.fetchall():
+                status = row[0] or "Unknown"
+                stats["by_status"][status] = row[1]
+
+            # Date range
+            cursor.execute(
+                "SELECT MIN(timestamp), MAX(timestamp) FROM history"
+            )
+            result = cursor.fetchone()
+            if result:
+                stats["oldest_entry"] = result[0]
+                stats["newest_entry"] = result[1]
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error getting history stats: %s", e)
+        finally:
+            if conn:
+                conn.close()
+
+        return stats
+
+    @staticmethod
+    def export_history(format_type: str = "json") -> Optional[str]:
+        """
+        Export history to a string in the specified format.
+
+        Args:
+            format_type: Export format ('json' or 'csv')
+
+        Returns:
+            Exported data as string, or None on error
+        """
+        import csv
+        import io
+        import json as json_lib
+
+        logger.info("Exporting history as %s", format_type)
+
+        try:
+            entries = HistoryManager.get_history(limit=10000)
+
+            if format_type == "json":
+                return json_lib.dumps(entries, indent=2, default=str)
+
+            elif format_type == "csv":
+                if not entries:
+                    return ""
+
+                output = io.StringIO()
+                fieldnames = list(entries[0].keys())
+                writer = csv.DictWriter(output, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(entries)
+                return output.getvalue()
+
+            else:
+                logger.error("Unsupported export format: %s", format_type)
+                return None
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error exporting history: %s", e)
+            return None
+
+    @staticmethod
+    def delete_entry(entry_id: int) -> bool:
+        """
+        Delete a single history entry by ID.
+
+        Args:
+            entry_id: The ID of the entry to delete
+
+        Returns:
+            True if deleted, False otherwise
+        """
+        logger.debug("Deleting history entry: %d", entry_id)
+        conn = None
+
+        try:
+            conn = HistoryManager._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM history WHERE id = ?", (entry_id,))
+            conn.commit()
+            deleted = cursor.rowcount > 0
+            if deleted:
+                logger.info("Deleted history entry: %d", entry_id)
+            return deleted
+
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Error deleting history entry: %s", e)
+            return False
+        finally:
+            if conn:
+                conn.close()
