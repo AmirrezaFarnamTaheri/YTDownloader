@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Avoid compiling yt-dlp's massive lazy extractor table, which can exhaust
 # the Windows C compiler heap when Nuitka converts it to C code.
@@ -57,6 +58,28 @@ def ensure_macos_app_bundle(dist_dir: Path, app_name: str, binary_name: str) -> 
 
 
 # pylint: disable=too-many-branches, too-many-statements
+
+
+def _find_iscc() -> Optional[str]:
+    """Locate ISCC.exe for Inno Setup across common install locations."""
+    iscc = shutil.which("iscc")
+    if iscc:
+        return iscc
+
+    candidates = [
+        Path(os.environ.get("LOCALAPPDATA", ""))
+        / "Programs"
+        / "Inno Setup 6"
+        / "ISCC.exe",
+        Path(os.environ.get("ProgramFiles(x86)", "")) / "Inno Setup 6" / "ISCC.exe",
+        Path(os.environ.get("ProgramFiles", "")) / "Inno Setup 6" / "ISCC.exe",
+    ]
+
+    for candidate in candidates:
+        if candidate and candidate.exists():
+            return str(candidate)
+
+    return None
 
 
 def build_installer():
@@ -201,7 +224,7 @@ def build_installer():
 
     # 2. Optionally build Windows installer via Inno Setup
     if os.name == "nt":
-        iscc = shutil.which("iscc")
+        iscc = _find_iscc()
         if iscc:
             print("Step 3: Building Windows installer...")
             try:
