@@ -9,7 +9,10 @@ import os
 import threading
 import time
 
-from pypresence import Presence
+try:  # pragma: no cover - optional dependency
+    from pypresence import Presence
+except ImportError:
+    Presence = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,9 @@ class SocialManager:
 
     def connect(self):
         """Connect to Discord RPC."""
+        if Presence is None:
+            logger.info("Discord RPC unavailable: pypresence not installed")
+            return
         # Check if client ID is provided and valid
         if not self._client_id or not self._client_id.isdigit():
             logger.debug("Discord RPC skipped: No valid Client ID provided")

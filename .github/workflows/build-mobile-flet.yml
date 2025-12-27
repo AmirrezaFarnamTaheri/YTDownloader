@@ -38,7 +38,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.12"
-  FLUTTER_VERSION: "3.29.0"
+  FLUTTER_VERSION: "3.19.0"
 
 jobs:
   version:
@@ -81,24 +81,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements-mobile.txt
 
     - name: Build APK
       env:
         APP_VERSION: ${{ needs.version.outputs.version }}
       run: |
-        # Ensure pure python requirements are used (no binary wheels that won't work on Android)
-        # But for 'flet build apk', it packages the python code.
-        # We need to ensure we don't include heavy desktop libs if possible.
-        
-        flet build apk --verbose \
-          --build-version "${{ env.APP_VERSION }}" \
-          --project-name "StreamCatch" \
-          --org "com.jules.streamcatch" \
-          --product "StreamCatch" \
-          --description "Ultimate Video Downloader" \
-          --include-packages yt_dlp,requests,urllib3,certifi,idna,charset_normalizer,defusedxml,dateutil,bs4,PIL,pyperclip \
-          main.py
+        python scripts/build_mobile.py --target apk --verbose
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
@@ -138,19 +127,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements-mobile.txt
 
     - name: Build iOS IPA (No signing for now - strictly build check)
       env:
         APP_VERSION: ${{ needs.version.outputs.version }}
       run: |
-        flet build ipa --no-codesign --verbose \
-          --build-version "${{ env.APP_VERSION }}" \
-          --project-name "StreamCatch" \
-          --org "com.jules.streamcatch" \
-          --product "StreamCatch" \
-          --include-packages yt_dlp,requests,urllib3,certifi,idna,charset_normalizer,defusedxml,dateutil,bs4,PIL,pyperclip \
-          main.py
+        python scripts/build_mobile.py --target ipa --verbose
 
     - name: Upload iOS Archive
       uses: actions/upload-artifact@v4
