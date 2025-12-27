@@ -5,6 +5,7 @@ Features a modern dashboard with system status, quick actions,
 active download summaries, and recent history.
 """
 
+import logging
 import shutil
 from typing import Callable
 
@@ -17,17 +18,25 @@ from ui_utils import open_folder
 from views.base_view import BaseView
 from views.components.history_item import HistoryItemControl
 
+logger = logging.getLogger(__name__)
+
 
 class DashboardView(BaseView):
     """
     Dashboard view serving as the home screen.
+
+    Features:
+    - System storage status
+    - Active downloads counter and statistics
+    - Quick action buttons
+    - Recent download history
     """
 
     def __init__(
         self,
-        on_navigate: Callable,
-        on_paste_url: Callable,
-        on_batch_import: Callable,
+        on_navigate: Callable[[int], None],
+        on_paste_url: Callable[[], None],
+        on_batch_import: Callable[[], None],
         queue_manager,
     ):
         super().__init__(LM.get("dashboard"), ft.icons.DASHBOARD)
@@ -45,6 +54,17 @@ class DashboardView(BaseView):
             LM.get("storage_calculating"), size=12, color=Theme.TEXT_MUTED
         )
 
+        # Active downloads stats widgets
+        self.active_downloads_text = ft.Text(
+            "0", size=32, weight=ft.FontWeight.BOLD, color=Theme.Primary.MAIN
+        )
+        self.queued_downloads_text = ft.Text(
+            "0", size=32, weight=ft.FontWeight.BOLD, color=Theme.ACCENT
+        )
+        self.completed_downloads_text = ft.Text(
+            "0", size=32, weight=ft.FontWeight.BOLD, color=Theme.Status.SUCCESS
+        )
+
         self.recent_history_list = ft.Column(spacing=10)
 
         self.content_area = ft.Container(
@@ -52,6 +72,9 @@ class DashboardView(BaseView):
                 [
                     # Welcome & Quick Actions
                     self._build_header_section(),
+                    ft.Container(height=20),
+                    # Download Statistics
+                    self._build_stats_section(),
                     ft.Container(height=20),
                     # System Status (Disk, etc)
                     self._build_status_section(),
@@ -137,6 +160,69 @@ class DashboardView(BaseView):
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
+    def _build_stats_section(self):
+        """Builds the download statistics section with cards."""
+
+        def stat_card(title: str, value_widget: ft.Text, icon: str, color: str):
+            return ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Icon(icon, size=40, color=color),
+                        ft.Column(
+                            [
+                                value_widget,
+                                ft.Text(title, size=12, color=Theme.Text.SECONDARY),
+                            ],
+                            spacing=2,
+                            alignment=ft.MainAxisAlignment.CENTER,
+                        ),
+                    ],
+                    spacing=15,
+                    alignment=ft.MainAxisAlignment.START,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                **Theme.get_card_decoration(),
+                width=200,
+                on_click=lambda _: self.on_navigate(2),  # Navigate to queue
+                ink=True,
+            )
+
+        return ft.Column(
+            [
+                ft.Text(
+                    LM.get("download_stats", "Download Statistics"),
+                    size=20,
+                    weight=ft.FontWeight.BOLD,
+                    color=Theme.Text.PRIMARY,
+                ),
+                ft.Row(
+                    [
+                        stat_card(
+                            LM.get("active", "Active"),
+                            self.active_downloads_text,
+                            ft.icons.DOWNLOADING,
+                            Theme.Primary.MAIN,
+                        ),
+                        stat_card(
+                            LM.get("queued", "Queued"),
+                            self.queued_downloads_text,
+                            ft.icons.QUEUE,
+                            Theme.ACCENT,
+                        ),
+                        stat_card(
+                            LM.get("completed", "Completed"),
+                            self.completed_downloads_text,
+                            ft.icons.CHECK_CIRCLE,
+                            Theme.Status.SUCCESS,
+                        ),
+                    ],
+                    spacing=15,
+                    wrap=True,
+                ),
+            ],
+            spacing=10,
+        )
+
     def _build_status_section(self):
         """Builds system status section."""
         return ft.Container(
@@ -158,9 +244,34 @@ class DashboardView(BaseView):
     def load(self):
         """Refreshes the dashboard data."""
         self._refresh_storage()
+        self._refresh_stats()
         self._refresh_history()
         if self.page:
             self.update()
+
+    def _refresh_stats(self):
+        """Updates download statistics from queue manager."""
+        try:
+            if hasattr(self.queue_manager, 'get_statistics'):
+                stats = self.queue_manager.get_statistics()
+            else:
+                # Fallback for older queue manager
+                items = self.queue_manager.get_all()
+                stats = {
+                    "downloading": sum(1 for i in items if i.get("status") == "Downloading"),
+                    "queued": sum(1 for i in items if i.get("status") == "Queued"),
+                    "completed": sum(1 for i in items if i.get("status") == "Completed"),
+                }
+
+            self.active_downloads_text.value = str(stats.get("downloading", 0))
+            self.queued_downloads_text.value = str(stats.get("queued", 0))
+            self.completed_downloads_text.value = str(stats.get("completed", 0))
+
+        except Exception as e:
+            logger.debug("Error refreshing stats: %s", e)
+            self.active_downloads_text.value = "0"
+            self.queued_downloads_text.value = "0"
+            self.completed_downloads_text.value = "0"
 
     def _refresh_storage(self):
         """Updates storage usage bar."""
