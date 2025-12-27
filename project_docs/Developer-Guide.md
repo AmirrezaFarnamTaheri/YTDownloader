@@ -66,7 +66,7 @@ python -m pytest --cov=.
 
 ## Building
 
-We use **Nuitka** to compile StreamCatch into a standalone native executable.
+We use **Nuitka** to compile StreamCatch into a standalone native executable (not a Python wrapper).
 
 ### Windows
 ```powershell
@@ -79,6 +79,9 @@ This generates an `.exe` in `dist/`.
 python scripts/build_installer.py
 # To build a .deb package (requires build-desktop.yml workflow locally or on CI)
 ```
+
+### Mobile (Android/iOS)
+Mobile builds use **Flet + Flutter** (`flet build apk/ipa`) to produce native mobile apps.
 
 ## Contributing
 

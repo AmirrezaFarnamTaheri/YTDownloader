@@ -70,6 +70,6 @@ class SocialManager:
                 # pylint: disable=broad-exception-caught
                 try:
                     self.rpc.close()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Failed to close Discord RPC cleanly: %s", exc)
                 self.connected = False

@@ -67,7 +67,9 @@ class YTDLPWrapper:
         if output_path and "outtmpl" in options:
             try:
                 current = options.get("outtmpl")
-                template_name = Path(str(current)).name if current else "%(title)s.%(ext)s"
+                template_name = (
+                    Path(str(current)).name if current else "%(title)s.%(ext)s"
+                )
                 options["outtmpl"] = str(Path(output_path) / template_name)
                 logger.debug("yt-dlp outtmpl overridden to %s", options["outtmpl"])
             except Exception as exc:  # pylint: disable=broad-exception-caught

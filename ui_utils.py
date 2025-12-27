@@ -148,17 +148,14 @@ def validate_proxy(proxy: str) -> bool:
             # Not an IP address, domain name is fine (unless it resolves to private,
             # but that's handled at connection time usually,
             # though here we just check format and obvious bad actors)
-            pass
 
         # Port validation
         if parsed.port is not None:
             if not 1 <= parsed.port <= 65535:
                 return False
-        else:
-            # Proxy usually requires port? yt-dlp might default.
-            # But strict validation is better.
-            # If scheme is http/https, default ports exist.
-            pass
+        # Proxy usually requires port? yt-dlp might default.
+        # But strict validation is better.
+        # If scheme is http/https, default ports exist.
 
         return True
 

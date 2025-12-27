@@ -59,9 +59,9 @@ def safe_log_warning(msg, *args):
                 logger.warning(msg, *args)
     except (ValueError, OSError):
         # Ignore "I/O operation on closed file"
-        pass
+        return
     except Exception:  # pylint: disable=broad-exception-caught
-        pass
+        return
 
 
 def safe_log_error(msg, *args):
@@ -94,9 +94,9 @@ def safe_log_error(msg, *args):
             if threading.main_thread().is_alive():
                 logger.error(msg, *args)
     except (ValueError, OSError):
-        pass
+        return
     except Exception:  # pylint: disable=broad-exception-caught
-        pass
+        return
 
 
 class RSSManager:
@@ -193,7 +193,7 @@ class RSSManager:
                 if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname or ""):
                     safe_log_warning("Invalid IP RSS feed blocked: %s", url)
                     return False
-                pass  # Not an IP address
+                # Not an IP address
 
             return True
         except Exception:

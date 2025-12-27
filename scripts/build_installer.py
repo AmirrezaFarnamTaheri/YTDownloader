@@ -83,7 +83,6 @@ def build_installer():
     # Verify requirements
     try:
         # pylint: disable=import-outside-toplevel
-        # pylint: disable=import-outside-toplevel
         # pylint: disable=unused-import
         import nuitka
         from nuitka import Version
@@ -179,11 +178,6 @@ def build_installer():
                 f"--macos-app-version={version_str}",
             ]
         )
-
-    # Linux/Mac specific flags (if any needed for Nuitka)
-    if sys.platform.startswith("linux"):
-        # Ensure patchelf is used
-        pass
 
     cmd.append(str(root / "main.py"))
 

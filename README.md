@@ -35,9 +35,9 @@ Detailed documentation is available in **[Project Docs](project_docs/Home.md)**:
 
 ## Installation & Building
 
-Please see the [Installation Guide](wiki/Installation.md) for detailed instructions.
+Please see the [Installation Guide](project_docs/Installation.md) for detailed instructions.
 
-Native desktop builds are produced with **Nuitka** (compiled binaries) via:
+Native desktop builds are produced with **Nuitka** as compiled native binaries (not Python wrappers) via:
 
 ```bash
 python scripts/build_installer.py

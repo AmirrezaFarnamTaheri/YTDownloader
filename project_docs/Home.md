@@ -1,4 +1,4 @@
-# Welcome to the StreamCatch Wiki
+# Welcome to the StreamCatch Docs
 
 StreamCatch is a modern, high-performance media downloader built with Python and Flet.
 

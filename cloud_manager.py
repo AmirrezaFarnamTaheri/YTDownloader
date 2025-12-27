@@ -35,24 +35,26 @@ try:  # pragma: no cover - environment dependent
 except Exception as exc:  # pylint: disable=broad-exception-caught
     logger.debug("PyDrive2 compat shim unavailable: %s", exc)
 
-google_auth_cls: Optional[Type["GoogleAuthType"]] = None
-google_drive_cls: Optional[Type["GoogleDriveType"]] = None
+_google_auth_cls: Optional[Type["GoogleAuthType"]] = None
+_google_drive_cls: Optional[Type["GoogleDriveType"]] = None
 
 # Import PyDrive2 classes at module level
 try:
     from pydrive2.auth import GoogleAuth as _GoogleAuth  # type: ignore
     from pydrive2.drive import GoogleDrive as _GoogleDrive  # type: ignore
 
-    google_auth_cls = _GoogleAuth
-    google_drive_cls = _GoogleDrive
+    # pylint: disable=invalid-name
+    _google_auth_cls = _GoogleAuth
+    _google_drive_cls = _GoogleDrive
+    # pylint: enable=invalid-name
 except ImportError as exc:
     logger.debug("PyDrive2 not installed: %s", exc)
-    google_auth_cls = None
-    google_drive_cls = None
+    _google_auth_cls = None
+    _google_drive_cls = None
 except Exception as exc:  # pylint: disable=broad-exception-caught
     logger.warning("Failed to import PyDrive2: %s", exc)
-    google_auth_cls = None
-    google_drive_cls = None
+    _google_auth_cls = None
+    _google_drive_cls = None
 
 
 class CloudManager:
@@ -123,7 +125,7 @@ class CloudManager:
     def _get_google_drive_client(self):
         """Helper to authenticate and return a GoogleDrive client."""
         # Check if PyDrive2 is installed
-        if google_auth_cls is None or google_drive_cls is None:
+        if _google_auth_cls is None or _google_drive_cls is None:
             logger.error("PyDrive2 not installed.")
             # pylint: disable=broad-exception-raised
             raise Exception("PyDrive2 dependency missing.")
@@ -163,7 +165,7 @@ class CloudManager:
         try:
             # Automatic authentication
             logger.debug("Authenticating with Google Drive...")
-            gauth = google_auth_cls()
+            gauth = _google_auth_cls()
 
             # Try to load saved credentials
             mycreds_path = os.path.expanduser("~/.streamcatch/mycreds.txt")
@@ -194,7 +196,7 @@ class CloudManager:
                 os.chmod(mycreds_path, 0o600)
             except OSError:
                 logger.warning("Could not set secure permissions on credentials file")
-            return google_drive_cls(gauth)  # type: ignore
+            return _google_drive_cls(gauth)  # type: ignore
 
         except ImportError as exc:
             # Should be caught by top check, but safe guard
