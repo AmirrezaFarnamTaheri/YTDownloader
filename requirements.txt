@@ -1,5 +1,3 @@
-# Core dependencies with pinned versions for security and reproducibility
-# Updated: 2025-12-14
 flet==0.21.2
 yt-dlp>=2024.12.01
 requests>=2.31.0,<3.0.0

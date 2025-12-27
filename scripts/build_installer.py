@@ -174,7 +174,13 @@ def build_installer():
         win_version += ".0" * (3 - win_version.count("."))
 
     if os.name == "nt":
-        icon_path = root / "assets" / "icon.ico"
+        icon_path = root / "assets" / "icon_windows_native.ico"
+        legacy_icon_path = root / "assets" / "icon.ico"
+        fallback_icon_path = root / "assets" / "icon_windows.ico"
+        if not icon_path.exists() and fallback_icon_path.exists():
+            icon_path = fallback_icon_path
+        if not icon_path.exists() and legacy_icon_path.exists():
+            icon_path = legacy_icon_path
         if not icon_path.exists():
             # Fallback: try to use logo.svg or skip icon
             print(f"WARNING: {icon_path} not found, building without icon")
@@ -192,7 +198,13 @@ def build_installer():
         )
     elif sys.platform == "darwin":
         # MacOS specific flags
-        icon_path = root / "assets" / "icon.icns"
+        icon_path = root / "assets" / "icon_macos_native.icns"
+        legacy_icon_path = root / "assets" / "icon.icns"
+        fallback_icon_path = root / "assets" / "icon_macos.icns"
+        if not icon_path.exists() and fallback_icon_path.exists():
+            icon_path = fallback_icon_path
+        if not icon_path.exists() and legacy_icon_path.exists():
+            icon_path = legacy_icon_path
         cmd.extend(
             [
                 "--macos-create-app-bundle",
