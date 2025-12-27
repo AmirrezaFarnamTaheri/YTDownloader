@@ -1,6 +1,8 @@
 flet==0.21.2
 yt-dlp>=2024.12.01
 requests>=2.31.0,<3.0.0
+pypresence
+PyDrive2
 beautifulsoup4>=4.12.0
 defusedxml>=0.7.1
 pyperclip>=1.8.0
