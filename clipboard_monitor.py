@@ -25,30 +25,32 @@ logger = logging.getLogger(__name__)
 def start_clipboard_monitor(page, download_view):
     """Starts the clipboard monitor thread with error handling."""
     global _monitor_thread
+
+    # Thread-safe check and assignment
     with _monitor_lock:
         if _monitor_thread and _monitor_thread.is_alive():
             logger.debug("Clipboard monitor already running.")
             return True
 
-    # Test clipboard access first
-    try:
-        pyperclip.paste()
-        logger.info("Clipboard monitoring initialized.")
-    except pyperclip.PyperclipException as e:
-        logger.warning("Clipboard access not available: %s", e)
-        logger.warning("Clipboard monitor will be disabled")
-        return False  # Don't start monitor if clipboard isn't available
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("Unexpected clipboard error: %s", e)
-        return False
+        # Test clipboard access first
+        try:
+            pyperclip.paste()
+            logger.info("Clipboard monitoring initialized.")
+        except pyperclip.PyperclipException as e:
+            logger.warning("Clipboard access not available: %s", e)
+            logger.warning("Clipboard monitor will be disabled")
+            return False  # Don't start monitor if clipboard isn't available
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Unexpected clipboard error: %s", e)
+            return False
 
-    thread = threading.Thread(
-        target=_clipboard_loop, args=(page, download_view), daemon=True
-    )
-    _monitor_thread = thread
-    thread.start()
-    logger.info("Clipboard monitor thread started.")
-    return True
+        thread = threading.Thread(
+            target=_clipboard_loop, args=(page, download_view), daemon=True
+        )
+        _monitor_thread = thread
+        thread.start()
+        logger.info("Clipboard monitor thread started.")
+        return True
 
 
 def _clipboard_loop(page, download_view):
@@ -67,8 +69,9 @@ def _clipboard_loop(page, download_view):
                 try:
                     content = pyperclip.paste()
                 except pyperclip.PyperclipException:
-                    # Clipboard temporarily unavailable
-                    state.clipboard_monitor_active = False  # Disable permanently
+                    # Clipboard temporarily unavailable - thread-safe disable
+                    with _clipboard_state_lock:
+                        state.clipboard_monitor_active = False  # Disable permanently
                     logger.warning("Clipboard access lost, disabling monitor")
                     continue
 

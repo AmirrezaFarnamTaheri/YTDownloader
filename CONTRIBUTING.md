@@ -37,9 +37,9 @@ Have an idea for improvement? [Open an issue](https://github.com/AmirrezaFarnamT
 #### Setup Development Environment
 
 1. **Fork the repository** on GitHub.
-2. **Clone your fork**:
+2. **Clone your fork** (replace `YOUR_USERNAME` with your GitHub username):
    ```bash
-   git clone https://github.com/AmirrezaFarnamTaheri/YTDownloader.git
+   git clone https://github.com/YOUR_USERNAME/YTDownloader.git
    cd YTDownloader
    ```
 3. **Create a feature branch**:

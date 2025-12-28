@@ -207,7 +207,6 @@ class ConfigManager:
                 dir=str(config_path.parent),
                 prefix=".config_tmp_",
                 suffix=".json",
-                text=True,
             )
             # Security: Set restrictive permissions
             os.chmod(temp_path, 0o600)
