@@ -5,7 +5,7 @@ Fallback for unsupported URLs or direct file links.
 
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 import requests
 
@@ -22,7 +22,7 @@ class GenericExtractor:
     # pylint: disable=too-few-public-methods
 
     @staticmethod
-    def get_metadata(url: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(url: str) -> dict[str, Any] | None:
         """
         Attempt to get metadata via HEAD request.
         """

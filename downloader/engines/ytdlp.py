@@ -8,8 +8,9 @@ ensuring consistent behavior for cancellation and progress reporting.
 
 import logging
 import os
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Optional, cast
+from typing import Any, cast
 
 import yt_dlp
 
@@ -22,7 +23,7 @@ class YTDLPWrapper:
     Ensures consistent behavior for cancellation and progress reporting.
     """
 
-    def __init__(self, options: Dict[str, Any]):
+    def __init__(self, options: dict[str, Any]):
         self.options = options.copy()
 
     @staticmethod
@@ -39,11 +40,11 @@ class YTDLPWrapper:
     def download(
         self,
         url: str,
-        progress_hook: Optional[Callable[[Dict[str, Any]], None]] = None,
-        cancel_token: Optional[Any] = None,
-        download_item: Optional[Dict[str, Any]] = None,
-        output_path: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        progress_hook: Callable[[dict[str, Any]], None] | None = None,
+        cancel_token: Any | None = None,
+        download_item: dict[str, Any] | None = None,
+        output_path: str | None = None,
+    ) -> dict[str, Any]:
         """
         Execute download.
 

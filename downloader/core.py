@@ -10,7 +10,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yt_dlp
 
@@ -66,7 +66,7 @@ def _check_disk_space(output_path: str, min_mb: int = 100) -> bool:
 
 
 def _configure_postprocessors(
-    ydl_opts: Dict[str, Any], options: DownloadOptions, ffmpeg_available: bool
+    ydl_opts: dict[str, Any], options: DownloadOptions, ffmpeg_available: bool
 ) -> None:
     """Configure yt-dlp postprocessors based on options."""
     # Ensure postprocessors list exists
@@ -106,7 +106,7 @@ def _configure_postprocessors(
 
 
 def _configure_format_selection(
-    ydl_opts: Dict[str, Any], options: DownloadOptions, ffmpeg_available: bool
+    ydl_opts: dict[str, Any], options: DownloadOptions, ffmpeg_available: bool
 ) -> None:
     """Configure format selection options."""
     if options.video_format == "audio":
@@ -162,7 +162,7 @@ def _configure_format_selection(
 
 
 def _configure_advanced_options(
-    ydl_opts: Dict[str, Any], options: DownloadOptions, ffmpeg_available: bool
+    ydl_opts: dict[str, Any], options: DownloadOptions, ffmpeg_available: bool
 ) -> None:
     """Configure advanced download options."""
     # Proxy and Rate Limit
@@ -203,7 +203,7 @@ def _configure_advanced_options(
 
     # GPU Acceleration
     if options.gpu_accel and options.gpu_accel.lower() != "none" and ffmpeg_available:
-        accel_flag: Optional[str] = options.gpu_accel
+        accel_flag: str | None = options.gpu_accel
         if options.gpu_accel.lower() == "auto":
             accel_flag = "cuda" if os.name == "nt" else None
 
@@ -215,7 +215,7 @@ def _configure_advanced_options(
         ydl_opts["cookiesfrombrowser"] = (options.cookies_from_browser,)
 
 
-def download_video(options: DownloadOptions) -> Dict[str, Any]:
+def download_video(options: DownloadOptions) -> dict[str, Any]:
     """
     Downloads a video/audio from the given URL using yt-dlp or generic fallback.
 
@@ -260,7 +260,7 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
             raise ValueError(f"Invalid output directory: {e}") from e
 
     if not _check_disk_space(output_path):
-        raise IOError("Not enough disk space on the target device.")
+        raise OSError("Not enough disk space on the target device.")
 
     # 3a. Check for Telegram
     if TelegramExtractor.is_telegram_url(options.url):
@@ -282,7 +282,7 @@ def download_video(options: DownloadOptions) -> Dict[str, Any]:
 
     # 4. Configure yt-dlp options
     outtmpl_path = str(Path(output_path) / options.output_template)
-    ydl_opts: Dict[str, Any] = {
+    ydl_opts: dict[str, Any] = {
         "outtmpl": outtmpl_path,
         "quiet": True,
         "no_warnings": True,

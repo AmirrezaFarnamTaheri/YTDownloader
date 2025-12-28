@@ -7,7 +7,7 @@ import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -183,7 +183,7 @@ class HistoryManager:
         format_str: str,
         status: str,
         file_size: str,
-        file_path: Optional[str] = None,
+        file_path: str | None = None,
     ):
         """Add a new entry to the history."""
         # pylint: disable=too-many-arguments
@@ -246,7 +246,7 @@ class HistoryManager:
             raise last_error
 
     @staticmethod
-    def get_history_paginated(offset: int = 0, limit: int = 50) -> Dict[str, Any]:
+    def get_history_paginated(offset: int = 0, limit: int = 50) -> dict[str, Any]:
         """Retrieve history entries with pagination."""
         logger.debug("Fetching history (offset=%d, limit=%d)", offset, limit)
         conn = None
@@ -285,7 +285,7 @@ class HistoryManager:
         }
 
     @staticmethod
-    def get_history(limit: int = 100) -> List[Dict[str, Any]]:
+    def get_history(limit: int = 100) -> list[dict[str, Any]]:
         """
         Simple retrieval of recent history.
         Wrapper around paginated method for backward compatibility/ease of use.
@@ -317,8 +317,8 @@ class HistoryManager:
         query: str,
         limit: int = 50,
         offset: int = 0,
-        search_in: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        search_in: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Search history entries by title, URL, or both.
 
@@ -397,10 +397,10 @@ class HistoryManager:
 
     @staticmethod
     def get_history_by_date_range(
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get history entries within a date range.
 
@@ -422,7 +422,7 @@ class HistoryManager:
             cursor = conn.cursor()
 
             conditions = []
-            params: List[Any] = []
+            params: list[Any] = []
 
             if start_date:
                 conditions.append("timestamp >= ?")
@@ -454,7 +454,7 @@ class HistoryManager:
         return entries
 
     @staticmethod
-    def get_history_stats() -> Dict[str, Any]:
+    def get_history_stats() -> dict[str, Any]:
         """
         Get statistics about download history.
 
@@ -463,7 +463,7 @@ class HistoryManager:
         """
         logger.debug("Getting history statistics")
         conn = None
-        stats: Dict[str, Any] = {
+        stats: dict[str, Any] = {
             "total": 0,
             "by_status": {},
             "oldest_entry": None,
@@ -480,17 +480,13 @@ class HistoryManager:
             stats["total"] = result[0] if result else 0
 
             # Count by status
-            cursor.execute(
-                "SELECT status, COUNT(*) FROM history GROUP BY status"
-            )
+            cursor.execute("SELECT status, COUNT(*) FROM history GROUP BY status")
             for row in cursor.fetchall():
                 status = row[0] or "Unknown"
                 stats["by_status"][status] = row[1]
 
             # Date range
-            cursor.execute(
-                "SELECT MIN(timestamp), MAX(timestamp) FROM history"
-            )
+            cursor.execute("SELECT MIN(timestamp), MAX(timestamp) FROM history")
             result = cursor.fetchone()
             if result:
                 stats["oldest_entry"] = result[0]
@@ -505,7 +501,7 @@ class HistoryManager:
         return stats
 
     @staticmethod
-    def export_history(format_type: str = "json") -> Optional[str]:
+    def export_history(format_type: str = "json") -> str | None:
         """
         Export history to a string in the specified format.
 

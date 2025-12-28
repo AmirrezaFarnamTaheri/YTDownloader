@@ -5,7 +5,7 @@ Module for fetching video metadata using yt-dlp or fallback extractors.
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, cast
 
 import yt_dlp
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 INFO_EXTRACTION_TIMEOUT = 45
 
 
-def _extract_telegram_info(url: str) -> Optional[Dict[str, Any]]:
+def _extract_telegram_info(url: str) -> dict[str, Any] | None:
     """Attempt to scrape Telegram URL."""
     logger.info("Detected Telegram URL. Attempting to scrape...")
     info = TelegramExtractor.get_metadata(url)
@@ -42,7 +42,7 @@ def _extract_telegram_info(url: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _extract_generic_info(url: str) -> Optional[Dict[str, Any]]:
+def _extract_generic_info(url: str) -> dict[str, Any] | None:
     """Attempt GenericExtractor fallback."""
     generic_info = GenericExtractor.get_metadata(url)
     if generic_info:
@@ -65,9 +65,9 @@ def _extract_generic_info(url: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _process_subtitles(info_dict: Dict[str, Any]) -> Dict[str, List[str]]:
+def _process_subtitles(info_dict: dict[str, Any]) -> dict[str, list[str]]:
     """Process subtitles from yt-dlp info."""
-    subtitles: Dict[str, List[str]] = {}
+    subtitles: dict[str, list[str]] = {}
 
     # Check manual subtitles
     raw_subs = info_dict.get("subtitles")
@@ -102,11 +102,11 @@ def _process_subtitles(info_dict: Dict[str, Any]) -> Dict[str, List[str]]:
 
 
 def _process_streams(
-    info_dict: Dict[str, Any], formats: Optional[List[Any]]
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    info_dict: dict[str, Any], formats: list[Any] | None
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Process video and audio streams from yt-dlp info."""
-    video_streams: List[Dict[str, Any]] = []
-    audio_streams: List[Dict[str, Any]] = []
+    video_streams: list[dict[str, Any]] = []
+    audio_streams: list[dict[str, Any]] = []
 
     # If no formats but direct is True (generic file handled by yt-dlp)
     if not formats and info_dict.get("direct"):
@@ -150,9 +150,9 @@ def _process_streams(
 
 def get_video_info(
     url: str,
-    cookies_from_browser: Optional[str] = None,
-    cookies_from_browser_profile: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
+    cookies_from_browser: str | None = None,
+    cookies_from_browser_profile: str | None = None,
+) -> dict[str, Any] | None:
     """
     Fetches video metadata without downloading the video.
     Tries yt-dlp first, then falls back to Telegram scraping or Generic file check.
@@ -162,7 +162,7 @@ def get_video_info(
         return _extract_telegram_info(url)
 
     try:
-        ydl_opts: Dict[str, Any] = {
+        ydl_opts: dict[str, Any] = {
             "quiet": True,
             "listsubtitles": True,
             "noplaylist": True,
@@ -172,7 +172,7 @@ def get_video_info(
         if cookies_from_browser:
             logger.debug("Using browser cookies from: %s", cookies_from_browser)
             # Tuple cast for mypy
-            cookies_tuple: Tuple[str, Optional[str]] = (
+            cookies_tuple: tuple[str, str | None] = (
                 cookies_from_browser,
                 cookies_from_browser_profile,
             )
@@ -187,7 +187,7 @@ def get_video_info(
         def _fetch():
             # pylint: disable=line-too-long
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
-                return cast(Dict[str, Any], ydl.extract_info(url, download=False))
+                return cast(dict[str, Any], ydl.extract_info(url, download=False))
 
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:

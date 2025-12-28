@@ -1,7 +1,7 @@
 """Settings View"""
 
 import logging
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import flet as ft
 
@@ -21,9 +21,7 @@ from .base_view import BaseView
 
 
 class SettingsView(BaseView):
-    def __init__(
-        self, config, on_toggle_clipboard: Optional[Callable[..., None]] = None
-    ):
+    def __init__(self, config, on_toggle_clipboard: Callable[..., None] | None = None):
         super().__init__(LM.get("settings"), ft.icons.SETTINGS)
         self.config = config
         self.logger = logging.getLogger(__name__)

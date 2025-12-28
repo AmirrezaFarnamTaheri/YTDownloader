@@ -2,7 +2,8 @@
 Instagram specific download panel.
 """
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 import flet as ft
 
@@ -16,7 +17,7 @@ class InstagramPanel(BasePanel):
     Panel for Instagram downloads.
     """
 
-    def __init__(self, info: Dict[str, Any], on_option_change: Callable):
+    def __init__(self, info: dict[str, Any], on_option_change: Callable):
         super().__init__(info, on_option_change)
 
         self.warning_text = ft.Container(
@@ -81,10 +82,10 @@ class InstagramPanel(BasePanel):
                 ],
                 spacing=15,
             ),
-            **Theme.get_card_decoration()
+            **Theme.get_card_decoration(),
         )
 
-    def get_options(self) -> Dict[str, Any]:
+    def get_options(self) -> dict[str, Any]:
         return {
             "insta_type": self.download_type.value,
             # Instagram usually implies best quality available

@@ -5,7 +5,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Avoid compiling yt-dlp's massive lazy extractor table, which can exhaust
 # the Windows C compiler heap when Nuitka converts it to C code.
@@ -60,7 +59,7 @@ def ensure_macos_app_bundle(dist_dir: Path, app_name: str, binary_name: str) -> 
 # pylint: disable=too-many-branches, too-many-statements
 
 
-def _find_iscc() -> Optional[str]:
+def _find_iscc() -> str | None:
     """Locate ISCC.exe for Inno Setup across common install locations."""
     iscc = shutil.which("iscc")
     if iscc:
@@ -107,7 +106,7 @@ def build_installer():
     try:
         # pylint: disable=import-outside-toplevel
         # pylint: disable=unused-import
-        import nuitka
+        import nuitka  # noqa: F401 - import for availability check
         from nuitka import Version
 
         print(f"Nuitka version: {Version.getNuitkaVersion()}")

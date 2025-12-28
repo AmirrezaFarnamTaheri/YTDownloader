@@ -1,7 +1,5 @@
 """Base View Module"""
 
-from typing import Optional
-
 import flet as ft
 
 from theme import Theme
@@ -10,7 +8,7 @@ from theme import Theme
 
 
 class BaseView(ft.Container):
-    def __init__(self, title: str, icon: Optional[str] = None, **kwargs):
+    def __init__(self, title: str, icon: str | None = None, **kwargs):
         super().__init__(**kwargs)
         self.expand = True
         self.padding = 30

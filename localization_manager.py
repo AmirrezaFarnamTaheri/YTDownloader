@@ -5,7 +5,6 @@ Localization Manager for handling multi-language support.
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -16,16 +15,16 @@ class LocalizationManager:
     Static implementation as required by tests.
     """
 
-    _strings: Dict[str, str] = {}
-    _fallback_strings: Dict[str, str] = {}
+    _strings: dict[str, str] = {}
+    _fallback_strings: dict[str, str] = {}
     _current_lang: str = "en"
     _locale_dir: Path = Path(__file__).resolve().parent / "locales"
 
     @classmethod
-    def _load_file(cls, file_path: Path) -> Dict[str, str]:
+    def _load_file(cls, file_path: Path) -> dict[str, str]:
         """Load a locale JSON file into a dict of strings."""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
             if not isinstance(data, dict):
                 raise ValueError("Locale file must contain a JSON object")
@@ -98,7 +97,7 @@ class LocalizationManager:
         return val
 
     @classmethod
-    def get_available_languages(cls) -> List[str]:
+    def get_available_languages(cls) -> list[str]:
         """Get list of available language codes."""
         path = cls._locale_dir
         if not path.exists():

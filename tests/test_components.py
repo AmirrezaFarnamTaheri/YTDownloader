@@ -2,9 +2,8 @@
 # pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 import os
 import sys
-import threading
 import unittest
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock
 
 # Adjust path to import modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

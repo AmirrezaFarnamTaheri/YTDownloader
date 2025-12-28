@@ -6,7 +6,6 @@ import argparse
 import os
 import shutil
 import subprocess
-import sys
 import sysconfig
 from pathlib import Path
 
@@ -80,7 +79,9 @@ def _find_flet_executable() -> str:
     candidates = []
     scripts_path = sysconfig.get_path("scripts")
     if scripts_path:
-        candidates.append(Path(scripts_path) / ("flet.exe" if os.name == "nt" else "flet"))
+        candidates.append(
+            Path(scripts_path) / ("flet.exe" if os.name == "nt" else "flet")
+        )
 
     if os.name == "nt":
         user_scripts = sysconfig.get_path("scripts", scheme="nt_user")

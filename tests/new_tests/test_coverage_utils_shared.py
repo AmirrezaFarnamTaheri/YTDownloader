@@ -14,9 +14,11 @@ class TestUtilsShared(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "Unix only")
     def test_timeout_manager_unix_success(self):
-        with patch("os.name", "posix"), patch("signal.signal") as mock_signal, patch(
-            "signal.alarm", create=True
-        ) as mock_alarm:
+        with (
+            patch("os.name", "posix"),
+            patch("signal.signal"),
+            patch("signal.alarm", create=True) as mock_alarm,
+        ):
 
             with timeout_manager(seconds=5):
                 pass
@@ -26,9 +28,11 @@ class TestUtilsShared(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "Unix only")
     def test_timeout_manager_unix_timeout(self):
-        with patch("os.name", "posix"), patch("signal.signal") as mock_signal, patch(
-            "signal.alarm", create=True
-        ) as mock_alarm:
+        with (
+            patch("os.name", "posix"),
+            patch("signal.signal") as mock_signal,
+            patch("signal.alarm", create=True),
+        ):
 
             handler_ref = []
 

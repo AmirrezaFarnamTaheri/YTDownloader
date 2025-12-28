@@ -6,7 +6,8 @@ Extracts metadata and media URLs from public Telegram posts (t.me/...).
 
 import logging
 import re
-from typing import Any, Callable, Dict, Optional, Union
+from collections.abc import Callable
+from typing import Any
 from urllib.parse import urljoin
 
 import requests
@@ -29,7 +30,7 @@ class TelegramExtractor:
         return "t.me/" in url and validate_url(url)
 
     @staticmethod
-    def get_metadata(url: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(url: str) -> dict[str, Any] | None:
         """
         Scrape the public Telegram page to find the media URL and metadata.
         Returns a dict with 'url', 'title', 'thumbnail' or None.
@@ -59,7 +60,7 @@ class TelegramExtractor:
             soup = BeautifulSoup(content, "html.parser")
 
             # Extract Title/Description
-            title: Union[str, None] = "Telegram Video"
+            title: str | None = "Telegram Video"
             title_tag = soup.find("meta", property="og:description")
 
             if isinstance(title_tag, Tag):
@@ -118,9 +119,9 @@ class TelegramExtractor:
     def extract(
         url: str,
         output_path: str,
-        progress_hook: Optional[Callable] = None,
-        cancel_token: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+        progress_hook: Callable | None = None,
+        cancel_token: Any | None = None,
+    ) -> dict[str, Any]:
         """
         Download the video from a Telegram link.
         """

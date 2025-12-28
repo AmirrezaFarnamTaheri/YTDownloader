@@ -161,6 +161,61 @@ def mock_dependencies():
             self.subtitle = kwargs.get("subtitle")
             self.controls = kwargs.get("controls", [])
 
+    class MockFilePicker(MockControl):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.on_result = kwargs.get("on_result")
+
+        def pick_files(self, *args, **kwargs):
+            pass
+
+    class MockFilePickerResultEvent:
+        def __init__(self, files=None, path=None):
+            self.files = files
+            self.path = path
+
+    class MockProgressBar(MockControl):
+        pass
+
+    class MockProgressRing(MockControl):
+        pass
+
+    class MockSwitch(MockControl):
+        pass
+
+    class MockRadio(MockControl):
+        pass
+
+    class MockRadioGroup(MockControl):
+        pass
+
+    class MockSlider(MockControl):
+        pass
+
+    class MockImage(MockControl):
+        pass
+
+    class MockDivider(MockControl):
+        pass
+
+    class MockTab(MockControl):
+        pass
+
+    class MockElevatedButton(MockControl):
+        pass
+
+    class MockPopupMenuItem(MockControl):
+        pass
+
+    class MockPopupMenuButton(MockControl):
+        pass
+
+    class MockTimePicker(MockControl):
+        pass
+
+    class MockDatePicker(MockControl):
+        pass
+
     # Assign classes to the mock
     flet_mock.Container = MockContainer
     flet_mock.UserControl = MockUserControl
@@ -187,6 +242,22 @@ def mock_dependencies():
     flet_mock.OutlinedButton = MockOutlinedButton
     flet_mock.AlertDialog = MockAlertDialog
     flet_mock.ExpansionTile = MockExpansionTile
+    flet_mock.FilePicker = MockFilePicker
+    flet_mock.FilePickerResultEvent = MockFilePickerResultEvent
+    flet_mock.ProgressBar = MockProgressBar
+    flet_mock.ProgressRing = MockProgressRing
+    flet_mock.Switch = MockSwitch
+    flet_mock.Radio = MockRadio
+    flet_mock.RadioGroup = MockRadioGroup
+    flet_mock.Slider = MockSlider
+    flet_mock.Image = MockImage
+    flet_mock.Divider = MockDivider
+    flet_mock.Tab = MockTab
+    flet_mock.ElevatedButton = MockElevatedButton
+    flet_mock.PopupMenuItem = MockPopupMenuItem
+    flet_mock.PopupMenuButton = MockPopupMenuButton
+    flet_mock.TimePicker = MockTimePicker
+    flet_mock.DatePicker = MockDatePicker
     # Explicitly map inputs to MockControl to ensure they maintain state (value)
     flet_mock.TextField = MockControl
     flet_mock.Dropdown = MockControl
@@ -213,15 +284,73 @@ def mock_dependencies():
     flet_mock.VisualDensity = MagicMock()
     flet_mock.VisualDensity.COMFORTABLE = "comfortable"
 
-    # Mock colors and icons
-    flet_mock.colors = MagicMock()
-    flet_mock.icons = MagicMock()
+    flet_mock.ScrollMode = MagicMock()
+    flet_mock.ScrollMode.AUTO = "auto"
+    flet_mock.ScrollMode.ALWAYS = "always"
+    flet_mock.ScrollMode.HIDDEN = "hidden"
+
+    flet_mock.ThemeMode = MagicMock()
+    flet_mock.ThemeMode.DARK = "dark"
+    flet_mock.ThemeMode.LIGHT = "light"
+    flet_mock.ThemeMode.SYSTEM = "system"
+
+    flet_mock.ClipBehavior = MagicMock()
+    flet_mock.ClipBehavior.HARD_EDGE = "hard_edge"
+
+    flet_mock.ImageFit = MagicMock()
+    flet_mock.ImageFit.COVER = "cover"
+    flet_mock.ImageFit.CONTAIN = "contain"
+
+    flet_mock.TextThemeStyle = MagicMock()
+    flet_mock.TextThemeStyle.HEADLINE_MEDIUM = "headline_medium"
+    flet_mock.TextThemeStyle.BODY_MEDIUM = "body_medium"
+
+    flet_mock.KeyboardType = MagicMock()
+    flet_mock.KeyboardType.NUMBER = "number"
+
+    flet_mock.InputFilter = MagicMock()
+    flet_mock.RoundedRectangleBorder = MagicMock()
+    flet_mock.ButtonStyle = MagicMock()
+    flet_mock.BoxShadow = MagicMock()
+    flet_mock.BorderSide = MagicMock()
+    flet_mock.border = MagicMock()
+    flet_mock.border.all = MagicMock(return_value=MagicMock())
+    flet_mock.border_radius = MagicMock()
+    flet_mock.border_radius.only = MagicMock(return_value=MagicMock())
+    flet_mock.padding = MagicMock()
+    flet_mock.padding.symmetric = MagicMock(return_value=MagicMock())
+    flet_mock.padding.only = MagicMock(return_value=MagicMock())
+    flet_mock.alignment = MagicMock()
+
+    # Mock colors and icons - need to return string values for icon access
+    class IconsMock:
+        """Mock that returns the attribute name as the value for any icon access."""
+
+        def __getattr__(self, name):
+            return name  # Return the icon name as a string
+
+    class ColorsMock:
+        """Mock that returns the attribute name for any color access."""
+
+        def __getattr__(self, name):
+            return f"#{name}"
+
+        @staticmethod
+        def with_opacity(opacity, color):
+            return f"{color}_{opacity}"
+
+    flet_mock.colors = ColorsMock()
+    flet_mock.icons = IconsMock()
 
     # Replace in sys.modules
     sys.modules["flet"] = flet_mock
     # Also ensure flet.auth and other submodules don't crash if imported
     sys.modules["flet.auth"] = MagicMock()
     sys.modules["flet.security"] = MagicMock()
+    # Mock flet.controls.material.icons for any code that imports it directly
+    sys.modules["flet.controls"] = MagicMock()
+    sys.modules["flet.controls.material"] = MagicMock()
+    sys.modules["flet.controls.material.icons"] = IconsMock()
 
     # Mock other runtime dependencies that might be missing in minimal CI envs
     # This ensures tests can be collected even if dependencies are missing.

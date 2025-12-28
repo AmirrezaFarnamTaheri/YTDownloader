@@ -6,7 +6,8 @@ Features file info and file actions.
 """
 
 import logging
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 import flet as ft
 
@@ -24,7 +25,7 @@ class HistoryItemControl(ft.Container):
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self,
-        item: Dict[str, Any],
+        item: dict[str, Any],
         on_open_folder: Callable,
         on_copy_url: Callable,
         on_delete: Callable,  # Added delete capability for individual items if needed

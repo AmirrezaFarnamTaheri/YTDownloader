@@ -11,7 +11,6 @@ import sys
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import flet as ft
 
@@ -28,9 +27,9 @@ logger = logging.getLogger(__name__)
 
 # Global instances
 # pylint: disable=invalid-name
-UI: Optional[UIManager] = None
-PAGE: Optional[ft.Page] = None
-CONTROLLER: Optional[AppController] = None
+UI: UIManager | None = None
+PAGE: ft.Page | None = None
+CONTROLLER: AppController | None = None
 
 
 def main(pg: ft.Page):

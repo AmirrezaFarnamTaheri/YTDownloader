@@ -3,10 +3,8 @@ Download scheduler logic.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import time as dt_time
-from datetime import timedelta
-from typing import Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +16,8 @@ class DownloadScheduler:
 
     @staticmethod
     def prepare_schedule(
-        scheduled_time: Optional[Union[dt_time, datetime]],
-    ) -> Tuple[str, Optional[datetime]]:
+        scheduled_time: dt_time | datetime | None,
+    ) -> tuple[str, datetime | None]:
         """
         Calculate status and scheduled datetime based on desired time.
 

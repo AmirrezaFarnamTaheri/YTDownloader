@@ -1,4 +1,3 @@
-import os
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -25,8 +24,8 @@ class TestSyncManager(unittest.TestCase):
 
     @patch("zipfile.ZipFile")
     def test_export_data_fail(self, MockZip):
-        MockZip.side_effect = Exception("Write Error")
-        with self.assertRaises(Exception):
+        MockZip.side_effect = OSError("Write Error")
+        with self.assertRaises(OSError):
             self.manager.export_data("backup.zip")
 
     @patch("zipfile.ZipFile")

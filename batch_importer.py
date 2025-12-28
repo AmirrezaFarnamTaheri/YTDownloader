@@ -4,7 +4,6 @@ Batch importer for download items.
 
 import logging
 from pathlib import Path
-from typing import Tuple
 
 from ui_utils import get_default_download_path, is_safe_path, validate_url
 
@@ -19,7 +18,7 @@ class BatchImporter:
         self.queue_manager = queue_manager
         self.config = config
 
-    def import_from_file(self, filepath: str) -> Tuple[int, bool]:
+    def import_from_file(self, filepath: str) -> tuple[int, bool]:
         """
         Import URLs from a text file.
         Returns a tuple of (number of items imported, whether the list was truncated).
@@ -37,7 +36,7 @@ class BatchImporter:
             if path.suffix.lower() not in [".txt", ".csv"]:
                 raise ValueError("Invalid file type. Only .txt and .csv are allowed")
 
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, encoding="utf-8") as f:
                 urls = [line.strip() for line in f if line.strip()]
 
             max_batch = 100

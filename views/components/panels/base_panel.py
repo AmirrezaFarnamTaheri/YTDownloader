@@ -2,7 +2,8 @@
 Base class for download panels.
 """
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 import flet as ft
 
@@ -14,7 +15,7 @@ class BasePanel(ft.Container):
     Abstract base panel for platform-specific download options.
     """
 
-    def __init__(self, info: Dict[str, Any], on_option_change: Callable):
+    def __init__(self, info: dict[str, Any], on_option_change: Callable):
         super().__init__()
         self.info = info
         self.on_option_change = on_option_change
@@ -27,6 +28,6 @@ class BasePanel(ft.Container):
         """Build the panel content. Should be overridden."""
         return ft.Column([])
 
-    def get_options(self) -> Dict[str, Any]:
+    def get_options(self) -> dict[str, Any]:
         """Return the selected options. Should be overridden."""
         return {}

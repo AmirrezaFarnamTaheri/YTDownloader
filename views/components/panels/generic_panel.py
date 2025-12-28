@@ -2,7 +2,8 @@
 Generic download panel.
 """
 
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 import flet as ft
 
@@ -15,7 +16,7 @@ class GenericPanel(BasePanel):
     Panel for generic downloads.
     """
 
-    def __init__(self, info: Dict[str, Any], on_option_change: Callable):
+    def __init__(self, info: dict[str, Any], on_option_change: Callable):
         super().__init__(info, on_option_change)
         self.content = self.build()
 
@@ -31,7 +32,7 @@ class GenericPanel(BasePanel):
             ],
             value="best",
             on_change=lambda e: self.on_option_change(),
-            **Theme.get_input_decoration(prefix_icon=ft.icons.SETTINGS_ETHERNET)
+            **Theme.get_input_decoration(prefix_icon=ft.icons.SETTINGS_ETHERNET),
         )
 
         return ft.Container(
@@ -50,10 +51,10 @@ class GenericPanel(BasePanel):
                 ],
                 spacing=15,
             ),
-            **Theme.get_card_decoration()
+            **Theme.get_card_decoration(),
         )
 
-    def get_options(self) -> Dict[str, Any]:
+    def get_options(self) -> dict[str, Any]:
         return {
             "video_format": self.format_dd.value,
         }

@@ -5,7 +5,6 @@ Handles view initialization, navigation, and global UI state.
 """
 
 import logging
-from typing import List, Optional
 
 import flet as ft
 
@@ -30,15 +29,15 @@ class UIManager:
     # pylint: disable=too-many-instance-attributes
     def __init__(self, page: ft.Page):
         self.page = page
-        self.dashboard_view: Optional[DashboardView] = None
-        self.download_view: Optional[DownloadView] = None
-        self.queue_view: Optional[QueueView] = None
-        self.history_view: Optional[HistoryView] = None
-        self.rss_view: Optional[RSSView] = None
-        self.settings_view: Optional[SettingsView] = None
+        self.dashboard_view: DashboardView | None = None
+        self.download_view: DownloadView | None = None
+        self.queue_view: QueueView | None = None
+        self.history_view: HistoryView | None = None
+        self.rss_view: RSSView | None = None
+        self.settings_view: SettingsView | None = None
 
-        self.views_list: List[BaseView] = []
-        self.app_layout: Optional[AppLayout] = None
+        self.views_list: list[BaseView] = []
+        self.app_layout: AppLayout | None = None
 
         # Track current view index
         self.current_view_index = 0

@@ -5,12 +5,10 @@ Integration tests for main application logic.
 """
 
 import threading
-import time
 import unittest
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import tasks
 from app_state import AppState
 from queue_manager import QueueManager
 from tasks import download_task, process_queue

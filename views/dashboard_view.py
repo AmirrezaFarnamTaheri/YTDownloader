@@ -7,7 +7,7 @@ active download summaries, and recent history.
 
 import logging
 import shutil
-from typing import Callable
+from collections.abc import Callable
 
 import flet as ft
 
@@ -252,15 +252,19 @@ class DashboardView(BaseView):
     def _refresh_stats(self):
         """Updates download statistics from queue manager."""
         try:
-            if hasattr(self.queue_manager, 'get_statistics'):
+            if hasattr(self.queue_manager, "get_statistics"):
                 stats = self.queue_manager.get_statistics()
             else:
                 # Fallback for older queue manager
                 items = self.queue_manager.get_all()
                 stats = {
-                    "downloading": sum(1 for i in items if i.get("status") == "Downloading"),
+                    "downloading": sum(
+                        1 for i in items if i.get("status") == "Downloading"
+                    ),
                     "queued": sum(1 for i in items if i.get("status") == "Queued"),
-                    "completed": sum(1 for i in items if i.get("status") == "Completed"),
+                    "completed": sum(
+                        1 for i in items if i.get("status") == "Completed"
+                    ),
                 }
 
             self.active_downloads_text.value = str(stats.get("downloading", 0))

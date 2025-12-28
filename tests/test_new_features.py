@@ -8,8 +8,6 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
-from datetime import datetime
 
 
 class TestQueueManagerBulkOperations:
@@ -212,6 +210,7 @@ class TestHistoryManagerSearchFilter:
 
         assert result is not None
         import json
+
         data = json.loads(result)
         assert len(data) == 3
 
@@ -230,7 +229,7 @@ class TestDownloaderModuleExports:
 
     def test_downloader_imports(self):
         """Test that key functions can be imported from downloader package."""
-        from downloader import download_video, get_video_info, DownloadOptions
+        from downloader import DownloadOptions, download_video, get_video_info
 
         assert callable(download_video)
         assert callable(get_video_info)
@@ -275,6 +274,7 @@ class TestAppStateCleanup:
     def test_cleanup_sets_shutdown_flag(self):
         """Test that cleanup sets the shutdown flag."""
         import threading
+
         from app_state import AppState
 
         state = AppState()

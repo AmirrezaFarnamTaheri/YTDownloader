@@ -8,7 +8,8 @@ import logging
 import os
 import re
 import time
-from typing import Any, Callable, Dict, Mapping, Optional
+from collections.abc import Callable, Mapping
+from typing import Any
 
 import requests
 
@@ -80,7 +81,7 @@ class GenericDownloader:
         return filename
 
     @staticmethod
-    def _check_cancel(token: Optional[Any]):
+    def _check_cancel(token: Any | None):
         """Helper to check cancellation token support multiple interfaces."""
         if not token:
             return
@@ -108,11 +109,11 @@ class GenericDownloader:
     def download(
         url: str,
         output_path: str,
-        progress_hook: Optional[Callable[[Dict[str, Any]], None]] = None,
-        cancel_token: Optional[Any] = None,
+        progress_hook: Callable[[dict[str, Any]], None] | None = None,
+        cancel_token: Any | None = None,
         max_retries: int = 3,
-        filename: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        filename: str | None = None,
+    ) -> dict[str, Any]:
         """
         Downloads a file using requests with streaming.
 
@@ -332,7 +333,7 @@ class GenericDownloader:
                 logger.info("Download cancelled by user.")
                 raise  # Propagate up
 
-            except (requests.exceptions.RequestException, IOError) as e:
+            except (OSError, requests.exceptions.RequestException) as e:
                 last_error = e
                 retry_count += 1
                 logger.warning("Download error: %s. Retrying...", e)
@@ -359,9 +360,9 @@ class GenericDownloader:
 def download_generic(
     url: str,
     output_path: str,
-    filename: Optional[str] = None,  # Make optional to match usage
-    progress_hook: Optional[Callable] = None,
-    cancel_token: Optional[Any] = None,
+    filename: str | None = None,  # Make optional to match usage
+    progress_hook: Callable | None = None,
+    cancel_token: Any | None = None,
     max_retries: int = 3,
 ):
     """

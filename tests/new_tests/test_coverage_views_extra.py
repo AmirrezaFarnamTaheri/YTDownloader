@@ -66,12 +66,11 @@ class TestSettingsView(unittest.TestCase):
         self.view.config["rss_feeds"] = []
 
         # Patch validation to ensure it passes in test env
-        with patch("views.settings_view.validate_proxy", return_value=True), patch(
-            "views.settings_view.validate_rate_limit", return_value=True
-        ), patch(
-            "views.settings_view.validate_output_template", return_value=True
-        ), patch(
-            "views.settings_view.ConfigManager.save_config"
-        ) as mock_save:
+        with (
+            patch("views.settings_view.validate_proxy", return_value=True),
+            patch("views.settings_view.validate_rate_limit", return_value=True),
+            patch("views.settings_view.validate_output_template", return_value=True),
+            patch("views.settings_view.ConfigManager.save_config") as mock_save,
+        ):
             self.view.save_settings(None)
             mock_save.assert_called()
