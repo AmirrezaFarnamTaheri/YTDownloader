@@ -197,19 +197,24 @@ class RSSView(BaseView):
                 )
             else:
                 for item in items:
-                    # News Item Card
+                    # News Item Card - use .get() to prevent KeyError
                     card_style = Theme.get_card_decoration()
+                    title = item.get("title", LM.get("unknown_title"))
+                    feed_name = item.get("feed_name", "")
+                    published = item.get("published", "")
+                    link = item.get("link", "")
+
                     self.items_list.controls.append(
                         ft.Container(
                             content=ft.Column(
                                 [
                                     ft.Text(
-                                        item["title"],
+                                        title,
                                         weight=ft.FontWeight.BOLD,
                                         color=Theme.Text.PRIMARY,
                                     ),
                                     ft.Text(
-                                        f"{item['feed_name']} - {item['published']}",
+                                        f"{feed_name} - {published}",
                                         size=12,
                                         color=Theme.Text.SECONDARY,
                                     ),
@@ -222,9 +227,11 @@ class RSSView(BaseView):
                                                     bgcolor=Theme.Surface.BG,
                                                     color=Theme.Primary.MAIN,
                                                 ),
-                                                on_click=lambda e, url=item[
-                                                    "link"
-                                                ]: self.page.launch_url(url),
+                                                on_click=lambda e, url=link: (
+                                                    self.page.launch_url(url)
+                                                    if self.page and url
+                                                    else None
+                                                ),
                                             ),
                                         ],
                                         alignment=ft.MainAxisAlignment.END,

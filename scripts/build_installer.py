@@ -192,7 +192,7 @@ def build_installer():
                 "--product-name=StreamCatch",
                 f"--file-version={win_version}",
                 f"--product-version={win_version}",
-                "--copyright=Copyright (c) 2024 Jules",
+                "--copyright=Copyright (c) 2024-2025 StreamCatch Team",
             ]
         )
     elif sys.platform == "darwin":

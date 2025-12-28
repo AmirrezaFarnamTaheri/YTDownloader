@@ -61,10 +61,14 @@ class InstagramPanel(BasePanel):
 
         self.content = self.build()
 
-    def _on_type_change(self, e):
-        # pylint: disable=unused-argument
+    def _on_type_change(self, _):
+        """Handle download type change with safe update."""
         self.warning_text.visible = self.download_type.value == "story"
-        self.warning_text.update()
+        try:
+            # update() may fail if control not attached to a page
+            self.warning_text.update()
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass  # Silently ignore if update fails
         self.on_option_change()
 
     def build(self):

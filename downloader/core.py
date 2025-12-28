@@ -210,9 +210,9 @@ def _configure_advanced_options(
         if accel_flag:
             ydl_opts["postprocessor_args"] = {"ffmpeg": ["-hwaccel", accel_flag]}
 
-    # Cookies
+    # Cookies - yt-dlp expects a 2-tuple: (browser_name, profile_name)
     if options.cookies_from_browser:
-        ydl_opts["cookiesfrombrowser"] = (options.cookies_from_browser,)
+        ydl_opts["cookiesfrombrowser"] = (options.cookies_from_browser, None)
 
 
 def download_video(options: DownloadOptions) -> dict[str, Any]:

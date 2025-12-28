@@ -118,8 +118,10 @@ class DownloadItemControl(ft.Container):
             spacing=0,
         )
 
-        # Attach to item for updates
-        self.item["control"] = self
+        # Store a weak reference to avoid circular reference memory leak
+        # The item dict should not hold a strong reference to this control
+        import weakref
+        self.item["control_ref"] = weakref.ref(self)
         self.update_actions()
         self._update_progress_internal(update_ui=False)
 

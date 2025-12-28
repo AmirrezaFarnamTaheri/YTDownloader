@@ -8,8 +8,24 @@ class TestYTDLPWrapper(unittest.TestCase):
     def setUp(self):
         self.wrapper = YTDLPWrapper({"option": "1"})
 
-    def test_supports(self):
-        self.assertTrue(YTDLPWrapper.supports("http://any.com"))
+    @patch("yt_dlp.extractor.gen_extractors")
+    def test_supports(self, mock_gen_extractors):
+        """Test supports() method checks extractors correctly."""
+        # Create a mock extractor that matches youtube.com
+        mock_extractor = MagicMock()
+        mock_extractor.suitable.return_value = True
+        mock_extractor.IE_NAME = "youtube"
+        mock_gen_extractors.return_value = [mock_extractor]
+
+        # Should return True for matched URLs
+        self.assertTrue(YTDLPWrapper.supports("https://www.youtube.com/watch?v=test"))
+
+        # Test with no matching extractor
+        mock_extractor.suitable.return_value = False
+        self.assertFalse(YTDLPWrapper.supports("http://unknown-site.com/video"))
+
+        # Test with empty URL
+        self.assertFalse(YTDLPWrapper.supports(""))
 
     @patch("yt_dlp.YoutubeDL")
     def test_download_success(self, MockYTDL):

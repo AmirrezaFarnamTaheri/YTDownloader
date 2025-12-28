@@ -185,9 +185,10 @@ class TestGetVideoInfo(unittest.TestCase):
 class TestDownloadVideo(unittest.TestCase):
     """Test cases for download_video function."""
 
+    @patch("downloader.core.YTDLPWrapper.supports", return_value=True)
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper.download")
-    def test_download_video_success(self, mock_download, mock_mkdir):
+    def test_download_video_success(self, mock_download, mock_mkdir, mock_supports):
         """Test successful video download."""
         progress_hook = MagicMock()
         options = DownloadOptions(
@@ -350,9 +351,10 @@ class TestDownloadVideo(unittest.TestCase):
         args, kwargs = mock_instance.download.call_args
         self.assertEqual(args[2], cancel_token)
 
+    @patch("downloader.core.YTDLPWrapper.supports", return_value=True)
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper.download")
-    def test_download_video_cancelled_by_user(self, mock_download, mock_mkdir):
+    def test_download_video_cancelled_by_user(self, mock_download, mock_mkdir, mock_supports):
         """Test graceful handling of user cancellation."""
         mock_download.side_effect = yt_dlp.utils.DownloadError("Cancelled by user")
         progress_hook = MagicMock()
@@ -374,9 +376,10 @@ class TestDownloadVideo(unittest.TestCase):
                 )
             )
 
+    @patch("downloader.core.YTDLPWrapper.supports", return_value=True)
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper.download")
-    def test_download_video_error(self, mock_download, mock_mkdir):
+    def test_download_video_error(self, mock_download, mock_mkdir, mock_supports):
         """Test error handling during download."""
         mock_download.side_effect = yt_dlp.utils.DownloadError("Access denied")
         progress_hook = MagicMock()
@@ -423,10 +426,11 @@ class TestDownloadVideo(unittest.TestCase):
         ydl_opts = args[0]
         self.assertFalse(ydl_opts["noplaylist"])
 
+    @patch("downloader.core.YTDLPWrapper.supports", return_value=True)
     @patch("downloader.core.os.makedirs")
     @patch("downloader.core.YTDLPWrapper.download")
     def test_download_video_creates_output_directory(
-        self, mock_download, mock_makedirs
+        self, mock_download, mock_makedirs, mock_supports
     ):
         """Test that output directory is created if it doesn't exist."""
         progress_hook = MagicMock()
@@ -436,7 +440,7 @@ class TestDownloadVideo(unittest.TestCase):
             progress_hook=progress_hook,
             playlist=False,
             video_format="best",
-            output_path="/nonexistent/path",
+            output_path="/tmp/test_downloads",
             subtitle_lang=None,
             subtitle_format="srt",
             split_chapters=False,

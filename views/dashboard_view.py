@@ -281,7 +281,8 @@ class DashboardView(BaseView):
         """Updates storage usage bar."""
         try:
             total, used, free = shutil.disk_usage(".")
-            percent = used / total
+            # Avoid division by zero
+            percent = used / total if total > 0 else 0
 
             gb = 1024**3
             self.storage_progress.value = percent
@@ -294,8 +295,12 @@ class DashboardView(BaseView):
             else:
                 self.storage_progress.color = Theme.Status.SUCCESS
 
+            # Format values as strings for localization
             self.storage_text.value = LM.get(
-                "storage_usage", used / gb, total / gb, free / gb
+                "storage_usage",
+                f"{used / gb:.1f}",
+                f"{total / gb:.1f}",
+                f"{free / gb:.1f}",
             )
         except Exception:
             self.storage_text.value = LM.get("storage_info_unavailable")

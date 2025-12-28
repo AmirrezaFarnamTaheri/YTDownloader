@@ -100,10 +100,10 @@ class QueueView(BaseView):
             auto_scroll=False,
         )
 
-        # Add header and list to content
-        self.add_control(self.header_row)
-        self.controls = [self.list_view]
+        # Build the content layout - header above the list view
         self.selected_index = 0
+        self.content_col.controls.append(self.header_row)
+        self.content_col.controls.append(self.list_view)
 
     def rebuild(self):
         """Rebuilds the list of items and updates statistics."""

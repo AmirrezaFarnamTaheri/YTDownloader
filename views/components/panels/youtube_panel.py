@@ -138,14 +138,17 @@ class YouTubePanel(BasePanel):
                 audio_opts.append(ft.dropdown.Option(s.get("format_id"), label))
             self.audio_format_dd.options = audio_opts
             if audio_opts:
-                self.audio_format_dd.value = audio_opts[0].key
+                # Dropdown Option value is the first argument passed to Option()
+                first_format_id = self.info["audio_streams"][0].get("format_id")
+                self.audio_format_dd.value = first_format_id
         else:
             self.audio_format_dd.visible = False
 
         # 3. Subtitles
         sub_opts = [ft.dropdown.Option("None", LM.get("none"))]
-        if "subtitles" in self.info:
-            for lang, _ in self.info["subtitles"].items():
+        subtitles = self.info.get("subtitles")
+        if subtitles and isinstance(subtitles, dict):
+            for lang in subtitles.keys():
                 sub_opts.append(ft.dropdown.Option(lang, lang))
         self.subtitle_dd.options = sub_opts
         self.subtitle_dd.value = "None"
