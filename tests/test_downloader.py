@@ -354,7 +354,9 @@ class TestDownloadVideo(unittest.TestCase):
     @patch("downloader.core.YTDLPWrapper.supports", return_value=True)
     @patch("downloader.core.Path.mkdir")
     @patch("downloader.core.YTDLPWrapper.download")
-    def test_download_video_cancelled_by_user(self, mock_download, mock_mkdir, mock_supports):
+    def test_download_video_cancelled_by_user(
+        self, mock_download, mock_mkdir, mock_supports
+    ):
         """Test graceful handling of user cancellation."""
         mock_download.side_effect = yt_dlp.utils.DownloadError("Cancelled by user")
         progress_hook = MagicMock()

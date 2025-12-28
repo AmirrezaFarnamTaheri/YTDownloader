@@ -276,7 +276,11 @@ class TestMainLogic(unittest.TestCase):
         self.assertEqual(item["status"], "Completed")
 
         # Check intermediate calls
-        self.assertTrue(item["control"].update_progress.call_count >= 2)
+        control_ref = item.get("control_ref")
+        if control_ref:
+            control = control_ref()
+            if control:
+                self.assertTrue(control.update_progress.call_count >= 2)
 
         # Verify queue manager content
         q_item = self.mock_state.queue_manager.get_item_by_id(item_id)

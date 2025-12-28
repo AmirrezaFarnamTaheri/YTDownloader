@@ -153,7 +153,9 @@ class HistoryView(BaseView):
                 self.load()  # Reload the list
                 if self.page:
                     self.page.open(
-                        ft.SnackBar(content=ft.Text(LM.get("item_deleted", "Item deleted")))
+                        ft.SnackBar(
+                            content=ft.Text(LM.get("item_deleted", "Item deleted"))
+                        )
                     )
         except Exception as ex:  # pylint: disable=broad-exception-caught
             logger.error("Failed to delete history item: %s", ex)

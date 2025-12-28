@@ -177,10 +177,11 @@ class TestAppControllerCoverage(unittest.TestCase):
 
     def test_on_cancel_item_no_id(self):
         item = {"title": "Test", "status": "Downloading"}
-        item["control"] = MagicMock()
+        mock_control = MagicMock()
+        item["control_ref"] = lambda: mock_control
         self.controller.on_cancel_item(item)
         self.assertEqual(item["status"], "Cancelled")
-        item["control"].update_progress.assert_called()
+        mock_control.update_progress.assert_called()
 
     def test_on_remove_item(self):
         item = {"id": "123"}

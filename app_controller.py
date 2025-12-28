@@ -221,8 +221,11 @@ class AppController:
         else:
             item["status"] = "Cancelled"
             item["progress"] = 0
-            if "control" in item:
-                item["control"].update_progress()
+            control_ref = item.get("control_ref")
+            if control_ref:
+                control = control_ref()
+                if control:
+                    control.update_progress()
 
         state.queue_manager.notify_workers()
 
