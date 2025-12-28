@@ -178,8 +178,16 @@ class GenericDownloader:
         # Ensure final path is inside output path (Path Traversal check)
         final_dir = os.path.dirname(os.path.abspath(final_path))
         base_dir = os.path.abspath(output_path)
-        if os.path.commonpath([final_dir, base_dir]) != base_dir:
-            raise ValueError("Detected path traversal attempt in filename")
+        try:
+            # os.path.commonpath raises ValueError on Windows when paths are on different drives
+            if os.path.commonpath([final_dir, base_dir]) != base_dir:
+                raise ValueError("Detected path traversal attempt in filename")
+        except ValueError as e:
+            # On Windows, different drives raise ValueError from commonpath
+            if "different drive" in str(e).lower() or "paths" in str(e).lower():
+                # If paths are on different drives, the final path is definitely not inside base
+                raise ValueError("Detected path traversal attempt in filename") from e
+            raise
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"

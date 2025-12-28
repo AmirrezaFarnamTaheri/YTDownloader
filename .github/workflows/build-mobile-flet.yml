@@ -61,13 +61,13 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
 
     - name: Setup Java
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93  # v4.0.0
       with:
         distribution: 'temurin'
         java-version: '17'
 
     - name: Setup Flutter
-      uses: subosito/flutter-action@v2
+      uses: subosito/flutter-action@62f096cacda5168a3bd7b95793373be14fa4fbaf  # v2.13.0
       with:
         flutter-version: ${{ env.FLUTTER_VERSION }}
         channel: 'stable'
@@ -87,10 +87,10 @@ jobs:
       env:
         APP_VERSION: ${{ needs.version.outputs.version }}
       run: |
-        python scripts/build_mobile.py --target apk --verbose
+        python scripts/build_mobile.py --target apk
 
     - name: Upload APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392  # v4.0.0
       with:
         name: StreamCatch-Android-APK
         path: |
@@ -113,7 +113,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
 
     - name: Setup Flutter
-      uses: subosito/flutter-action@v2
+      uses: subosito/flutter-action@62f096cacda5168a3bd7b95793373be14fa4fbaf  # v2.13.0
       with:
         flutter-version: ${{ env.FLUTTER_VERSION }}
         channel: 'stable'
@@ -133,10 +133,10 @@ jobs:
       env:
         APP_VERSION: ${{ needs.version.outputs.version }}
       run: |
-        python scripts/build_mobile.py --target ipa --verbose
+        python scripts/build_mobile.py --target ipa
 
     - name: Upload iOS Archive
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392  # v4.0.0
       with:
         name: StreamCatch-iOS-Unsigned
         path: build/ios/Runner.xcarchive

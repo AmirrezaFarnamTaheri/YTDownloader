@@ -75,8 +75,8 @@ class HistoryView(BaseView):
                 control = HistoryItemControl(
                     item,
                     on_open_folder=self.open_folder_safe,
-                    on_copy_url=lambda u: self.page.set_clipboard(u),
-                    on_delete=lambda x: None,  # Placeholder if we add single delete later
+                    on_copy_url=self._copy_url_safe,
+                    on_delete=self._delete_item,
                 )
                 self.history_list.controls.append(control)
 
@@ -132,3 +132,30 @@ class HistoryView(BaseView):
                 self.page.open(
                     ft.SnackBar(content=ft.Text(LM.get("open_folder_failed")))
                 )
+
+    def _copy_url_safe(self, url: str):
+        """Safely copies URL to clipboard."""
+        if url and self.page:
+            try:
+                self.page.set_clipboard(url)
+                self.page.open(
+                    ft.SnackBar(content=ft.Text(LM.get("url_copied", "URL copied")))
+                )
+            except Exception as ex:  # pylint: disable=broad-exception-caught
+                logger.error("Failed to copy URL: %s", ex)
+
+    def _delete_item(self, item: dict):
+        """Deletes a single history item."""
+        try:
+            item_id = item.get("id")
+            if item_id:
+                HistoryManager.delete_entry(item_id)
+                self.load()  # Reload the list
+                if self.page:
+                    self.page.open(
+                        ft.SnackBar(
+                            content=ft.Text(LM.get("item_deleted", "Item deleted"))
+                        )
+                    )
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to delete history item: %s", ex)

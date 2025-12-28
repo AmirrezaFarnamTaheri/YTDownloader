@@ -29,13 +29,25 @@ class YTDLPWrapper:
     @staticmethod
     def supports(url: str) -> bool:
         """
-        Check if yt-dlp supports the URL.
+        Check if yt-dlp supports the URL by querying its extractors.
+
+        Returns True if yt-dlp has an extractor for this URL,
+        False otherwise (allowing fallback to generic downloader).
         """
-        # We generally assume yt-dlp supports most things, or we fail and fallback.
-        # However, we can use extractors to check.
-        # For now, simplistic check:
-        # pylint: disable=unused-argument
-        return True
+        if not url:
+            return False
+        try:
+            # Use yt-dlp's extractor system to check URL support
+            for ie in yt_dlp.extractor.gen_extractors():
+                if ie.suitable(url):
+                    # Skip generic extractors as we want specific support
+                    if ie.IE_NAME in ("generic", "Generic"):
+                        continue
+                    return True
+            return False
+        except Exception:  # pylint: disable=broad-exception-caught
+            # On any error, assume yt-dlp might support it
+            return True
 
     def download(
         self,

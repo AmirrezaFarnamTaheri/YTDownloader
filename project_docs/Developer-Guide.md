@@ -25,7 +25,7 @@ StreamCatch is designed for **Robustness**, **Modularity**, and **Speed**.
 ## Setup
 
 ### Prerequisites
--   Python 3.12+
+-   Python 3.10+ (as specified in pyproject.toml)
 -   Git
 
 ### Installation

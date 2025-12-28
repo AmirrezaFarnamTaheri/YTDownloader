@@ -212,9 +212,12 @@ def configure_concurrency(max_workers: int | None = None) -> bool:
 
 def _update_progress_ui(item: dict[str, Any]):
     """Helper to update UI control if present."""
-    if "control" in item:
+    control_ref = item.get("control_ref")
+    if control_ref:
         try:
-            item["control"].update_progress()
+            control = control_ref()
+            if control:
+                control.update_progress()
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.debug("Failed to update progress UI: %s", exc, exc_info=True)
 

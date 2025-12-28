@@ -5,20 +5,23 @@ Logging configuration module.
 import logging
 import logging.handlers
 import sys
+import threading
 from pathlib import Path
 
-# Module-level flag to prevent re-initialization
+# Module-level flag and lock to prevent re-initialization race conditions
 _logging_initialized = False
+_logging_lock = threading.Lock()
 
 
 def setup_logging():
     """Setup comprehensive logging configuration."""
     global _logging_initialized  # pylint: disable=global-statement
 
-    # Prevent re-initialization which would clear handlers from other modules
-    if _logging_initialized:
-        logging.debug("Logging already initialized, skipping setup")
-        return
+    # Thread-safe initialization check
+    with _logging_lock:
+        # Prevent re-initialization which would clear handlers from other modules
+        if _logging_initialized:
+            return
 
     log_formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(name)s - %(threadName)s - %(message)s"
@@ -69,5 +72,6 @@ def setup_logging():
         except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"Failed to setup log file {log_file}: {e}", file=sys.stderr)
 
+    # Set flag after all handlers are configured
     _logging_initialized = True
     logging.info("Logging initialized successfully.")

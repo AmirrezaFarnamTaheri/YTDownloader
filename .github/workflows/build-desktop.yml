@@ -2,6 +2,12 @@ name: Build Desktop Apps
 
 on:
   workflow_call:
+    inputs:
+      tag_name:
+        description: 'Tag name for release (e.g. v1.0.0)'
+        required: false
+        default: ''
+        type: string
   workflow_dispatch:
     inputs:
       tag_name:
@@ -63,12 +69,12 @@ jobs:
         sudo apt-get install -y libgtk-3-dev fakeroot patchelf
 
     - name: Cache Nuitka
-      uses: actions/cache@v4
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9  # v4.0.2
       with:
         path: |
           Nuitka-Cache
           ~/.cache/Nuitka
-        key: nuitka-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+        key: nuitka-${{ runner.os }}-${{ hashFiles('requirements-dev.txt') }}
 
     - name: Build with Nuitka
       env:
@@ -109,10 +115,10 @@ jobs:
 
     - name: Upload Windows Installer
       if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392  # v4.0.0
       with:
         name: StreamCatch-Windows-Installer
-        path: installers/output/StreamCatch_Setup_v*.exe
+        path: installers/output/StreamCatch_Setup_*.exe
         if-no-files-found: error
         retention-days: 1
 
@@ -187,7 +193,7 @@ jobs:
 
     - name: Upload Linux .deb
       if: matrix.os == 'ubuntu-latest'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392  # v4.0.0
       with:
         name: StreamCatch-Linux-Deb
         path: streamcatch_*_amd64.deb
@@ -222,7 +228,7 @@ jobs:
 
     - name: Upload macOS .dmg
       if: matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392  # v4.0.0
       with:
         name: StreamCatch-macOS-Dmg
         path: StreamCatch-*-macOS.dmg

@@ -28,8 +28,11 @@ class TestSyncManagerCoverage(unittest.TestCase):
         self.manager = SyncManager(self.mock_cloud, self.mock_config)
 
     def test_init(self):
-        # cloud_manager is private in SyncManager? Let's check source.
-        pass
+        """Test SyncManager initialization stores dependencies correctly."""
+        self.assertIsNotNone(self.manager)
+        # SyncManager stores cloud as 'cloud' and config as 'config'
+        self.assertEqual(self.manager.cloud, self.mock_cloud)
+        self.assertEqual(self.manager.config, self.mock_config)
 
     @patch("zipfile.ZipFile")
     @patch("os.path.exists")

@@ -82,6 +82,12 @@ class HistoryItemControl(ft.Container):
                     icon_color=Theme.Text.SECONDARY,
                     on_click=lambda _: self.on_copy_url(self.item.get("url")),
                 ),
+                ft.IconButton(
+                    ft.icons.DELETE_OUTLINE,
+                    tooltip=LM.get("delete"),
+                    icon_color=Theme.Status.ERROR,
+                    on_click=lambda _: self.on_delete(self.item),
+                ),
             ],
             spacing=0,
         )

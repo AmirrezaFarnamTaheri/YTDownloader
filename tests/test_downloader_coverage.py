@@ -170,9 +170,26 @@ class TestDownloaderCoverage(unittest.TestCase):
         download_video(options)
 
         call_args = mock_wrapper_class.call_args[0][0]
-        self.assertEqual(call_args.get("cookiesfrombrowser"), ("chrome",))
+        # yt-dlp expects a 2-tuple: (browser_name, profile_name)
+        self.assertEqual(call_args.get("cookiesfrombrowser"), ("chrome", None))
 
     def test_parse_time_logic(self):
-        # We can test the helper directly via DownloadOptions static method if we exposed it
-        # or just via validation failure
-        pass
+        """Test time parsing via DownloadOptions.get_seconds method."""
+        options = DownloadOptions(url="http://example.com")
+
+        # Test MM:SS format
+        self.assertEqual(options.get_seconds("01:30"), 90)
+
+        # Test HH:MM:SS format
+        self.assertEqual(options.get_seconds("01:00:00"), 3600)
+
+        # Test edge cases
+        self.assertEqual(options.get_seconds("00:00"), 0)
+        self.assertEqual(options.get_seconds("59:59"), 3599)
+
+        # Test None returns 0
+        self.assertEqual(options.get_seconds(None), 0)
+
+        # Test invalid time raises ValueError
+        with self.assertRaises(ValueError):
+            options.get_seconds("invalid")

@@ -8,12 +8,14 @@ from downloader.types import DownloadOptions
 
 
 class TestFeatureVerification(unittest.TestCase):
+    @patch("downloader.core.YTDLPWrapper.supports", return_value=True)
     @patch("downloader.core.YTDLPWrapper.download")
-    def test_downloader_basic_call(self, mock_download):
+    def test_downloader_basic_call(self, mock_download, mock_supports):
         """Verify basic call structure."""
         item = {}
 
-        def hook(d, i):
+        def hook(d):
+            """Progress hook that takes 1 argument."""
             pass
 
         options = DownloadOptions(
