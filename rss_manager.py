@@ -9,7 +9,7 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
 
@@ -109,13 +109,13 @@ class RSSManager:
         # Config wrapper (should be dict-like or have set/get)
         self.config_manager = config_manager
         # Cache feeds locally from config
-        self.feeds: List[Dict[str, str]] = self._normalize_feeds(
+        self.feeds: list[dict[str, str]] = self._normalize_feeds(
             self.config_manager.get("rss_feeds", [])
         )
         self._lock = threading.RLock()
 
     @staticmethod
-    def _normalize_feeds(feeds: List[Any]) -> List[Dict[str, str]]:
+    def _normalize_feeds(feeds: list[Any]) -> list[dict[str, str]]:
         """Normalize feed entries into dicts with url/name."""
         normalized = []
         for f in feeds:
@@ -141,7 +141,7 @@ class RSSManager:
             if isinstance(self.config_manager, dict):
                 self.config_manager["rss_feeds"] = list(self.feeds)
 
-    def get_feeds(self) -> List[Dict[str, str]]:
+    def get_feeds(self) -> list[dict[str, str]]:
         """Return list of feeds."""
         with self._lock:
             return list(self.feeds)
@@ -163,7 +163,7 @@ class RSSManager:
                 self._save_feeds()
                 logger.info("Removed RSS feed: %s", url)
 
-    def fetch_feed(self, url: str) -> List[Dict[str, Any]]:
+    def fetch_feed(self, url: str) -> list[dict[str, Any]]:
         """Fetch and parse a single RSS feed (Instance wrapper)."""
         return RSSManager.parse_feed(url, self)
 
@@ -202,7 +202,7 @@ class RSSManager:
     @staticmethod
     def parse_feed(
         url: str, instance: Optional["RSSManager"] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Fetch and parse a single RSS feed safely."""
         try:
             if not RSSManager._validate_url(url):
@@ -242,7 +242,7 @@ class RSSManager:
                 )
                 return []
 
-            items: List[Dict[str, Any]] = []
+            items: list[dict[str, Any]] = []
             if "feed" in root.tag:  # Atom
                 RSSManager._parse_atom_feed(root, items, instance, url)
             else:  # RSS
@@ -261,7 +261,7 @@ class RSSManager:
     @staticmethod
     def _parse_atom_feed(
         root: ET.Element,
-        items: List[Dict[str, Any]],
+        items: list[dict[str, Any]],
         instance: Optional["RSSManager"],
         url: str,
     ):
@@ -303,7 +303,7 @@ class RSSManager:
     @staticmethod
     def _parse_rss_feed(
         root: ET.Element,
-        items: List[Dict[str, Any]],
+        items: list[dict[str, Any]],
         instance: Optional["RSSManager"],
         url: str,
     ):
@@ -345,7 +345,7 @@ class RSSManager:
             if updated:
                 self._save_feeds()
 
-    def get_aggregated_items(self) -> List[Dict[str, Any]]:
+    def get_aggregated_items(self) -> list[dict[str, Any]]:
         """Fetch all feeds concurrently and return combined items."""
         all_items = []
         feeds_snapshot = self.get_feeds()
@@ -388,12 +388,12 @@ class RSSManager:
         all_items.sort(key=lambda x: x.get("date_obj", datetime.min), reverse=True)
         return all_items
 
-    def get_all_items(self) -> List[Dict[str, Any]]:
+    def get_all_items(self) -> list[dict[str, Any]]:
         """Alias for get_aggregated_items."""
         return self.get_aggregated_items()
 
     @classmethod
-    def get_latest_video(cls, url: str) -> Optional[Dict[str, Any]]:
+    def get_latest_video(cls, url: str) -> dict[str, Any] | None:
         """Get the latest video from a feed."""
         items = cls.parse_feed(url)
         return items[0] if items else None

@@ -8,7 +8,7 @@ Refactored to use ThreadPoolExecutor and per-task CancelTokens.
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app_state import state
 from downloader.core import download_video
@@ -165,7 +165,7 @@ def _wrapped_download_task(item):
             )
 
 
-def configure_concurrency(max_workers: Optional[int] = None) -> bool:
+def configure_concurrency(max_workers: int | None = None) -> bool:
     """
     Update executor/semaphore concurrency. Returns True if applied.
     Will not modify when active downloads are running.
@@ -210,7 +210,7 @@ def configure_concurrency(max_workers: Optional[int] = None) -> bool:
     return True
 
 
-def _update_progress_ui(item: Dict[str, Any]):
+def _update_progress_ui(item: dict[str, Any]):
     """Helper to update UI control if present."""
     if "control" in item:
         try:
@@ -219,7 +219,7 @@ def _update_progress_ui(item: Dict[str, Any]):
             logger.debug("Failed to update progress UI: %s", exc, exc_info=True)
 
 
-def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
+def _progress_hook_factory(item: dict[str, Any], cancel_token: CancelToken):
     """Creates a closure for the progress hook."""
 
     def progress_hook(d):
@@ -265,7 +265,7 @@ def _progress_hook_factory(item: Dict[str, Any], cancel_token: CancelToken):
     return progress_hook
 
 
-def _log_to_history(item: Dict[str, Any], filepath: Optional[str] = None):
+def _log_to_history(item: dict[str, Any], filepath: str | None = None):
     """Log completed download to history safely."""
     # Import locally to avoid circular import issues at top-level
     # pylint: disable=import-outside-toplevel
@@ -286,7 +286,7 @@ def _log_to_history(item: Dict[str, Any], filepath: Optional[str] = None):
         logger.error("Failed to add to history: %s", e)
 
 
-def download_task(item: Dict[str, Any]):
+def download_task(item: dict[str, Any]):
     """
     Worker function for a single download.
     Executes the download, updates status, and logs to history.

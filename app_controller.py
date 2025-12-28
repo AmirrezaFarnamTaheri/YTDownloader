@@ -4,12 +4,14 @@ Handles application logic, callbacks, and bridging between UI and backend.
 Refactored to delegate responsibilities.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import threading
 import time
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 import flet as ft
 
@@ -138,7 +140,7 @@ class AppController:
             daemon=True,
         ).start()
 
-    def on_add_to_queue(self, data: Dict[str, Any]):
+    def on_add_to_queue(self, data: dict[str, Any]):
         """Callback to add an item to the download queue."""
         logger.info("User requested add to queue: %s", data.get("url"))
         if not validate_url(data.get("url", "")):
@@ -210,7 +212,7 @@ class AppController:
         if status == "Queued":
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("success_added"))))
 
-    def on_cancel_item(self, item: Dict[str, Any]):
+    def on_cancel_item(self, item: dict[str, Any]):
         """Callback to cancel a download item."""
         logger.info("User requested cancel for item: %s", item.get("title", "Unknown"))
         item_id = item.get("id")
@@ -224,12 +226,12 @@ class AppController:
 
         state.queue_manager.notify_workers()
 
-    def on_remove_item(self, item: Dict[str, Any]):
+    def on_remove_item(self, item: dict[str, Any]):
         """Callback to remove an item from the queue."""
         state.queue_manager.remove_item(item)
         self.ui.update_queue_view()
 
-    def on_reorder_item(self, item: Dict[str, Any], direction: int):
+    def on_reorder_item(self, item: dict[str, Any], direction: int):
         """Callback to reorder items in the queue."""
         q = state.queue_manager.get_all()
         # Find index by ID instead of object reference if possible
@@ -251,7 +253,7 @@ class AppController:
                 state.queue_manager.swap_items(idx, new_idx)
                 self.ui.update_queue_view()
 
-    def on_retry_item(self, item: Dict[str, Any]):
+    def on_retry_item(self, item: dict[str, Any]):
         """Callback to retry a failed/cancelled item."""
         item_id = item.get("id")
         updated = False
@@ -273,7 +275,7 @@ class AppController:
                 )
         self.ui.update_queue_view()
 
-    def on_play_item(self, item: Dict[str, Any]):
+    def on_play_item(self, item: dict[str, Any]):
         """Callback to open/play the downloaded file."""
         filepath = item.get("filepath")
         if not filepath:
@@ -289,7 +291,7 @@ class AppController:
         if not play_file(filepath, self.page):
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("open_file_failed"))))
 
-    def on_open_folder(self, item: Dict[str, Any]):
+    def on_open_folder(self, item: dict[str, Any]):
         """Callback to open the folder containing the file."""
         output_path = item.get("output_path", get_default_download_path())
         filepath = item.get("filepath")

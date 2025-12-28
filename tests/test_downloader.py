@@ -6,7 +6,7 @@ Tests cover video info fetching, error handling, and download configuration.
 """
 
 import unittest
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import yt_dlp
 

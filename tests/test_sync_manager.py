@@ -6,8 +6,6 @@ import unittest
 import zipfile
 from unittest.mock import MagicMock, patch
 
-from config_manager import ConfigManager
-from history_manager import HistoryManager
 from sync_manager import SyncManager
 
 

@@ -10,7 +10,7 @@ import logging
 import threading
 from collections import OrderedDict
 from datetime import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from cloud_manager import CloudManager
 from config_manager import ConfigManager
@@ -64,7 +64,7 @@ class AppState:
             with cls._instance_lock:
                 # Second check (locked)
                 if cls._instance is None:
-                    instance = super(AppState, cls).__new__(cls)
+                    instance = super().__new__(cls)
                     instance._initialized = False
                     cls._instance = instance
         return cls._instance
@@ -88,10 +88,10 @@ class AppState:
             self.config = ConfigManager.DEFAULTS.copy()
 
         self.queue_manager = QueueManager()
-        self.current_download_item: Optional[Dict[str, Any]] = None
-        self.cancel_token: Optional[CancelToken] = None
+        self.current_download_item: dict[str, Any] | None = None
+        self.cancel_token: CancelToken | None = None
         self.is_paused = False
-        self.video_info: Optional[Dict[str, Any]] = None
+        self.video_info: dict[str, Any] | None = None
 
         self.ffmpeg_available = is_ffmpeg_available()
         logger.info("FFmpeg available: %s", self.ffmpeg_available)
@@ -113,7 +113,7 @@ class AppState:
             self.cloud_manager, self.config, history_manager=HistoryManager
         )
 
-        self.scheduled_time: Optional[time] = None
+        self.scheduled_time: time | None = None
         self.clipboard_monitor_active = self.config.get(
             "clipboard_monitor_enabled", False
         )
@@ -125,7 +125,7 @@ class AppState:
         self.compact_mode = self.config.get("compact_mode", False)
 
         # Use OrderedDict for proper LRU cache implementation
-        self._video_info_cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self._video_info_cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
         self._video_info_max_size = self.config.get("metadata_cache_size", 50)
 
         # Try connecting to social - but with error isolation
@@ -176,7 +176,7 @@ class AppState:
 
         logger.info("AppState cleanup complete")
 
-    def get_video_info(self, url: str) -> Optional[Dict[str, Any]]:
+    def get_video_info(self, url: str) -> dict[str, Any] | None:
         """Get cached video info for URL with LRU tracking."""
         info = self._video_info_cache.get(url)
         if info:
@@ -187,7 +187,7 @@ class AppState:
             logger.debug("Cache miss for video info: %s", url)
         return info
 
-    def set_video_info(self, url: str, info: Dict[str, Any]):
+    def set_video_info(self, url: str, info: dict[str, Any]):
         """Cache video info for URL with proper LRU eviction."""
         # If URL already exists, remove it first so it goes to the end
         if url in self._video_info_cache:

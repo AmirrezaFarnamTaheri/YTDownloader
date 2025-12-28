@@ -1,8 +1,5 @@
-import sys
 import unittest
 from unittest.mock import MagicMock, patch
-
-import flet as ft
 
 from views.components.download_preview import DownloadPreviewCard
 from views.components.panels.youtube_panel import YouTubePanel
@@ -99,9 +96,14 @@ class TestDownloadView(unittest.TestCase):
 class TestDownloadPreviewCard(unittest.TestCase):
     def setUp(self):
         # Must patch flet controls used in init
-        with patch("flet.Card"), patch("flet.Container"), patch("flet.Column"), patch(
-            "flet.Row"
-        ), patch("flet.Image"), patch("flet.Text"):
+        with (
+            patch("flet.Card"),
+            patch("flet.Container"),
+            patch("flet.Column"),
+            patch("flet.Row"),
+            patch("flet.Image"),
+            patch("flet.Text"),
+        ):
             self.card = DownloadPreviewCard()
             self.card.update = MagicMock()
 

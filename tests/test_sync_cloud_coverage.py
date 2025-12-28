@@ -4,15 +4,21 @@
 Coverage tests for SyncManager and CloudManager.
 """
 
-import io
-import json
 import os
 import unittest
 import zipfile
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from cloud_manager import CloudManager
 from sync_manager import SyncManager
+
+# Check if PyDrive2 is available for tests that require it
+try:
+    import pydrive2  # noqa: F401 - import for availability check
+
+    PYDRIVE2_AVAILABLE = True
+except ImportError:
+    PYDRIVE2_AVAILABLE = False
 
 
 class TestSyncManagerCoverage(unittest.TestCase):
@@ -51,9 +57,9 @@ class TestSyncManagerCoverage(unittest.TestCase):
         # sync_manager calls load_config if available, then get_all.
         # Let's mock load_config to raise.
 
-        self.mock_config.load_config.side_effect = Exception("Config Error")
+        self.mock_config.load_config.side_effect = RuntimeError("Config Error")
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RuntimeError):
             self.manager.export_data("backup.zip")
 
     @patch("shutil.copyfileobj")
@@ -72,9 +78,7 @@ class TestSyncManagerCoverage(unittest.TestCase):
         mock_read_file.read.return_value = b"some bytes"
         mock_zf.open.return_value.__enter__.return_value = mock_read_file
 
-        # Mock builtins.open for writing history.db
-        mock_file_handle = mock_open.return_value.__enter__.return_value
-
+        # Mock builtins.open for writing history.db (accessed via mock_open)
         with patch("json.load", return_value={"theme": "light"}):
             self.manager.import_data("backup.zip")
 
@@ -98,6 +102,7 @@ class TestCloudManagerCoverage(unittest.TestCase):
         self.manager.gauth = MagicMock()
         self.manager.drive = MagicMock()
 
+    @unittest.skipUnless(PYDRIVE2_AVAILABLE, "PyDrive2 not installed")
     @patch("cloud_manager.os.path.exists")
     def test_get_google_drive_client_no_creds(self, mock_exists):
         # Mock existence: client_secrets.json -> False

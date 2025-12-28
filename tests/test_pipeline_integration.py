@@ -9,11 +9,10 @@ Simulates adding to queue -> processing -> downloading -> history.
 import threading
 import time
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from app_state import AppState, state
+from app_state import state
 from downloader.types import DownloadOptions
-from history_manager import HistoryManager
 from queue_manager import QueueManager
 from tasks import process_queue
 

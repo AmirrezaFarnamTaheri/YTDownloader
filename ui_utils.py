@@ -15,7 +15,6 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from typing import Optional, Union
 from urllib.parse import urlparse
 
 import flet as ft
@@ -37,7 +36,7 @@ class UIConstants:
     ENTRY_PADDING = 5
 
 
-def format_file_size(size_bytes: Optional[Union[float, str, int]]) -> str:
+def format_file_size(size_bytes: float | str | int | None) -> str:
     """Format file size for display."""
     if size_bytes is None or size_bytes == "N/A":
         return "N/A"
@@ -213,7 +212,7 @@ def validate_output_template(template: str) -> bool:
     return True
 
 
-def validate_download_path(path_str: Optional[str]) -> bool:
+def validate_download_path(path_str: str | None) -> bool:
     """
     Validate download path. Empty/None is allowed (defaults apply).
     Attempts to create the directory if it doesn't exist.
@@ -268,7 +267,7 @@ def is_ffmpeg_available() -> bool:
     return result[0]
 
 
-def _resolve_preferred_download_path(preferred_path: Optional[str]) -> Optional[str]:
+def _resolve_preferred_download_path(preferred_path: str | None) -> str | None:
     """Resolve a preferred download path if provided and writable."""
     if not preferred_path or not isinstance(preferred_path, str):
         return None
@@ -288,7 +287,7 @@ def _resolve_preferred_download_path(preferred_path: Optional[str]) -> Optional[
     return None
 
 
-def get_default_download_path(preferred_path: Optional[str] = None) -> str:
+def get_default_download_path(preferred_path: str | None = None) -> str:
     """Get a safe default download path for the current platform."""
     resolved = _resolve_preferred_download_path(preferred_path)
     if resolved:
@@ -310,7 +309,7 @@ def get_default_download_path(preferred_path: Optional[str] = None) -> str:
 # pylint: disable=too-many-return-statements
 
 
-def open_folder(path: str, page: Optional[ft.Page] = None) -> bool:
+def open_folder(path: str, page: ft.Page | None = None) -> bool:
     """
     Opens a folder in the system file manager.
 
@@ -380,7 +379,7 @@ def open_folder(path: str, page: Optional[ft.Page] = None) -> bool:
 # pylint: disable=too-many-return-statements
 
 
-def play_file(path: str, page: Optional[ft.Page] = None) -> bool:
+def play_file(path: str, page: ft.Page | None = None) -> bool:
     """
     Opens/Plays a file in the default system application.
 

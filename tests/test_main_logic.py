@@ -2,13 +2,10 @@
 # pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 # pylint: disable=duplicate-code
 import threading
-import time
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
-import tasks
-from app_state import AppState
 from downloader.types import DownloadOptions
 from queue_manager import QueueManager
 from tasks import download_task, process_queue

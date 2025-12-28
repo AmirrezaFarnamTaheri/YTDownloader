@@ -6,6 +6,14 @@ from unittest.mock import MagicMock, patch
 
 from cloud_manager import CloudManager
 
+# Check if PyDrive2 is available for tests that require it
+try:
+    import pydrive2  # noqa: F401 - import for availability check
+
+    PYDRIVE2_AVAILABLE = True
+except ImportError:
+    PYDRIVE2_AVAILABLE = False
+
 
 class TestCloudManagerPatched(unittest.TestCase):
     def setUp(self):
@@ -23,6 +31,7 @@ class TestCloudManagerPatched(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             self.manager.upload_file("test.txt", provider="dropbox")
 
+    @unittest.skipUnless(PYDRIVE2_AVAILABLE, "PyDrive2 not installed")
     @patch("os.path.exists")
     def test_upload_google_drive_missing_secrets(self, mock_exists):
         # File exists, but client_secrets.json does not
@@ -38,6 +47,7 @@ class TestCloudManagerPatched(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "Google Drive not configured"):
             self.manager.upload_file("test.txt", provider="google_drive")
 
+    @unittest.skipUnless(PYDRIVE2_AVAILABLE, "PyDrive2 not installed")
     @patch("os.path.exists")
     @patch("cloud_manager._google_auth_cls")
     @patch("cloud_manager._google_drive_cls")
@@ -75,6 +85,7 @@ class TestCloudManagerPatched(unittest.TestCase):
         mock_file.SetContentFile.assert_called_with("test.txt")
         mock_file.Upload.assert_called()
 
+    @unittest.skipUnless(PYDRIVE2_AVAILABLE, "PyDrive2 not installed")
     @patch("os.path.exists")
     @patch("cloud_manager._google_auth_cls")
     @patch("cloud_manager._google_drive_cls")
@@ -97,6 +108,7 @@ class TestCloudManagerPatched(unittest.TestCase):
 
         mock_gauth.Refresh.assert_called()
 
+    @unittest.skipUnless(PYDRIVE2_AVAILABLE, "PyDrive2 not installed")
     @patch("os.path.exists")
     @patch("cloud_manager._google_auth_cls")
     def test_upload_google_drive_no_creds_headless(self, MockAuth, mock_exists):
@@ -116,6 +128,7 @@ class TestCloudManagerPatched(unittest.TestCase):
             ):
                 self.manager.upload_file("test.txt")
 
+    @unittest.skipUnless(PYDRIVE2_AVAILABLE, "PyDrive2 not installed")
     @patch("os.path.exists")
     @patch("cloud_manager._google_auth_cls")
     @patch("cloud_manager._google_drive_cls")
@@ -160,6 +173,7 @@ class TestCloudManagerPatched(unittest.TestCase):
                 with self.assertRaisesRegex(Exception, "PyDrive2 dependency missing"):
                     self.manager.upload_file("test.txt")
 
+    @unittest.skipUnless(PYDRIVE2_AVAILABLE, "PyDrive2 not installed")
     @patch("os.path.exists")
     @patch("cloud_manager._google_auth_cls")
     def test_upload_google_drive_general_exception(self, MockAuth, mock_exists):

@@ -6,8 +6,9 @@ Refactored for robustness, event-driven architecture, and better cancellation su
 import logging
 import threading
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 from utils import CancelToken
 
@@ -28,7 +29,7 @@ class QueueManager:
     MAX_QUEUE_SIZE = 1000
 
     def __init__(self):
-        self._queue: List[Dict[str, Any]] = []
+        self._queue: list[dict[str, Any]] = []
         # Re-entrant lock for queue operations
         self._lock = threading.RLock()
 
@@ -36,24 +37,24 @@ class QueueManager:
         self._has_work = threading.Condition(self._lock)
 
         # Listeners for UI updates
-        self._listeners: List[Callable[[], None]] = []
+        self._listeners: list[Callable[[], None]] = []
         self._listeners_lock = threading.Lock()
 
         # Map item IDs to their active CancelTokens
-        self._cancel_tokens: Dict[str, CancelToken] = {}
+        self._cancel_tokens: dict[str, CancelToken] = {}
 
     @property
     def has_work_condition(self):
         """Expose condition variable for workers."""
         return self._has_work
 
-    def get_all(self) -> List[Dict[str, Any]]:
+    def get_all(self) -> list[dict[str, Any]]:
         """Get a copy of the current queue."""
         with self._lock:
             # Return shallow copy
             return list(self._queue)
 
-    def get_item_by_id(self, item_id: str) -> Optional[Dict[str, Any]]:
+    def get_item_by_id(self, item_id: str) -> dict[str, Any] | None:
         """Get item by its unique ID."""
         with self._lock:
             for item in self._queue:
@@ -61,7 +62,7 @@ class QueueManager:
                     return item.copy()
         return None
 
-    def get_item_by_index(self, index: int) -> Optional[Dict[str, Any]]:
+    def get_item_by_index(self, index: int) -> dict[str, Any] | None:
         """Get item by its index in the queue."""
         with self._lock:
             if 0 <= index < len(self._queue):
@@ -72,7 +73,7 @@ class QueueManager:
         """Check if any items are currently in a downloading or active state."""
         return self.any_in_status(["Downloading", "Allocating", "Processing"])
 
-    def any_in_status(self, status: Union[str, List[str]]) -> bool:
+    def any_in_status(self, status: str | list[str]) -> bool:
         """Check if any items match the given status(es)."""
         if isinstance(status, str):
             statuses = {status}
@@ -109,7 +110,7 @@ class QueueManager:
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Error in queue listener: %s", e)
 
-    def add_item(self, item: Dict[str, Any]):
+    def add_item(self, item: dict[str, Any]):
         """Add an item to the queue."""
         if not isinstance(item, dict):
             raise ValueError("Item must be a dictionary")
@@ -141,7 +142,7 @@ class QueueManager:
         self._notify_listeners_safe()
 
     def update_item_status(
-        self, item_id: str, status: str, updates: Optional[Dict[str, Any]] = None
+        self, item_id: str, status: str, updates: dict[str, Any] | None = None
     ):
         """
         Atomically update an item's status and other fields.
@@ -168,7 +169,7 @@ class QueueManager:
         if updated:
             self._notify_listeners_safe()
 
-    def remove_item(self, item: Dict[str, Any]):
+    def remove_item(self, item: dict[str, Any]):
         """
         Remove an item from the queue and cancel it if running.
         Atomic operation.
@@ -242,7 +243,7 @@ class QueueManager:
             self._notify_listeners_safe()
         return updated
 
-    def claim_next_downloadable(self) -> Optional[Dict[str, Any]]:
+    def claim_next_downloadable(self) -> dict[str, Any] | None:
         """
         Atomically claim the next 'Queued' item.
         Also cleans up stale 'Allocating' items.
@@ -323,7 +324,7 @@ class QueueManager:
 
         self._notify_listeners_safe()
 
-    def retry_item(self, item_id: Optional[str]) -> bool:
+    def retry_item(self, item_id: str | None) -> bool:
         """Retry a cancelled or failed item by resetting its status and progress."""
         if not item_id:
             return False
@@ -429,7 +430,7 @@ class QueueManager:
 
         return resumed_count
 
-    def get_statistics(self) -> Dict[str, int]:
+    def get_statistics(self) -> dict[str, int]:
         """Get queue statistics."""
         with self._lock:
             stats = {

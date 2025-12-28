@@ -9,7 +9,7 @@ Refactored for responsiveness, better state management, and aesthetics.
 
 import logging
 import sys
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import flet as ft
 
@@ -56,8 +56,8 @@ class DownloadView(BaseView):
         self.on_schedule = on_schedule
         self.state = app_state
         # pylint: disable=unsubscriptable-object
-        self.video_info: Optional[dict] = None
-        self.current_panel: Optional[BasePanel] = None
+        self.video_info: dict | None = None
+        self.current_panel: BasePanel | None = None
 
         # --- Controls ---
         # 1. URL Input
@@ -73,7 +73,7 @@ class DownloadView(BaseView):
             ),
             **Theme.get_input_decoration(
                 hint_text=LM.get("url_placeholder"), prefix_icon=ft.icons.LINK
-            )
+            ),
         )
 
         self.fetch_btn = ft.ElevatedButton(
@@ -97,14 +97,14 @@ class DownloadView(BaseView):
             width=140,
             disabled=True,
             text_size=12,
-            **Theme.get_input_decoration(hint_text=LM.get("time_placeholder"))
+            **Theme.get_input_decoration(hint_text=LM.get("time_placeholder")),
         )
         self.time_end = ft.TextField(
             label=LM.get("time_end"),
             width=140,
             disabled=True,
             text_size=12,
-            **Theme.get_input_decoration(hint_text=LM.get("time_placeholder"))
+            **Theme.get_input_decoration(hint_text=LM.get("time_placeholder")),
         )
 
         self.cookies_dd = ft.Dropdown(
@@ -117,7 +117,7 @@ class DownloadView(BaseView):
                 ft.dropdown.Option("edge", LM.get("browser_edge")),
             ],
             value="None",
-            **Theme.get_input_decoration(hint_text=LM.get("select_cookies"))
+            **Theme.get_input_decoration(hint_text=LM.get("select_cookies")),
         )
 
         self.force_generic_cb = ft.Checkbox(label=LM.get("force_generic"), value=False)
@@ -234,7 +234,7 @@ class DownloadView(BaseView):
                 ],
                 spacing=10,
             ),
-            **input_container_props
+            **input_container_props,
         )
 
         # Actions
@@ -350,7 +350,7 @@ class DownloadView(BaseView):
         self.update()
 
     # pylint: disable=missing-function-docstring
-    def update_video_info(self, info: Optional[dict]):
+    def update_video_info(self, info: dict | None):
         self.fetch_btn.disabled = False
         self.video_info = info
 
@@ -388,7 +388,7 @@ class DownloadView(BaseView):
 
     # pylint: disable=missing-function-docstring
 
-    def update_info(self, info: Optional[dict]):
+    def update_info(self, info: dict | None):
         self.update_video_info(info)
 
     # pylint: disable=broad-exception-caught

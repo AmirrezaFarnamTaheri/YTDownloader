@@ -1,5 +1,4 @@
 import logging
-import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -15,11 +14,13 @@ class TestLoggerConfig(unittest.TestCase):
         logger_config._logging_initialized = False
 
     def test_setup_logging_first_run(self):
-        with patch("logging.getLogger") as mock_get_logger, patch(
-            "logging.handlers.RotatingFileHandler"
-        ) as mock_rfh, patch("sys.stdout"), patch("pathlib.Path.mkdir"), patch(
-            "pathlib.Path.home"
-        ) as mock_home:
+        with (
+            patch("logging.getLogger") as mock_get_logger,
+            patch("logging.handlers.RotatingFileHandler"),
+            patch("sys.stdout"),
+            patch("pathlib.Path.mkdir"),
+            patch("pathlib.Path.home") as mock_home,
+        ):
 
             mock_logger = MagicMock()
             mock_logger.handlers = []
@@ -40,9 +41,11 @@ class TestLoggerConfig(unittest.TestCase):
             mock_get_logger.assert_not_called()
 
     def test_setup_logging_clears_handlers(self):
-        with patch("logging.getLogger") as mock_get_logger, patch(
-            "logging.handlers.RotatingFileHandler"
-        ), patch("pathlib.Path.mkdir"):
+        with (
+            patch("logging.getLogger") as mock_get_logger,
+            patch("logging.handlers.RotatingFileHandler"),
+            patch("pathlib.Path.mkdir"),
+        ):
 
             mock_logger = MagicMock()
             existing_handler = MagicMock()
@@ -56,14 +59,19 @@ class TestLoggerConfig(unittest.TestCase):
             self.assertNotIn(existing_handler, mock_logger.handlers)
 
     def test_setup_logging_file_error(self):
-        with patch("logging.getLogger") as mock_get_logger, patch(
-            "logging.handlers.RotatingFileHandler", side_effect=Exception("Perm Error")
-        ), patch("pathlib.Path.mkdir"), patch("sys.stderr") as mock_stderr:
+        with (
+            patch("logging.getLogger") as mock_get_logger,
+            patch(
+                "logging.handlers.RotatingFileHandler",
+                side_effect=Exception("Perm Error"),
+            ),
+            patch("pathlib.Path.mkdir"),
+            patch("sys.stderr"),
+        ):
 
             mock_logger = MagicMock()
             mock_logger.handlers = []
             mock_get_logger.return_value = mock_logger
 
             logger_config.setup_logging()
-            # Should print to stderr
-            pass
+            # Should print to stderr but not fail

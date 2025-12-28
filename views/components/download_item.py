@@ -6,7 +6,8 @@ Features progress bar, status icon, and action buttons.
 """
 
 import logging
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 import flet as ft
 
@@ -27,7 +28,7 @@ class DownloadItemControl(ft.Container):
 
     def __init__(
         self,
-        item: Dict[str, Any],
+        item: dict[str, Any],
         on_cancel: Callable,
         on_retry: Callable,
         on_remove: Callable,

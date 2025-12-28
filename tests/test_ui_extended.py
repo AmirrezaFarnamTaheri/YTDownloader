@@ -195,17 +195,14 @@ class TestUIExtended(unittest.TestCase):
         view.config["rss_feeds"] = []
 
         # Patch validation
-        with patch("views.settings_view.validate_proxy", return_value=True), patch(
-            "views.settings_view.validate_rate_limit", return_value=True
-        ), patch(
-            "views.settings_view.validate_output_template", return_value=True
-        ), patch(
-            "views.settings_view.validate_download_path", return_value=True
-        ), patch(
-            "tasks.configure_concurrency", return_value=True
-        ), patch(
-            "views.settings_view.ConfigManager.save_config"
-        ) as mock_save:
+        with (
+            patch("views.settings_view.validate_proxy", return_value=True),
+            patch("views.settings_view.validate_rate_limit", return_value=True),
+            patch("views.settings_view.validate_output_template", return_value=True),
+            patch("views.settings_view.validate_download_path", return_value=True),
+            patch("tasks.configure_concurrency", return_value=True),
+            patch("views.settings_view.ConfigManager.save_config") as mock_save,
+        ):
             view.save_settings(None)
 
             # Verify save_config was called

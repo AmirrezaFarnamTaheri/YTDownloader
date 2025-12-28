@@ -5,8 +5,7 @@ Unit tests for ConfigManager.
 """
 
 import unittest
-from typing import Dict
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 from config_manager import ConfigManager
 

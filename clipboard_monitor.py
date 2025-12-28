@@ -81,19 +81,18 @@ def _clipboard_loop(page, download_view):
                 if should_process:
                     if validate_url(content) and download_view and page:
                         logger.info("Clipboard URL detected: %s", content)
+                        detected_url = content  # Capture value for closure
 
                         # UI updates must be thread-safe - use page's event loop
-                        def update_ui():
+                        def update_ui(url=detected_url):
                             try:
                                 # Check if field is empty and update it (thread-safe)
                                 if not download_view.url_input.value:
-                                    download_view.url_input.value = content
+                                    download_view.url_input.value = url
                                     page.open(
                                         ft.SnackBar(
                                             content=ft.Text(
-                                                LM.get(
-                                                    "clipboard_url_detected", content
-                                                )
+                                                LM.get("clipboard_url_detected", url)
                                             )
                                         )
                                     )

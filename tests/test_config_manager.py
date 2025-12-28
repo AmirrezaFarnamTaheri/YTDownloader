@@ -4,11 +4,10 @@
 Tests for ConfigManager.
 """
 
-import json
 import os
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from config_manager import ConfigManager
 

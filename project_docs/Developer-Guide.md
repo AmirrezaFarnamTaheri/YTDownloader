@@ -5,10 +5,11 @@
 StreamCatch is designed for **Robustness**, **Modularity**, and **Speed**.
 
 ### Core Stack
--   **Language**: Python 3.12 (Typing, Async/Await patterns).
--   **UI Framework**: [Flet](https://flet.dev) (Flutter for Python). Provides a native-feel, 60FPS UI.
+-   **Language**: Python 3.10+ (Modern type hints with `from __future__ import annotations`).
+-   **UI Framework**: [Flet](https://flet.dev) (Flutter for Python). Provides a native-feel, 60FPS UI with Material Design 3.
 -   **Engine**: `yt-dlp` (Media Extraction) + `requests` (Generic Fallback) + `aria2c` (External Accelerator support).
 -   **Data**: `SQLite` (WAL mode enabled) for high-concurrency history management.
+-   **Quality Tools**: `ruff`, `black`, `isort`, `mypy`, `pylint` for code quality enforcement.
 
 ### Module Breakdown
 

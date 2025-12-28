@@ -3,7 +3,6 @@ Extended background tasks, specifically for fetching metadata.
 """
 
 import logging
-from typing import Optional
 
 import flet as ft
 
@@ -14,7 +13,7 @@ from localization_manager import LocalizationManager as LM
 logger = logging.getLogger(__name__)
 
 
-def fetch_info_task(url: str, download_view, page: Optional[ft.Page]):
+def fetch_info_task(url: str, download_view, page: ft.Page | None):
     """Fetch video info in background with cookie support."""
     logger.info("Starting metadata fetch for: %s", url)
     try:
@@ -58,18 +57,17 @@ def fetch_info_task(url: str, download_view, page: Optional[ft.Page]):
         else:
             update_ui_success()
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.error("Fetch error: %s", e)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.error("Fetch error: %s", exc)
+        error_msg = str(exc)
 
-        def update_ui_error():
+        def update_ui_error(msg=error_msg):
             if download_view:
                 download_view.fetch_btn.disabled = False
                 download_view.update()
             if page:
                 page.open(
-                    ft.SnackBar(
-                        content=ft.Text(LM.get("metadata_fetch_failed", str(e)))
-                    )
+                    ft.SnackBar(content=ft.Text(LM.get("metadata_fetch_failed", msg)))
                 )
                 page.update()
 

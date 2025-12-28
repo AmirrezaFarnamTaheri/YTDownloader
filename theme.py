@@ -2,7 +2,7 @@
 Application theme definitions and constants.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import flet as ft
 
@@ -156,9 +156,9 @@ class Theme:
     @staticmethod
     def get_input_decoration(
         hint_text: str = "",
-        prefix_icon: Optional[str] = None,
-        suffix_icon: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        prefix_icon: str | None = None,
+        suffix_icon: str | None = None,
+    ) -> dict[str, Any]:
         """
         Standardized Input Decoration properties.
         """
@@ -183,7 +183,7 @@ class Theme:
         return data
 
     @staticmethod
-    def get_card_decoration() -> Dict[str, Any]:
+    def get_card_decoration() -> dict[str, Any]:
         """
         Standardized Card Decoration.
         """

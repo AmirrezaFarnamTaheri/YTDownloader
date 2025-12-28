@@ -8,7 +8,6 @@ import os
 import sqlite3
 import unittest
 from pathlib import Path
-from unittest import mock
 
 from history_manager import HistoryManager
 

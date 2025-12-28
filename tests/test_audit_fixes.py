@@ -52,14 +52,13 @@ class TestAuditFixes(unittest.TestCase):
         """Test safe path checking."""
         home = Path.home()
         safe_path = home / "Downloads" / "file.txt"
-        unsafe_path = (
-            Path("/etc/passwd") if os.name != "nt" else Path("C:\\Windows\\System32")
-        )
 
         self.assertTrue(is_safe_path(str(safe_path)))
         if os.name != "nt":
             self.assertFalse(is_safe_path("/etc/passwd"))
             self.assertFalse(is_safe_path("/var/log"))
+        else:
+            self.assertFalse(is_safe_path("C:\\Windows\\System32"))
 
     def test_download_options_filename(self):
         """Test filename sanitization in DownloadOptions."""

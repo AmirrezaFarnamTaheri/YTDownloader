@@ -6,7 +6,8 @@ Refactored to use DownloadItemControl with bulk actions support.
 """
 
 import logging
-from typing import Any, Callable, Dict
+from collections.abc import Callable
+from typing import Any
 
 import flet as ft
 
@@ -36,11 +37,11 @@ class QueueView(BaseView):
     def __init__(
         self,
         queue_manager: QueueManager,
-        on_cancel: Callable[[Dict[str, Any]], None],
-        on_remove: Callable[[Dict[str, Any]], None],
+        on_cancel: Callable[[dict[str, Any]], None],
+        on_remove: Callable[[dict[str, Any]], None],
         on_reorder: Callable[[int, int], None],
-        on_play: Callable[[Dict[str, Any]], None],
-        on_open_folder: Callable[[Dict[str, Any]], None],
+        on_play: Callable[[dict[str, Any]], None],
+        on_open_folder: Callable[[dict[str, Any]], None],
     ):
         super().__init__(LM.get("queue"), ft.icons.QUEUE_MUSIC)
         self.queue_manager = queue_manager
@@ -146,7 +147,8 @@ class QueueView(BaseView):
 
             # Enable/disable bulk actions based on queue state
             has_active = any(
-                item.get("status") in ("Downloading", "Queued", "Processing", "Allocating")
+                item.get("status")
+                in ("Downloading", "Queued", "Processing", "Allocating")
                 for item in items
             )
             has_completed = any(
@@ -172,7 +174,9 @@ class QueueView(BaseView):
 
         parts = []
         if downloading > 0:
-            parts.append(LM.get("stats_downloading", "{0} downloading").format(downloading))
+            parts.append(
+                LM.get("stats_downloading", "{0} downloading").format(downloading)
+            )
         if queued > 0:
             parts.append(LM.get("stats_queued", "{0} queued").format(queued))
         if completed > 0:
@@ -180,7 +184,11 @@ class QueueView(BaseView):
         if failed > 0:
             parts.append(LM.get("stats_failed", "{0} failed").format(failed))
 
-        self.stats_text.value = f"{total} {LM.get('items', 'items')} | " + ", ".join(parts) if parts else f"{total} {LM.get('items', 'items')}"
+        self.stats_text.value = (
+            f"{total} {LM.get('items', 'items')} | " + ", ".join(parts)
+            if parts
+            else f"{total} {LM.get('items', 'items')}"
+        )
 
     def _on_cancel_all(self, e):
         """Cancel all active downloads."""
@@ -190,7 +198,11 @@ class QueueView(BaseView):
             self.rebuild()
             if self.page:
                 self.page.open(
-                    ft.SnackBar(content=ft.Text(LM.get("all_downloads_cancelled", "All downloads cancelled")))
+                    ft.SnackBar(
+                        content=ft.Text(
+                            LM.get("all_downloads_cancelled", "All downloads cancelled")
+                        )
+                    )
                 )
         except Exception as ex:
             logger.error("Failed to cancel all: %s", ex)
@@ -208,7 +220,13 @@ class QueueView(BaseView):
             self.rebuild()
             if self.page and removed_count > 0:
                 self.page.open(
-                    ft.SnackBar(content=ft.Text(LM.get("cleared_items", "Cleared {0} items").format(removed_count)))
+                    ft.SnackBar(
+                        content=ft.Text(
+                            LM.get("cleared_items", "Cleared {0} items").format(
+                                removed_count
+                            )
+                        )
+                    )
                 )
         except Exception as ex:
             logger.error("Failed to clear completed: %s", ex)

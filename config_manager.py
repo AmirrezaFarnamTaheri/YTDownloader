@@ -10,7 +10,7 @@ import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class ConfigManager:
             return Path("config.json")
 
     @staticmethod
-    def _validate_config(config: Dict[str, Any]) -> None:
+    def _validate_config(config: dict[str, Any]) -> None:
         """
         Validate configuration data.
         """
@@ -148,7 +148,7 @@ class ConfigManager:
             raise ValueError("clipboard_monitor_enabled must be a boolean")
 
     @staticmethod
-    def load_config() -> Dict[str, Any]:
+    def load_config() -> dict[str, Any]:
         """
         Load configuration from file with error recovery.
         """
@@ -164,7 +164,7 @@ class ConfigManager:
                     logger.warning("Config file is empty, using defaults")
                     return config
 
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8") as f:
                     data = json.load(f)
                     ConfigManager._validate_config(data)
                     config.update(data)
@@ -188,7 +188,7 @@ class ConfigManager:
         return config
 
     @staticmethod
-    def save_config(config: Dict[str, Any]) -> None:
+    def save_config(config: dict[str, Any]) -> None:
         """
         Save configuration to file with atomic write operation.
         """

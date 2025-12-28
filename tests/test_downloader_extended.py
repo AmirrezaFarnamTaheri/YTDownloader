@@ -50,11 +50,13 @@ class TestDownloaderRobustness(unittest.TestCase):
         item = {}
         mock_supports.return_value = False
 
-        with patch(
-            "downloader.core.TelegramExtractor.is_telegram_url", return_value=True
-        ), patch("downloader.core.TelegramExtractor.extract") as mock_extract, patch(
-            "downloader.core.GenericDownloader.download"
-        ) as mock_download:
+        with (
+            patch(
+                "downloader.core.TelegramExtractor.is_telegram_url", return_value=True
+            ),
+            patch("downloader.core.TelegramExtractor.extract") as mock_extract,
+            patch("downloader.core.GenericDownloader.download"),
+        ):
 
             mock_extract.return_value = {
                 "title": "Tel",
@@ -71,8 +73,10 @@ class TestDownloaderRobustness(unittest.TestCase):
 
     @patch("downloader.core.YTDLPWrapper")
     def test_download_video_exception(self, mock_wrapper):
-        mock_wrapper.return_value.download.side_effect = Exception("Downloader failed")
+        mock_wrapper.return_value.download.side_effect = RuntimeError(
+            "Downloader failed"
+        )
 
         options = DownloadOptions(url="http://fail.com")
-        with self.assertRaises(Exception):
+        with self.assertRaises(RuntimeError):
             download_video(options)

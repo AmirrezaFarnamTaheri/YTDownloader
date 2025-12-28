@@ -9,7 +9,6 @@ import shutil
 import tempfile
 import threading
 import zipfile
-from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ class SyncManager:
             else 3600.0
         )
         self._stop_event = threading.Event()
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
 
     def start_auto_sync(self):
         """Starts the auto-sync background thread."""
@@ -133,7 +132,7 @@ class SyncManager:
                     tempfile.gettempdir(), "config_downloaded.json"
                 )
                 if self.cloud.download_file("config.json", local_config_path):
-                    with open(local_config_path, "r", encoding="utf-8") as f:
+                    with open(local_config_path, encoding="utf-8") as f:
                         new_config = json.load(f)
 
                     self._apply_config_snapshot(new_config)
@@ -160,7 +159,7 @@ class SyncManager:
         finally:
             self._lock.release()
 
-    def _write_temp_json(self, data: Dict, filename: str = "config.json") -> str:
+    def _write_temp_json(self, data: dict, filename: str = "config.json") -> str:
         path = os.path.join(tempfile.gettempdir(), filename)
         with open(path, "w", encoding="utf-8") as f:
             # Handle non-serializable objects (like Mocks in tests)
@@ -170,7 +169,7 @@ class SyncManager:
             json.dump(data, f, indent=2, default=default_serializer)
         return path
 
-    def _get_config_snapshot(self) -> Dict:
+    def _get_config_snapshot(self) -> dict:
         """Return a JSON-serializable snapshot of the config."""
         if hasattr(self.config, "load_config"):
             return self.config.load_config()
@@ -182,7 +181,7 @@ class SyncManager:
             return dict(self.config.items())
         return {}
 
-    def _apply_config_snapshot(self, new_config: Dict) -> None:
+    def _apply_config_snapshot(self, new_config: dict) -> None:
         """Apply a config snapshot to the active config container."""
         if hasattr(self.config, "save_config"):
             self.config.save_config(new_config)

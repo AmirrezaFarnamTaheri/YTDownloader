@@ -4,8 +4,9 @@ Configuration dataclasses for the downloader.
 
 import ipaddress
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 
@@ -17,25 +18,25 @@ class DownloadOptions:
     url: str
     output_path: str = "."
     video_format: str = "best"
-    audio_format: Optional[str] = None
-    progress_hook: Optional[Callable[[Dict[str, Any]], None]] = None
-    cancel_token: Optional[Any] = None
+    audio_format: str | None = None
+    progress_hook: Callable[[dict[str, Any]], None] | None = None
+    cancel_token: Any | None = None
     playlist: bool = False
     sponsorblock: bool = False
     use_aria2c: bool = False
-    gpu_accel: Optional[str] = None
+    gpu_accel: str | None = None
     output_template: str = "%(title)s.%(ext)s"
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
+    start_time: str | None = None
+    end_time: str | None = None
     force_generic: bool = False
-    cookies_from_browser: Optional[str] = None
-    subtitle_lang: Optional[str] = None
-    subtitle_format: Optional[str] = None
+    cookies_from_browser: str | None = None
+    subtitle_lang: str | None = None
+    subtitle_format: str | None = None
     split_chapters: bool = False
-    proxy: Optional[str] = None
-    rate_limit: Optional[str] = None
-    download_item: Optional[Dict[str, Any]] = None
-    filename: Optional[str] = None
+    proxy: str | None = None
+    rate_limit: str | None = None
+    download_item: dict[str, Any] | None = None
+    filename: str | None = None
 
     def validate(self):
         """Perform validation on the options."""
@@ -91,12 +92,12 @@ class DownloadOptions:
                 raise ValueError("Invalid filename")
 
     @staticmethod
-    def get_seconds(time_str: Optional[str]) -> float:
+    def get_seconds(time_str: str | None) -> float:
         """Public method to parse time string."""
         return DownloadOptions._parse_time(time_str)
 
     @staticmethod
-    def _parse_time(time_str: Optional[str]) -> float:
+    def _parse_time(time_str: str | None) -> float:
         """
         Parse time string (HH:MM:SS or seconds) to seconds.
         Raises ValueError for invalid formats.

@@ -4,7 +4,7 @@ Cloud Manager module.
 
 import logging
 import os
-from typing import TYPE_CHECKING, Optional, Type
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pydrive2.auth import GoogleAuth as GoogleAuthType
@@ -35,8 +35,8 @@ try:  # pragma: no cover - environment dependent
 except Exception as exc:  # pylint: disable=broad-exception-caught
     logger.debug("PyDrive2 compat shim unavailable: %s", exc)
 
-_google_auth_cls: Optional[Type["GoogleAuthType"]] = None
-_google_drive_cls: Optional[Type["GoogleDriveType"]] = None
+_google_auth_cls: type["GoogleAuthType"] | None = None
+_google_drive_cls: type["GoogleDriveType"] | None = None
 
 # Import PyDrive2 classes at module level
 try:

@@ -1,4 +1,3 @@
-import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -11,8 +10,19 @@ import main
 # main.py does 'from app_controller import AppController' and 'import flet as ft'
 # It has a main(page: ft.Page) function.
 
+# Check if full Flet is available (required for main.py tests)
+try:
+    import flet as ft
+
+    # Try to access a color property to see if it's the real flet
+    _ = ft.colors.TRANSPARENT
+    FLET_FULL = True
+except (ImportError, AttributeError):
+    FLET_FULL = False
+
 
 class TestMain(unittest.TestCase):
+    @unittest.skipUnless(FLET_FULL, "Full Flet environment required")
     @patch("main.AppController")
     @patch("main.UIManager")
     def test_main_function(self, MockUIManager, MockAppController):
