@@ -106,35 +106,103 @@ class QueueView(BaseView):
         self.content_col.controls.append(self.list_view)
 
     def rebuild(self):
-        """Rebuilds the list of items and updates statistics."""
+        """Updates the list of items using diff logic to minimize redraws."""
         items = self.queue_manager.get_all()
-        self.list_view.controls.clear()
-
-        # Update statistics
         self._update_stats(items)
 
+        # Handle Empty State
         if not items:
-            self.list_view.controls.append(
-                ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Icon(ft.icons.QUEUE, size=64, color=Theme.TEXT_MUTED),
-                            ft.Text(
-                                LM.get("no_items_found"), color=Theme.Text.SECONDARY
-                            ),
-                        ],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    ),
-                    alignment=ft.alignment.center,
-                    expand=True,
+            if not self.list_view.controls or isinstance(
+                self.list_view.controls[0], DownloadItemControl
+            ):
+                self.list_view.controls.clear()
+                self.list_view.controls.append(
+                    ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Icon(
+                                    ft.icons.QUEUE, size=64, color=Theme.TEXT_MUTED
+                                ),
+                                ft.Text(
+                                    LM.get("no_items_found"),
+                                    color=Theme.Text.SECONDARY,
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        alignment=ft.alignment.center,
+                        expand=True,
+                    )
                 )
-            )
-            # Disable bulk actions when queue is empty
-            self.cancel_all_btn.disabled = True
-            self.clear_completed_btn.disabled = True
-        else:
-            for item in items:
+                self.cancel_all_btn.disabled = True
+                self.clear_completed_btn.disabled = True
+                self.update()
+            return
+
+        # If previous state was empty/placeholder, clear it first
+        if self.list_view.controls and not isinstance(
+            self.list_view.controls[0], DownloadItemControl
+        ):
+            self.list_view.controls.clear()
+
+        # --- Diff Logic ---
+        # Map existing controls by item ID
+        existing_controls = {
+            c.item.get("id"): c
+            for c in self.list_view.controls
+            if isinstance(c, DownloadItemControl)
+        }
+
+        current_ids = [item.get("id") for item in items]
+
+        # 1. Remove controls for items that are no longer in the queue
+        to_remove = []
+        for ctrl in self.list_view.controls:
+            if isinstance(ctrl, DownloadItemControl):
+                if ctrl.item.get("id") not in current_ids:
+                    to_remove.append(ctrl)
+
+        for ctrl in to_remove:
+            self.list_view.controls.remove(ctrl)
+
+        # 2. Add new controls or update existing ones
+        # We want to maintain order matching 'items'
+
+        # Since ListView in Flet is a list of controls, reordering is expensive if we clear/add.
+        # But if the order in 'items' changes (e.g. reordering), we might need to reflect that.
+        # For simplicity and performance, we'll append new ones and update existing.
+        # If strict reordering is needed, we might need more complex logic.
+        # Assuming queue order is stable mostly.
+
+        # If strict order synchronization is needed:
+        # We can reconstruct the list, reusing existing controls instances.
+
+        new_controls_list = []
+        for item in items:
+            item_id = item.get("id")
+            if item_id in existing_controls:
+                # Update existing control with new item data state
+                # The control handles its own granular updates via `_update_progress_internal` usually,
+                # but if `rebuild` is called, we might need to refresh general state.
+                # However, DownloadItemControl stores `self.item`. We should update it.
+                # NOTE: DownloadItemControl might not expose a method to swap the item dict completely,
+                # but we can check if critical fields changed.
+                # Actually, in this architecture, `rebuild` is likely called on major events.
+                # Let's reuse the control.
+                ctrl = existing_controls[item_id]
+                # Update the underlying item reference if needed, or just let it be if it's the same object reference
+                # (QueueManager usually returns copies, so it's a new dict).
+                # We might need a method on Control to update state.
+                # If we just keep the old control, it might hold stale data if not updated via progress hook.
+                # But progress hook updates specific controls.
+                # If we swap the item dict:
+                ctrl.item = item
+                # Force a UI refresh of the control if status changed
+                ctrl.update()
+                new_controls_list.append(ctrl)
+            else:
+                # Create new
                 control = DownloadItemControl(
                     item,
                     on_cancel=self.on_cancel,
@@ -143,20 +211,20 @@ class QueueView(BaseView):
                     on_play=self.on_play,
                     on_open_folder=self.on_open_folder,
                 )
-                self.list_view.controls.append(control)
+                new_controls_list.append(control)
 
-            # Enable/disable bulk actions based on queue state
-            has_active = any(
-                item.get("status")
-                in ("Downloading", "Queued", "Processing", "Allocating")
-                for item in items
-            )
-            has_completed = any(
-                item.get("status") in ("Completed", "Error", "Cancelled")
-                for item in items
-            )
-            self.cancel_all_btn.disabled = not has_active
-            self.clear_completed_btn.disabled = not has_completed
+        self.list_view.controls = new_controls_list
+
+        # Bulk Actions State
+        has_active = any(
+            item.get("status") in ("Downloading", "Queued", "Processing", "Allocating")
+            for item in items
+        )
+        has_completed = any(
+            item.get("status") in ("Completed", "Error", "Cancelled") for item in items
+        )
+        self.cancel_all_btn.disabled = not has_active
+        self.clear_completed_btn.disabled = not has_completed
 
         self.update()
 

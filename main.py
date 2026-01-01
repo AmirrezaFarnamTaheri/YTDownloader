@@ -27,12 +27,13 @@ from ui_manager import UIManager
 setup_logging()
 logger = logging.getLogger(__name__)
 
+__version__ = "2.0.0"
+
 # Global instances
 # pylint: disable=invalid-name
 UI: UIManager | None = None
 PAGE: ft.Page | None = None
 CONTROLLER: AppController | None = None
-
 
 def _handle_signal(sig: int, frame: Any) -> None:
     """Handle interrupt signals for graceful shutdown."""

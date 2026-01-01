@@ -97,6 +97,13 @@ class TelegramExtractor:
                 logger.warning("No video found in Telegram link: %s", url)
                 return None
 
+            # Security: Validate the extracted URL to prevent SSRF via redirection
+            if not validate_url(video_url):
+                logger.warning(
+                    "Extracted Telegram video URL failed validation: %s", video_url
+                )
+                return None
+
             # Extract Thumbnail
             thumbnail = None
             og_image = soup.find("meta", property="og:image")
