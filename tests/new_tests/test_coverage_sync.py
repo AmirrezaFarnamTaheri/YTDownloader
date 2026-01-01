@@ -1,5 +1,6 @@
 import unittest
-from unittest.mock import MagicMock, patch
+import json
+from unittest.mock import MagicMock, patch, mock_open
 
 from sync_manager import SyncManager
 
@@ -35,10 +36,21 @@ class TestSyncManager(unittest.TestCase):
         self.mock_cloud.download_file.return_value = True
         mock_exists.return_value = True  # Backup file exists
 
+        # Setup ZipFile mock with infolist
+        mock_zip_instance = MockZip.return_value.__enter__.return_value
+        config_info = MagicMock()
+        config_info.filename = "config.json"
+        mock_zip_instance.infolist.return_value = [config_info]
+
+        # Setup open context for config.json
+        mock_file = MagicMock()
+        # json.load needs read() to return bytes or str
+        mock_file.read.return_value = b'{"theme": "dark"}'
+        mock_zip_instance.open.return_value.__enter__.return_value = mock_file
+
         self.manager.import_data("file_id")
         MockZip.assert_called()
-        # Should extract
-        # MockZip.return_value.__enter__.return_value.extractall.assert_called() # Implementation uses open+copyfileobj
+        self.mock_config.save_config.assert_called()
 
     @patch("os.path.exists")
     def test_import_data_not_found(self, mock_exists):
@@ -62,29 +74,27 @@ class TestSyncManager(unittest.TestCase):
         valid_info.filename = "config.json"
 
         mock_zip_instance = MockZip.return_value.__enter__.return_value
+        # Order: Malicious first, then valid
         mock_zip_instance.infolist.return_value = [malicious_info, valid_info]
 
-        # Mock open to verify we only write valid files
-        with patch("builtins.open", mock_open=MagicMock()) as mock_file_open:
-            self.manager.import_data("file_id")
+        # Configure file reading
+        mock_file = MagicMock()
+        mock_file.read.return_value = b'{"theme": "dark"}'
 
-            # Check calls
-            # Expect open call for config.json (or temp path), but NOT for passwd
-            # Since we can't easily check path resolution mocks here without deep patching of Path or os.path,
-            # we rely on the fact that SyncManager logs/skips.
-            # If the code checks is_safe_path, it will skip.
+        # Mock the context manager for zip.open()
+        mock_zip_instance.open.return_value.__enter__.return_value = mock_file
 
-            # Verify builtins.open was NOT called with the malicious path
-            for call in mock_file_open.mock_calls:
-                args = call.args
-                if args and "passwd" in str(args[0]):
-                    self.fail("Attempted to open malicious file path!")
+        self.manager.import_data("file_id")
 
-            # Assert that we tried to read/extract at least one file (the valid one)
-            # Depending on implementation (extract vs read/write), we check zip instance calls
-            # If implementation uses zip.open(), check that
-            mock_zip_instance.open.assert_called()
-            # Ensure it didn't open the malicious file
-            # If open was called with malicious_info or malicious filename
+        # Assertions
+        # 1. Verify malicious file was NOT opened
+        # We can check call args of open
+        # MockZip.open calls
+        open_calls = mock_zip_instance.open.call_args_list
+        for call in open_calls:
+            filename = call[0][0]
+            if "passwd" in filename:
+                self.fail("Attempted to open malicious file path!")
 
-            # Safest check: Verify only valid_info was processed if loop filters
+        # 2. Verify valid file WAS opened
+        mock_zip_instance.open.assert_called_with("config.json")
