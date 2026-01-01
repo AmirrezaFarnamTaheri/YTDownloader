@@ -56,14 +56,17 @@ def start_clipboard_monitor(page, download_view):
 def _clipboard_loop(page, download_view):
     """
     Background loop that checks the clipboard for URLs.
+    Implements adaptive polling to save resources.
     """
     # pylint: disable=import-outside-toplevel
     import flet as ft
 
-    # pylint: disable=too-many-nested-blocks
+    poll_interval = 1.0
+    max_interval = 5.0
 
     while not state.shutdown_flag.is_set():
-        time.sleep(2)
+        time.sleep(poll_interval)
+
         if state.clipboard_monitor_active:
             try:
                 try:
@@ -80,6 +83,11 @@ def _clipboard_loop(page, download_view):
                     if content and content != state.last_clipboard_content:
                         state.last_clipboard_content = content
                         should_process = True
+                        # Reset polling interval on activity
+                        poll_interval = 1.0
+                    else:
+                        # Adaptive polling: increase interval if idle
+                        poll_interval = min(poll_interval + 0.5, max_interval)
 
                 if should_process:
                     if validate_url(content) and download_view and page:
@@ -116,3 +124,5 @@ def _clipboard_loop(page, download_view):
             except Exception as e:  # pylint: disable=broad-exception-caught
                 # Catch-all to prevent thread death
                 logger.error("Error in clipboard monitor: %s", e, exc_info=True)
+                # If we error, back off a bit
+                time.sleep(2)

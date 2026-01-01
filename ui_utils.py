@@ -56,6 +56,8 @@ def format_file_size(size_bytes: float | str | int | None) -> str:
 def validate_url(url: str) -> bool:
     """
     Validate if URL is a valid http/https URL.
+    Also implements strict SSRF protection by blocking private, loopback, link-local,
+    and multicast addresses.
     """
     if not isinstance(url, str):
         return False
@@ -80,7 +82,7 @@ def validate_url(url: str) -> bool:
     if not regex.match(url):
         return False
 
-    # Additional SSRF protection: block localhost and private IPs
+    # Additional SSRF protection: block localhost and private/reserved IPs
     try:
         parsed = urlparse(url)
         hostname = parsed.hostname
@@ -89,7 +91,13 @@ def validate_url(url: str) -> bool:
                 return False
             try:
                 ip = ipaddress.ip_address(hostname)
-                if ip.is_private or ip.is_loopback:
+                if (
+                    ip.is_private or
+                    ip.is_loopback or
+                    ip.is_link_local or
+                    ip.is_multicast or
+                    ip.is_reserved
+                ):
                     return False
             except ValueError:
                 # Reject invalid numeric IPs like 999.999.999.999
@@ -135,10 +143,16 @@ def validate_proxy(proxy: str) -> bool:
         if hostname in ("localhost", "127.0.0.1", "::1"):
             return False
 
-        # Block private IPs
+        # Block private/reserved IPs
         try:
             ip = ipaddress.ip_address(hostname)
-            if ip.is_private or ip.is_loopback:
+            if (
+                ip.is_private or
+                ip.is_loopback or
+                ip.is_link_local or
+                ip.is_multicast or
+                ip.is_reserved
+            ):
                 return False
         except ValueError:
             # Reject invalid numeric IPs like 999.999.999.999
@@ -152,9 +166,6 @@ def validate_proxy(proxy: str) -> bool:
         if parsed.port is not None:
             if not 1 <= parsed.port <= 65535:
                 return False
-        # Proxy usually requires port? yt-dlp might default.
-        # But strict validation is better.
-        # If scheme is http/https, default ports exist.
 
         return True
 

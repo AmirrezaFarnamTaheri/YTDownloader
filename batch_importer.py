@@ -2,12 +2,31 @@
 Batch importer for download items.
 """
 
+import concurrent.futures
 import logging
 from pathlib import Path
+
+import requests
 
 from ui_utils import get_default_download_path, is_safe_path, validate_url
 
 logger = logging.getLogger(__name__)
+
+
+def verify_url(url: str, timeout: int = 3) -> bool:
+    """
+    Verify if a URL is reachable using a HEAD request.
+    Returns True if the URL is reachable (status code < 400), False otherwise.
+    """
+    try:
+        # Use a user agent to avoid being blocked by some servers
+        headers = {"User-Agent": "StreamCatch/2.0.0"}
+        response = requests.head(
+            url, timeout=timeout, allow_redirects=True, headers=headers
+        )
+        return response.status_code < 400
+    except requests.RequestException:
+        return False
 
 
 # pylint: disable=too-few-public-methods
@@ -61,13 +80,39 @@ class BatchImporter:
             dl_path = get_default_download_path(preferred_path)
             count = 0
             invalid = 0
+
+            # Filter syntactically valid URLs first
+            valid_syntax_urls = []
             for url in urls:
-                if not url:
-                    continue
-                if not validate_url(url):
+                if validate_url(url):
+                    valid_syntax_urls.append(url)
+                else:
                     invalid += 1
-                    logger.warning("Skipping invalid URL in batch import: %s", url)
-                    continue
+                    logger.warning("Skipping invalid URL syntax: %s", url)
+
+            # Verify reachability in parallel
+            verified_urls = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                # Map URLs to futures
+                future_to_url = {
+                    executor.submit(verify_url, url): url for url in valid_syntax_urls
+                }
+
+                for future in concurrent.futures.as_completed(future_to_url):
+                    url = future_to_url[future]
+                    try:
+                        is_reachable = future.result()
+                        if is_reachable:
+                            verified_urls.append(url)
+                        else:
+                            invalid += 1
+                            logger.warning("URL unreachable: %s", url)
+                    except Exception as exc:  # pylint: disable=broad-exception-caught
+                        logger.warning("Error verifying URL %s: %s", url, exc)
+                        invalid += 1
+
+            # Add verified URLs to queue
+            for url in verified_urls:
                 item = {
                     "url": url,
                     "title": url,
@@ -91,7 +136,7 @@ class BatchImporter:
                 count += 1
 
             if invalid:
-                logger.info("Batch import skipped %d invalid URLs", invalid)
+                logger.info("Batch import skipped %d invalid/unreachable URLs", invalid)
             logger.info(
                 "Batch import completed: %d items (truncated=%s)", count, truncated
             )
