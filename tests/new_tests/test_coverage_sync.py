@@ -57,27 +57,34 @@ class TestSyncManager(unittest.TestCase):
         malicious_info = MagicMock()
         malicious_info.filename = "../../../etc/passwd"
 
+        # Create a valid mock zip info
+        valid_info = MagicMock()
+        valid_info.filename = "config.json"
+
         mock_zip_instance = MockZip.return_value.__enter__.return_value
-        mock_zip_instance.infolist.return_value = [malicious_info]
+        mock_zip_instance.infolist.return_value = [malicious_info, valid_info]
 
-        # The manager should log a warning and SKIP this file, not crash, or raise ValueError if strict
-        # Depending on implementation. If implementation checks is_safe_path, it continues.
+        # Mock open to verify we only write valid files
+        with patch("builtins.open", mock_open=MagicMock()) as mock_file_open:
+            self.manager.import_data("file_id")
 
-        # Let's verify that 'open' is NOT called for this file
-        # or that the loop continues
+            # Check calls
+            # Expect open call for config.json (or temp path), but NOT for passwd
+            # Since we can't easily check path resolution mocks here without deep patching of Path or os.path,
+            # we rely on the fact that SyncManager logs/skips.
+            # If the code checks is_safe_path, it will skip.
 
-        self.manager.import_data("file_id")
+            # Verify builtins.open was NOT called with the malicious path
+            for call in mock_file_open.mock_calls:
+                args = call.args
+                if args and "passwd" in str(args[0]):
+                    self.fail("Attempted to open malicious file path!")
 
-        # Verify extract/open was NOT called for the malicious file path
-        # Assuming import_data iterates and calls extract or open
-        # We can assert that no file with "passwd" in name was written
-        # Since we mocked ZipFile, we check if it tried to read it?
+            # Assert that we tried to read/extract at least one file (the valid one)
+            # Depending on implementation (extract vs read/write), we check zip instance calls
+            # If implementation uses zip.open(), check that
+            mock_zip_instance.open.assert_called()
+            # Ensure it didn't open the malicious file
+            # If open was called with malicious_info or malicious filename
 
-        # A clearer test might rely on checking logs or ensures secure path logic is invoked
-        # If SyncManager uses `extractall`, it might be vulnerable unless patched.
-        # If it iterates:
-        # for member in zip.infolist(): ...
-
-        # We assume the implementation uses `_resolve_history_db_path` or similar validation logic.
-        # If `import_data` logic isn't visible here, we trust it uses `is_safe_path`.
-        pass
+            # Safest check: Verify only valid_info was processed if loop filters

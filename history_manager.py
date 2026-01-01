@@ -5,7 +5,7 @@ History manager for persistent storage of download history.
 import logging
 import sqlite3
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -517,6 +517,54 @@ class HistoryManager:
                 conn.close()
 
         return stats
+
+    @staticmethod
+    def get_download_activity(days: int = 7) -> list[dict[str, Any]]:
+        """
+        Get download activity counts per day for the last N days.
+        Used for dashboard visualization.
+
+        Returns:
+            List of dicts [{'date': 'YYYY-MM-DD', 'count': N}, ...]
+        """
+        logger.debug("Getting download activity stats for last %d days", days)
+        conn = None
+        activity = []
+
+        try:
+            conn = HistoryManager._get_connection()
+            cursor = conn.cursor()
+
+            # SQLite specific query for date grouping
+            query = """
+                SELECT date(timestamp), COUNT(*)
+                FROM history
+                WHERE timestamp >= date('now', ?)
+                GROUP BY date(timestamp)
+                ORDER BY date(timestamp) ASC
+            """
+            cursor.execute(query, (f"-{days} days",))
+
+            rows = dict(cursor.fetchall()) # {date: count}
+
+            # Fill in missing days with 0
+            today = datetime.now().date()
+            for i in range(days):
+                d = (today - timedelta(days=days-1-i)).isoformat()
+                count = rows.get(d, 0)
+                # Helper for short day name
+                day_name = (today - timedelta(days=days-1-i)).strftime("%a")
+                activity.append({"date": d, "count": count, "label": day_name[0]}) # M, T, W
+
+        except Exception as e: # pylint: disable=broad-exception-caught
+            logger.error("Error getting activity stats: %s", e)
+            # Return empty structure on failure
+            activity = [{"date": "", "count": 0, "label": ""} for _ in range(days)]
+        finally:
+            if conn:
+                conn.close()
+
+        return activity
 
     @staticmethod
     def export_history(format_type: str = "json") -> str | None:

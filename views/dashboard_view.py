@@ -281,25 +281,46 @@ class DashboardView(BaseView):
 
     def _refresh_activity(self):
         """
-        Refresh activity chart.
-        Mock implementation for now as HistoryManager aggregation isn't available.
+        Refresh activity chart using real data from HistoryManager.
         """
-        # In a real impl, we'd query HistoryManager.get_stats_by_day()
-        # For now, show dummy data to demonstrate UI component
-        self.activity_chart.bar_groups = [
-            ft.BarChartGroup(x=0, bar_rods=[ft.BarChartRod(from_y=0, to_y=5, color=Theme.Primary.MAIN, width=15, border_radius=4)]),
-            ft.BarChartGroup(x=1, bar_rods=[ft.BarChartRod(from_y=0, to_y=8, color=Theme.Primary.MAIN, width=15, border_radius=4)]),
-            ft.BarChartGroup(x=2, bar_rods=[ft.BarChartRod(from_y=0, to_y=3, color=Theme.Primary.MAIN, width=15, border_radius=4)]),
-            ft.BarChartGroup(x=3, bar_rods=[ft.BarChartRod(from_y=0, to_y=6, color=Theme.Primary.MAIN, width=15, border_radius=4)]),
-            ft.BarChartGroup(x=4, bar_rods=[ft.BarChartRod(from_y=0, to_y=1, color=Theme.Primary.MAIN, width=15, border_radius=4)]),
-        ]
-        self.activity_chart.bottom_axis.labels = [
-             ft.ChartAxisLabel(value=0, label=ft.Text("M", size=10)),
-             ft.ChartAxisLabel(value=1, label=ft.Text("T", size=10)),
-             ft.ChartAxisLabel(value=2, label=ft.Text("W", size=10)),
-             ft.ChartAxisLabel(value=3, label=ft.Text("T", size=10)),
-             ft.ChartAxisLabel(value=4, label=ft.Text("F", size=10)),
-        ]
+        activity_data = HistoryManager.get_download_activity(days=7)
+
+        groups = []
+        labels = []
+
+        max_count = 0
+
+        for i, day in enumerate(activity_data):
+            count = day.get("count", 0)
+            if count > max_count:
+                max_count = count
+
+            groups.append(
+                ft.BarChartGroup(
+                    x=i,
+                    bar_rods=[
+                        ft.BarChartRod(
+                            from_y=0,
+                            to_y=count,
+                            color=Theme.Primary.MAIN,
+                            width=15,
+                            border_radius=4,
+                            tooltip=f"{day.get('date')}: {count}"
+                        )
+                    ]
+                )
+            )
+            labels.append(
+                ft.ChartAxisLabel(
+                    value=i,
+                    label=ft.Text(day.get("label", ""), size=10)
+                )
+            )
+
+        self.activity_chart.bar_groups = groups
+        self.activity_chart.bottom_axis.labels = labels
+        # Adjust Y axis max to fit data + buffer, min 5
+        self.activity_chart.max_y = max(max_count + 2, 5)
         self.activity_chart.update()
 
     def _refresh_stats(self):
