@@ -1,16 +1,20 @@
-# StreamCatch Encyclopedia (Legacy)
+# StreamCatch Wiki
 
-Welcome to the StreamCatch Encyclopedia. This section provides in-depth technical documentation,
-architectural overviews, and conceptual guides for the StreamCatch project. The canonical
-user-facing docs now live in `project_docs/` (start at `project_docs/Home.md`).
+Welcome to the StreamCatch Wiki. This section provides both user guides and in-depth technical documentation.
 
-## Index
+## User Documentation
+
+*   [Installation Guide](Installation.md) - How to install StreamCatch on Windows, Linux, and Android.
+*   [User Guide](User-Guide.md) - Comprehensive manual for using the application features.
+*   [Troubleshooting](Troubleshooting.md) - Common issues and solutions.
+
+## Developer Documentation
 
 *   [Architecture](Architecture.md) - High-level system design and component interactions.
 *   [Core Concepts](Concepts.md) - Explanation of key concepts like Downloaders, Extractors, and Managers.
 *   [API Reference](API.md) - Internal API documentation for developers.
-*   [Project Docs](../project_docs/Home.md) - User guides and current documentation.
 
-## Purpose
+## Project Links
 
-The purpose of this encyclopedia is to serve as a comprehensive source of truth for the codebase's inner workings, intended primarily for contributors and maintainers.
+*   [Source Code](https://github.com/YourRepo/StreamCatch)
+*   [Issues](https://github.com/YourRepo/StreamCatch/issues)

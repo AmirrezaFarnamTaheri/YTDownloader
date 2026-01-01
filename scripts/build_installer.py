@@ -148,7 +148,7 @@ def build_installer():
     cmd.extend(
         [
             # Enable LTO if stable, otherwise disable for speed/memory
-            # "--lto=no",
+                "--lto=yes",
             # Flet often needs explicit data for assets
             f"--include-data-dir={root / 'assets'}=assets",
             f"--include-data-dir={root / 'locales'}=locales",

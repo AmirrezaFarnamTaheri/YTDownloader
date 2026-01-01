@@ -18,11 +18,8 @@ from localization_manager import LocalizationManager as LM
 from theme import Theme
 from ui_utils import get_default_download_path, open_folder
 from views.base_view import BaseView
+from views.components.download_input_card import DownloadInputCard
 from views.components.download_preview import DownloadPreviewCard
-from views.components.panels.base_panel import BasePanel
-from views.components.panels.generic_panel import GenericPanel
-from views.components.panels.instagram_panel import InstagramPanel
-from views.components.panels.youtube_panel import YouTubePanel
 
 logger = logging.getLogger(__name__)
 
@@ -57,70 +54,13 @@ class DownloadView(BaseView):
         self.state = app_state
         # pylint: disable=unsubscriptable-object
         self.video_info: dict | None = None
-        self.current_panel: BasePanel | None = None
 
-        # --- Controls ---
-        # 1. URL Input
-        self.url_input = ft.TextField(
-            label=LM.get("video_url_label"),
-            expand=True,
-            autofocus=True,
-            on_submit=lambda e: self._on_fetch_click(e),
-            suffix=ft.IconButton(
-                icon=ft.icons.CONTENT_PASTE,
-                tooltip=LM.get("paste_from_clipboard"),
-                on_click=self._on_paste_click,
-            ),
-            **Theme.get_input_decoration(
-                hint_text=LM.get("url_placeholder"), prefix_icon=ft.icons.LINK
-            ),
+        # Input Card
+        self.input_card = DownloadInputCard(
+            on_fetch=self.on_fetch_info,
+            on_paste=self._on_paste_click,
+            app_state=self.state,
         )
-
-        self.fetch_btn = ft.ElevatedButton(
-            LM.get("fetch_info"),
-            icon=ft.icons.SEARCH,
-            on_click=self._on_fetch_click,
-            style=ft.ButtonStyle(
-                padding=20,
-                shape=ft.RoundedRectangleBorder(radius=8),
-                bgcolor=Theme.Primary.MAIN,
-                color=Theme.Text.PRIMARY,
-            ),
-        )
-
-        # 2. Dynamic Options Panel Container
-        self.options_container = ft.Container(animate_opacity=300)
-
-        # 3. Global Advanced (Time / Cookies)
-        self.time_start = ft.TextField(
-            label=LM.get("time_start"),
-            width=140,
-            disabled=True,
-            text_size=12,
-            **Theme.get_input_decoration(hint_text=LM.get("time_placeholder")),
-        )
-        self.time_end = ft.TextField(
-            label=LM.get("time_end"),
-            width=140,
-            disabled=True,
-            text_size=12,
-            **Theme.get_input_decoration(hint_text=LM.get("time_placeholder")),
-        )
-
-        self.cookies_dd = ft.Dropdown(
-            label=LM.get("browser_cookies"),
-            width=200,
-            options=[
-                ft.dropdown.Option("None", LM.get("none")),
-                ft.dropdown.Option("chrome", LM.get("browser_chrome")),
-                ft.dropdown.Option("firefox", LM.get("browser_firefox")),
-                ft.dropdown.Option("edge", LM.get("browser_edge")),
-            ],
-            value="None",
-            **Theme.get_input_decoration(hint_text=LM.get("select_cookies")),
-        )
-
-        self.force_generic_cb = ft.Checkbox(label=LM.get("force_generic"), value=False)
 
         # 5. Main Actions
         self.add_btn = ft.ElevatedButton(
@@ -189,54 +129,6 @@ class DownloadView(BaseView):
             wrap=True,
         )
 
-        # Input Area
-        url_row = ft.Row(
-            [self.url_input, self.fetch_btn],
-            spacing=10,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        )
-
-        advanced_row = ft.Row(
-            [self.time_start, self.time_end, self.cookies_dd], spacing=10, wrap=True
-        )
-
-        # Advanced Options Section using ExpansionTile
-        advanced_section = ft.ExpansionTile(
-            title=ft.Text(LM.get("advanced_options"), weight=ft.FontWeight.BOLD),
-            controls=[
-                ft.Container(
-                    content=ft.Column(
-                        [advanced_row, self.force_generic_cb], spacing=10
-                    ),
-                    padding=10,
-                )
-            ],
-            collapsed_text_color=Theme.Text.SECONDARY,
-            text_color=Theme.Primary.MAIN,
-            icon_color=Theme.Primary.MAIN,
-        )
-
-        # Input Card Container with standardized decoration
-        input_container_props = Theme.get_card_decoration()
-        # Ensure we have border defined if not in decoration (it is not in get_card_decoration usually, but theme file might have it)
-        # Adding specific border for input area if desired, or stick to theme defaults.
-        # Overriding specific props for this container:
-        input_container = ft.Container(
-            content=ft.Column(
-                [
-                    url_row,
-                    ft.Divider(height=1, color=Theme.Divider.COLOR),
-                    # Dynamic Options Panel
-                    self.options_container,
-                    ft.Container(height=10),
-                    # Advanced Options Section
-                    advanced_section,
-                ],
-                spacing=10,
-            ),
-            **input_container_props,
-        )
-
         # Actions
         actions_bar = ft.Row(
             [ft.Container(expand=True), self.add_btn],
@@ -262,7 +154,7 @@ class DownloadView(BaseView):
                     [
                         header,
                         ft.Container(height=10),
-                        input_container,
+                        self.input_card,
                         self.preview_card,
                         ft.Container(height=10),
                         actions_bar,
@@ -285,103 +177,52 @@ class DownloadView(BaseView):
             try:
                 content = pyperclip.paste()
                 if content:
-                    self.url_input.value = content.strip()
-                    self.url_input.error_text = None
-                    self.url_input.focus()
-                    self.update()
+                    self.input_card.set_url(content.strip())
+                    self.input_card.url_input.focus()
             except pyperclip.PyperclipException:
                 logger.warning("Clipboard access not available")
         except Exception as ex:
             logger.warning("Failed to paste: %s", ex)
 
     def _on_fetch_click(self, e):
-        # pylint: disable=unused-argument
-        url = self.url_input.value.strip() if self.url_input.value else ""
-        if url:
-            self.fetch_btn.disabled = True
-            self.url_input.error_text = None
-            self.update()
-            self.on_fetch_info(url)
-        else:
-            self.url_input.error_text = LM.get("url_required")
-            self.update()
+        # Delegated to InputCard, but if invoked here (unused):
+        pass
 
     def _on_add_click(self, e):
         # pylint: disable=unused-argument
-        if not self.url_input.value:
-            return
+        data = self.input_card.get_options()
 
-        cookies = self.cookies_dd.value if self.cookies_dd.value != "None" else None
+        # Add output template from global config if not present (although input card doesn't handle template yet)
         template = self.state.config.get("output_template", "%(title)s.%(ext)s")
+        data["output_template"] = template
 
-        # Get base options
-        data = {
-            "url": self.url_input.value,
-            "start_time": self.time_start.value,
-            "end_time": self.time_end.value,
-            "output_template": template,
-            "cookies_from_browser": cookies,
-            "force_generic": self.force_generic_cb.value,
-            # Defaults
-            "video_format": "best",
-            "audio_format": None,
-            "subtitle_lang": None,
-            "playlist": False,
-            "sponsorblock": False,
-        }
-
-        # Merge with Panel Options
-        if self.current_panel:
-            panel_opts = self.current_panel.get_options()
-            data.update(panel_opts)
+        # Add defaults
+        data.setdefault("video_format", "best")
+        data.setdefault("audio_format", None)
+        data.setdefault("subtitle_lang", None)
+        data.setdefault("playlist", False)
+        data.setdefault("sponsorblock", False)
 
         self.on_add_to_queue(data)
 
-        # Reset specific fields
+        # Reset
         self.add_btn.disabled = True
-        self.fetch_btn.disabled = False
         self.preview_card.visible = False
-        self.url_input.value = ""
-        # Clear panel
-        self.options_container.content = None
-        self.current_panel = None
-        # pylint: disable=missing-function-docstring
+        self.input_card.reset()
 
         self.update()
 
     # pylint: disable=missing-function-docstring
     def update_video_info(self, info: dict | None):
-        self.fetch_btn.disabled = False
         self.video_info = info
+        self.input_card.update_video_info(info)
 
         if info:
             self.preview_card.update_info(info)
             self.add_btn.disabled = False
-            self.time_start.disabled = False
-            # pylint: disable=unused-variable
-            self.time_end.disabled = False
-
-            # Determine Panel Type
-            url = info.get("original_url", "")
-
-            # Simple heuristic
-            if "youtube" in url or "youtu.be" in url:
-                self.current_panel = YouTubePanel(info, lambda: None)
-            elif "instagram" in url:
-                self.current_panel = InstagramPanel(info, lambda: None)
-            else:
-                self.current_panel = GenericPanel(info, lambda: None)
-
-            self.options_container.content = self.current_panel
-
         else:
             self.preview_card.visible = False
             self.add_btn.disabled = True
-            self.time_start.disabled = True
-            self.time_end.disabled = True
-            # pylint: disable=missing-function-docstring
-            self.options_container.content = None
-            self.current_panel = None
 
         # pylint: disable=import-outside-toplevel
         self.update()

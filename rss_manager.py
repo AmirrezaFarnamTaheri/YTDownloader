@@ -2,19 +2,18 @@
 RSS Manager module for fetching and parsing RSS feeds.
 """
 
-import ipaddress
 import logging
-import re
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any, Optional
-from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
 
 import requests
 from dateutil import parser as date_parser
+
+from ui_utils import validate_url
 
 try:
     from defusedxml.ElementTree import fromstring as safe_fromstring
@@ -168,44 +167,13 @@ class RSSManager:
         return RSSManager.parse_feed(url, self)
 
     @staticmethod
-    def _validate_url(url: str) -> bool:
-        """Validate URL for SSRF protection."""
-        try:
-            parsed = urlparse(url)
-            if parsed.scheme not in ("http", "https"):
-                safe_log_warning("Invalid scheme for RSS feed: %s", url)
-                return False
-
-            hostname = parsed.hostname
-            if not hostname:
-                return False
-
-            if hostname in ("localhost", "127.0.0.1", "::1"):
-                safe_log_warning("Localhost RSS feed blocked: %s", url)
-                return False
-
-            try:
-                ip = ipaddress.ip_address(hostname)
-                if ip.is_private or ip.is_loopback:
-                    safe_log_warning("Private IP RSS feed blocked: %s", url)
-                    return False
-            except ValueError:
-                if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname or ""):
-                    safe_log_warning("Invalid IP RSS feed blocked: %s", url)
-                    return False
-                # Not an IP address
-
-            return True
-        except Exception:
-            return False
-
-    @staticmethod
     def parse_feed(
         url: str, instance: Optional["RSSManager"] = None
     ) -> list[dict[str, Any]]:
         """Fetch and parse a single RSS feed safely."""
         try:
-            if not RSSManager._validate_url(url):
+            if not validate_url(url):
+                safe_log_warning("Invalid RSS feed URL blocked: %s", url)
                 return []
 
             logger.debug("Fetching RSS feed: %s", url)

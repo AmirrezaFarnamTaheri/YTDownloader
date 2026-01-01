@@ -111,6 +111,19 @@ class AppLayout(ft.Row):
         self.sidebar_container.update()
         self.rail.update()
 
+    def handle_resize(self, width: float, height: float):
+        """
+        Adjust layout based on window size.
+        Switches to compact mode if width < 1000px.
+        """
+        # pylint: disable=unused-argument
+        if width < 1000:
+            if self.rail.extended:
+                self.toggle_compact_mode(True)
+        else:
+            if not self.rail.extended:
+                self.toggle_compact_mode(False)
+
     def set_navigation_index(self, index: int):
         """Sets the selected navigation index programmatically."""
         self.rail.selected_index = index  # type: ignore

@@ -116,14 +116,20 @@ class UIManager:
         # Ensure Dashboard loads
         self.dashboard_view.load()
 
-        # Handle responsive layout logic if needed (AppLayout does basic rail toggle)
-        # We can add listener here if we want automatic compact mode
-        # But AppLayout constructor didn't have self.page attached to resize.
-        # Let's just trust AppLayout logic or Page logic.
+        # Handle responsive layout logic
+        self.page.on_resized = lambda e: self.app_layout.handle_resize(
+            e.page.window_width, e.page.window_height
+        )
 
         # Restore compact mode from state
         if state.compact_mode:
             self.app_layout.toggle_compact_mode(True)
+        else:
+            # Trigger initial resize check
+            if self.page.window_width:
+                self.app_layout.handle_resize(
+                    self.page.window_width, self.page.window_height
+                )
 
         return self.app_layout
 
