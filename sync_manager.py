@@ -10,6 +10,8 @@ import tempfile
 import threading
 import zipfile
 
+from ui_utils import is_safe_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -329,19 +331,26 @@ class SyncManager:
                 raise FileNotFoundError(f"Import file not found: {import_path}")
 
             with zipfile.ZipFile(import_path, "r") as zf:
-                # Restore Config
-                if "config.json" in zf.namelist():
-                    with zf.open("config.json") as f:
-                        data = json.load(f)
-                        if hasattr(self.config, "save_config"):
-                            self.config.save_config(data)
-                        elif hasattr(self.config, "set"):
-                            # Mocks often use this
-                            for k, v in data.items():
-                                self.config.set(k, v)
+                # Zip Slip Protection: Check ALL members before extracting
+                for member in zf.infolist():
+                    # We only care about config.json and history.db
+                    # But checking all paths is good practice
+                    if ".." in member.filename or member.filename.startswith("/"):
+                        logger.warning("Skipping potentially malicious file in zip: %s", member.filename)
+                        continue
 
-                # Restore History
-                self._import_history_db(zf)
+                    if member.filename == "config.json":
+                        with zf.open("config.json") as f:
+                            data = json.load(f)
+                            if hasattr(self.config, "save_config"):
+                                self.config.save_config(data)
+                            elif hasattr(self.config, "set"):
+                                # Mocks often use this
+                                for k, v in data.items():
+                                    self.config.set(k, v)
+
+                    elif member.filename == "history.db":
+                        self._import_history_db(zf)
 
             logger.info("Import completed")
         except Exception as e:

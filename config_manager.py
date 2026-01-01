@@ -9,6 +9,8 @@ import json
 import logging
 import os
 import tempfile
+import uuid
+import base64
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -136,6 +138,49 @@ class ConfigManager:
         ConfigManager._validate_schema(config)
 
     @staticmethod
+    def _get_key() -> bytes:
+        """Generate a stable machine-specific key."""
+        node = uuid.getnode()
+        # Convert to bytes
+        return str(node).encode('utf-8')
+
+    @staticmethod
+    def _xor_cipher(data: str, key: bytes) -> str:
+        """Simple XOR cipher."""
+        data_bytes = data.encode('utf-8')
+        result = bytearray()
+        for i, b in enumerate(data_bytes):
+            result.append(b ^ key[i % len(key)])
+        return result.decode('latin1') # latin1 preserves bytes 0-255
+
+    @staticmethod
+    def _obfuscate(text: str) -> str:
+        """Obfuscate string."""
+        if not text:
+            return ""
+        try:
+            key = ConfigManager._get_key()
+            # First XOR
+            xored = ConfigManager._xor_cipher(text, key)
+            # Then base64 encode to ensure it's safe for JSON
+            return base64.b64encode(xored.encode('latin1')).decode('ascii')
+        except Exception as e:
+            logger.warning("Obfuscation failed: %s", e)
+            return ""
+
+    @staticmethod
+    def _deobfuscate(encoded_text: str) -> str:
+        """Deobfuscate string."""
+        if not encoded_text:
+            return ""
+        try:
+            key = ConfigManager._get_key()
+            decoded = base64.b64decode(encoded_text).decode('latin1')
+            return ConfigManager._xor_cipher(decoded, key)
+        except Exception: # pylint: disable=broad-exception-caught
+            return ""
+
+    @staticmethod
     def load_config() -> dict[str, Any]:
         """
         Load configuration from file with error recovery.
@@ -154,6 +199,27 @@ class ConfigManager:
 
                 with open(config_path, encoding="utf-8") as f:
                     data = json.load(f)
+
+                    # Deobfuscate cookies if present
+                    if "cookies" in data and isinstance(data["cookies"], str):
+                        # If it looks like base64, try to deobfuscate
+                        # Simple heuristic: if it contains valid cookie content (e.g. "domain"),
+                        # it might be plain text from old version.
+                        # If we assume all new cookies are obfuscated, we should try deobfuscate.
+                        # If deobfuscation fails (e.g. not b64), fallback to raw.
+                        val = data["cookies"]
+                        try:
+                            deobfuscated = ConfigManager._deobfuscate(val)
+                            # Basic validation that result is meaningful text not garbage
+                            # If result is empty but input wasn't, something failed
+                            if not deobfuscated and val:
+                                logger.warning("Deobfuscation returned empty, assuming plain text")
+                            else:
+                                data["cookies"] = deobfuscated
+                        except Exception:
+                            # Fallback to plain text if logic fails
+                            pass
+
                     ConfigManager._validate_schema(data)
                     config.update(data)
             except (json.JSONDecodeError, ValueError) as e:
@@ -179,7 +245,15 @@ class ConfigManager:
         Save configuration to file with atomic write operation.
         """
         config_path = ConfigManager._resolve_config_file()
-        ConfigManager._validate_schema(config)
+
+        # Create copy to avoid modifying the in-memory config object passed in
+        save_data = config.copy()
+
+        ConfigManager._validate_schema(save_data)
+
+        # Obfuscate cookies
+        if "cookies" in save_data and save_data["cookies"]:
+            save_data["cookies"] = ConfigManager._obfuscate(save_data["cookies"])
 
         temp_path = None
 
@@ -199,7 +273,7 @@ class ConfigManager:
 
             try:
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    json.dump(config, f, indent=2)
+                    json.dump(save_data, f, indent=2)
                     f.flush()
                     os.fsync(f.fileno())
 

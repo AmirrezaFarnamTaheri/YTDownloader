@@ -8,8 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from downloader.types import DownloadOptions
 from queue_manager import QueueManager
-from tasks import download_task, process_queue
-from tasks_extended import fetch_info_task
+from tasks import download_task, process_queue, fetch_info_task
 from utils import CancelToken
 
 
@@ -24,12 +23,14 @@ class TestMainLogic(unittest.TestCase):
         self.mock_state.current_download_item = None
         self.mock_state.shutdown_flag.is_set.return_value = False
 
-        # Patch the global state in tasks and main
-        self.patcher_main = patch("tasks_extended.state", self.mock_state)
-        self.patcher_tasks = patch("app_state.state", self.mock_state)
+        # Patch the global state in app_state which tasks.py imports
+        self.patcher_app_state = patch("app_state.state", self.mock_state)
 
-        # Also patch tasks.state directly because tasks.py imports state
-        self.patcher_tasks_direct = patch("tasks.state", self.mock_state)
+        # Also patch tasks.state if it was imported directly (legacy/safety)
+        # But tasks.py now uses app_state.state, so patching app_state.state should be enough.
+        # However, to be safe if there are any lingering references:
+        # self.patcher_tasks_direct = patch("tasks.state", self.mock_state)
+        # Removing tasks.state patch as tasks.py doesn't have 'state' global anymore.
 
         # Patch executor - NOW using _get_executor
         self.patcher_executor = patch("tasks._get_executor")
@@ -38,18 +39,13 @@ class TestMainLogic(unittest.TestCase):
         self.mock_get_executor.return_value = self.mock_executor
 
         # Patch submission throttle semaphore mock
-        # Note: tasks.py now uses _submission_throttle
         self.patcher_sem = patch("tasks._submission_throttle", create=True)
 
         self.patcher_lock = patch(
             "tasks._PROCESS_QUEUE_LOCK", threading.RLock(), create=True
         )
 
-        self.patcher_main.start()
-        self.patcher_tasks.start()
-        self.patcher_tasks_direct.start()
-        # mock_executor is already set by _get_executor patch above
-        # self.mock_executor = self.patcher_executor.start()
+        self.patcher_app_state.start()
         self.mock_sem = self.patcher_sem.start()
         self.patcher_lock.start()
 
@@ -57,9 +53,7 @@ class TestMainLogic(unittest.TestCase):
         self.mock_sem.acquire.return_value = True
 
     def tearDown(self):
-        self.patcher_main.stop()
-        self.patcher_tasks.stop()
-        self.patcher_tasks_direct.stop()
+        self.patcher_app_state.stop()
         self.patcher_executor.stop()
         self.patcher_sem.stop()
         self.patcher_lock.stop()
@@ -111,11 +105,6 @@ class TestMainLogic(unittest.TestCase):
         self.mock_executor.submit.assert_called_once()
         args, kwargs = self.mock_executor.submit.call_args
         # First arg is function, second is item
-        # But wait, we submit _wrapped_download_task
-        # tasks._wrapped_download_task
-
-        # Check args passed to submit
-        # args[0] is the function, args[1] is the item
         submitted_item = args[1]
         self.assertEqual(submitted_item["url"], "http://test")
 
@@ -146,8 +135,6 @@ class TestMainLogic(unittest.TestCase):
         # Check if item status updated
         q_items_after = self.mock_state.queue_manager.get_all()
         # Should have been picked up -> Allocating or similar (managed by queue_manager claiming)
-        # process_queue calls claim_next_downloadable which sets Allocating.
-        # Then calls submit.
         self.assertFalse(str(q_items_after[0]["status"]).startswith("Scheduled"))
 
     def test_process_queue_busy(self):
@@ -186,21 +173,6 @@ class TestMainLogic(unittest.TestCase):
             "control": MagicMock(),
             "output_path": ".",
         }
-
-        # Need to patch the local import of HistoryManager in tasks.py
-        # Since we can't patch local import easily without import patching tools or changing code structure
-        # We can rely on the fact that tasks.py imports it inside _log_to_history.
-        # But we want to mock the class.
-        # Since 'history_manager' is a module, we can mock sys.modules['history_manager'] or similar.
-        # Or better: patch 'tasks.HistoryManager' if I hadn't removed it from toplevel.
-        # Since it's removed, I must patch 'history_manager.HistoryManager' AND ensure tasks.py imports it.
-        # The test file imports tasks.py which uses lazy import.
-        # The easiest way is to mock 'history_manager' module in sys.modules, OR
-        # Since I'm patching 'history_manager.HistoryManager', if tasks.py imports 'HistoryManager' from 'history_manager'
-        # it should get the mock.
-
-        # NOTE: In Python, if tasks.py does `from history_manager import HistoryManager` inside a function,
-        # and we patch `history_manager.HistoryManager`, it will work.
 
         download_task(item)
 
@@ -289,7 +261,7 @@ class TestMainLogic(unittest.TestCase):
 
     # --- Fetch Info Task Tests ---
 
-    @patch("tasks_extended.get_video_info")
+    @patch("tasks.get_video_info")
     def test_fetch_info_task_success(self, mock_get_info):
         mock_get_info.return_value = {"title": "Test Video"}
         mock_view = MagicMock()
@@ -301,10 +273,10 @@ class TestMainLogic(unittest.TestCase):
         fetch_info_task("http://video", mock_view, mock_page)
 
         self.assertEqual(self.mock_state.video_info["title"], "Test Video")
-        mock_view.update_info.assert_called()
+        mock_view.update_video_info.assert_called()
         mock_page.open.assert_called()
 
-    @patch("tasks_extended.get_video_info")
+    @patch("tasks.get_video_info")
     def test_fetch_info_task_failure(self, mock_get_info):
         mock_get_info.return_value = None
         mock_view = MagicMock()

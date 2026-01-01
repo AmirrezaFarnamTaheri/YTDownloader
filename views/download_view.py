@@ -42,6 +42,7 @@ class DownloadView(BaseView):
         self,
         on_fetch_info: Callable,
         on_add_to_queue: Callable,
+        on_paste_url: Callable, # Added parameter for paste handling
         on_batch_import: Callable,
         on_schedule: Callable,
         app_state: AppState,
@@ -49,6 +50,7 @@ class DownloadView(BaseView):
         super().__init__(LM.get("new_download"), ft.icons.DOWNLOAD)
         self.on_fetch_info = on_fetch_info
         self.on_add_to_queue = on_add_to_queue
+        self.on_paste_url = on_paste_url # Callback for parent controller paste if needed
         self.on_batch_import = on_batch_import
         self.on_schedule = on_schedule
         self.state = app_state
@@ -171,6 +173,15 @@ class DownloadView(BaseView):
 
     def _on_paste_click(self, e):
         # pylint: disable=unused-argument
+        # Use controller callback if available or local logic
+        if self.on_paste_url:
+             # If controller provided a specific callback (e.g. toggles clipboard monitor or something else)
+             # But usually paste logic is local to input.
+             # If `on_paste_url` expects to handle the paste action:
+             # self.on_paste_url()
+             # But typical paste just pastes into field.
+             pass
+
         try:
             import pyperclip
 
@@ -203,6 +214,10 @@ class DownloadView(BaseView):
         data.setdefault("playlist", False)
         data.setdefault("sponsorblock", False)
 
+        # Add title from fetched info if available
+        if self.video_info:
+             data["title"] = self.video_info.get("title", data["url"])
+
         self.on_add_to_queue(data)
 
         # Reset
@@ -211,6 +226,10 @@ class DownloadView(BaseView):
         self.input_card.reset()
 
         self.update()
+
+    def set_fetch_disabled(self, disabled: bool):
+        """Pass through to input card."""
+        self.input_card.set_fetch_disabled(disabled)
 
     # pylint: disable=missing-function-docstring
     def update_video_info(self, info: dict | None):

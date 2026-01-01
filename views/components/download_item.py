@@ -2,7 +2,7 @@
 Download Item Control.
 
 Represents a single download item in the Queue or History list.
-Features progress bar, status icon, and action buttons.
+Features progress bar, status icon, action buttons, and metadata badges.
 """
 
 import logging
@@ -75,6 +75,10 @@ class DownloadItemControl(ft.Container):
             bgcolor=Theme.BG_HOVER,  # Default
         )
 
+        # Metadata Badges (4K, HDR)
+        self.meta_badges = ft.Row(spacing=5)
+        self._update_meta_badges()
+
         self.progress_bar = ft.ProgressBar(
             value=item.get("progress", 0),
             color=Theme.Primary.MAIN,
@@ -99,7 +103,7 @@ class DownloadItemControl(ft.Container):
                             [
                                 self.title_text,
                                 ft.Row(
-                                    [self.status_badge, self.info_text],
+                                    [self.status_badge, self.meta_badges, self.info_text],
                                     spacing=10,
                                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                                 ),
@@ -125,6 +129,30 @@ class DownloadItemControl(ft.Container):
         self.item["control_ref"] = weakref.ref(self)
         self.update_actions()
         self._update_progress_internal(update_ui=False)
+
+    def _update_meta_badges(self):
+        """Updates metadata badges based on item info."""
+        self.meta_badges.controls.clear()
+
+        # Helper for badge creation
+        def create_badge(text, color):
+            return ft.Container(
+                content=ft.Text(text, size=10, weight=ft.FontWeight.BOLD, color=Theme.Text.PRIMARY),
+                padding=ft.padding.symmetric(horizontal=6, vertical=2),
+                border_radius=4,
+                bgcolor=color,
+            )
+
+        video_format = self.item.get("video_format", "")
+        # Check explicit format or generic heuristic
+        if "4k" in str(video_format).lower() or self.item.get("resolution", 0) >= 2160:
+            self.meta_badges.controls.append(create_badge("4K", Theme.Primary.MAIN))
+
+        if "hdr" in str(video_format).lower():
+            self.meta_badges.controls.append(create_badge("HDR", Theme.ACCENT))
+
+        if self.item.get("playlist", False):
+             self.meta_badges.controls.append(create_badge("PLAYLIST", Theme.INFO))
 
     def _get_platform_icon(self, url: str) -> ft.Icon:
         """Returns an icon based on the URL."""

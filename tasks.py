@@ -10,8 +10,9 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, cast
 
-from app_state import state
+import app_state
 from downloader.core import download_video
+from downloader.info import get_video_info
 from downloader.types import DownloadOptions
 from ui_utils import get_default_download_path
 from utils import CancelToken
@@ -29,7 +30,7 @@ def _get_executor() -> ThreadPoolExecutor:
     global _executor
     with _executor_lock:
         if _executor is None:
-            max_workers = state.config.get(
+            max_workers = app_state.state.config.get(
                 "max_concurrent_downloads", DEFAULT_MAX_WORKERS
             )
             # Ensure max_workers is valid
@@ -61,7 +62,7 @@ _active_count_lock = threading.Lock()
 
 def _get_max_workers() -> int:
     try:
-        val = int(state.config.get("max_concurrent_downloads", DEFAULT_MAX_WORKERS))
+        val = int(app_state.state.config.get("max_concurrent_downloads", DEFAULT_MAX_WORKERS))
         return val if val > 0 else DEFAULT_MAX_WORKERS
     except Exception:  # pylint: disable=broad-exception-caught
         return DEFAULT_MAX_WORKERS
@@ -85,12 +86,12 @@ def process_queue() -> None:
     # pylint: disable=global-statement
     global _active_count
 
-    if state.shutdown_flag.is_set():
+    if app_state.state.shutdown_flag.is_set():
         return
 
     with _PROCESS_QUEUE_LOCK:
         while True:
-            if state.shutdown_flag.is_set():
+            if app_state.state.shutdown_flag.is_set():
                 break
 
             # Try to acquire a slot without blocking
@@ -98,7 +99,7 @@ def process_queue() -> None:
             if _submission_throttle.acquire(blocking=False):
                 try:
                     # We acquired a slot, check if there is work
-                    item = state.queue_manager.claim_next_downloadable()
+                    item = app_state.state.queue_manager.claim_next_downloadable()
                     if not item:
                         # No work, release slot immediately
                         _submission_throttle.release()
@@ -130,7 +131,7 @@ def process_queue() -> None:
                 _submission_throttle.release()
 
                 if "id" in item:
-                    state.queue_manager.update_item_status(
+                    app_state.state.queue_manager.update_item_status(
                         item["id"], "Error", {"error": "Failed to start"}
                     )
 
@@ -143,14 +144,14 @@ def _wrapped_download_task(item: dict[str, Any]) -> None:
     # pylint: disable=global-statement
     global _active_count
     try:
-        if not state.shutdown_flag.is_set():
+        if not app_state.state.shutdown_flag.is_set():
             download_task(item)
         else:
             # Ensure item state is terminal when skipped due to shutdown
             try:
                 item["status"] = cast(Any, "Cancelled")
                 if "id" in item:
-                    state.queue_manager.update_item_status(item["id"], "Cancelled")
+                    app_state.state.queue_manager.update_item_status(item["id"], "Cancelled")
                 _log_to_history(item, None)
             except Exception:  # pylint: disable=broad-exception-caught
                 # best-effort; don't block cleanup
@@ -166,8 +167,8 @@ def _wrapped_download_task(item: dict[str, Any]) -> None:
         try:
             # Accessing protected member _has_work as designed for internal signaling
             # pylint: disable=protected-access
-            with state.queue_manager.has_work_condition:
-                state.queue_manager.has_work_condition.notify_all()
+            with app_state.state.queue_manager.has_work_condition:
+                app_state.state.queue_manager.has_work_condition.notify_all()
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.debug(
                 "Failed to notify queue manager for slot release: %s",
@@ -238,7 +239,7 @@ def _progress_hook_factory(item: dict[str, Any], cancel_token: CancelToken) -> A
 
     def progress_hook(d: dict[str, Any]) -> None:
         try:
-            if state.shutdown_flag.is_set():
+            if app_state.state.shutdown_flag.is_set():
                 raise InterruptedError("Shutdown initiated")
 
             # Check cancellation and pause state via token check
@@ -310,13 +311,13 @@ def download_task(item: dict[str, Any]) -> None:
 
     # Double check item status in case it was cancelled while in queue
     if item_id:
-        current = state.queue_manager.get_item_by_id(item_id)
+        current = app_state.state.queue_manager.get_item_by_id(item_id)
         if not current:
             logger.info("Skipping removed item before download start: %s", item_id)
             return
         if str(current.get("status")) == "Cancelled":
             logger.info("Skipping cancelled item before download start: %s", item_id)
-            state.queue_manager.update_item_status(item_id, "Cancelled")
+            app_state.state.queue_manager.update_item_status(item_id, "Cancelled")
             return
 
     if str(item.get("status")) == "Cancelled":
@@ -326,21 +327,21 @@ def download_task(item: dict[str, Any]) -> None:
     # Create and register CancelToken
     cancel_token = CancelToken()
     if item_id:
-        state.queue_manager.register_cancel_token(item_id, cancel_token)
+        app_state.state.queue_manager.register_cancel_token(item_id, cancel_token)
 
     logger.info("Starting download task: %s", url)
 
     try:
         if item_id:
-            state.queue_manager.update_item_status(item_id, "Downloading")
+            app_state.state.queue_manager.update_item_status(item_id, "Downloading")
         _update_progress_ui(item)
 
         # Prepare hooks and execute
         phook = _progress_hook_factory(item, cancel_token)
 
         preferred_path = None
-        if hasattr(state, "config") and hasattr(state.config, "get"):
-            preferred_path = state.config.get("download_path")
+        if hasattr(app_state.state, "config") and hasattr(app_state.state.config, "get"):
+            preferred_path = app_state.state.config.get("download_path")
         output_path = item.get("output_path") or get_default_download_path(
             preferred_path
         )
@@ -349,15 +350,15 @@ def download_task(item: dict[str, Any]) -> None:
         logger.debug("Resolved output path for %s: %s", url, output_path)
 
         proxy = item.get("proxy")
-        if not proxy and hasattr(state, "config") and hasattr(state.config, "get"):
-            cfg_proxy = state.config.get("proxy")
+        if not proxy and hasattr(app_state.state, "config") and hasattr(app_state.state.config, "get"):
+            cfg_proxy = app_state.state.config.get("proxy")
             proxy = cfg_proxy if isinstance(cfg_proxy, str) and cfg_proxy else None
         if proxy:
             logger.debug("Proxy enabled for %s", url)
 
         rate_limit = item.get("rate_limit")
-        if not rate_limit and hasattr(state, "config") and hasattr(state.config, "get"):
-            cfg_rate = state.config.get("rate_limit")
+        if not rate_limit and hasattr(app_state.state, "config") and hasattr(app_state.state.config, "get"):
+            cfg_rate = app_state.state.config.get("rate_limit")
             rate_limit = cfg_rate if isinstance(cfg_rate, str) and cfg_rate else None
         if rate_limit:
             logger.debug("Rate limit set for %s: %s", url, rate_limit)
@@ -394,7 +395,7 @@ def download_task(item: dict[str, Any]) -> None:
 
         # Success
         if item_id:
-            state.queue_manager.update_item_status(
+            app_state.state.queue_manager.update_item_status(
                 item_id,
                 "Completed",
                 {
@@ -430,7 +431,7 @@ def download_task(item: dict[str, Any]) -> None:
 
             # Ensure status is definitely cancelled and reset progress
             if item_id:
-                state.queue_manager.update_item_status(
+                app_state.state.queue_manager.update_item_status(
                     item_id,
                     "Cancelled",
                     {"progress": 0, "speed": "", "eta": "", "size": ""},
@@ -439,7 +440,7 @@ def download_task(item: dict[str, Any]) -> None:
         else:
             logger.error("Download failed: %s", e, exc_info=True)
             if item_id:
-                state.queue_manager.update_item_status(
+                app_state.state.queue_manager.update_item_status(
                     item_id, "Error", {"error": str(e)}
                 )
             item["status"] = cast(Any, "Error")  # Update local ref
@@ -449,4 +450,49 @@ def download_task(item: dict[str, Any]) -> None:
     finally:
         # Cleanup
         if item_id:
-            state.queue_manager.unregister_cancel_token(item_id)
+            app_state.state.queue_manager.unregister_cancel_token(item_id, cancel_token)
+
+
+def fetch_info_task(url: str, view_card: Any, page: Any) -> None:
+    """
+    Background task to fetch video info and update UI.
+    """
+    # pylint: disable=import-outside-toplevel
+    # Use localized import to avoid circular dependency
+    import flet as ft
+    from localization_manager import LocalizationManager as LM
+
+    try:
+        # Check cookies
+        cookies = None
+        if hasattr(view_card, "cookies_dd") and view_card.cookies_dd.value != "None":
+            cookies = view_card.cookies_dd.value
+
+        info = get_video_info(url, cookies_from_browser=cookies)
+
+        if not info:
+            raise ValueError("No video info returned")
+
+        # Update global state
+        app_state.state.video_info = info
+
+        # Update UI safely
+        if page:
+            def update_ui():
+                view_card.update_video_info(info)
+                page.open(
+                    ft.SnackBar(content=ft.Text(LM.get("info_fetched_success")))
+                )
+            page.run_task(update_ui)
+
+    except Exception as e:
+        logger.error("Fetch info failed: %s", e, exc_info=True)
+        if page:
+            def show_error():
+                view_card.set_fetch_disabled(False)
+                page.open(
+                    ft.SnackBar(
+                        content=ft.Text(f"{LM.get('error_fetch_info')}: {str(e)}")
+                    )
+                )
+            page.run_task(show_error)

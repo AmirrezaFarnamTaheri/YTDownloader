@@ -3,6 +3,7 @@ Dashboard View Module.
 
 Features a modern dashboard with system status, quick actions,
 active download summaries, and recent history.
+Refactored to use Charts for better visualization.
 """
 
 import logging
@@ -26,9 +27,9 @@ class DashboardView(BaseView):
     Dashboard view serving as the home screen.
 
     Features:
-    - System storage status
-    - Active downloads counter and statistics
-    - Quick action buttons
+    - System storage status (PieChart)
+    - Active downloads counter and statistics (Cards)
+    - Activity history (BarChart - Placeholder for now)
     - Recent download history
     """
 
@@ -47,11 +48,36 @@ class DashboardView(BaseView):
 
         # Widgets
         self.status_cards_row = ft.Row(spacing=20, wrap=True)
-        self.storage_progress = ft.ProgressBar(
-            value=0, color=Theme.Primary.MAIN, bgcolor=Theme.Surface.BG
+
+        # Storage Pie Chart
+        self.storage_chart = ft.PieChart(
+            sections=[],
+            sections_space=0,
+            center_space_radius=40,
+            height=150,
         )
         self.storage_text = ft.Text(
             LM.get("storage_calculating"), size=12, color=Theme.TEXT_MUTED
+        )
+
+        # Activity Bar Chart (Placeholder for Phase 3 req)
+        # Assuming simple activity stats for now
+        self.activity_chart = ft.BarChart(
+            bar_groups=[],
+            border=ft.border.all(1, Theme.BORDER),
+            left_axis=ft.ChartAxis(
+                labels_size=40, title=ft.Text("Downloads", size=10)
+            ),
+            bottom_axis=ft.ChartAxis(
+                labels_size=40, title=ft.Text("Day", size=10)
+            ),
+            horizontal_grid_lines=ft.ChartGridLines(
+                color=Theme.BORDER, width=1, dash_pattern=[3, 3]
+            ),
+            tooltip_bgcolor=Theme.BG_CARD,
+            max_y=10, # Dynamic
+            interactive=True,
+            height=150,
         )
 
         # Active downloads stats widgets
@@ -76,8 +102,29 @@ class DashboardView(BaseView):
                     # Download Statistics
                     self._build_stats_section(),
                     ft.Container(height=20),
-                    # System Status (Disk, etc)
-                    self._build_status_section(),
+                    # Charts Row
+                    ft.Row([
+                        ft.Column([
+                            ft.Text(LM.get("system_status"), weight=ft.FontWeight.BOLD),
+                            ft.Container(
+                                content=ft.Column([self.storage_chart, self.storage_text], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                                **Theme.get_card_decoration(),
+                                width=300,
+                                # Removed explicit padding=20 here to avoid collision with get_card_decoration
+                            )
+                        ]),
+                         ft.Column([
+                            ft.Text("Activity (Last 7 Days)", weight=ft.FontWeight.BOLD),
+                            ft.Container(
+                                content=self.activity_chart,
+                                **Theme.get_card_decoration(),
+                                width=400,
+                                height=230
+                                # Removed explicit padding=20 here too
+                            )
+                        ], expand=True),
+                    ], wrap=True, alignment=ft.MainAxisAlignment.START, spacing=20),
+
                     ft.Container(height=20),
                     # Recent History
                     ft.Text(
@@ -223,31 +270,58 @@ class DashboardView(BaseView):
             spacing=10,
         )
 
-    def _build_status_section(self):
-        """Builds system status section."""
-        return ft.Container(
-            content=ft.Column(
-                [
-                    ft.Text(
-                        LM.get("system_status", "System Storage"),
-                        weight=ft.FontWeight.BOLD,
-                        color=Theme.Text.PRIMARY,
-                    ),
-                    self.storage_progress,
-                    self.storage_text,
-                ],
-                spacing=5,
-            ),
-            **Theme.get_card_decoration(),
-        )
-
     def load(self):
         """Refreshes the dashboard data."""
         self._refresh_storage()
         self._refresh_stats()
         self._refresh_history()
+        self._refresh_activity() # New
         if self.page:
             self.update()
+
+    def _refresh_activity(self):
+        """
+        Refresh activity chart using real data from HistoryManager.
+        """
+        activity_data = HistoryManager.get_download_activity(days=7)
+
+        groups = []
+        labels = []
+
+        max_count = 0
+
+        for i, day in enumerate(activity_data):
+            count = day.get("count", 0)
+            if count > max_count:
+                max_count = count
+
+            groups.append(
+                ft.BarChartGroup(
+                    x=i,
+                    bar_rods=[
+                        ft.BarChartRod(
+                            from_y=0,
+                            to_y=count,
+                            color=Theme.Primary.MAIN,
+                            width=15,
+                            border_radius=4,
+                            tooltip=f"{day.get('date')}: {count}"
+                        )
+                    ]
+                )
+            )
+            labels.append(
+                ft.ChartAxisLabel(
+                    value=i,
+                    label=ft.Text(day.get("label", ""), size=10)
+                )
+            )
+
+        self.activity_chart.bar_groups = groups
+        self.activity_chart.bottom_axis.labels = labels
+        # Adjust Y axis max to fit data + buffer, min 5
+        self.activity_chart.max_y = max(max_count + 2, 5)
+        self.activity_chart.update()
 
     def _refresh_stats(self):
         """Updates download statistics from queue manager."""
@@ -261,7 +335,7 @@ class DashboardView(BaseView):
                     "downloading": sum(
                         1 for i in items if i.get("status") == "Downloading"
                     ),
-                    "queued": sum(1 for i in items if i.get("status") == "Queued"),
+                    "queued": sum(1 for i in items if i.get("status") == "Queued" or i.get("status") == "Allocating"),
                     "completed": sum(
                         1 for i in items if i.get("status") == "Completed"
                     ),
@@ -278,22 +352,31 @@ class DashboardView(BaseView):
             self.completed_downloads_text.value = "0"
 
     def _refresh_storage(self):
-        """Updates storage usage bar."""
+        """Updates storage usage pie chart."""
         try:
             total, used, free = shutil.disk_usage(".")
             # Avoid division by zero
             percent = used / total if total > 0 else 0
 
             gb = 1024**3
-            self.storage_progress.value = percent
 
-            # Color logic
-            if percent > 0.9:
-                self.storage_progress.color = Theme.Status.ERROR
-            elif percent > 0.75:
-                self.storage_progress.color = Theme.Status.WARNING
-            else:
-                self.storage_progress.color = Theme.Status.SUCCESS
+            # Update Pie Chart
+            self.storage_chart.sections = [
+                ft.PieChartSection(
+                    value=free,
+                    color=Theme.Status.SUCCESS,
+                    radius=20,
+                    title=""
+                ),
+                 ft.PieChartSection(
+                    value=used,
+                    color=Theme.ACCENT,
+                    radius=20,
+                    title=""
+                ),
+            ]
+
+            self.storage_chart.update()
 
             # Format values as strings for localization
             self.storage_text.value = LM.get(

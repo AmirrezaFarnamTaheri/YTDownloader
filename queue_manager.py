@@ -293,11 +293,16 @@ class QueueManager:
         with self._lock:
             self._cancel_tokens[item_id] = token
 
-    def unregister_cancel_token(self, item_id: str) -> None:
-        """Unregister a cancel token (e.g. when finished)."""
+    def unregister_cancel_token(self, item_id: str, token: CancelToken | None = None) -> None:
+        """
+        Unregister a cancel token (e.g. when finished).
+        If token is provided, only remove if it matches (prevent race).
+        """
         with self._lock:
-            if item_id in self._cancel_tokens:
-                del self._cancel_tokens[item_id]
+            current = self._cancel_tokens.get(item_id)
+            if current:
+                if token is None or current is token:
+                    del self._cancel_tokens[item_id]
 
     def cancel_item(self, item_id: str) -> None:
         """Request cancellation of a specific item."""

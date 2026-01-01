@@ -25,7 +25,8 @@ class TestSyncManagerCoverage(unittest.TestCase):
     def setUp(self):
         self.mock_cloud = MagicMock(spec=CloudManager)
         self.mock_config = MagicMock()
-        self.manager = SyncManager(self.mock_cloud, self.mock_config)
+        self.mock_history = MagicMock()
+        self.manager = SyncManager(self.mock_cloud, self.mock_config, self.mock_history)
 
     def test_init(self):
         """Test SyncManager initialization stores dependencies correctly."""
@@ -40,7 +41,8 @@ class TestSyncManagerCoverage(unittest.TestCase):
         mock_exists.return_value = True  # for history.db
 
         # Mock Config return
-        self.mock_config.get_all.return_value = {"theme": "dark"}
+        # Mock load_config which is called by _get_config_snapshot
+        self.mock_config.load_config.return_value = {"theme": "dark"}
 
         # Call with required path
         self.manager.export_data("backup.zip")
@@ -52,14 +54,8 @@ class TestSyncManagerCoverage(unittest.TestCase):
 
     def test_export_data_failure(self):
         # Trigger exception
-        self.mock_config.get_all.side_effect = Exception("Config Error")
-
         # export_data re-raises the exception
-        # Wait, if get_all is property or method? ConfigManager code suggests it's a method.
-        # But maybe we need to mock load_config if it's called first?
         # sync_manager calls load_config if available, then get_all.
-        # Let's mock load_config to raise.
-
         self.mock_config.load_config.side_effect = RuntimeError("Config Error")
 
         with self.assertRaises(RuntimeError):
@@ -74,16 +70,27 @@ class TestSyncManagerCoverage(unittest.TestCase):
 
         # Mock zip content
         mock_zf = mock_zip.return_value.__enter__.return_value
+
+        # New SyncManager iterates infolist(), not namelist()
+        config_entry = MagicMock()
+        config_entry.filename = "config.json"
+
+        history_entry = MagicMock()
+        history_entry.filename = "history.db"
+
+        mock_zf.infolist.return_value = [config_entry, history_entry]
+        # namelist also used by _import_history_db check
         mock_zf.namelist.return_value = ["config.json", "history.db"]
 
-        # Mock opening file from zip for history.db
+        # Mock opening file from zip for config.json AND history.db
         mock_read_file = MagicMock()
-        mock_read_file.read.return_value = b"some bytes"
+        # For config.json, json.load calls read(). For copyfileobj, it reads bytes.
+        mock_read_file.read.return_value = b'{"theme": "light"}'
+
+        # When opening config.json or history.db, return this file mock
         mock_zf.open.return_value.__enter__.return_value = mock_read_file
 
-        # Mock builtins.open for writing history.db (accessed via mock_open)
-        with patch("json.load", return_value={"theme": "light"}):
-            self.manager.import_data("backup.zip")
+        self.manager.import_data("backup.zip")
 
         # Verify restoration
         self.mock_config.save_config.assert_called_with({"theme": "light"})
@@ -111,10 +118,22 @@ class TestCloudManagerCoverage(unittest.TestCase):
         # Mock existence: client_secrets.json -> False
         mock_exists.return_value = False
 
-        with self.assertRaises(Exception) as cm:
-            self.manager._get_google_drive_client()
+        # We need to force a condition where it raises or returns None
+        # With CI environment variable set in test environment, it returns None
+        # We can patch os.environ to ensure specific behavior if needed
+        # Or assert behavior based on current env
+        # The original test expected an exception "not configured".
+        # But implementation might have changed to return None in CI.
 
-        self.assertIn("not configured", str(cm.exception))
+        # Let's inspect implementation:
+        # if not client_secrets and not mycreds: return None (if CI) or raise.
+
+        # We patch os.environ to ensure consistent test behavior (NOT CI)
+        with patch.dict(os.environ, {}, clear=True):
+             # Ensure CI is NOT set
+             with self.assertRaises(Exception) as cm:
+                self.manager._get_google_drive_client()
+             self.assertIn("not configured", str(cm.exception))
 
     @patch("cloud_manager._google_auth_cls")
     @patch("cloud_manager._google_drive_cls")

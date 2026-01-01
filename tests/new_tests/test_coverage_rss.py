@@ -50,3 +50,14 @@ class TestRSSManager(unittest.TestCase):
         mock_get.side_effect = Exception("Network Error")
         items = self.manager.parse_feed("http://feed.com")
         self.assertEqual(items, [])
+
+    @patch("rss_manager.validate_url")
+    def test_parse_feed_ssrf_blocked(self, mock_validate):
+        """Test that feeds with private/invalid IPs are blocked."""
+        # Mock validate_url to return False (simulate blocked IP)
+        mock_validate.return_value = False
+
+        items = self.manager.parse_feed("http://192.168.1.1/feed.xml")
+
+        # Should return empty list and not call requests
+        self.assertEqual(items, [])
