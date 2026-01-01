@@ -2,70 +2,86 @@
 
 ## Status: ✅ Completed
 
-This phase focused on establishing a robust, secure, and stable foundation for the StreamCatch application. The primary goals were to enforce strict typing, harden core logic against security vulnerabilities, ensure thread safety for concurrent operations, and improve overall application robustness.
+**Goal:** Establish a rock-solid, type-safe, and thread-safe foundation for the StreamCatch application.
 
 ## 1.1 Strict Typing & Static Analysis
-**Goal:** Eliminate runtime type errors and improve code maintainability.
+**Status:** **Verified**
 
-*   **Status:** **Completed**
-*   **Implementation Details:**
-    *   **Core Data Structures (`downloader/types.py`):**
-        *   `DownloadOptions` (Dataclass): Encapsulates all download parameters (`url`, `output_path`, `format`, `progress_hook`, etc.) with built-in validation methods (`validate()`, `_validate_proxy()`, `_validate_filename()`).
-        *   `QueueItem` (TypedDict): Defines the exact structure of queue items, enforcing keys like `id`, `status` (Literal), `progress`, and `speed`.
-        *   `DownloadResult` (TypedDict): Standardizes the return dictionary from download engines.
-    *   **Static Analysis Config (`mypy.ini`):**
-        *   configured to ignore missing imports for third-party libraries (`flet`, `yt_dlp`) to reduce false positives while maintaining strict checks on internal code.
-        *   Excludes `tests/`, `build/`, and `dist/` directories to focus on source integrity.
+*   **Implementation:**
+    *   **Mypy Configuration:** `mypy.ini` is configured with `ignore_missing_imports = True` and excludes build/test directories.
+    *   **Type Definitions:** `downloader/types.py` defines core data structures:
+        *   `DownloadOptions` (Dataclass): Enforces strict typing for all download parameters (e.g., `url: str`, `playlist: bool`).
+        *   `QueueItem` (TypedDict): Defines the structure of items in the download queue.
+        *   `DownloadResult` (TypedDict): Standardizes the output of download engines.
 *   **Verification:**
-    *   Codebase is fully annotated with type hints (`str`, `int`, `Optional[...]`, `Callable[...]`).
-    *   Runtime validation in `DownloadOptions` complements static checks.
-*   **Impact:** Significantly reduced the risk of `AttributeError` and `TypeError` in production.
+    *   `downloader/core.py` and `downloader/engines/generic.py` utilize these types extensively.
+    *   `download_video` in `core.py` explicitly raises `TypeError` if input is not a `DownloadOptions` instance.
+*   **Remaining Issues (Mypy):**
+    *   `downloader/extractors/telegram.py` (Line 152): Returns `DownloadResult` (TypedDict) but function signature expects `dict[str, Any]`. While technically compatible at runtime, Mypy flags this mismatch.
+    *   `downloader/core.py` (Line 275): Similar mismatch (returns `DownloadResult` where `dict[str, Any]` is expected).
+    *   `tasks.py` (Line 125): Passes `QueueItem` (TypedDict) to `submit`, which expects `dict[str, Any]`.
+    *   **Recommendation:** Update signatures to use `DownloadResult` and `QueueItem` explicitly instead of generic `dict[str, Any]` to fully leverage strict typing.
 
 ## 1.2 Core Logic Hardening
-**Goal:** Prevent security vulnerabilities related to file handling, path traversal, and malicious inputs.
+**Status:** **Verified**
 
-*   **Status:** **Completed**
-*   **Implementation Details:**
-    *   **RFC 5987 Compliance (`downloader/engines/generic.py`):**
-        *   Implemented `_extract_filename_from_cd` which prioritizes `filename*=UTF-8''...` headers.
-        *   Fallback logic handles quoted (`filename="..."`) and unquoted (`filename=...`) attributes.
-    *   **Path Security:**
-        *   **Traversal Prevention:** `GenericDownloader._verify_path_security` uses `os.path.commonpath([final_abs, output_abs])` to strictly ensure the download target is inside the intended output directory. This blocks `../` attacks.
-        *   **Filename Sanitization:** `_sanitize_filename` removes control characters, reserved Windows names (e.g., `CON`, `PRN`), and dangerous characters (`/ \ : * ? " < > |`).
-    *   **Regex Validation (`ui_utils.py`):**
-        *   **URLs:** Strict regex enforces `http`/`https`, valid domain/IP formats, and blocks embedded credentials (e.g., `http://user:pass@...`).
-        *   **SSRF Protection:** Explicitly validates hostnames using `ipaddress` to block loopback (`127.0.0.1`, `::1`) and private ranges (`192.168.x.x`, `10.x.x.x`) to prevent Server-Side Request Forgery.
-*   **Impact:** The application is resilient against filesystem attacks and malicious server headers.
+*   **Path Security (`downloader/core.py`):**
+    *   **`_sanitize_output_path`:**
+        *   Resolves paths to absolute (`Path(output_path).resolve()`).
+        *   Checks for write permissions (`os.W_OK`).
+        *   Falls back to `tempfile.gettempdir()` on permission failure.
+    *   **`download_video` Validation:**
+        *   Reject absolute paths in `output_template` (`tmpl.is_absolute()`).
+        *   Reject parent directory references (`..`) in `output_template`.
+        *   Verifies disk space via `_check_disk_space` (logs warning if <100MB, but does not block).
+*   **Generic Engine Hardening (`downloader/engines/generic.py`):**
+    *   **Filename Extraction:** `_extract_filename_from_cd` supports RFC 5987 (`filename*=UTF-8''...`), quoted filenames, and unquoted tokens.
+    *   **Filename Sanitization:** `_sanitize_filename` removes dangerous characters (`\ / : * ? " < > |`) and control characters.
+    *   **Path Traversal Prevention:** `_verify_path_security` uses `os.path.commonpath` to ensure the final file path is strictly within the intended output directory.
+    *   **Resilience:** Implements exponential backoff retry logic (`2**retry_count`) and supports resume (`Range` header).
 
-## 1.3 Thread Safety
-**Goal:** Prevent race conditions and deadlocks in the multi-threaded download environment.
+## 1.3 Deep Dive: Extractor Security
+**Status:** **Verified**
 
-*   **Status:** **Completed**
-*   **Implementation Details:**
-    *   **QueueManager (`queue_manager.py`):**
-        *   **Re-entrant Locking:** Uses `threading.RLock()` to allow safe recursive calls within the manager.
-        *   **Condition Variables:** Implements `threading.Condition(self._lock)` for the `wait_for_work` pattern, allowing worker threads to sleep until notified instead of busy-waiting.
-        *   **Atomic Operations:** Methods like `claim_next_downloadable`, `update_item_status`, and `remove_item` are fully synchronized.
-    *   **AppState (`app_state.py`):**
-        *   **Singleton Pattern:** Uses `_instance_lock` (RLock) and double-checked locking in `__new__` to ensure only one instance exists, even during concurrent initialization.
-        *   **Initialization Lock:** `_init_lock` prevents race conditions during the heavy startup phase (loading config, DB, checking FFmpeg).
-    *   **Task Management:**
-        *   **CancelToken:** A custom token implementation allows granular interruption of download threads. It supports both `is_set()` checks and raising `InterruptedError`.
-*   **Impact:** Stable concurrent downloading (default 3 workers) and responsive UI during heavy background operations.
+*   **Telegram Extractor (`downloader/extractors/telegram.py`):**
+    *   **DoS Prevention:** Uses `response.iter_content` with a hard limit of **2MB** (`max_bytes`) to prevent memory exhaustion attacks from malicious large pages.
+    *   **Timeout:** Enforces `timeout=10` on metadata requests.
+    *   **Sanitization:**
+        *   Limits scraped titles to 100 characters.
+        *   Sanitizes filenames using whitelist regex `[^A-Za-z0-9\-\_\.]` (removing anything else).
+        *   Checks `RESERVED_FILENAMES` (e.g., `CON`, `NUL`) to prevent Windows filesystem attacks.
+    *   **URL Handling:** Resolves relative URLs using `urljoin`.
+*   **Generic Extractor (`downloader/extractors/generic.py`):**
+    *   **Method:** Uses `HEAD` request to avoid downloading body content.
+    *   **Validation:** Calls `validate_url` before request.
+    *   **Error Handling:** Catches `requests.RequestException` and falls back gracefully.
 
-## 1.4 Robustness
-**Goal:** Ensure the application handles crashes, system signals, and resource constraints gracefully.
+## 1.4 Thread Safety
+**Status:** **Verified**
 
-*   **Status:** **Completed**
-*   **Implementation Details:**
-    *   **Signal Handling (`main.py`):**
-        *   Registers `signal.SIGINT` and `signal.SIGTERM` handlers.
-        *   Triggers `CONTROLLER.cleanup()` which gracefully stops threads, saves config, and closes DB connections before exit.
-    *   **Global Crash Handler (`main.py`):**
-        *   **Hook:** `sys.excepthook = global_crash_handler`.
-        *   **Sanitization:** Recursively inspects stack frames and local variables. Redacts sensitive keys containing "password", "token", "key", "secret", or "auth".
-        *   **Secure Logging:** Writes crash reports to `~/.streamcatch/crash.log` with restricted file permissions (`0o600`).
-    *   **Defensive Coding:**
-        *   `HistoryManager` retries DB connections on `sqlite3.OperationalError: database is locked`.
-        *   `ConfigManager` backs up corrupted config files instead of crashing.
-*   **Impact:** Users experience fewer "silent failures", and developers receive safe, actionable crash logs.
+*   **Concurrency Management (`tasks.py`):**
+    *   **Executor:** Uses `concurrent.futures.ThreadPoolExecutor` with a configurable worker count (`DEFAULT_MAX_WORKERS = 3`).
+    *   **Lazy Initialization:** Executor is lazily initialized in `_get_executor()` with double-checked locking logic (though simplified to `_executor_lock`).
+    *   **Throttling:** `_submission_throttle` (`threading.Semaphore`) limits the number of tasks submitted to the executor, preventing queue flooding.
+    *   **Atomic Updates:** `_active_count` is protected by `_active_count_lock`.
+    *   **Queue Processing:** `process_queue` loop handles shutdown flags and uses non-blocking semaphore acquisition (`acquire(blocking=False)`) to avoid busy loops.
+*   **Cancellation (`tasks.py` & `utils.py`):**
+    *   **CancelToken:** A per-task `CancelToken` is created and passed to the downloader engines.
+    *   **Propagation:** `_progress_hook_factory` checks `cancel_token.check()` on every progress update.
+    *   **Cleanup:** `_wrapped_download_task` ensures the semaphore is released in a `finally` block, preventing deadlocks if a task crashes.
+
+## 1.5 Robustness
+**Status:** **Verified**
+
+*   **Shutdown Handling:**
+    *   `process_queue` checks `state.shutdown_flag` before processing.
+    *   `_wrapped_download_task` handles shutdown by marking skipped items as "Cancelled".
+*   **Error Handling:**
+    *   `download_video` catches `OSError` during directory creation.
+    *   `GenericDownloader` catches `requests.RequestException` and retries.
+    *   `download_task` wraps the entire operation in a `try...except` block to catch unexpected failures and update the UI/history status to "Error".
+
+## 1.6 Identified Gaps & Recommendations
+*   **Disk Space Check:** `_check_disk_space` in `downloader/core.py` only logs a warning. **Recommendation:** Should probably raise `OSError` if space is critically low (< 50MB) to prevent partial file corruption.
+*   **Type Ignoring:** `tasks.py` uses `cast(Any, ...)` for status updates. **Recommendation:** Update `QueueItem` definition to include 'Cancelled'/'Error' as valid literals or use a string enum.
+*   **Global State:** `tasks.py` relies heavily on `app_state.state`. **Recommendation:** Dependency injection for `QueueManager` would improve testability.

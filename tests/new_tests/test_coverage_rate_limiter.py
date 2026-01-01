@@ -33,7 +33,7 @@ class TestRateLimiter(unittest.TestCase):
         # Start at t=100
         mock_time.return_value = 100.0
 
-        rl = RateLimiter(rate=1.0, capacity=1.0) # 1 token per second
+        rl = RateLimiter(rate=1.0, capacity=1.0)  # 1 token per second
 
         # Consume 1 (tokens -> 0)
         self.assertTrue(rl.check())
