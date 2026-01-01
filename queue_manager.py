@@ -293,7 +293,9 @@ class QueueManager:
         with self._lock:
             self._cancel_tokens[item_id] = token
 
-    def unregister_cancel_token(self, item_id: str, token: CancelToken | None = None) -> None:
+    def unregister_cancel_token(
+        self, item_id: str, token: CancelToken | None = None
+    ) -> None:
         """
         Unregister a cancel token (e.g. when finished).
         If token is provided, only remove if it matches (prevent race).

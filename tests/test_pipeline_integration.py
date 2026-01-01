@@ -54,10 +54,7 @@ class TestPipelineIntegration(unittest.TestCase):
         We mock the actual download_video call.
         """
         # Configure mock to return valid result
-        mock_download.return_value = {
-            "filename": "vid.mp4",
-            "filepath": "/tmp/vid.mp4"
-        }
+        mock_download.return_value = {"filename": "vid.mp4", "filepath": "/tmp/vid.mp4"}
 
         # 1. Add item
         item = {

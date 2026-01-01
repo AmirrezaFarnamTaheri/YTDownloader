@@ -13,12 +13,10 @@ from batch_importer import BatchImporter
 class TestBatchImporterCoverage(unittest.TestCase):
     def setUp(self):
         self.mock_queue = MagicMock()
-        self.mock_config = MagicMock()
-        self.importer = BatchImporter(self.mock_queue, self.mock_config)
+        self.importer = BatchImporter(self.mock_queue)
 
     def test_init(self):
         self.assertEqual(self.importer.queue_manager, self.mock_queue)
-        self.assertEqual(self.importer.config, self.mock_config)
 
     @patch("batch_importer.verify_url")
     @patch("batch_importer.is_safe_path")
@@ -28,15 +26,21 @@ class TestBatchImporterCoverage(unittest.TestCase):
         new_callable=mock_open,
         read_data="http://url1.com\nhttp://url2.com",
     )
-    def test_import_from_file_success(self, mock_file, MockPath, mock_is_safe, mock_verify):
+    def test_import_from_file_success(
+        self, mock_file, MockPath, mock_is_safe, mock_verify
+    ):
         # Configure Path mock
         mock_path_obj = MockPath.return_value
         mock_path_obj.exists.return_value = True
         mock_path_obj.is_file.return_value = True
         mock_path_obj.suffix = ".txt"
         mock_is_safe.return_value = True
-        mock_verify.return_value = True  # Mock verification success
+        mock_verify.return_value = True
 
+        self.mock_queue.get_queue_count.return_value = 0
+        self.mock_queue.MAX_QUEUE_SIZE = 1000
+
+        # Reverted to returning tuple
         count, truncated = self.importer.import_from_file("test.txt")
 
         self.assertEqual(count, 2)
@@ -49,19 +53,25 @@ class TestBatchImporterCoverage(unittest.TestCase):
     @patch(
         "builtins.open", new_callable=mock_open, read_data="invalid\nhttp://valid.com"
     )
-    def test_import_from_file_mixed(self, mock_file, MockPath, mock_is_safe, mock_verify):
-        # Configure Path mock
+    def test_import_from_file_mixed(
+        self, mock_file, MockPath, mock_is_safe, mock_verify
+    ):
         mock_path_obj = MockPath.return_value
         mock_path_obj.exists.return_value = True
         mock_path_obj.is_file.return_value = True
         mock_path_obj.suffix = ".txt"
         mock_is_safe.return_value = True
-        mock_verify.return_value = True
 
-        # Logic now validates URLs and skips invalid entries
+        def side_effect(url, timeout=3):
+            return "http://valid.com" in url
+        mock_verify.side_effect = side_effect
+
+        self.mock_queue.get_queue_count.return_value = 0
+        self.mock_queue.MAX_QUEUE_SIZE = 1000
+
         count, truncated = self.importer.import_from_file("test.txt")
 
-        self.assertEqual(count, 1)
+        self.assertEqual(count, 1) # Only valid one added
         self.assertEqual(self.mock_queue.add_item.call_count, 1)
 
     @patch("batch_importer.Path")
@@ -69,15 +79,16 @@ class TestBatchImporterCoverage(unittest.TestCase):
         mock_path_obj = MockPath.return_value
         mock_path_obj.exists.return_value = False
 
-        with self.assertRaises(ValueError):
-            self.importer.import_from_file("missing.txt")
+        count, truncated = self.importer.import_from_file("missing.txt")
+        self.assertEqual(count, 0)
 
     @patch("batch_importer.verify_url")
     @patch("batch_importer.is_safe_path")
     @patch("batch_importer.Path")
     @patch("builtins.open", new_callable=mock_open)
-    def test_import_from_file_limit(self, mock_file, MockPath, mock_is_safe, mock_verify):
-        # Configure Path mock
+    def test_import_from_file_limit(
+        self, mock_file, MockPath, mock_is_safe, mock_verify
+    ):
         mock_path_obj = MockPath.return_value
         mock_path_obj.exists.return_value = True
         mock_path_obj.is_file.return_value = True
@@ -85,12 +96,10 @@ class TestBatchImporterCoverage(unittest.TestCase):
         mock_is_safe.return_value = True
         mock_verify.return_value = True
 
-        # Generate 105 URLs
-        data = "\n".join([f"http://url{i}.com" for i in range(105)])
+        self.mock_queue.get_queue_count.return_value = 0
+        self.mock_queue.MAX_QUEUE_SIZE = 1000
 
-        # If we use mock_open(read_data=data), it should handle iteration automatically
-        # But since we passed mock_open as new_callable, we need to configure it correctly
-        # Let's try configuring side_effect for the file handle's __iter__
+        data = "\n".join([f"http://url{i}.com" for i in range(105)])
         mock_file.return_value.__iter__.side_effect = lambda: iter(data.splitlines())
 
         count, truncated = self.importer.import_from_file("test.txt")
@@ -104,7 +113,6 @@ class TestBatchImporterCoverage(unittest.TestCase):
     @patch("batch_importer.Path")
     @patch("builtins.open", new_callable=mock_open, read_data="http://test.com")
     def test_import_queue_full(self, mock_file, MockPath, mock_is_safe, mock_verify):
-        # Configure Path mock
         mock_path_obj = MockPath.return_value
         mock_path_obj.exists.return_value = True
         mock_path_obj.is_file.return_value = True
@@ -112,9 +120,9 @@ class TestBatchImporterCoverage(unittest.TestCase):
         mock_is_safe.return_value = True
         mock_verify.return_value = True
 
-        # If add_item raises exception, it bubbles up, is caught, logged, AND RE-RAISED.
-        # Code: raise ex
-        self.mock_queue.add_item.side_effect = ValueError("Queue is full")
+        self.mock_queue.get_queue_count.return_value = 1000
+        self.mock_queue.MAX_QUEUE_SIZE = 1000
 
-        with self.assertRaises(ValueError):
-            self.importer.import_from_file("test.txt")
+        count, truncated = self.importer.import_from_file("test.txt")
+
+        self.assertEqual(count, 0)

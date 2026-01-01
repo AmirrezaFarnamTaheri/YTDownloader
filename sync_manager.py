@@ -5,6 +5,7 @@ Synchronizes configuration and history to cloud storage.
 import json
 import logging
 import os
+import pathlib
 import shutil
 import tempfile
 import threading
@@ -333,13 +334,24 @@ class SyncManager:
             with zipfile.ZipFile(import_path, "r") as zf:
                 # Zip Slip Protection: Check ALL members before extracting
                 for member in zf.infolist():
-                    # We only care about config.json and history.db
-                    # But checking all paths is good practice
-                    if ".." in member.filename or member.filename.startswith("/"):
-                        logger.warning("Skipping potentially malicious file in zip: %s", member.filename)
+                    # Normalize to POSIX style for check
+                    normalized = pathlib.PurePath(member.filename).as_posix()
+                    parts = normalized.split("/")
+
+                    # Robust check for any ".." segment or absolute path
+                    if (
+                        ".." in parts
+                        or member.filename.startswith("/")
+                        or "\\" in member.filename
+                        or (len(parts) > 0 and parts[0] == "..")
+                    ):
+                        logger.warning(
+                            "Skipping potentially malicious file in zip: %s",
+                            member.filename,
+                        )
                         continue
 
-                    if member.filename == "config.json":
+                    if normalized == "config.json":
                         with zf.open("config.json") as f:
                             data = json.load(f)
                             if hasattr(self.config, "save_config"):
@@ -349,7 +361,7 @@ class SyncManager:
                                 for k, v in data.items():
                                     self.config.set(k, v)
 
-                    elif member.filename == "history.db":
+                    elif normalized == "history.db":
                         self._import_history_db(zf)
 
             logger.info("Import completed")

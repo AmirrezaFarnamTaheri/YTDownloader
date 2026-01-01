@@ -57,8 +57,12 @@ class SocialManager:
             # pylint: disable=broad-exception-caught
             except Exception as e:
                 self.failure_count += 1
-                logger.warning("Failed to connect to Discord RPC (Attempt %d/%d): %s",
-                             self.failure_count, self.MAX_FAILURES, e)
+                logger.warning(
+                    "Failed to connect to Discord RPC (Attempt %d/%d): %s",
+                    self.failure_count,
+                    self.MAX_FAILURES,
+                    e,
+                )
                 if self.failure_count >= self.MAX_FAILURES:
                     logger.warning("Discord RPC disabled due to excessive failures")
 
@@ -84,14 +88,18 @@ class SocialManager:
             # pylint: disable=broad-exception-caught
             except Exception as e:
                 self.failure_count += 1
-                logger.warning("Failed to update Discord activity (Attempt %d/%d): %s",
-                             self.failure_count, self.MAX_FAILURES, e)
+                logger.warning(
+                    "Failed to update Discord activity (Attempt %d/%d): %s",
+                    self.failure_count,
+                    self.MAX_FAILURES,
+                    e,
+                )
                 # If we fail to update, we might be disconnected
                 try:
                     self.connected = False
                     if self.rpc:
                         self.rpc.close()
-                except Exception: # pylint: disable=broad-exception-caught
+                except Exception:  # pylint: disable=broad-exception-caught
                     pass
 
                 if self.failure_count >= self.MAX_FAILURES:

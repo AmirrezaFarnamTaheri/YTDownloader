@@ -54,7 +54,9 @@ class TestMainIntegration(unittest.TestCase):
             "123", "Downloading"
         )
         self.mock_state.queue_manager.update_item_status.assert_any_call(
-            "123", "Completed", {"filename": "vid.mp4", "filepath": "/tmp/vid.mp4", "progress": 1.0}
+            "123",
+            "Completed",
+            {"filename": "vid.mp4", "filepath": "/tmp/vid.mp4", "progress": 1.0},
         )
 
         # Verify history

@@ -109,7 +109,7 @@ class AppController:
                         self.ui.update_queue_view()
 
                 # Process queue
-                process_queue()
+                process_queue(self.page)
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Error in background_loop: %s", e, exc_info=True)

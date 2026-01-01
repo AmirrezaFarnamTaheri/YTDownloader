@@ -1,6 +1,7 @@
 """
 Tests for UI extended functionality.
 """
+
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
@@ -32,14 +33,14 @@ class TestUIExtended(unittest.TestCase):
 
         # Reset
         layout.toggle_compact_mode.reset_mock()
-        layout.rail.extended = False # Already compact
+        layout.rail.extended = False  # Already compact
 
         # Width < 1000 -> Should NOT toggle again
         layout.handle_resize(900, 600)
         layout.toggle_compact_mode.assert_not_called()
 
         # Test Expand Trigger
-        layout.rail.extended = False # Compact
+        layout.rail.extended = False  # Compact
 
         # Width >= 1000 -> Should toggle compact False (expand)
         layout.handle_resize(1200, 800)
@@ -47,7 +48,7 @@ class TestUIExtended(unittest.TestCase):
 
         # Reset
         layout.toggle_compact_mode.reset_mock()
-        layout.rail.extended = True # Already expanded
+        layout.rail.extended = True  # Already expanded
 
         # Width >= 1000 -> Should NOT toggle
         layout.handle_resize(1200, 800)

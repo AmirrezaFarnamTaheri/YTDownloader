@@ -73,7 +73,7 @@ class TestSecurityEdges(unittest.TestCase):
 
         # Valid config content
         mock_file = MagicMock()
-        mock_file.read.return_value = b'{}'
+        mock_file.read.return_value = b"{}"
         mock_zip_instance.open.return_value.__enter__.return_value = mock_file
 
         manager.import_data("dummy.zip")

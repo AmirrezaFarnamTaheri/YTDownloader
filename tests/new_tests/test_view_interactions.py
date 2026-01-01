@@ -1,6 +1,6 @@
-
 import unittest
 from unittest.mock import MagicMock, patch
+
 
 # Mock controls must be defined before imports that use them
 class MockControl:
@@ -12,16 +12,23 @@ class MockControl:
         self.content = None
         self.url_input = None
         self.fetch_btn = None
+        self.page = MagicMock()  # Ensure page exists for update checks
 
         # Helper to mimic Flet control properties
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    def update(self): pass
+    def update(self):
+        # Mock update method
+        pass
 
-with patch.dict("sys.modules", {
-    "flet": MagicMock(),
-}):
+
+with patch.dict(
+    "sys.modules",
+    {
+        "flet": MagicMock(),
+    },
+):
     import flet as ft
 
     # Configure flet mocks
@@ -64,6 +71,7 @@ with patch.dict("sys.modules", {
     from views.download_view import DownloadView
     from views.components.download_input_card import DownloadInputCard
 
+
 class TestViewInteractions(unittest.TestCase):
     def setUp(self):
         self.mock_page = MagicMock()
@@ -83,25 +91,21 @@ class TestViewInteractions(unittest.TestCase):
                 self.mock_paste,
                 self.mock_import,
                 self.mock_schedule,
-                self.mock_state
+                self.mock_state,
             )
-            # Manually inject controls created in __init__ because we patched it out?
-            # Actually, if we patch BaseView.__init__, DownloadView.__init__ runs but skips super().
-            # DownloadView.__init__ creates controls.
-            # However, since we are mocking flet classes with MockControl, they should instantiate fine.
-            # But we need to ensure super().__init__ (which sets self.app_title etc) doesn't break things if skipped.
-            # DownloadView doesn't rely heavily on BaseView init for these tests.
-            pass
+            self.view.page = self.mock_page  # Attach page
 
-        # Re-run _build_ui or ensure controls exist
-        # If we patched BaseView.__init__, DownloadView.__init__ logic *after* super() call runs.
-        # So self.input_card etc should exist.
+            # Ensure input_card has page attached too if created
+            if hasattr(self.view, "input_card") and self.view.input_card:
+                self.view.input_card.page = self.mock_page
 
     def test_fetch_button_click(self):
         # We need to find the input card in the view's controls
-        # or use the direct reference if we rely on DownloadView structure
         input_card = self.view.input_card
         self.assertIsNotNone(input_card)
+
+        # Ensure update is mocked safely on instance
+        input_card.update = MagicMock()
 
         # Simulate input
         input_card.url_input = MockControl()
@@ -109,16 +113,14 @@ class TestViewInteractions(unittest.TestCase):
         input_card.fetch_btn = MockControl()
 
         # Call the handler on InputCard directly
-        # The View passes `self.on_fetch_info` to InputCard.
-        # InputCard calls `self.on_fetch(url)`.
-
-        # We can test that InputCard's fetch logic works
         input_card._on_fetch_click(None)
 
         self.mock_fetch.assert_called_with("https://youtube.com/watch?v=123")
 
     def test_fetch_empty_url(self):
         input_card = self.view.input_card
+        input_card.update = MagicMock()
+
         input_card.url_input = MockControl()
         input_card.url_input.value = ""
 
@@ -130,10 +132,10 @@ class TestViewInteractions(unittest.TestCase):
 
     def test_add_to_queue_click(self):
         # Mock input card data
-        self.view.input_card.get_options = MagicMock(return_value={
-            "url": "http://vid",
-            "video_format": "best"
-        })
+        self.view.input_card.get_options = MagicMock(
+            return_value={"url": "http://vid", "video_format": "best"}
+        )
+        self.view.input_card.reset = MagicMock()  # Mock reset which calls update
 
         # Simulate video info presence
         self.view.video_info = {"title": "Test Video"}
@@ -146,5 +148,6 @@ class TestViewInteractions(unittest.TestCase):
         self.assertEqual(args["url"], "http://vid")
         self.assertEqual(args["title"], "Test Video")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

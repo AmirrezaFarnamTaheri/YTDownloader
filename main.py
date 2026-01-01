@@ -35,6 +35,7 @@ UI: UIManager | None = None
 PAGE: ft.Page | None = None
 CONTROLLER: AppController | None = None
 
+
 def _handle_signal(sig: int, frame: Any) -> None:
     """Handle interrupt signals for graceful shutdown."""
     # pylint: disable=unused-argument
