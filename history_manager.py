@@ -100,6 +100,24 @@ class HistoryManager:
             raise ValueError("Null bytes not allowed")
 
     @staticmethod
+    def vacuum():
+        """
+        Vacuum the database to optimize size and performance.
+        Should be called periodically during maintenance tasks.
+        """
+        logger.info("Vacuuming history database...")
+        conn = None
+        try:
+            conn = HistoryManager._get_connection()
+            conn.execute("VACUUM")
+            logger.info("Database vacuum completed.")
+        except Exception as e:
+            logger.error("Failed to vacuum database: %s", e)
+        finally:
+            if conn:
+                conn.close()
+
+    @staticmethod
     def init_db():
         """Initialize the history database table and perform migrations."""
         logger.info("Initializing history database...")

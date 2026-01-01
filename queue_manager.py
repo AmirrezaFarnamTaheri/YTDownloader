@@ -8,8 +8,9 @@ import threading
 import uuid
 from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
+from downloader.types import QueueItem
 from utils import CancelToken
 
 logger = logging.getLogger(__name__)
@@ -28,8 +29,9 @@ class QueueManager:
 
     MAX_QUEUE_SIZE = 1000
 
-    def __init__(self):
-        self._queue: list[dict[str, Any]] = []
+    def __init__(self) -> None:
+        # We explicitly type self._queue as list[QueueItem]
+        self._queue: list[QueueItem] = []
         # Re-entrant lock for queue operations
         self._lock = threading.RLock()
 
@@ -44,29 +46,29 @@ class QueueManager:
         self._cancel_tokens: dict[str, CancelToken] = {}
 
     @property
-    def has_work_condition(self):
+    def has_work_condition(self) -> threading.Condition:
         """Expose condition variable for workers."""
         return self._has_work
 
-    def get_all(self) -> list[dict[str, Any]]:
+    def get_all(self) -> list[QueueItem]:
         """Get a copy of the current queue."""
         with self._lock:
             # Return shallow copy
             return list(self._queue)
 
-    def get_item_by_id(self, item_id: str) -> dict[str, Any] | None:
+    def get_item_by_id(self, item_id: str) -> QueueItem | None:
         """Get item by its unique ID."""
         with self._lock:
             for item in self._queue:
                 if item.get("id") == item_id:
-                    return item.copy()
+                    return cast(QueueItem, item.copy())
         return None
 
-    def get_item_by_index(self, index: int) -> dict[str, Any] | None:
+    def get_item_by_index(self, index: int) -> QueueItem | None:
         """Get item by its index in the queue."""
         with self._lock:
             if 0 <= index < len(self._queue):
-                return self._queue[index].copy()
+                return cast(QueueItem, self._queue[index].copy())
         return None
 
     def any_downloading(self) -> bool:
@@ -86,19 +88,19 @@ class QueueManager:
                     return True
         return False
 
-    def add_listener(self, listener: Callable[[], None]):
+    def add_listener(self, listener: Callable[[], None]) -> None:
         """Add a listener callback for queue changes."""
         with self._listeners_lock:
             if listener not in self._listeners:
                 self._listeners.append(listener)
 
-    def remove_listener(self, listener: Callable[[], None]):
+    def remove_listener(self, listener: Callable[[], None]) -> None:
         """Remove a listener callback."""
         with self._listeners_lock:
             if listener in self._listeners:
                 self._listeners.remove(listener)
 
-    def _notify_listeners_safe(self):
+    def _notify_listeners_safe(self) -> None:
         """Notify listeners safely without holding the queue lock."""
         # Snapshot listeners
         with self._listeners_lock:
@@ -110,7 +112,7 @@ class QueueManager:
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Error in queue listener: %s", e)
 
-    def add_item(self, item: dict[str, Any]):
+    def add_item(self, item: dict[str, Any]) -> None:
         """Add an item to the queue."""
         if not isinstance(item, dict):
             raise ValueError("Item must be a dictionary")
@@ -118,8 +120,8 @@ class QueueManager:
         with self._lock:
             if len(self._queue) >= self.MAX_QUEUE_SIZE:
                 raise ValueError("Queue is full")
-            # Note: Item addition happens below, after the check, within the same lock
 
+            # Validate and cast to QueueItem
             # Ensure ID
             if "id" not in item:
                 item["id"] = str(uuid.uuid4())
@@ -128,12 +130,14 @@ class QueueManager:
             if "status" not in item:
                 item["status"] = "Queued"
 
+            queue_item = cast(QueueItem, item)
+
             logger.info(
                 "Adding item to queue: %s (ID: %s)",
-                item.get("title", item.get("url")),
-                item["id"],
+                queue_item.get("title", queue_item.get("url")),
+                queue_item["id"],
             )
-            self._queue.append(item)
+            self._queue.append(queue_item)
 
             # Notify workers that work might be available
             # Must acquire the condition lock (which is self._lock)
@@ -143,7 +147,7 @@ class QueueManager:
 
     def update_item_status(
         self, item_id: str, status: str, updates: dict[str, Any] | None = None
-    ):
+    ) -> None:
         """
         Atomically update an item's status and other fields.
         """
@@ -157,7 +161,8 @@ class QueueManager:
                         item.get("status"),
                         status,
                     )
-                    item["status"] = status
+                    # We assume status is a valid Literal
+                    item["status"] = cast(Any, status)
                     if updates:
                         item.update(updates)
                     updated = True
@@ -169,7 +174,7 @@ class QueueManager:
         if updated:
             self._notify_listeners_safe()
 
-    def remove_item(self, item: dict[str, Any]):
+    def remove_item(self, item: dict[str, Any]) -> None:
         """
         Remove an item from the queue and cancel it if running.
         Atomic operation.
@@ -177,31 +182,28 @@ class QueueManager:
         item_id = item.get("id")
         removed = False
 
-        # If no ID (legacy), fallback to old method
-        if not item_id:
-            with self._lock:
-                if item in self._queue:
-                    self._queue.remove(item)
-                    removed = True
-
-            if removed:
-                self._notify_listeners_safe()
-            return
-
         with self._lock:
             # Find actual item object in queue (in case 'item' is a copy)
             target = None
-            for q_item in self._queue:
-                if q_item.get("id") == item_id:
-                    target = q_item
-                    break
+            if item_id:
+                for q_item in self._queue:
+                    if q_item.get("id") == item_id:
+                        target = q_item
+                        break
+            else:
+                # Fallback for legacy items without IDs (shouldn't happen with strict types)
+                for q_item in self._queue:
+                    if q_item == item:
+                        target = q_item
+                        break
 
             if target:
-                logger.info("Removing item from queue: %s", item_id)
-                # Cancel if running
-                token = self._cancel_tokens.get(item_id)
-                if token:
-                    token.cancel()
+                if item_id:
+                    logger.info("Removing item from queue: %s", item_id)
+                    # Cancel if running
+                    token = self._cancel_tokens.get(item_id)
+                    if token:
+                        token.cancel()
 
                 self._queue.remove(target)
                 removed = True
@@ -210,7 +212,7 @@ class QueueManager:
         if removed:
             self._notify_listeners_safe()
 
-    def swap_items(self, index1: int, index2: int):
+    def swap_items(self, index1: int, index2: int) -> None:
         """Swap two items in the queue."""
         changed = False
         with self._lock:
@@ -230,8 +232,9 @@ class QueueManager:
         with self._lock:
             for item in self._queue:
                 status = str(item.get("status", ""))
-                if status.startswith("Scheduled") and item.get("scheduled_time"):
-                    if now >= item["scheduled_time"]:
+                scheduled_time = item.get("scheduled_time")
+                if status.startswith("Scheduled") and scheduled_time:
+                    if now >= scheduled_time:
                         item["status"] = "Queued"
                         item["scheduled_time"] = None
                         updated += 1
@@ -243,7 +246,7 @@ class QueueManager:
             self._notify_listeners_safe()
         return updated
 
-    def claim_next_downloadable(self) -> dict[str, Any] | None:
+    def claim_next_downloadable(self) -> QueueItem | None:
         """
         Atomically claim the next 'Queued' item.
         Also cleans up stale 'Allocating' items.
@@ -258,7 +261,8 @@ class QueueManager:
                     if allocated_at and (now - allocated_at > stale_threshold):
                         logger.warning("Resetting stale item: %s", item.get("title"))
                         item["status"] = "Queued"
-                        item.pop("_allocated_at", None)
+                        if "_allocated_at" in item:
+                            del item["_allocated_at"]
 
             # Find next
             for item in self._queue:
@@ -277,25 +281,25 @@ class QueueManager:
         with self._has_work:
             return self._has_work.wait(timeout)
 
-    def notify_workers(self):
+    def notify_workers(self) -> None:
         """Notify workers that state has changed."""
         with self._has_work:
             self._has_work.notify_all()
 
     # --- Cancellation Handling ---
 
-    def register_cancel_token(self, item_id: str, token: CancelToken):
+    def register_cancel_token(self, item_id: str, token: CancelToken) -> None:
         """Register a cancel token for a running download."""
         with self._lock:
             self._cancel_tokens[item_id] = token
 
-    def unregister_cancel_token(self, item_id: str):
+    def unregister_cancel_token(self, item_id: str) -> None:
         """Unregister a cancel token (e.g. when finished)."""
         with self._lock:
             if item_id in self._cancel_tokens:
                 del self._cancel_tokens[item_id]
 
-    def cancel_item(self, item_id: str):
+    def cancel_item(self, item_id: str) -> None:
         """Request cancellation of a specific item."""
         with self._lock:
             token = self._cancel_tokens.get(item_id)
@@ -365,13 +369,15 @@ class QueueManager:
             self._notify_listeners_safe()
         return updated
 
-    def cancel_all(self):
+    def cancel_all(self) -> int:
         """Cancel all active downloads in the queue."""
         cancelled_count = 0
         with self._lock:
             for item in self._queue:
                 item_id = item.get("id")
                 status = item.get("status", "")
+                if not item_id:
+                    continue
 
                 # Only cancel active items
                 if status in ("Queued", "Allocating", "Downloading", "Processing"):
@@ -395,7 +401,7 @@ class QueueManager:
 
         return cancelled_count
 
-    def pause_all(self):
+    def pause_all(self) -> int:
         """Pause all queued downloads (prevents new downloads from starting)."""
         paused_count = 0
         with self._lock:
@@ -411,7 +417,7 @@ class QueueManager:
 
         return paused_count
 
-    def resume_all(self):
+    def resume_all(self) -> int:
         """Resume all paused downloads."""
         resumed_count = 0
         with self._lock:

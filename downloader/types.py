@@ -1,12 +1,13 @@
 """
-Configuration dataclasses for the downloader.
+Configuration dataclasses and type definitions for the downloader.
 """
 
 import ipaddress
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Literal, TypedDict
 from urllib.parse import urlparse
 
 
@@ -37,6 +38,7 @@ class DownloadOptions:
     rate_limit: str | None = None
     download_item: dict[str, Any] | None = None
     filename: str | None = None
+    no_check_certificate: bool = False
 
     def validate(self):
         """Perform validation on the options."""
@@ -63,6 +65,8 @@ class DownloadOptions:
                         if ip.is_private or ip.is_loopback:
                             raise ValueError("Private IP proxies are not allowed")
                     except ValueError:
+                        # Simple regex check for IP-like strings that failed ip_address check
+                        # This prevents "1.2.3.999" from bypassing if it wasn't caught above
                         if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname):
                             raise ValueError("Invalid proxy host IP") from None
             except ValueError as e:
@@ -122,3 +126,71 @@ class DownloadOptions:
                 raise ValueError(f"Invalid time format: {time_str}")
             except (ValueError, TypeError) as e:
                 raise ValueError(f"Could not parse time string: {time_str}") from e
+
+
+class DownloadResult(TypedDict, total=False):
+    """
+    Type definition for the result of a download operation.
+    """
+
+    filename: str
+    filepath: str
+    url: str
+    title: str
+    duration: float | None
+    thumbnail: str | None
+    uploader: str | None
+    size: int | float
+    type: Literal["video", "playlist", "audio"]
+    entries: int  # For playlists
+
+
+class QueueItem(TypedDict, total=False):
+    """
+    Type definition for an item in the download queue.
+    Using total=False to allow for optional fields during creation.
+    """
+
+    id: str
+    url: str
+    title: str
+    status: Literal[
+        "Queued",
+        "Allocating",
+        "Downloading",
+        "Processing",
+        "Completed",
+        "Error",
+        "Cancelled",
+        "Paused",
+    ]
+    scheduled_time: datetime | None
+    progress: float
+    speed: str
+    eta: str
+    size: str
+    error: str | None
+    # Options
+    output_path: str
+    output_template: str
+    video_format: str
+    audio_format: str | None
+    subtitle_lang: str | None
+    playlist: bool
+    sponsorblock: bool
+    use_aria2c: bool
+    gpu_accel: str | None
+    start_time: str | None
+    end_time: str | None
+    force_generic: bool
+    cookies_from_browser: str | None
+    chapters: bool
+    insta_type: str | None
+    proxy: str | None
+    rate_limit: str | None
+    # Internal
+    filepath: str
+    filename: str
+    control_ref: Any  # weakref to UI control
+    _allocated_at: datetime
+    _was_queued: bool

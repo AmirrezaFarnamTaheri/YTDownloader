@@ -8,7 +8,7 @@ Refactored to use ThreadPoolExecutor and per-task CancelTokens.
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, cast
 
 from app_state import state
 from downloader.core import download_video
@@ -20,11 +20,11 @@ logger = logging.getLogger(__name__)
 
 # Default max workers - will be initialized lazily
 DEFAULT_MAX_WORKERS = 3
-_executor = None
+_executor: ThreadPoolExecutor | None = None
 _executor_lock = threading.Lock()
 
 
-def _get_executor():
+def _get_executor() -> ThreadPoolExecutor:
     """Lazily initialize executor to allow config changes before first use."""
     global _executor
     with _executor_lock:
@@ -32,6 +32,14 @@ def _get_executor():
             max_workers = state.config.get(
                 "max_concurrent_downloads", DEFAULT_MAX_WORKERS
             )
+            # Ensure max_workers is valid
+            try:
+                max_workers = int(max_workers)
+                if max_workers < 1:
+                    max_workers = DEFAULT_MAX_WORKERS
+            except (ValueError, TypeError):
+                max_workers = DEFAULT_MAX_WORKERS
+
             _executor = ThreadPoolExecutor(
                 max_workers=max_workers, thread_name_prefix="DLWorker"
             )
@@ -40,7 +48,7 @@ def _get_executor():
 
 # For backwards compatibility - mimic EXECUTOR global via module getattr
 # Python 3.7+ supports __getattr__ at module level
-def __getattr__(name):
+def __getattr__(name: str) -> Any:
     if name == "EXECUTOR":
         return _get_executor()
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
@@ -51,9 +59,10 @@ _active_count = 0
 _active_count_lock = threading.Lock()
 
 
-def _get_max_workers():
+def _get_max_workers() -> int:
     try:
-        return int(state.config.get("max_concurrent_downloads", DEFAULT_MAX_WORKERS))
+        val = int(state.config.get("max_concurrent_downloads", DEFAULT_MAX_WORKERS))
+        return val if val > 0 else DEFAULT_MAX_WORKERS
     except Exception:  # pylint: disable=broad-exception-caught
         return DEFAULT_MAX_WORKERS
 
@@ -68,7 +77,7 @@ _submission_throttle = threading.Semaphore(_get_max_workers())
 _PROCESS_QUEUE_LOCK = threading.RLock()
 
 
-def process_queue():
+def process_queue() -> None:
     """
     Process items in the queue.
     Submits new downloads to the executor if slots are available.
@@ -120,12 +129,13 @@ def process_queue():
                     _active_count -= 1
                 _submission_throttle.release()
 
-                state.queue_manager.update_item_status(
-                    item.get("id"), "Error", {"error": "Failed to start"}
-                )
+                if "id" in item:
+                    state.queue_manager.update_item_status(
+                        item["id"], "Error", {"error": "Failed to start"}
+                    )
 
 
-def _wrapped_download_task(item):
+def _wrapped_download_task(item: dict[str, Any]) -> None:
     """
     Wrapper to ensure semaphore release and accurate active count.
     Guarantees semaphore is released even if download_task fails or app shuts down.
@@ -138,8 +148,9 @@ def _wrapped_download_task(item):
         else:
             # Ensure item state is terminal when skipped due to shutdown
             try:
-                item["status"] = "Cancelled"
-                state.queue_manager.update_item_status(item.get("id"), "Cancelled")
+                item["status"] = cast(Any, "Cancelled")
+                if "id" in item:
+                    state.queue_manager.update_item_status(item["id"], "Cancelled")
                 _log_to_history(item, None)
             except Exception:  # pylint: disable=broad-exception-caught
                 # best-effort; don't block cleanup
@@ -155,8 +166,8 @@ def _wrapped_download_task(item):
         try:
             # Accessing protected member _has_work as designed for internal signaling
             # pylint: disable=protected-access
-            with state.queue_manager._has_work:
-                state.queue_manager._has_work.notify_all()
+            with state.queue_manager.has_work_condition:
+                state.queue_manager.has_work_condition.notify_all()
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.debug(
                 "Failed to notify queue manager for slot release: %s",
@@ -210,7 +221,7 @@ def configure_concurrency(max_workers: int | None = None) -> bool:
     return True
 
 
-def _update_progress_ui(item: dict[str, Any]):
+def _update_progress_ui(item: dict[str, Any]) -> None:
     """Helper to update UI control if present."""
     control_ref = item.get("control_ref")
     if control_ref:
@@ -222,10 +233,10 @@ def _update_progress_ui(item: dict[str, Any]):
             logger.debug("Failed to update progress UI: %s", exc, exc_info=True)
 
 
-def _progress_hook_factory(item: dict[str, Any], cancel_token: CancelToken):
+def _progress_hook_factory(item: dict[str, Any], cancel_token: CancelToken) -> Any:
     """Creates a closure for the progress hook."""
 
-    def progress_hook(d):
+    def progress_hook(d: dict[str, Any]) -> None:
         try:
             if state.shutdown_flag.is_set():
                 raise InterruptedError("Shutdown initiated")
@@ -256,7 +267,7 @@ def _progress_hook_factory(item: dict[str, Any], cancel_token: CancelToken):
 
             elif status == "finished":
                 item["progress"] = 1.0
-                item["status"] = "Processing"
+                item["status"] = cast(Any, "Processing")
                 _update_progress_ui(item)
 
         except InterruptedError:
@@ -268,7 +279,7 @@ def _progress_hook_factory(item: dict[str, Any], cancel_token: CancelToken):
     return progress_hook
 
 
-def _log_to_history(item: dict[str, Any], filepath: str | None = None):
+def _log_to_history(item: dict[str, Any], filepath: str | None = None) -> None:
     """Log completed download to history safely."""
     # Import locally to avoid circular import issues at top-level
     # pylint: disable=import-outside-toplevel
@@ -289,7 +300,7 @@ def _log_to_history(item: dict[str, Any], filepath: str | None = None):
         logger.error("Failed to add to history: %s", e)
 
 
-def download_task(item: dict[str, Any]):
+def download_task(item: dict[str, Any]) -> None:
     """
     Worker function for a single download.
     Executes the download, updates status, and logs to history.
@@ -297,6 +308,7 @@ def download_task(item: dict[str, Any]):
     url = item["url"]
     item_id = item.get("id")
 
+    # Double check item status in case it was cancelled while in queue
     if item_id:
         current = state.queue_manager.get_item_by_id(item_id)
         if not current:
@@ -319,7 +331,8 @@ def download_task(item: dict[str, Any]):
     logger.info("Starting download task: %s", url)
 
     try:
-        state.queue_manager.update_item_status(item_id, "Downloading")
+        if item_id:
+            state.queue_manager.update_item_status(item_id, "Downloading")
         _update_progress_ui(item)
 
         # Prepare hooks and execute
@@ -380,23 +393,24 @@ def download_task(item: dict[str, Any]):
         info = download_video(options)
 
         # Success
-        state.queue_manager.update_item_status(
-            item_id,
-            "Completed",
-            {
-                "filename": info.get("filename", "Unknown"),
-                "filepath": info.get("filepath", "Unknown"),
-                "progress": 1.0,
-            },
-        )
+        if item_id:
+            state.queue_manager.update_item_status(
+                item_id,
+                "Completed",
+                {
+                    "filename": info.get("filename", "Unknown"),
+                    "filepath": info.get("filepath", "Unknown"),
+                    "progress": 1.0,
+                },
+            )
         logger.info("Download completed: %s", url)
         # Update the item dict in place because download_task caller might hold reference
         # But queue manager update_item_status does it for the queue.
-        item["status"] = (
-            "Completed"  # Update local ref for test assertion if test uses this ref
-        )
+        item["status"] = cast(
+            Any, "Completed"
+        )  # Update local ref for test assertion if test uses this ref
 
-        _log_to_history(item, info.get("filepath"))
+        _log_to_history(item, str(info.get("filepath")))
         _update_progress_ui(item)
 
     except Exception as e:  # pylint: disable=broad-exception-caught
@@ -415,16 +429,20 @@ def download_task(item: dict[str, Any]):
             logger.info("Download cancelled: %s", url)
 
             # Ensure status is definitely cancelled and reset progress
-            state.queue_manager.update_item_status(
-                item_id,
-                "Cancelled",
-                {"progress": 0, "speed": "", "eta": "", "size": ""},
-            )
-            item["status"] = "Cancelled"  # Update local ref
+            if item_id:
+                state.queue_manager.update_item_status(
+                    item_id,
+                    "Cancelled",
+                    {"progress": 0, "speed": "", "eta": "", "size": ""},
+                )
+            item["status"] = cast(Any, "Cancelled")  # Update local ref
         else:
             logger.error("Download failed: %s", e, exc_info=True)
-            state.queue_manager.update_item_status(item_id, "Error", {"error": str(e)})
-            item["status"] = "Error"  # Update local ref
+            if item_id:
+                state.queue_manager.update_item_status(
+                    item_id, "Error", {"error": str(e)}
+                )
+            item["status"] = cast(Any, "Error")  # Update local ref
 
         _update_progress_ui(item)
 

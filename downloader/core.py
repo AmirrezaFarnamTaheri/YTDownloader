@@ -17,7 +17,7 @@ import yt_dlp
 from downloader.engines.generic import GenericDownloader
 from downloader.engines.ytdlp import YTDLPWrapper
 from downloader.extractors.telegram import TelegramExtractor
-from downloader.types import DownloadOptions
+from downloader.types import DownloadOptions, DownloadResult
 
 logger = logging.getLogger(__name__)
 

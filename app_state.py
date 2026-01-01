@@ -69,7 +69,7 @@ class AppState:
                     cls._instance = instance
         return cls._instance
 
-    def __init__(self):  # pylint: disable=too-many-statements
+    def __init__(self) -> None:  # pylint: disable=too-many-statements
         # Prevent double initialization
         with self._init_lock:
             if self._initialized:
@@ -144,7 +144,7 @@ class AppState:
         self._init_complete.set()
         logger.info("AppState initialization complete")
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup method for graceful shutdown."""
         logger.info("Cleaning up AppState...")
         self.shutdown_flag.set()
@@ -187,7 +187,7 @@ class AppState:
             logger.debug("Cache miss for video info: %s", url)
         return info
 
-    def set_video_info(self, url: str, info: dict[str, Any]):
+    def set_video_info(self, url: str, info: dict[str, Any]) -> None:
         """Cache video info for URL with proper LRU eviction."""
         # If URL already exists, remove it first so it goes to the end
         if url in self._video_info_cache:
@@ -205,7 +205,7 @@ class AppState:
         logger.debug("Caching video info for: %s", url)
         self._video_info_cache[url] = info
 
-    def clear_video_info_cache(self):
+    def clear_video_info_cache(self) -> None:
         """Clear video info cache to free memory."""
         logger.debug("Clearing all video info cache")
         self._video_info_cache.clear()

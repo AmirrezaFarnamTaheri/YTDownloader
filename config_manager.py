@@ -10,7 +10,7 @@ import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 logger = logging.getLogger(__name__)
 
@@ -57,20 +57,40 @@ class ConfigManager:
             return Path("config.json")
 
     @staticmethod
-    def _validate_config(config: dict[str, Any]) -> None:
+    def _validate_schema(config: dict[str, Any]) -> None:
         """
-        Validate configuration data.
+        Refactored schema validation using strict type checking.
+        Validates structure and value constraints.
         """
         if not isinstance(config, dict):
             raise ValueError("Configuration must be a dictionary")
 
-        # Type checking for known keys
-        if "use_aria2c" in config and not isinstance(config["use_aria2c"], bool):
-            raise ValueError("use_aria2c must be a boolean")
+        # Type mapping for simple fields
+        type_map = {
+            "use_aria2c": bool,
+            "rss_feeds": list,
+            "language": str,
+            "proxy": (str, type(None)),  # Allow None but will convert/check
+            "rate_limit": (str, type(None)),
+            "download_path": (str, type(None)),
+            "auto_sync_enabled": bool,
+            "high_contrast": bool,
+            "compact_mode": bool,
+            "clipboard_monitor_enabled": bool,
+            "output_template": str,
+            "theme_mode": str,
+        }
 
-        if "rss_feeds" in config and not isinstance(config["rss_feeds"], list):
-            raise ValueError("rss_feeds must be a list")
+        for key, expected_type in type_map.items():
+            if key in config:
+                val = config[key]
+                if val is not None and not isinstance(val, expected_type):
+                    # Handle optional strings passed as None
+                    if expected_type == (str, type(None)) and val is None:
+                        continue
+                    raise ValueError(f"{key} must be of type {expected_type}")
 
+        # Specific constraints
         if "gpu_accel" in config:
             val = config["gpu_accel"]
             if not isinstance(val, str):
@@ -80,35 +100,28 @@ class ConfigManager:
                     f"gpu_accel must be one of: None, auto, cuda, vulkan. Got: {val}"
                 )
 
-        # Validate metadata_cache_size if present
         if "metadata_cache_size" in config:
             val = config["metadata_cache_size"]
             if not isinstance(val, int) or val < 1:
                 raise ValueError("metadata_cache_size must be a positive integer")
 
         if "theme_mode" in config:
-            val = config["theme_mode"]
-            if not isinstance(val, str):
-                raise ValueError("theme_mode must be a string")
-            if val.lower() not in ["system", "light", "dark"]:
+            val = cast(str, config["theme_mode"]).lower()
+            if val not in ["system", "light", "dark"]:
                 raise ValueError("theme_mode must be one of: System, Light, Dark")
 
-        if "language" in config and not isinstance(config["language"], str):
-            raise ValueError("language must be a string")
+        if "max_concurrent_downloads" in config:
+            val = config["max_concurrent_downloads"]
+            if not isinstance(val, int) or val < 1:
+                raise ValueError("max_concurrent_downloads must be a positive integer")
 
-        if "proxy" in config and config["proxy"] is not None:
-            if not isinstance(config["proxy"], str):
-                raise ValueError("proxy must be a string")
-
-        if "rate_limit" in config and config["rate_limit"] is not None:
-            if not isinstance(config["rate_limit"], str):
-                raise ValueError("rate_limit must be a string")
+        if "auto_sync_interval" in config:
+            val = config["auto_sync_interval"]
+            if not isinstance(val, (int, float)) or val <= 0:
+                raise ValueError("auto_sync_interval must be a positive number")
 
         if "output_template" in config:
             val = config["output_template"]
-            if not isinstance(val, str):
-                raise ValueError("output_template must be a string")
-            # Basic path traversal guard
             if ".." in val.split(os.path.sep) or ".." in val.split("/"):
                 raise ValueError("output_template must not contain '..'")
             try:
@@ -117,35 +130,10 @@ class ConfigManager:
             except Exception as e:  # pylint: disable=broad-exception-caught
                 raise ValueError(f"Invalid output_template: {e}") from e
 
-        if "max_concurrent_downloads" in config:
-            val = config["max_concurrent_downloads"]
-            if not isinstance(val, int) or val < 1:
-                raise ValueError("max_concurrent_downloads must be a positive integer")
-
-        if "download_path" in config and config["download_path"] is not None:
-            if not isinstance(config["download_path"], str):
-                raise ValueError("download_path must be a string")
-
-        if "auto_sync_enabled" in config and not isinstance(
-            config["auto_sync_enabled"], bool
-        ):
-            raise ValueError("auto_sync_enabled must be a boolean")
-
-        if "auto_sync_interval" in config:
-            val = config["auto_sync_interval"]
-            if not isinstance(val, (int, float)) or val <= 0:
-                raise ValueError("auto_sync_interval must be a positive number")
-
-        if "high_contrast" in config and not isinstance(config["high_contrast"], bool):
-            raise ValueError("high_contrast must be a boolean")
-
-        if "compact_mode" in config and not isinstance(config["compact_mode"], bool):
-            raise ValueError("compact_mode must be a boolean")
-
-        if "clipboard_monitor_enabled" in config and not isinstance(
-            config["clipboard_monitor_enabled"], bool
-        ):
-            raise ValueError("clipboard_monitor_enabled must be a boolean")
+    @staticmethod
+    def _validate_config(config: dict[str, Any]) -> None:
+        """Wrapper for _validate_schema for backward compatibility."""
+        ConfigManager._validate_schema(config)
 
     @staticmethod
     def load_config() -> dict[str, Any]:
@@ -166,15 +154,13 @@ class ConfigManager:
 
                 with open(config_path, encoding="utf-8") as f:
                     data = json.load(f)
-                    ConfigManager._validate_config(data)
+                    ConfigManager._validate_schema(data)
                     config.update(data)
             except (json.JSONDecodeError, ValueError) as e:
                 logger.warning("Config corrupted/invalid (%s), using defaults", e)
                 # Backup corrupted file
                 try:
                     backup = config_path.with_suffix(".json.bak")
-                    # Use os.replace for better atomic behavior on some systems
-                    # although for backup renaming is fine
                     if os.path.exists(backup):
                         os.unlink(backup)
                     config_path.rename(backup)
@@ -193,7 +179,7 @@ class ConfigManager:
         Save configuration to file with atomic write operation.
         """
         config_path = ConfigManager._resolve_config_file()
-        ConfigManager._validate_config(config)
+        ConfigManager._validate_schema(config)
 
         temp_path = None
 
