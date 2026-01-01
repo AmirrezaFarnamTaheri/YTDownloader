@@ -14,10 +14,12 @@ WORKDIR /app
 # ffmpeg: for video merging/processing
 # aria2: for download acceleration
 # git: often needed for pip installing from git repos
+# curl: for healthcheck
 RUN apt-get update && apt-get install -y \
     ffmpeg=7:5.1.6-0+deb12u1 \
     aria2=1.36.0-1+deb12u1 \
     git=1:2.39.5-0+deb12u1 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
@@ -44,6 +46,9 @@ USER streamcatch
 
 # Expose Flet web port
 EXPOSE 8550
+
+# Healthcheck
+HEALTHCHECK CMD curl -f http://localhost:8550/ || exit 1
 
 # Run the application
 CMD ["python", "main.py"]

@@ -44,28 +44,36 @@ class TestUIManagerCoverage(unittest.TestCase):
         mock_layout,
     ):
         """Test initializing views and layout."""
-        mock_layout.return_value = MagicMock()
+        # Ensure DownloadView mock returns an object compatible with DashboardView expectations
+        # DashboardView now creates MockContainer which in tests might be strict about padding arg if passed via kwargs
+        # But here we are mocking View classes. DashboardView is instantiated inside UIManager.
+        # Wait, UIManager instantiates DashboardView directly (import from views.dashboard_view).
+        # We need to patch DashboardView too!
 
-        layout = self.manager.initialize_views(
-            on_fetch_info_callback=MagicMock(),
-            on_add_to_queue_callback=MagicMock(),
-            on_batch_import_callback=MagicMock(),
-            on_schedule_callback=MagicMock(),
-            on_cancel_item_callback=MagicMock(),
-            on_remove_item_callback=MagicMock(),
-            on_reorder_item_callback=MagicMock(),
-            on_retry_item_callback=MagicMock(),
-            on_toggle_clipboard_callback=MagicMock(),
-            on_play_callback=MagicMock(),
-            on_open_folder_callback=MagicMock(),
-        )
+        with patch("ui_manager.DashboardView") as mock_dashboard:
+            mock_layout.return_value = MagicMock()
 
-        self.assertIsNotNone(self.manager.download_view)
-        self.assertIsNotNone(self.manager.queue_view)
-        self.assertIsNotNone(self.manager.history_view)
-        self.assertIsNotNone(self.manager.rss_view)
-        self.assertIsNotNone(self.manager.settings_view)
-        self.assertEqual(self.manager.app_layout, layout)
+            layout = self.manager.initialize_views(
+                on_fetch_info_callback=MagicMock(),
+                on_add_to_queue_callback=MagicMock(),
+                on_batch_import_callback=MagicMock(),
+                on_schedule_callback=MagicMock(),
+                on_cancel_item_callback=MagicMock(),
+                on_remove_item_callback=MagicMock(),
+                on_reorder_item_callback=MagicMock(),
+                on_retry_item_callback=MagicMock(),
+                on_toggle_clipboard_callback=MagicMock(),
+                on_play_callback=MagicMock(),
+                on_open_folder_callback=MagicMock(),
+            )
+
+            self.assertIsNotNone(self.manager.download_view)
+            self.assertIsNotNone(self.manager.queue_view)
+            self.assertIsNotNone(self.manager.history_view)
+            self.assertIsNotNone(self.manager.rss_view)
+            self.assertIsNotNone(self.manager.settings_view)
+            self.assertIsNotNone(self.manager.dashboard_view)
+            self.assertEqual(self.manager.app_layout, layout)
 
     def test_update_queue_view_active(self):
         """Test updating queue view when it is active."""

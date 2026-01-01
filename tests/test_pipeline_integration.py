@@ -9,12 +9,12 @@ Simulates adding to queue -> processing -> downloading -> history.
 import threading
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from app_state import state
 from downloader.types import DownloadOptions
 from queue_manager import QueueManager
-from tasks import process_queue
+import tasks  # Import module to ensure dynamic lookup
 
 
 class TestPipelineIntegration(unittest.TestCase):
@@ -26,18 +26,25 @@ class TestPipelineIntegration(unittest.TestCase):
         state.current_download_item = None
         state.shutdown_flag.clear()
 
-        # Ensure we don't have residual threads from other tests
-        # We can't easily kill threads, but we can ensure shutdown flag is clear.
+        # Force re-creation of executor in tasks.py by clearing global
+        with tasks._executor_lock:
+            if tasks._executor:
+                tasks._executor.shutdown(wait=False)
+                tasks._executor = None
 
-        # Patch tasks._submission_throttle (was _active_downloads) to avoid interference
-        # We use the new name but patch legacy alias is also possible if tasks.py still uses it.
-        # tasks.py aliases _active_downloads = _submission_throttle, so patching _submission_throttle is correct.
+        # Patch tasks._submission_throttle to avoid interference
+        # We replace the semaphore in the module with a fresh one
         self.patcher_sem = patch("tasks._submission_throttle", threading.Semaphore(3))
-        self.patcher_sem.start()
+        self.mock_sem = self.patcher_sem.start()
 
     def tearDown(self):
         self.patcher_sem.stop()
         state.shutdown_flag.set()
+        # Clean up executor
+        with tasks._executor_lock:
+            if tasks._executor:
+                tasks._executor.shutdown(wait=False)
+                tasks._executor = None
 
     @patch("tasks.download_video")
     @patch("history_manager.HistoryManager.add_entry")
@@ -46,6 +53,12 @@ class TestPipelineIntegration(unittest.TestCase):
         Test the full pipeline from adding an item to completion.
         We mock the actual download_video call.
         """
+        # Configure mock to return valid result
+        mock_download.return_value = {
+            "filename": "vid.mp4",
+            "filepath": "/tmp/vid.mp4"
+        }
+
         # 1. Add item
         item = {
             "url": "http://test.com/vid",
@@ -56,13 +69,20 @@ class TestPipelineIntegration(unittest.TestCase):
         }
         state.queue_manager.add_item(item)
 
-        # 2. Trigger processing (simulate what main.py background loop does)
-        process_queue()
+        # 2. Trigger processing using module reference
+        tasks.process_queue()
 
-        # Since process_queue spawns a thread, we need to wait briefly
-        time.sleep(1.5)
+        # Since process_queue spawns a thread via executor, we need to wait briefly
+        # The thread executes `_wrapped_download_task` -> `download_task` -> `download_video`
+        # Increase sleep slightly to be safe
+        time.sleep(2.5)
 
         # 3. Verify execution
+        if mock_download.call_count == 0:
+            # Debugging info
+            print(f"\nDEBUG: Queue Items: {state.queue_manager.get_all()}")
+            self.fail("download_video was not called.")
+
         mock_download.assert_called_once()
 
         # Tasks calls download_video with DownloadOptions object
@@ -71,12 +91,6 @@ class TestPipelineIntegration(unittest.TestCase):
         self.assertEqual(call_args.url, "http://test.com/vid")
 
         # 4. Verify History Log
-        # download_task calls _log_to_history on success
-        # Wait for thread to finish? mock_download returns immediately (mock), so thread should finish fast.
-        time.sleep(0.5)
-
-        # NOTE: mock_download return value is default MagicMock, so info.get("filename") might be weird.
-        # But logging happens.
         mock_add_history.assert_called()
 
     def test_pipeline_error_handling(self):
@@ -85,11 +99,14 @@ class TestPipelineIntegration(unittest.TestCase):
             item = {"url": "http://fail.com", "status": "Queued", "title": "Fail Video"}
             state.queue_manager.add_item(item)
 
-            process_queue()
-            time.sleep(1.5)
+            tasks.process_queue()
+            time.sleep(2.5)
 
             # Check status
             q_items = state.queue_manager.get_all()
+            if not q_items:
+                self.fail("Queue item missing")
+
             self.assertEqual(q_items[0]["status"], "Error")
             self.assertEqual(q_items[0].get("error"), "Download Failed")
 
@@ -111,11 +128,13 @@ class TestPipelineIntegration(unittest.TestCase):
 
         # Mock download to verify it ran
         with patch("tasks.download_video") as mock_dl:
+            mock_dl.return_value = {}
+
             # 1. Update schedule (normally main loop does this)
             state.queue_manager.update_scheduled_items(datetime.datetime.now())
 
             # 2. Process
-            process_queue()
-            time.sleep(1.5)
+            tasks.process_queue()
+            time.sleep(2.5)
 
             mock_dl.assert_called()

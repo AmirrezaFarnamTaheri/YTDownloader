@@ -14,7 +14,7 @@ from theme import Theme
 class AppLayout(ft.Row):
     """
     Main application layout using a Row of [Sidebar, Content].
-    Supports responsiveness via checking page width (though explicit logic is simpler here).
+    Supports responsiveness via checking page width.
     """
 
     def __init__(self, page: ft.Page, on_nav_change):
@@ -72,6 +72,14 @@ class AppLayout(ft.Row):
             group_alignment=-0.9,
         )
 
+        # Bottom Navigation Bar (Mobile) - Hidden by default
+        self.bottom_nav = ft.NavigationBar(
+            selected_index=0,
+            on_change=self.on_nav_change,
+            destinations=self.destinations,
+            visible=False
+        )
+
         # Content Area
         self.content_area = ft.Container(
             expand=True,
@@ -87,10 +95,12 @@ class AppLayout(ft.Row):
             bgcolor=Theme.BG_LIGHT,
         )
 
+        # Vertical Divider
+        self.v_divider = ft.Container(width=1, bgcolor=Theme.DIVIDER)
+
         self.controls = [
             self.sidebar_container,
-            # Using Container instead of VerticalDivider for clearer definition/no issues
-            ft.Container(width=1, bgcolor=Theme.DIVIDER),
+            self.v_divider,
             self.content_area,
         ]
 
@@ -111,16 +121,51 @@ class AppLayout(ft.Row):
         self.sidebar_container.update()
         self.rail.update()
 
+    def toggle_mobile_mode(self, is_mobile: bool):
+        """Toggles between Sidebar and Bottom Navigation."""
+        if is_mobile:
+            self.sidebar_container.visible = False
+            self.v_divider.visible = False
+            # Bottom nav is usually attached to Page.navigation_bar
+            # But we can also insert it if page structure allows.
+            # Best practice in Flet: assign to page.navigation_bar
+            self.page.navigation_bar = self.bottom_nav
+            self.bottom_nav.visible = True
+            self.page.update()
+        else:
+            self.sidebar_container.visible = True
+            self.v_divider.visible = True
+            self.page.navigation_bar = None
+            self.bottom_nav.visible = False
+            self.page.update()
+
+        self.sidebar_container.update()
+        self.v_divider.update()
+
     def handle_resize(self, width: float, height: float):
         """
         Adjust layout based on window size.
-        Switches to compact mode if width < 1000px.
+        Breakpoints:
+        - < 600px: Bottom Nav (Mobile)
+        - 600-1200px: Compact Rail
+        - > 1200px: Extended Rail
         """
         # pylint: disable=unused-argument
-        if width < 1000:
+        if width < 600:
+            if self.sidebar_container.visible:
+                self.toggle_mobile_mode(True)
+        elif width < 1200:
+            # Tablet/Small Laptop: Compact Rail
+            if not self.sidebar_container.visible:
+                self.toggle_mobile_mode(False)
+
             if self.rail.extended:
                 self.toggle_compact_mode(True)
         else:
+            # Desktop: Extended Rail
+            if not self.sidebar_container.visible:
+                self.toggle_mobile_mode(False)
+
             if not self.rail.extended:
                 self.toggle_compact_mode(False)
 
@@ -128,3 +173,6 @@ class AppLayout(ft.Row):
         """Sets the selected navigation index programmatically."""
         self.rail.selected_index = index  # type: ignore
         self.rail.update()
+        if self.bottom_nav.visible:
+             self.bottom_nav.selected_index = index
+             self.bottom_nav.update()

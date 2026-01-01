@@ -37,6 +37,9 @@ def mock_dependencies():
             self.value = kwargs.get("value")
             self.page = None
             self.overlay = []
+            self.visible = kwargs.get("visible", True)
+            self.padding = kwargs.get("padding", 0)
+            self.disabled = kwargs.get("disabled", False)
 
             # Handle positional args for controls list (common in Row, Column, ListView)
             if not self.controls and args and isinstance(args[0], list):
@@ -44,7 +47,8 @@ def mock_dependencies():
 
             # Allow any other attribute to be set
             for k, v in kwargs.items():
-                setattr(self, k, v)
+                if k not in ["visible", "padding", "disabled", "content", "controls", "value"]:
+                    setattr(self, k, v)
 
         def update(self):
             pass
@@ -216,6 +220,24 @@ def mock_dependencies():
     class MockDatePicker(MockControl):
         pass
 
+    class MockPieChart(MockControl):
+        pass
+
+    class MockBarChart(MockControl):
+        pass
+
+    class MockResponsiveRow(MockControl):
+        pass
+
+    class MockChip(MockControl):
+        pass
+
+    class MockFloatingActionButton(MockControl):
+        pass
+
+    class MockNavigationBar(MockControl):
+        pass
+
     # Assign classes to the mock
     flet_mock.Container = MockContainer
     flet_mock.UserControl = MockUserControl
@@ -258,6 +280,13 @@ def mock_dependencies():
     flet_mock.PopupMenuButton = MockPopupMenuButton
     flet_mock.TimePicker = MockTimePicker
     flet_mock.DatePicker = MockDatePicker
+    flet_mock.PieChart = MockPieChart
+    flet_mock.BarChart = MockBarChart
+    flet_mock.ResponsiveRow = MockResponsiveRow
+    flet_mock.Chip = MockChip
+    flet_mock.FloatingActionButton = MockFloatingActionButton
+    flet_mock.NavigationBar = MockNavigationBar
+
     # Explicitly map inputs to MockControl to ensure they maintain state (value)
     flet_mock.TextField = MockControl
     flet_mock.Dropdown = MockControl
@@ -321,6 +350,13 @@ def mock_dependencies():
     flet_mock.padding.symmetric = MagicMock(return_value=MagicMock())
     flet_mock.padding.only = MagicMock(return_value=MagicMock())
     flet_mock.alignment = MagicMock()
+
+    flet_mock.PieChartSection = MagicMock()
+    flet_mock.BarChartGroup = MagicMock()
+    flet_mock.BarChartRod = MagicMock()
+    flet_mock.ChartAxis = MagicMock()
+    flet_mock.ChartAxisLabel = MagicMock()
+    flet_mock.ChartGridLines = MagicMock()
 
     # Mock colors and icons - need to return string values for icon access
     class IconsMock:

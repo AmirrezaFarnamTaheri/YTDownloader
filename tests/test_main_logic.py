@@ -8,8 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from downloader.types import DownloadOptions
 from queue_manager import QueueManager
-from tasks import download_task, process_queue
-from tasks_extended import fetch_info_task
+from tasks import download_task, process_queue, fetch_info_task # Updated import
 from utils import CancelToken
 
 
@@ -25,7 +24,7 @@ class TestMainLogic(unittest.TestCase):
         self.mock_state.shutdown_flag.is_set.return_value = False
 
         # Patch the global state in tasks and main
-        self.patcher_main = patch("tasks_extended.state", self.mock_state)
+        self.patcher_main = patch("tasks.state", self.mock_state) # Updated patch path
         self.patcher_tasks = patch("app_state.state", self.mock_state)
 
         # Also patch tasks.state directly because tasks.py imports state
@@ -289,7 +288,7 @@ class TestMainLogic(unittest.TestCase):
 
     # --- Fetch Info Task Tests ---
 
-    @patch("tasks_extended.get_video_info")
+    @patch("tasks.get_video_info") # Updated patch path
     def test_fetch_info_task_success(self, mock_get_info):
         mock_get_info.return_value = {"title": "Test Video"}
         mock_view = MagicMock()
@@ -301,10 +300,10 @@ class TestMainLogic(unittest.TestCase):
         fetch_info_task("http://video", mock_view, mock_page)
 
         self.assertEqual(self.mock_state.video_info["title"], "Test Video")
-        mock_view.update_info.assert_called()
+        mock_view.update_video_info.assert_called() # Updated method name (was update_info)
         mock_page.open.assert_called()
 
-    @patch("tasks_extended.get_video_info")
+    @patch("tasks.get_video_info") # Updated patch path
     def test_fetch_info_task_failure(self, mock_get_info):
         mock_get_info.return_value = None
         mock_view = MagicMock()
