@@ -5,52 +5,61 @@
 **Goal:** Establish automated, reproducible, and optimized build pipelines for all target platforms.
 
 ## 5.1 Desktop Build (Nuitka)
-**Objective:** Create standalone, high-performance executables for Windows, Linux, and macOS.
+**Objective:** Create standalone, high-performance executables.
 
-*   **Tool:** Nuitka (Python Compiler).
-*   **Script:** `scripts/build_installer.py`.
-*   **Configuration:**
-    *   `--standalone`: Bundles the Python interpreter and dependencies.
-    *   `--onefile`: (Optional) creates a single binary (easier distribution but slower startup). Recommended to keep as folder for `installers` or use `--onefile` for portable releases.
-    *   `--enable-plugin=tk-inter`: Essential for `filedialog` compatibility if Flet falls back to Tkinter dialogs.
-    *   `--include-data-dir=assets=assets`: Ensures icons and images are bundled.
-    *   `--include-data-dir=locales=locales`: Bundles translation files.
-    *   `--windows-icon-from-ico=assets/icon.ico`: Sets the executable icon.
-    *   `--nofollow-import-to=yt_dlp.extractor.lazy_extractors`: **Critical Optimization.** Prevents Nuitka from compiling thousands of lazy extractors, which bloats the binary and build time.
-    *   `--lto=no`: Disable Link Time Optimization for faster builds during dev; enable for release.
-*   **Action:** Update the build script to automatically detect the OS and apply relevant flags (e.g., `.ico` for Windows, `.icns` for Mac).
+*   **Script Analysis (`scripts/build_installer.py`):**
+    *   **Env Var:** Sets `YTDLP_NO_LAZY_EXTRACTORS=1`. **Critical:** This prevents Nuitka from trying to compile ~100k lines of lazy extractor code, which would crash the compiler or produce a massive binary.
+    *   **Flags:**
+        *   `--standalone`: Bundles Python shared libs.
+        *   `--nofollow-import-to=yt_dlp.extractor.lazy_extractors`: Explicitly excludes lazy extractors from compilation (they are imported dynamically).
+        *   `--include-package=pypresence`: Forces inclusion of libraries that Nuitka might miss due to dynamic imports.
+    *   **OS Specifics:**
+        *   **Windows:** Embeds `.ico`, sets FileVersion/ProductVersion resource strings.
+        *   **macOS:** Creates `.app` bundle structure (`Contents/MacOS`, `Contents/Resources`).
+*   **Action Items:**
+    *   Enable `--lto=yes` (Link Time Optimization) for release builds to reduce binary size (currently commented out).
+    *   Add `--enable-plugin=tk-inter` if any file dialogs fall back to Tkinter.
 
 ## 5.2 Mobile Build (Flutter/Flet)
-**Objective:** Compile the Python Flet app into native Android (APK) and iOS (IPA) packages.
+**Objective:** Compile for Android and iOS.
 
-*   **Workflow:** `.github/workflows/build-mobile-flet.yml`.
-*   **Android:**
-    *   **Environment:** Ubuntu Latest, Java 17, Flutter 3.22.0+.
-    *   **Command:** `flet build apk --build-number ${{ github.run_number }}`.
-    *   **Signing:** Use GitHub Secrets (`ANDROID_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`) to sign the APK for release.
-*   **iOS:**
-    *   **Environment:** `macos-latest` (runs on Mac hardware).
-    *   **Command:** `flet build ipa`.
-    *   **Signing:** Requires Apple Developer Account certificates and provisioning profiles stored in GitHub Secrets.
+*   **Workflow (`.github/workflows/build-mobile-flet.yml`):**
+    *   **Android:**
+        *   Uses `ubuntu-latest`.
+        *   Installs Java 17, Flutter 3.x.
+        *   Command: `flet build apk`.
+        *   Artifact: `build/apk/app-release.apk`.
+    *   **iOS:**
+        *   Uses `macos-latest`.
+        *   Command: `flet build ipa`.
+        *   **Constraint:** Requires valid Apple Developer Certificate and Provisioning Profile (P12/MobileProvision) in GitHub Secrets. Without these, the build will fail or produce an unsigned `.runner` app.
 
-## 5.3 Installer (Windows)
-**Objective:** Create a professional Windows installer.
+## 5.3 Distribution
+**Objective:** Packaging for end-users.
 
-*   **Tool:** Inno Setup 6.
-*   **Script:** `installers/setup.iss`.
-*   **Features:**
-    *   **Wizard:** Welcome, License, Install Dir, Shortcuts.
-    *   **Registry:** Register `streamcatch://` protocol to allow opening links directly into the app (optional).
-    *   **Context Menu:** Add "Open with StreamCatch" to context menu (optional).
-    *   **Uninstaller:** Clean removal of files.
+*   **Windows:**
+    *   **Tool:** Inno Setup 6 (`ISCC.exe`).
+    *   **Script:** `installers/setup.iss`.
+    *   **Output:** `StreamCatch_Setup_v2.0.0.exe`.
+*   **Linux:**
+    *   **Format:** `.deb` (Debian/Ubuntu).
+    *   **Tools:** `fakeroot`, `dpkg-deb`.
+    *   **Structure:** `/usr/local/bin/streamcatch`, `/usr/share/applications/streamcatch.desktop`.
+*   **macOS:**
+    *   **Format:** `.dmg` (Disk Image).
+    *   **Tool:** `hdiutil`.
+    *   **Content:** Contains `StreamCatch.app` and a symlink to `/Applications`.
 
 ## 5.4 Containerization
-**Objective:** Provide a Docker image for headless or server-based usage.
+**Objective:** Server/Headless deployment.
 
 *   **Dockerfile:**
-    *   **Multi-stage Build:**
-        *   *Stage 1 (Builder):* Install build deps, compile dependencies.
-        *   *Stage 2 (Runtime):* `python:3.11-slim`, copy artifacts.
-    *   **Volume Mounts:** Ensure `/config` and `/downloads` are exposed volumes.
+    *   **Base:** `python:3.12-slim`.
+    *   **Dependencies:** `ffmpeg` (pinned version), `aria2`.
+    *   **Security:** Runs as non-root user `streamcatch` (UID 1000).
+    *   **Volumes:**
+        *   `/app/downloads`: Download target.
+        *   `/home/streamcatch/.streamcatch`: Config/DB storage.
+    *   **Env:** `FLET_WEB=1`, `FLET_SERVER_PORT=8550`.
 *   **Docker Compose:**
-    *   `docker-compose.yml` pre-configured with volume mappings and environment variables (`PUID`, `PGID` for permission management).
+    *   Orchestrates the container with volume mappings.

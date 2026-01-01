@@ -4,60 +4,56 @@
 
 **Goal:** Achieve >90% code coverage and ensure regression-free releases through comprehensive automated testing.
 
-## 4.1 Unit Testing (`tests/unit/`)
+## 4.1 Test Architecture
+**Strategy:** Use `pytest` with `pytest-mock` and `pytest-cov`.
+**Mocking:** `tests/conftest.py` is the backbone. It mocks `flet`, `yt_dlp`, `pypresence`, `requests`, `PIL`, etc. This allows tests to run in environments without GUI support or external dependencies.
+
+## 4.2 Unit Testing (`tests/unit/`)
 **Objective:** Verify individual components in isolation.
 
-*   **Target: `batch_importer.py`**
-    *   **Tests:**
-        *   `test_parse_txt`: Verify parsing of standard newline-separated URL lists.
-        *   `test_parse_csv`: Verify parsing of CSV files (handling delimiters).
-        *   `test_parse_invalid`: Ensure the parser gracefully handles garbage data, empty lines, and non-UTF-8 files.
-*   **Target: `social_manager.py`**
-    *   **Tests:**
-        *   `test_connect_timeout`: Mock `pypresence.connect` to hang or fail, ensure `SocialManager` handles it without crashing the app.
-        *   `test_update_activity`: Verify `update()` calls with correct arguments.
-*   **Target: `rate_limiter.py`**
-    *   **Tests:**
-        *   `test_token_bucket_refill`: Ensure tokens regenerate over time.
-        *   `test_burst_handling`: Verify `wait()` blocks correctly when bucket is empty.
+*   **`batch_importer.py` Tests:**
+    *   `test_import_txt_valid`: Create temp `.txt` with 3 valid URLs. Assert returns (3, False).
+    *   `test_import_security_violation`: Create file outside home dir (e.g., `/tmp`). Assert `ValueError`.
+    *   `test_import_limit`: Create file with 105 lines. Assert returns (100, True).
+*   **`rate_limiter.py` Tests:**
+    *   `test_bucket_refill`: Consume tokens, sleep `1/rate`, check tokens increased.
+    *   `test_burst`: Consume `capacity` tokens instantly (should succeed). Consume 1 more (should fail).
+*   **`ui_utils.py` Tests:**
+    *   `test_validate_proxy_private`: Input `http://192.168.1.1:8080`. Assert `False`.
+    *   `test_validate_output_template_traversal`: Input `../video`. Assert `False`.
 
-## 4.2 Integration Testing (`tests/integration/`)
+## 4.3 Integration Testing (`tests/integration/`)
 **Objective:** Verify interaction between modules.
 
-*   **`test_full_lifecycle.py`:**
-    *   **Scenario:** Add URL -> Queue -> Download -> History.
-    *   **Steps:**
-        1.  Call `AppController.on_add_to_queue(url)`.
-        2.  Assert item appears in `QueueManager`.
-        3.  Wait for `Task` to complete (mocking the actual network call).
-        4.  Assert item moves to `HistoryManager`.
-        5.  Assert `HistoryManager` contains the record.
-*   **`test_persistence.py`:**
-    *   **Scenario:** Application Restart.
-    *   **Steps:**
-        1.  Add items to queue.
-        2.  Call `AppState.save()`.
-        3.  Destroy `AppState` instance.
-        4.  Create new `AppState` instance and load.
-        5.  Verify queue items are restored with correct status.
+*   **Flow: Download Cycle**
+    *   **Setup:** Mock `GenericDownloader.download` to write a dummy file and call `progress_hook`.
+    *   **Action:** `queue_manager.add_item(...)`.
+    *   **Verify:**
+        1.  Status becomes "Allocating" -> "Downloading".
+        2.  `progress_hook` updates `item["progress"]`.
+        3.  Mock `download` completes.
+        4.  Item status -> "Completed".
+        5.  `HistoryManager` has new entry.
+*   **Flow: Persistence**
+    *   **Action:** Modify config (`theme_mode="Light"`). Call `save_config`.
+    *   **Verify:** Read file from disk, assert JSON content matches.
 
-## 4.3 UI Testing
+## 4.4 UI Testing
 **Objective:** Verify UI logic and state updates.
 
-*   **Headless Testing:**
-    *   Since Flet runs a server, full E2E UI testing can be complex. We will use a "Mock Page" approach.
-    *   **`MockPage` Class:** Implement `add`, `update`, `clean`, `controls` list.
-    *   **Scenario:**
-        1.  Instantiate `DownloadView` with `MockPage`.
-        2.  Call `download_view.add_item("http://test.com")`.
-        3.  Assert `len(mock_page.controls) > 0`.
-        4.  Simulate "Click" on "Download" button.
-        5.  Assert `AppController.start_download` was called.
+*   **Headless Strategy:**
+    *   Use `MockPage` from `conftest.py`.
+    *   Instantiate `DownloadView(page)`.
+    *   **Test Case:**
+        *   Call `view.url_input.value = "http://test.com"`.
+        *   Call `view.add_btn.on_click()`.
+        *   Assert `controller.on_add_to_queue` called with "http://test.com".
 
-## 4.4 Continuous Integration
-**Objective:** Automate testing on every push.
+## 4.5 Continuous Integration
+**Objective:** Automate testing.
 
 *   **GitHub Actions (`verify.yml`):**
-    *   Add `pytest --cov=streamcatch --cov-report=xml` step.
-    *   Add `codecov` upload (optional).
-    *   Fail build if coverage drops below 85%.
+    *   **Linting:** `pylint`, `black --check`, `isort --check`.
+    *   **Type Checking:** `mypy .`.
+    *   **Tests:** `pytest --cov=. --cov-report=xml`.
+    *   **Threshold:** Fail if coverage < 85%.
