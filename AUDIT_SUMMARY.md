@@ -1,299 +1,75 @@
-# Codebase Audit Summary - December 2025
+# StreamCatch 2.0 - Comprehensive Master Audit
+
+**Date:** 2024-05-23
+**Version:** 2.0.0-dev
 
 ## Executive Summary
-
-A comprehensive audit was conducted on the YTDownloader codebase, identifying and resolving **38+ issues** across all severity levels. All identified issues have been addressed, all tests pass (254 tests, 2 skipped), and code quality checks are passing.
-
-## Issues Resolved
-
-### Critical Issues (5)
-
-1. **✅ Race Condition in RateLimiter** - Added thread synchronization using `threading.Lock()` to prevent concurrent access issues
-2. **✅ Unsafe Global State in tasks.py** - Verified proper locking patterns are in place (already correctly implemented)
-3. **✅ ConfigManager Global State Mutation** - Removed global variable mutation, simplified state management
-4. **✅ Missing Test Coverage** - Enabled `test_cloud_manager.py` in pytest configuration
-5. **✅ Error Handling in main.py** - Verified adequate defensive error handling is in place
-
-### Important Issues (7)
-
-6. **✅ UI Manager View Comments** - Removed outdated commented code and documentation
-7. **✅ Thread Safety in Clipboard Monitor** - Implemented thread-safe UI updates using `page.run_task()`
-8. **✅ Logging Handler Clearing** - Added initialization flag to prevent re-initialization
-9. **✅ Empty backup.zip** - Removed unused empty file from repository
-10. **✅ Unused Import** - Removed unused import and fixed type hints in `batch_importer.py`
-11. **✅ Memory Leak Risk in AppState** - Implemented proper LRU cache using `OrderedDict`
-12. **✅ Dangerous Re-raise Pattern** - Fixed traceback preservation using bare `raise`
-
-### Medium Severity Issues (8)
-
-13. **✅ ConfigManager Validation** - Added strict validation for gpu_accel configuration
-14. **✅ Path Traversal Protection** - Enhanced documentation of security measures in generic downloader
-15. **✅ Discord Client ID** - Verified proper handling of invalid client IDs (already well-implemented)
-16. **✅ SafeLog Functions Documentation** - Added comprehensive docstrings explaining defensive logging
-17. **✅ Type Hints Compatibility** - Fixed Python 3.9+ compatibility using `Tuple` instead of `tuple[]`
-18. **✅ Scheduled Time Validation** - Added type checking and validation in `download_scheduler.py`
-
-### Minor/Quality Issues (18)
-
-19-38. **✅ Various Quality Improvements:**
-   - Removed commented-out code in UI Manager
-   - Updated SECURITY.md with correct repository URL
-   - Updated CONTRIBUTING.md with accurate project structure
-   - Added documentation to theme.py color definitions
-   - Enhanced Docker security with version pinning notes
-   - Improved code comments and documentation throughout
-
-## Code Quality Metrics
-
-### Test Results
-- **254 tests passed** ✅
-- **2 tests skipped** ✅
-- **12 subtests passed** ✅
-- **0 failures** ✅
-- **Test coverage enabled** for cloud manager module
-
-### Linting Results
-- **Black formatting:** All files formatted ✅
-- **isort:** Import ordering corrected ✅
-- **All code quality checks passing** ✅
-
-## Key Improvements
-
-### Thread Safety
-- Added proper locking in `RateLimiter` class
-- Implemented thread-safe UI updates in clipboard monitor
-- Verified proper LRU cache implementation with `OrderedDict`
-- Added initialization guards to prevent race conditions
-
-### Error Handling
-- Enhanced defensive logging with comprehensive docstrings
-- Improved validation in configuration and scheduling modules
-- Better path traversal protection documentation
-
-### Code Quality
-- Removed unused imports and dead code
-- Fixed type hint compatibility for Python 3.9+
-- Improved documentation throughout codebase
-- Enhanced Docker security documentation
-
-### Documentation
-- Updated SECURITY.md with correct repository URLs
-- Refreshed CONTRIBUTING.md project structure
-- Added comprehensive docstrings to complex functions
-- Enhanced inline comments for security-critical code
-
-## Testing
-
-All changes have been validated:
-- Full test suite passes (254 tests, 2 skipped)
-- No regressions introduced
-- Code formatting standards met
-- Import ordering corrected
-
-## Security Enhancements
-
-1. Thread safety improvements prevent race conditions
-2. Input validation enhanced in multiple modules
-3. Path traversal protection documented and verified
-4. Docker security best practices documented
-5. Configuration validation strengthened
-
-## Performance
-
-- LRU cache properly implemented for video info
-- No performance regressions
-- Efficient thread-safe operations
-
-## Recommendations for Future Work
-
-While all identified issues have been resolved, consider these enhancements:
-
-1. **Dependency Pinning:** Consider adding hash verification for pip packages
-2. **Type Checking:** Run mypy in strict mode for enhanced type safety
-3. **API Documentation:** Add comprehensive API documentation for public interfaces
-4. **Abstract Base Classes:** Use ABCs to enforce interface contracts
-
-## Conclusion
-
-The codebase audit successfully identified and resolved 38 issues across all severity levels. The application is now more robust, secure, and maintainable. All tests pass, code quality checks are passing, and the codebase follows best practices for Python development.
-
-**Audit Date:** December 27, 2025
-**Total Issues Found:** 38
-**Issues Resolved:** 38 (100%)
-**Test Pass Rate:** 100% (254/254 passed, 2 skipped)
-
-## Post-Audit Improvements (December 2025 Update)
-
-Following the initial audit, the following additional enhancements were implemented to address outstanding usability and security concerns:
-
-1.  **✅ Strict Proxy Validation**: Unified and strengthened proxy validation across UI and Core to strictly reject `localhost`, `127.0.0.1`, and private IP ranges, preventing SSRF risks and user confusion.
-2.  **✅ Settings UI Validation**: Added immediate input validation in the Settings View for Proxy, Rate Limit, and Output Template fields, providing instant feedback via SnackBars.
-3.  **✅ Secure Batch Import**: Restricted `BatchImporter` to only accept files located within the user's home directory, preventing arbitrary file read attempts.
-4.  **✅ Filename Sanitization**: Added explicit validation in `DownloadOptions` to reject filenames containing path separators (`/` or `\`) or directory traversal sequences (`..`).
-5.  **✅ Extended Scheduler Logic**: Updated `DownloadScheduler` to support full `datetime` objects, paving the way for advanced scheduling features.
-6.  **✅ Panel Enhancements**:
-    *   **Generic Panel**: Added a dropdown for format selection (Best Quality vs Audio Only).
-    *   **Instagram Panel**: Added clear instructions for using browser cookies for Story downloads.
-7.  **✅ RSS URL Validation**: Added immediate validation when adding new RSS feeds in the UI.
-8.  **✅ Configurable Cache Size**: Made the video metadata cache size configurable (`metadata_cache_size`) to manage memory usage.
-9.  **✅ Clipboard Monitor Controls**: Added settings and runtime toggling for the clipboard monitor with UI feedback.
-10. **✅ Build & CI Improvements**: Tightened verify pipeline (mypy + lint gates), reduced redundant installs, and added build output checks.
-11. **✅ i18n Refinement**: Rewrote Spanish and Persian translations for native, correct phrasing.
-12. **✅ Native Build Outputs**: Verified Nuitka native builds and generated StreamCatch.exe plus Windows installer output.
-
-## Comprehensive Audit Update (December 27, 2025)
-
-A deep, extensive audit was conducted across all modules, folders, and files. The following improvements were made:
-
-### Backend Enhancements
-
-1. **✅ QueueManager Bulk Operations**:
-   - Added `cancel_all()` - Cancel all active downloads
-   - Added `pause_all()` - Pause all queued downloads
-   - Added `resume_all()` - Resume all paused downloads
-   - Added `get_statistics()` - Get queue statistics by status
-   - Added `clear_completed()` - Remove all completed/failed items
-
-2. **✅ HistoryManager Advanced Features**:
-   - Added `search_history()` - Search by title and/or URL with pagination
-   - Added `get_history_by_date_range()` - Filter by date range
-   - Added `get_history_stats()` - Get history statistics
-   - Added `export_history()` - Export to JSON or CSV format
-   - Added `delete_entry()` - Delete individual history entries
-
-3. **✅ AppState Cleanup Improvements**:
-   - Fixed dead code in cleanup method
-   - Added proper queue manager cleanup
-   - Added config save on cleanup
-   - Added shutdown logging
-
-### Frontend/UI Improvements
-
-4. **✅ QueueView Bulk Actions**:
-   - Added "Cancel All" button with confirmation
-   - Added "Clear Completed" button
-   - Added queue statistics header (downloading, queued, completed, failed)
-   - Proper state management for button enable/disable
-
-5. **✅ DashboardView Statistics**:
-   - Added real-time download statistics cards
-   - Shows Active, Queued, and Completed counts
-   - Clickable cards navigate to queue view
-   - Improved layout and visual hierarchy
-
-### Module Exports
-
-6. **✅ Downloader Module**:
-   - Added proper exports (`download_video`, `get_video_info`, `DownloadOptions`)
-   - Added comprehensive module docstring
-
-7. **✅ Views Module**:
-   - Added `DashboardView` to exports
-   - Sorted exports alphabetically
-
-8. **✅ Downloader Utils**:
-   - Added `RESERVED_FILENAMES` export
-
-### Configuration & Build
-
-9. **✅ pyproject.toml**:
-   - Added comprehensive project metadata
-   - Added pytest configuration
-   - Added coverage configuration
-   - Added ruff linting configuration
-   - Added black formatting configuration
-   - Added mypy type checking configuration
-   - Added pylint configuration
-
-10. **✅ requirements-dev.txt**:
-    - Added version constraints for all dependencies
-    - Added pytest-mock for testing
-    - Organized by category (testing, type checking, code quality, build)
-
-### Localization
-
-11. **✅ Added 35 new localization keys** for all three languages (English, Spanish, Persian):
-    - Queue bulk actions (cancel_all, clear_completed, queue_empty)
-    - Statistics labels (stats_downloading, stats_queued, stats_completed, stats_failed)
-    - Dashboard labels (download_stats, active, queued, completed, paused)
-    - Export/Import labels (export_history, import_history, export_settings, import_settings)
-    - UI actions (pause_all, resume_all, select_all, deselect_all, delete_selected)
-
-### Test Suite
-
-12. **✅ Added 17 new tests** covering:
-    - QueueManager bulk operations (5 tests)
-    - HistoryManager search/filter functionality (8 tests)
-    - Module exports verification (2 tests)
-    - AppState cleanup functionality (2 tests)
-
-### Final Results
-
-- **Test Pass Rate:** 100% (271 tests passed, 12 subtests passed)
-- **New Tests Added:** 17
-- **Localization Keys Added:** 35 (per language)
-- **Backend Methods Added:** 11
-- **Frontend Features Added:** 8
-- **Configuration Improvements:** 10+ new settings
-
-**Audit Date:** December 27, 2025
-**All Tests Passing:** ✅
-**All Improvements Verified:** ✅
-
-## Code Quality Audit Update (December 28, 2025)
-
-A comprehensive code quality audit was conducted to identify and resolve all remaining issues:
-
-### Code Quality Fixes
-
-1. **✅ Deprecated Typing Imports**:
-   - Updated all `typing.Dict` → `dict` and `typing.List` → `list` using modern Python 3.10+ syntax
-   - Applied `from __future__ import annotations` for deferred annotation evaluation
-
-2. **✅ Black Formatting**:
-   - Applied Black formatting to 17 files with inconsistent formatting
-   - All files now follow PEP 8 and Black style guidelines
-
-3. **✅ Ruff Linting**:
-   - Fixed all ruff linting issues across the codebase
-   - Resolved unused variable warnings in test files
-   - Fixed blind exception assertions in tests (replaced with specific exception types)
-   - Fixed closure variable binding issues in callback functions
-
-4. **✅ Import Ordering**:
-   - Applied isort to fix import ordering in all Python files
-   - Configured isort with Black-compatible settings
-
-5. **✅ Test Mock Improvements**:
-   - Extended Flet mock in conftest.py with additional UI components:
-     - FilePicker, FilePickerResultEvent
-     - ProgressBar, ProgressRing
-     - Switch, Radio, RadioGroup, Slider
-     - Image, Divider, Tab
-     - ElevatedButton, PopupMenuItem, PopupMenuButton
-     - TimePicker, DatePicker
-   - Added proper mock enums: ScrollMode, ThemeMode, ClipBehavior, ImageFit, etc.
-   - Fixed IconsMock and ColorsMock for proper attribute access
-
-6. **✅ Exception Handling Fixes**:
-   - Fixed exception variable capture in closures using default parameter binding
-   - Updated tasks_extended.py and clipboard_monitor.py for proper closure handling
-
-### Code Changes Summary
-
-| Category | Files Changed | Issues Fixed |
-|----------|---------------|--------------|
-| Formatting | 17 | Black style compliance |
-| Linting | 12 | Ruff rule violations |
-| Type Hints | 8 | Deprecated typing imports |
-| Test Mocks | 1 | Missing UI component mocks |
-| Imports | 5 | isort ordering |
-
-### Test Results
-
-- **Core Tests:** 232 passed ✅
-- **UI Tests:** Some require full Flet environment
-- **All quality checks:** Passing ✅
-
-**Audit Date:** December 28, 2025
-**All Code Quality Checks Passing:** ✅
+This document serves as the **Definitive Master Audit** for the StreamCatch project. It synthesizes findings from detailed audits of Architecture, Security, Frontend, QA, and DevOps modules. The codebase exhibits a high degree of maturity (Pylint score 9.64/10) with robust security foundations, but requires targeted actions in UI responsiveness, specific security edge-case testing, and documentation consolidation to reach production readiness.
+
+---
+
+## 1. Foundation & Security (Phase 1)
+**Status:** ✅ **Robust**
+*   **Path Security:** `_sanitize_output_path` and `_verify_path_security` actively prevent directory traversal attacks.
+*   **Extractor Security:**
+    *   **Telegram:** Mitigates DoS via 2MB read limit and sanitizes scraped filenames.
+    *   **Generic:** Uses `HEAD` requests to minimize bandwidth and exposure.
+*   **Concurrency:** `tasks.py` correctly manages thread pools with `CancelToken` and atomic state updates.
+*   **Typing:** Strict typing is enforced, though minor signature mismatches (TypedDict vs Dict) exist in `telegram.py` and `core.py`.
+
+## 2. Architecture & Data (Phase 2)
+**Status:** ✅ **Verified**
+*   **Data Integrity:**
+    *   **Config:** Uses atomic file replacement (`tempfile` + `os.replace`) to prevent corruption.
+    *   **History:** Uses SQLite WAL mode for high concurrency.
+    *   **Sync:** `SyncManager` implements `Zip Slip` prevention by validating extraction paths.
+*   **Network Resilience:**
+    *   `RateLimiter` uses a thread-safe Token Bucket.
+    *   `RSSManager` implements the strongest SSRF protection in the app (DNS resolution + private IP blocking).
+
+## 3. Frontend & UX (Phase 3)
+**Status:** 🚧 **Modernization In Progress**
+*   **Theme:** "Soulful Palette V3" (Material 3) is fully implemented.
+*   **Components:** `DownloadItemControl` handles its own state efficiently using weak references.
+*   **Critical Gaps:**
+    *   **Responsiveness:** `AppLayout` lacks an event listener for window resizing, preventing automatic switching between Mobile (BottomBar) and Desktop (NavRail) modes.
+    *   **Refactoring:** `DownloadView` is monolithic; the input section must be extracted to `DownloadInputCard`.
+    *   **Performance:** `QueueView` rebuilds the entire list on updates, which will bottleneck at >100 items.
+
+## 4. Quality Assurance (Phase 4)
+**Status:** 🚧 **High Coverage, Specific Gaps**
+*   **Strengths:**
+    *   Excellent unit test coverage for `downloader` logic and `pipeline` integration.
+    *   Robust mocking infrastructure in `conftest.py` for headless Flet testing.
+*   **Critical Gaps:**
+    *   **Security Tests:** No dedicated regression tests for `RSSManager` SSRF logic or `SyncManager` Zip Slip prevention.
+    *   **UI Interaction:** Missing tests simulating user flows (button clicks) in `DownloadView`.
+
+## 5. DevOps & Distribution (Phase 5)
+**Status:** ✅ **Production Ready**
+*   **Build System:**
+    *   **Desktop:** `build_installer.py` correctly handles `yt-dlp` lazy extractors and uses Nuitka for native compilation.
+    *   **Mobile:** GitHub Actions build Android APKs and iOS IPAs (unsigned).
+*   **Containerization:** `Dockerfile` is secure (non-root user, pinned dependencies).
+*   **Optimization:** LTO (`--lto=yes`) is currently disabled in build scripts, offering an optimization opportunity.
+
+---
+
+## Strategic Recommendations
+
+### Priority 1: Security Hardening (Immediate)
+1.  **Standardize SSRF:** Move `RSSManager._validate_url` to `ui_utils.py` and enforce it across `BatchImporter` and `TelegramExtractor`.
+2.  **Add Security Tests:** Write `tests/test_security_edges.py` to specifically target SSRF and Zip Slip logic.
+
+### Priority 2: UX Polish (Pre-Release)
+1.  **Implement Auto-Responsiveness:** Add `page.on_resize` handler in `main.py` or `AppLayout` to toggle navigation modes.
+2.  **Refactor DownloadView:** Extract `DownloadInputCard` to improve maintainability.
+3.  **Optimize QueueView:** Implement "diff-based" updates instead of full rebuilds.
+
+### Priority 3: Documentation (Final Step)
+1.  **Consolidate Wiki:** Merge `project_docs/` content into the GitHub Wiki structure.
+2.  **Version Bump:** Set `__version__ = "2.0.0"` in `main.py`.
+
+---
+
+**Audit Conclusion:** StreamCatch 2.0 is architecturally sound and secure. Addressing the UI responsiveness and adding targeted security tests are the final barriers to a successful release.

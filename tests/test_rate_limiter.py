@@ -4,6 +4,7 @@ Unit tests for the RateLimiter class.
 
 import time
 import unittest
+
 from rate_limiter import RateLimiter
 
 
@@ -41,8 +42,8 @@ class TestRateLimiter(unittest.TestCase):
         # Rate 2.0 (2 per sec), Capacity 1.0
         limiter = RateLimiter(rate=2.0, capacity=1.0)
 
-        self.assertTrue(limiter.check()) # consume 1
-        self.assertFalse(limiter.check()) # empty
+        self.assertTrue(limiter.check())  # consume 1
+        self.assertFalse(limiter.check())  # empty
 
         # Wait 0.25s (refill 0.5) -> 0.5 < 1.0 -> False
         time.sleep(0.25)
@@ -52,5 +53,6 @@ class TestRateLimiter(unittest.TestCase):
         time.sleep(0.3)
         self.assertTrue(limiter.check())
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -146,9 +146,7 @@ def main(pg: ft.Page) -> None:
         # We could show a simple error text on page if Flet is partially alive
         try:
             PAGE.clean()
-            PAGE.add(
-                ft.Text(f"Critical Startup Error:\n{e}", color="red", size=20)
-            )
+            PAGE.add(ft.Text(f"Critical Startup Error:\n{e}", color="red", size=20))
         except Exception:  # pylint: disable=broad-exception-caught
             pass
         raise
