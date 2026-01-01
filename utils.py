@@ -18,22 +18,22 @@ class CancelToken:
             pause_timeout: Maximum time (in seconds) to wait in paused state before auto-resuming.
                           Default is 5 minutes. Set to 0 for infinite wait (not recommended).
         """
-        self._cancelled = False
-        self._is_paused = False
-        self._lock = threading.Lock()
-        self._pause_timeout = pause_timeout
+        self._cancelled: bool = False
+        self._is_paused: bool = False
+        self._lock: threading.Lock = threading.Lock()
+        self._pause_timeout: float = pause_timeout
 
-    def cancel(self):
+    def cancel(self) -> None:
         """Set the cancellation flag in a thread-safe manner."""
         with self._lock:
             self._cancelled = True
 
-    def pause(self):
+    def pause(self) -> None:
         """Set the pause flag in a thread-safe manner."""
         with self._lock:
             self._is_paused = True
 
-    def resume(self):
+    def resume(self) -> None:
         """Clear the pause flag in a thread-safe manner."""
         with self._lock:
             self._is_paused = False
@@ -50,7 +50,7 @@ class CancelToken:
         with self._lock:
             return self._is_paused
 
-    def check(self, _d: Any = None):
+    def check(self, _d: Any = None) -> None:
         """
         Checks if the download should be cancelled or paused.
         Accepts an argument '_d' to be compatible with yt-dlp progress hooks (unused).
