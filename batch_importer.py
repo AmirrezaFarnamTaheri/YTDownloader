@@ -10,7 +10,7 @@ from pathlib import Path
 
 import requests
 
-from ui_utils import is_safe_path
+from ui_utils import is_safe_path, validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,9 @@ class BatchImporter:
             # Security check
             if not is_safe_path(str(path)):
                 logger.error("Access to this file is restricted: %s", filepath)
-                raise ValueError(f"Security violation: Access to {filepath} is restricted")
+                raise ValueError(
+                    f"Security violation: Access to {filepath} is restricted"
+                )
 
             if path.suffix.lower() != ".txt":
                 logger.error("Only .txt files are supported.")
@@ -87,9 +89,19 @@ class BatchImporter:
                 lines = lines[:MAX_BATCH_SIZE]
                 was_truncated = True
 
+            # Pre-filter syntactically invalid URLs
+            valid_syntax = []
+            for url in lines:
+                if validate_url(url):
+                    valid_syntax.append(url)
+                else:
+                    logger.warning("Skipping invalid URL syntax: %s", url)
+
             # Process URLs concurrently
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                future_to_url = {executor.submit(verify_url, url): url for url in lines}
+                future_to_url = {
+                    executor.submit(verify_url, url): url for url in valid_syntax
+                }
 
                 for future in as_completed(future_to_url):
                     url = future_to_url[future]
@@ -105,14 +117,34 @@ class BatchImporter:
                                 logger.warning(
                                     "Queue is full, skipping remaining batch items"
                                 )
+                                for f in future_to_url:
+                                    f.cancel()
+                                executor.shutdown(wait=False, cancel_futures=True)
                                 break
 
                             # Add item
+                            from app_state import state
+
+                            config = state.config
+                            dl_path = config.get("download_path")
+                            output_template = config.get(
+                                "output_template", "%(title)s.%(ext)s"
+                            )
+
                             item = {
                                 "url": url,
                                 "status": "Queued",
-                                "title": "Pending...",  # Will be updated by fetch info task
-                                "added_time": 0,  # Will be set by manager
+                                "title": "Pending...",
+                                "added_time": 0,
+                                "output_path": dl_path,
+                                "output_template": output_template,
+                                "video_format": config.get("video_format", "best"),
+                                "proxy": config.get("proxy"),
+                                "rate_limit": config.get("rate_limit"),
+                                "sponsorblock": config.get("sponsorblock", False),
+                                "use_aria2c": config.get("use_aria2c", False),
+                                "gpu_accel": config.get("gpu_accel", "None"),
+                                "cookies_from_browser": config.get("cookies"),
                             }
                             self.queue_manager.add_item(item)
                             added_count += 1
