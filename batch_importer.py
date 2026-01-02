@@ -28,12 +28,6 @@ def verify_url(url: str, timeout: int = 3) -> bool:
         )
         if response.status_code < 400:
             return True
-        # Fallback on servers that disallow HEAD
-        if response.status_code == 405:
-            response = requests.get(
-                url, timeout=timeout, stream=True, allow_redirects=True, headers=headers
-            )
-            return response.status_code < 400
         return False
     except requests.RequestException:
         return False

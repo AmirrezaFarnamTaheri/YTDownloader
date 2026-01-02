@@ -281,6 +281,7 @@ class TestMainLogic(unittest.TestCase):
 
         # Simulate run_task executing the async callback
         import asyncio
+
         def run_task_side_effect(func, *args, **kwargs):
             res = func(*args, **kwargs)
             if asyncio.iscoroutine(res):
@@ -303,6 +304,7 @@ class TestMainLogic(unittest.TestCase):
 
         # Simulate run_task executing the async callback
         import asyncio
+
         def run_task_side_effect(func, *args, **kwargs):
             res = func(*args, **kwargs)
             if asyncio.iscoroutine(res):

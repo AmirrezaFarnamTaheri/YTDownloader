@@ -215,19 +215,22 @@ class ConfigManager:
         ConfigManager._validate_schema(save_data)
 
         # SAVE COOKIES TO KEYRING
-        if "cookies" in save_data:
-            cookies_val = save_data["cookies"]
-            saved_to_keyring = False
-            if cookies_val:
-                try:
-                    keyring.set_password(SERVICE_NAME, "cookies", cookies_val)
-                    saved_to_keyring = True
-                except Exception as e:  # pylint: disable=broad-exception-caught
-                    logger.error("Failed to save cookies to keyring: %s", e)
+        # Unconditionally pop cookies from save_data so they are never written to disk in plain text
+        cookies_val = save_data.pop("cookies", None)
 
-            # Remove from file payload only if we successfully stored it securely
-            if saved_to_keyring:
-                del save_data["cookies"]
+        if cookies_val:
+            try:
+                keyring.set_password(SERVICE_NAME, "cookies", cookies_val)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error("Failed to save cookies to keyring: %s", e)
+        else:
+            # If cookies are cleared/empty, remove from keyring
+            try:
+                keyring.delete_password(SERVICE_NAME, "cookies")
+            except keyring.errors.PasswordDeleteError:
+                pass  # Password didn't exist
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.warning("Failed to delete cookies from keyring: %s", e)
 
         temp_path = None
 

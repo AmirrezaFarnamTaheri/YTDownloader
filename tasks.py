@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Constants
 DEFAULT_MAX_WORKERS = 3
 _SUBMISSION_THROTTLE = threading.Semaphore(
-    1
+    DEFAULT_MAX_WORKERS
 )  # Control task submission rate to executor
 _ACTIVE_COUNT_LOCK = threading.Lock()
 
@@ -41,13 +41,21 @@ def configure_concurrency(max_workers):
     Reconfigures the global thread pool executor with a new max_workers limit.
     Shuts down the existing executor (without waiting) and clears the global reference
     so it will be re-initialized on next use.
+    Also updates the submission throttle semaphore.
     """
-    global _executor
+    global _executor, _SUBMISSION_THROTTLE
     with _executor_lock:
         if _executor:
             # We don't want to kill running tasks, just stop accepting new ones on this pool
             _executor.shutdown(wait=False)
             _executor = None
+
+    # Update throttle semaphore
+    # Note: This resets the semaphore. Active downloads will release the OLD semaphore object
+    # if they captured it, which is fine as they are essentially "orphaned" from this new limit.
+    # New downloads will use this new semaphore.
+    _SUBMISSION_THROTTLE = threading.Semaphore(max_workers)
+
     logger.info("Concurrency limit updated to %d", max_workers)
 
 
@@ -122,8 +130,8 @@ def _progress_hook_factory(item: dict, cancel_token: CancelToken):
                         item["id"], "Downloading", {"progress": progress_val}
                     )
 
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.debug("Error in progress hook: %s", e)
         elif d["status"] == "finished":
             item["progress"] = 1.0
             item["status"] = "Processing"
@@ -162,12 +170,16 @@ def process_queue(page: ft.Page | None) -> None:
         return
 
     item = None
+    submitted = False
     try:
         item = qm.claim_next_downloadable()
         if not item:
+            # Acquired semaphore but no item available, must release
             return
 
-        logger.info("Starting download for %s", item.get("url"))
+        logger.info(
+            "Starting download for %s (ID: %s)", item.get("url"), item.get("id")
+        )
 
         # 3. Submit to executor
         executor = _get_executor()
@@ -179,15 +191,15 @@ def process_queue(page: ft.Page | None) -> None:
                 _SUBMISSION_THROTTLE.release()
 
         executor.submit(_run_and_release, item, page)
+        submitted = True
 
     except Exception:  # pylint: disable=broad-exception-caught
         if item and "id" in item:
             qm.update_item_status(item["id"], "Queued")
-        _SUBMISSION_THROTTLE.release()
         raise
     finally:
-        # If we didn't actually submit (no item), release here.
-        if item is None:
+        # If we didn't actually submit (e.g. no item or exception during submit), release here.
+        if not submitted:
             _SUBMISSION_THROTTLE.release()
 
 
@@ -337,9 +349,12 @@ def download_task(item: dict, page: ft.Page | None) -> None:
             if page:
 
                 async def show_error_snack():
+                    # Show generic error message to user, details in log
                     page.open(
                         ft.SnackBar(
-                            content=ft.Text(f"{LM.get('download_error')}: {err_str}"),
+                            content=ft.Text(
+                                f"{LM.get('download_error')} (Check logs for details)"
+                            ),
                             bgcolor=ft.colors.ERROR,
                         )
                     )
