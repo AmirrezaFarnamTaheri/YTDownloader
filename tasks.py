@@ -35,6 +35,7 @@ _ACTIVE_COUNT_LOCK = threading.Lock()
 _executor_lock = threading.Lock()
 _executor = None
 
+
 def configure_concurrency(max_workers):
     """
     Reconfigures the global thread pool executor with a new max_workers limit.
@@ -98,8 +99,8 @@ def _progress_hook_factory(item: dict, cancel_token: CancelToken):
     """Creates a progress hook for yt-dlp/downloader."""
 
     def progress_hook(d):
-        if cancel_token and cancel_token.cancelled:
-            raise Exception("Download Cancelled by user")
+        if cancel_token:
+            cancel_token.check()
 
         if d["status"] == "downloading":
             try:
@@ -117,8 +118,8 @@ def _progress_hook_factory(item: dict, cancel_token: CancelToken):
                 # unless 'item' is the reference from inside QueueManager (which it is not, usually).
                 # We MUST call queue_manager.update_item_progress.
                 if "id" in item:
-                    app_state.state.queue_manager.update_item_progress(
-                        item["id"], progress_val
+                    app_state.state.queue_manager.update_item_status(
+                        item["id"], "Downloading", {"progress": progress_val}
                     )
 
             except Exception:  # pylint: disable=broad-exception-caught
@@ -158,35 +159,37 @@ def process_queue(page: ft.Page | None) -> None:
         return  # Busy
 
     # 2. Claim next item
-    item = qm.claim_next_downloadable()
-    if not item:
+    if not _SUBMISSION_THROTTLE.acquire(blocking=False):
         return
 
-    logger.info("Starting download for %s", item.get("url"))
+    item = None
+    try:
+        item = qm.claim_next_downloadable()
+        if not item:
+            return
 
-    # 3. Submit to executor
-    executor = _get_executor()
-    # We use a throttle to ensure we don't spam executor if it's somehow backed up
-    # preserving order is handled by QueueManager priority/order.
-    if _SUBMISSION_THROTTLE.acquire(blocking=False):
-        try:
-            executor.submit(download_task, item, page)
-        except RuntimeError:
-            # Executor might be closed
-            logger.error("Executor is closed, cannot submit task.")
-            # Release item back to queue? Or fail it?
-            # Reverting status to Queued
+        logger.info("Starting download for %s", item.get("url"))
+
+        # 3. Submit to executor
+        executor = _get_executor()
+
+        def _run_and_release(it: dict, pg: ft.Page | None) -> None:
+            try:
+                download_task(it, pg)
+            finally:
+                _SUBMISSION_THROTTLE.release()
+
+        executor.submit(_run_and_release, item, page)
+
+    except Exception:  # pylint: disable=broad-exception-caught
+        if item and "id" in item:
             qm.update_item_status(item["id"], "Queued")
-        finally:
+        _SUBMISSION_THROTTLE.release()
+        raise
+    finally:
+        # If we didn't actually submit (no item), release here.
+        if item is None:
             _SUBMISSION_THROTTLE.release()
-    else:
-        # Throttle busy, revert item claim?
-        # Ideally we shouldn't have claimed it if we couldn't submit.
-        # But claim sets status to "Allocating" or similar?
-        # If claim_next_downloadable sets status to "Downloading", we must revert if submission fails.
-        # Assuming claim sets it to "Allocating" or "Downloading".
-        # Let's revert.
-        qm.update_item_status(item["id"], "Queued")
 
 
 def download_task(item: dict, page: ft.Page | None) -> None:
@@ -207,10 +210,13 @@ def download_task(item: dict, page: ft.Page | None) -> None:
     item_id = item.get("id")
     qm = app_state.state.queue_manager
 
+    if not item_id:
+        logger.error("Download task missing item id; cannot update queue state.")
+        return
+
     # Create CancelToken
     cancel_token = CancelToken()
-    if item_id:
-        qm.register_cancel_token(item_id, cancel_token)
+    qm.register_cancel_token(item_id, cancel_token)
 
     try:
         # Update status
@@ -382,7 +388,8 @@ def fetch_info_task(url: str, view_card: Any, page: Any) -> None:
         if page:
 
             async def show_error():
-                view_card.set_fetch_disabled(False)
+                if hasattr(view_card, "set_fetch_disabled"):
+                    view_card.set_fetch_disabled(False)
                 page.open(
                     ft.SnackBar(
                         content=ft.Text(f"{LM.get('error_fetch_info')}: {str(e)}")

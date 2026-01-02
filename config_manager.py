@@ -217,14 +217,17 @@ class ConfigManager:
         # SAVE COOKIES TO KEYRING
         if "cookies" in save_data:
             cookies_val = save_data["cookies"]
+            saved_to_keyring = False
             if cookies_val:
                 try:
                     keyring.set_password(SERVICE_NAME, "cookies", cookies_val)
+                    saved_to_keyring = True
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     logger.error("Failed to save cookies to keyring: %s", e)
 
-            # Remove from file payload
-            del save_data["cookies"]
+            # Remove from file payload only if we successfully stored it securely
+            if saved_to_keyring:
+                del save_data["cookies"]
 
         temp_path = None
 

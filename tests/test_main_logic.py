@@ -144,6 +144,8 @@ class TestMainLogic(unittest.TestCase):
         self.mock_executor.submit.assert_not_called()
 
         # Should NOT claim item (remain Queued)
+        # Note: If acquire returns False, we return immediately without claiming.
+        # So item status remains "Queued".
         q_items = self.mock_state.queue_manager.get_all()
         self.assertEqual(q_items[0]["status"], "Queued")
 

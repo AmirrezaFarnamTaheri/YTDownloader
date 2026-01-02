@@ -297,7 +297,13 @@ class DashboardView(BaseView):
         """
         Refresh activity chart using real data from HistoryManager.
         """
-        activity_data = HistoryManager.get_download_activity(days=7)
+        try:
+            from app_state import state  # local import to avoid circulars
+
+            hm = getattr(state, "history_manager", None) or HistoryManager()
+            activity_data = hm.get_download_activity(days=7)
+        except Exception:  # pylint: disable=broad-exception-caught
+            activity_data = []
 
         groups = []
         labels = []
