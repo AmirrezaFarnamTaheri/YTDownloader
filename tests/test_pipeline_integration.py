@@ -32,9 +32,9 @@ class TestPipelineIntegration(unittest.TestCase):
                 tasks._executor.shutdown(wait=False)
                 tasks._executor = None
 
-        # Patch tasks._submission_throttle to avoid interference
+        # Patch tasks._SUBMISSION_THROTTLE to avoid interference
         # We replace the semaphore in the module with a fresh one
-        self.patcher_sem = patch("tasks._submission_throttle", threading.Semaphore(3))
+        self.patcher_sem = patch("tasks._SUBMISSION_THROTTLE", threading.Semaphore(3))
         self.mock_sem = self.patcher_sem.start()
 
     def tearDown(self):
@@ -54,10 +54,7 @@ class TestPipelineIntegration(unittest.TestCase):
         We mock the actual download_video call.
         """
         # Configure mock to return valid result
-        mock_download.return_value = {
-            "filename": "vid.mp4",
-            "filepath": "/tmp/vid.mp4"
-        }
+        mock_download.return_value = {"filename": "vid.mp4", "filepath": "/tmp/vid.mp4"}
 
         # 1. Add item
         item = {
@@ -70,7 +67,7 @@ class TestPipelineIntegration(unittest.TestCase):
         state.queue_manager.add_item(item)
 
         # 2. Trigger processing using module reference
-        tasks.process_queue()
+        tasks.process_queue(None)
 
         # Since process_queue spawns a thread via executor, we need to wait briefly
         # The thread executes `_wrapped_download_task` -> `download_task` -> `download_video`
@@ -99,7 +96,7 @@ class TestPipelineIntegration(unittest.TestCase):
             item = {"url": "http://fail.com", "status": "Queued", "title": "Fail Video"}
             state.queue_manager.add_item(item)
 
-            tasks.process_queue()
+            tasks.process_queue(None)
             time.sleep(2.5)
 
             # Check status
@@ -134,7 +131,7 @@ class TestPipelineIntegration(unittest.TestCase):
             state.queue_manager.update_scheduled_items(datetime.datetime.now())
 
             # 2. Process
-            tasks.process_queue()
+            tasks.process_queue(None)
             time.sleep(2.5)
 
             mock_dl.assert_called()

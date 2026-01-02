@@ -103,7 +103,11 @@ class DownloadItemControl(ft.Container):
                             [
                                 self.title_text,
                                 ft.Row(
-                                    [self.status_badge, self.meta_badges, self.info_text],
+                                    [
+                                        self.status_badge,
+                                        self.meta_badges,
+                                        self.info_text,
+                                    ],
                                     spacing=10,
                                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                                 ),
@@ -137,7 +141,9 @@ class DownloadItemControl(ft.Container):
         # Helper for badge creation
         def create_badge(text, color):
             return ft.Container(
-                content=ft.Text(text, size=10, weight=ft.FontWeight.BOLD, color=Theme.Text.PRIMARY),
+                content=ft.Text(
+                    text, size=10, weight=ft.FontWeight.BOLD, color=Theme.Text.PRIMARY
+                ),
                 padding=ft.padding.symmetric(horizontal=6, vertical=2),
                 border_radius=4,
                 bgcolor=color,
@@ -152,7 +158,7 @@ class DownloadItemControl(ft.Container):
             self.meta_badges.controls.append(create_badge("HDR", Theme.ACCENT))
 
         if self.item.get("playlist", False):
-             self.meta_badges.controls.append(create_badge("PLAYLIST", Theme.INFO))
+            self.meta_badges.controls.append(create_badge("PLAYLIST", Theme.INFO))
 
     def _get_platform_icon(self, url: str) -> ft.Icon:
         """Returns an icon based on the URL."""

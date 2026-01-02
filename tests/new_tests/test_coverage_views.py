@@ -1,6 +1,6 @@
-
 import unittest
 from unittest.mock import MagicMock, patch
+
 
 # Define MockControl first
 class MockControl:
@@ -16,10 +16,14 @@ class MockControl:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+
 # Patch dependencies before importing views
-with patch.dict("sys.modules", {
-    "flet": MagicMock(),
-}):
+with patch.dict(
+    "sys.modules",
+    {
+        "flet": MagicMock(),
+    },
+):
     import flet as ft
 
     # Configure flet mocks
@@ -69,6 +73,7 @@ with patch.dict("sys.modules", {
     from views.download_view import DownloadView
     from views.components.download_input_card import DownloadInputCard
 
+
 class TestDownloadView(unittest.TestCase):
     def setUp(self):
         self.mock_fetch = MagicMock()
@@ -80,8 +85,10 @@ class TestDownloadView(unittest.TestCase):
         self.mock_state.config.get.return_value = "%(title)s.%(ext)s"
 
         # We need to mock BaseView init which calls super().__init__ and might use flet
-        with patch("views.base_view.BaseView.__init__"), \
-             patch("views.download_view.DownloadInputCard") as MockInputCard:
+        with (
+            patch("views.base_view.BaseView.__init__"),
+            patch("views.download_view.DownloadInputCard") as MockInputCard,
+        ):
 
             # Setup Mock Input Card instance
             self.mock_input_card_instance = MockInputCard.return_value
@@ -137,7 +144,7 @@ class TestDownloadView(unittest.TestCase):
         self.view.input_card.get_options.return_value = {
             "url": "http://test.com",
             "start_time": "00:00:10",
-            "force_generic": True
+            "force_generic": True,
         }
 
         # Setup video info

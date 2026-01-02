@@ -47,7 +47,14 @@ def mock_dependencies():
 
             # Allow any other attribute to be set
             for k, v in kwargs.items():
-                if k not in ["visible", "padding", "disabled", "content", "controls", "value"]:
+                if k not in [
+                    "visible",
+                    "padding",
+                    "disabled",
+                    "content",
+                    "controls",
+                    "value",
+                ]:
                     setattr(self, k, v)
 
         def update(self):

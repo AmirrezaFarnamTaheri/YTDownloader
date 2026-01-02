@@ -240,12 +240,18 @@ def download_video(options: DownloadOptions) -> dict[str, Any]:
 
     # Sanitize output_template to prevent path traversal
     # It should not be absolute and should not contain '..' segments
-    tmpl = Path(options.output_template)
-    if tmpl.is_absolute():
+    if os.path.isabs(options.output_template):
         raise ValueError("Output template must be a relative path")
-    if ".." in options.output_template.split(
-        os.path.sep
-    ) or ".." in options.output_template.split("/"):
+
+    # Disallow any directory separators to ensure it's just a filename template
+    if os.path.sep in options.output_template or (
+        os.path.altsep and os.path.altsep in options.output_template
+    ):
+        raise ValueError("Output template cannot contain path separators ('/' or '\\')")
+
+    # Check for '..' segments
+    normalized_path = os.path.normpath(options.output_template)
+    if ".." in normalized_path.split(os.path.sep):
         raise ValueError(
             "Output template must not contain parent directory references ('..')"
         )

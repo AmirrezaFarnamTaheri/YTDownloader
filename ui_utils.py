@@ -92,11 +92,11 @@ def validate_url(url: str) -> bool:
             try:
                 ip = ipaddress.ip_address(hostname)
                 if (
-                    ip.is_private or
-                    ip.is_loopback or
-                    ip.is_link_local or
-                    ip.is_multicast or
-                    ip.is_reserved
+                    ip.is_private
+                    or ip.is_loopback
+                    or ip.is_link_local
+                    or ip.is_multicast
+                    or ip.is_reserved
                 ):
                     return False
             except ValueError:
@@ -147,11 +147,11 @@ def validate_proxy(proxy: str) -> bool:
         try:
             ip = ipaddress.ip_address(hostname)
             if (
-                ip.is_private or
-                ip.is_loopback or
-                ip.is_link_local or
-                ip.is_multicast or
-                ip.is_reserved
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_multicast
+                or ip.is_reserved
             ):
                 return False
         except ValueError:

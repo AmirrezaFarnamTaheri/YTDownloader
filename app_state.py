@@ -102,6 +102,8 @@ class AppState:
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Failed to initialize history database: %s", e)
 
+        self.history_manager = HistoryManager()
+
         # Feature flags / States
         self.cinema_mode = False
         self.cloud_manager = CloudManager()

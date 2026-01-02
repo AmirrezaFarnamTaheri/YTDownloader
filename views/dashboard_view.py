@@ -65,17 +65,13 @@ class DashboardView(BaseView):
         self.activity_chart = ft.BarChart(
             bar_groups=[],
             border=ft.border.all(1, Theme.BORDER),
-            left_axis=ft.ChartAxis(
-                labels_size=40, title=ft.Text("Downloads", size=10)
-            ),
-            bottom_axis=ft.ChartAxis(
-                labels_size=40, title=ft.Text("Day", size=10)
-            ),
+            left_axis=ft.ChartAxis(labels_size=40, title=ft.Text("Downloads", size=10)),
+            bottom_axis=ft.ChartAxis(labels_size=40, title=ft.Text("Day", size=10)),
             horizontal_grid_lines=ft.ChartGridLines(
                 color=Theme.BORDER, width=1, dash_pattern=[3, 3]
             ),
             tooltip_bgcolor=Theme.BG_CARD,
-            max_y=10, # Dynamic
+            max_y=10,  # Dynamic
             interactive=True,
             height=150,
         )
@@ -103,28 +99,46 @@ class DashboardView(BaseView):
                     self._build_stats_section(),
                     ft.Container(height=20),
                     # Charts Row
-                    ft.Row([
-                        ft.Column([
-                            ft.Text(LM.get("system_status"), weight=ft.FontWeight.BOLD),
-                            ft.Container(
-                                content=ft.Column([self.storage_chart, self.storage_text], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                                **Theme.get_card_decoration(),
-                                width=300,
-                                # Removed explicit padding=20 here to avoid collision with get_card_decoration
-                            )
-                        ]),
-                         ft.Column([
-                            ft.Text("Activity (Last 7 Days)", weight=ft.FontWeight.BOLD),
-                            ft.Container(
-                                content=self.activity_chart,
-                                **Theme.get_card_decoration(),
-                                width=400,
-                                height=230
-                                # Removed explicit padding=20 here too
-                            )
-                        ], expand=True),
-                    ], wrap=True, alignment=ft.MainAxisAlignment.START, spacing=20),
-
+                    ft.Row(
+                        [
+                            ft.Column(
+                                [
+                                    ft.Text(
+                                        LM.get("system_status"),
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                    ft.Container(
+                                        content=ft.Column(
+                                            [self.storage_chart, self.storage_text],
+                                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                        ),
+                                        **Theme.get_card_decoration(),
+                                        width=300,
+                                        # Removed explicit padding=20 here to avoid collision with get_card_decoration
+                                    ),
+                                ]
+                            ),
+                            ft.Column(
+                                [
+                                    ft.Text(
+                                        "Activity (Last 7 Days)",
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                    ft.Container(
+                                        content=self.activity_chart,
+                                        **Theme.get_card_decoration(),
+                                        width=400,
+                                        height=230,
+                                        # Removed explicit padding=20 here too
+                                    ),
+                                ],
+                                expand=True,
+                            ),
+                        ],
+                        wrap=True,
+                        alignment=ft.MainAxisAlignment.START,
+                        spacing=20,
+                    ),
                     ft.Container(height=20),
                     # Recent History
                     ft.Text(
@@ -275,7 +289,7 @@ class DashboardView(BaseView):
         self._refresh_storage()
         self._refresh_stats()
         self._refresh_history()
-        self._refresh_activity() # New
+        self._refresh_activity()  # New
         if self.page:
             self.update()
 
@@ -283,7 +297,13 @@ class DashboardView(BaseView):
         """
         Refresh activity chart using real data from HistoryManager.
         """
-        activity_data = HistoryManager.get_download_activity(days=7)
+        try:
+            from app_state import state  # local import to avoid circulars
+
+            hm = getattr(state, "history_manager", None) or HistoryManager()
+            activity_data = hm.get_download_activity(days=7)
+        except Exception:  # pylint: disable=broad-exception-caught
+            activity_data = []
 
         groups = []
         labels = []
@@ -305,16 +325,13 @@ class DashboardView(BaseView):
                             color=Theme.Primary.MAIN,
                             width=15,
                             border_radius=4,
-                            tooltip=f"{day.get('date')}: {count}"
+                            tooltip=f"{day.get('date')}: {count}",
                         )
-                    ]
+                    ],
                 )
             )
             labels.append(
-                ft.ChartAxisLabel(
-                    value=i,
-                    label=ft.Text(day.get("label", ""), size=10)
-                )
+                ft.ChartAxisLabel(value=i, label=ft.Text(day.get("label", ""), size=10))
             )
 
         self.activity_chart.bar_groups = groups
@@ -335,7 +352,12 @@ class DashboardView(BaseView):
                     "downloading": sum(
                         1 for i in items if i.get("status") == "Downloading"
                     ),
-                    "queued": sum(1 for i in items if i.get("status") == "Queued" or i.get("status") == "Allocating"),
+                    "queued": sum(
+                        1
+                        for i in items
+                        if i.get("status") == "Queued"
+                        or i.get("status") == "Allocating"
+                    ),
                     "completed": sum(
                         1 for i in items if i.get("status") == "Completed"
                     ),
@@ -363,17 +385,9 @@ class DashboardView(BaseView):
             # Update Pie Chart
             self.storage_chart.sections = [
                 ft.PieChartSection(
-                    value=free,
-                    color=Theme.Status.SUCCESS,
-                    radius=20,
-                    title=""
+                    value=free, color=Theme.Status.SUCCESS, radius=20, title=""
                 ),
-                 ft.PieChartSection(
-                    value=used,
-                    color=Theme.ACCENT,
-                    radius=20,
-                    title=""
-                ),
+                ft.PieChartSection(value=used, color=Theme.ACCENT, radius=20, title=""),
             ]
 
             self.storage_chart.update()

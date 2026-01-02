@@ -77,7 +77,7 @@ class AppLayout(ft.Row):
             selected_index=0,
             on_change=self.on_nav_change,
             destinations=self.destinations,
-            visible=False
+            visible=False,
         )
 
         # Content Area
@@ -174,5 +174,5 @@ class AppLayout(ft.Row):
         self.rail.selected_index = index  # type: ignore
         self.rail.update()
         if self.bottom_nav.visible:
-             self.bottom_nav.selected_index = index
-             self.bottom_nav.update()
+            self.bottom_nav.selected_index = index
+            self.bottom_nav.update()

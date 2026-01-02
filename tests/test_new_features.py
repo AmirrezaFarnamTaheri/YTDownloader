@@ -118,36 +118,43 @@ class TestHistoryManagerSearchFilter:
         from history_manager import HistoryManager
 
         # Use a temporary database
-        HistoryManager._test_db_file = tmp_path / "test_history.db"
+        HistoryManager._test_db_file = (tmp_path / "test_history.db").resolve()
         HistoryManager.init_db()
 
         # Add some test entries
-        HistoryManager.add_entry(
-            url="https://youtube.com/watch?v=123",
-            title="Test Video 1",
-            output_path="/downloads",
-            format_str="mp4",
-            status="Completed",
-            file_size="100MB",
+        manager = HistoryManager()
+        manager.add_entry(
+            {
+                "url": "https://youtube.com/watch?v=123",
+                "title": "Test Video 1",
+                "output_path": "/downloads",
+                "format_str": "mp4",
+                "status": "Completed",
+                "file_size": "100MB",
+            }
         )
-        HistoryManager.add_entry(
-            url="https://youtube.com/watch?v=456",
-            title="Another Video",
-            output_path="/downloads",
-            format_str="mp4",
-            status="Completed",
-            file_size="50MB",
+        manager.add_entry(
+            {
+                "url": "https://youtube.com/watch?v=456",
+                "title": "Another Video",
+                "output_path": "/downloads",
+                "format_str": "mp4",
+                "status": "Completed",
+                "file_size": "50MB",
+            }
         )
-        HistoryManager.add_entry(
-            url="https://vimeo.com/789",
-            title="Vimeo Content",
-            output_path="/downloads",
-            format_str="webm",
-            status="Error",
-            file_size="0MB",
+        manager.add_entry(
+            {
+                "url": "https://vimeo.com/789",
+                "title": "Vimeo Content",
+                "output_path": "/downloads",
+                "format_str": "webm",
+                "status": "Error",
+                "file_size": "0MB",
+            }
         )
 
-        yield HistoryManager
+        yield manager
 
         # Cleanup
         if hasattr(HistoryManager, "_test_db_file"):

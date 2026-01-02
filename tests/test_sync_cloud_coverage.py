@@ -130,10 +130,10 @@ class TestCloudManagerCoverage(unittest.TestCase):
 
         # We patch os.environ to ensure consistent test behavior (NOT CI)
         with patch.dict(os.environ, {}, clear=True):
-             # Ensure CI is NOT set
-             with self.assertRaises(Exception) as cm:
+            # Ensure CI is NOT set
+            with self.assertRaises(Exception) as cm:
                 self.manager._get_google_drive_client()
-             self.assertIn("not configured", str(cm.exception))
+            self.assertIn("not configured", str(cm.exception))
 
     @patch("cloud_manager._google_auth_cls")
     @patch("cloud_manager._google_drive_cls")

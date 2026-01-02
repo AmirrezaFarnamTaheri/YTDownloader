@@ -63,21 +63,10 @@ class UIManager:
 
         logger.debug("Initializing views...")
 
-        # Initialize Dashboard (Index 0)
-        # Dashboard expects on_paste_url to take no args in its signature in some contexts,
-        # but here we pass _on_dashboard_paste_url which takes url.
-        # DashboardView calls on_paste_url() (no args) OR on_paste_url(url)?
-        # Let's check DashboardView signature.
-        # DashboardView: on_paste_url: Callable[[], None] (implied by type hint in code? No, I need to check)
-        # The code I wrote for DashboardView: on_paste_url: Callable[[], None]
-        # But here I pass _on_dashboard_paste_url which expects a url?
-        # Actually _on_dashboard_paste_url is used by clipboard logic usually?
-        # Wait, DashboardView has "Paste URL" button. If clicked, it should probably grab clipboard content.
-        # Let's wrap it to handle the logic.
-
         def dashboard_paste_wrapper():
             # Logic to grab clipboard and pass to _on_dashboard_paste_url
             import pyperclip
+
             try:
                 text = pyperclip.paste()
                 if text:
@@ -96,17 +85,7 @@ class UIManager:
         self.download_view = DownloadView(
             on_fetch_info_callback,
             on_add_to_queue_callback,
-            on_toggle_clipboard_callback, # Using toggle clipboard as the "paste_url" callback or similar?
-            # Ideally DownloadView should just handle paste internally or use a specific callback.
-            # In DownloadView code: self.on_paste_url = on_paste_url
-            # And it calls it in _on_paste_click if defined.
-            # Let's pass a dummy or specific callback.
-            # Actually, `on_toggle_clipboard_callback` is for the toggle switch in settings/controller.
-            # We probably want to pass None or a logging callback if we don't have a specific controller action.
-            # OR pass the same dashboard paste wrapper if we want to support external paste triggers?
-            # The controller passed `on_toggle_clipboard_callback`.
-            # Let's pass None for now as DownloadView handles paste internally via pyperclip mostly.
-            None,
+            None,  # Fixed: Removed extra argument (on_toggle_clipboard_callback)
             on_batch_import_callback,
             on_schedule_callback,
             state,
