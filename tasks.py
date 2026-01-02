@@ -31,6 +31,24 @@ _SUBMISSION_THROTTLE = threading.Semaphore(
 )  # Control task submission rate to executor
 _ACTIVE_COUNT_LOCK = threading.Lock()
 
+# Legacy aliases for tests
+_executor_lock = threading.Lock()
+_executor = None
+
+def configure_concurrency(max_workers):
+    """
+    Reconfigures the global thread pool executor with a new max_workers limit.
+    Shuts down the existing executor (without waiting) and clears the global reference
+    so it will be re-initialized on next use.
+    """
+    global _executor
+    with _executor_lock:
+        if _executor:
+            # We don't want to kill running tasks, just stop accepting new ones on this pool
+            _executor.shutdown(wait=False)
+            _executor = None
+    logger.info("Concurrency limit updated to %d", max_workers)
+
 
 def _get_max_workers() -> int:
     try:
@@ -44,15 +62,17 @@ def _get_max_workers() -> int:
 
 def _get_executor() -> ThreadPoolExecutor:
     """Lazy initializer for executor to pick up config changes."""
+    global _executor
     # Note: We are not caching executor here to allow resizing if config changes?
     # Actually, resizing ThreadPoolExecutor is not trivial.
     # For simplicity, we use a global executor but we might want to recreate it if config changes.
     # For now, let's assume a fixed pool or we just use a new one if we really wanted dynamic sizing.
     # BUT, creating new executors for every task is bad.
     # We'll use a module-level cached executor that we initialized at app start or on first use.
-    if not hasattr(_get_executor, "executor") or _get_executor.executor is None:
-        _get_executor.executor = ThreadPoolExecutor(max_workers=_get_max_workers())
-    return _get_executor.executor
+    with _executor_lock:
+        if _executor is None:
+            _executor = ThreadPoolExecutor(max_workers=_get_max_workers())
+        return _executor
 
 
 def _log_to_history(item: dict, result: dict | None) -> None:
@@ -78,7 +98,7 @@ def _progress_hook_factory(item: dict, cancel_token: CancelToken):
     """Creates a progress hook for yt-dlp/downloader."""
 
     def progress_hook(d):
-        if cancel_token and cancel_token.is_cancelled():
+        if cancel_token and cancel_token.cancelled:
             raise Exception("Download Cancelled by user")
 
         if d["status"] == "downloading":
@@ -121,7 +141,8 @@ def process_queue(page: ft.Page | None) -> None:
     Running in background thread usually.
     """
     # Quick check for shutdown
-    if getattr(app_state.state, "shutdown_flag", False):
+    flag = getattr(app_state.state, "shutdown_flag", None)
+    if flag and flag.is_set():
         return
 
     qm = app_state.state.queue_manager
@@ -177,7 +198,8 @@ def download_task(item: dict, page: ft.Page | None) -> None:
         return
 
     # Check shutdown again
-    if getattr(app_state.state, "shutdown_flag", False):
+    flag = getattr(app_state.state, "shutdown_flag", None)
+    if flag and flag.is_set():
         if "id" in item:
             app_state.state.queue_manager.update_item_status(item["id"], "Cancelled")
         return
@@ -245,17 +267,22 @@ def download_task(item: dict, page: ft.Page | None) -> None:
         # Check for force_generic
         force_generic = item.get("force_generic", False)
 
+        # Map item fields to DownloadOptions
+        video_fmt = item.get("video_format", "best")
+        if item.get("audio_only", False):
+            video_fmt = "audio"
+
         options = DownloadOptions(
             url=url,
             output_path=output_path,
             progress_hook=phook,
-            noplaylist=not item.get("playlist", False),
+            playlist=item.get("playlist", False),
             proxy=proxy,
             rate_limit=rate_limit,
             cookies_from_browser=cookies,
             cancel_token=cancel_token,
-            format_id=item.get("format_id"),
-            audio_only=item.get("audio_only", False),
+            video_format=video_fmt,
+            audio_format=item.get("audio_format"),
             start_time=item.get("start_time"),
             end_time=item.get("end_time"),
             force_generic=force_generic,
@@ -279,35 +306,40 @@ def download_task(item: dict, page: ft.Page | None) -> None:
         _log_to_history(item, result)
 
         if page:
-            page.open(
-                ft.SnackBar(
-                    content=ft.Text(
-                        f"{LM.get('download_complete')}: {item.get('title')}"
+
+            async def show_success():
+                page.open(
+                    ft.SnackBar(
+                        content=ft.Text(
+                            f"{LM.get('download_complete')}: {item.get('title')}"
+                        )
                     )
                 )
-            )
+
+            page.run_task(show_success)
 
     except Exception as e:  # pylint: disable=broad-exception-caught
         # Check if cancelled
         err_str = str(e)
-        if "Cancelled" in err_str or (cancel_token and cancel_token.is_cancelled()):
+        if "Cancelled" in err_str or (cancel_token and cancel_token.cancelled):
             logger.info("Download cancelled for %s", url)
             qm.update_item_status(item_id, "Cancelled")
             _log_to_history(item, None)  # Should we log cancelled? Maybe.
         else:
             logger.error("Download failed for %s: %s", url, e)
-            qm.update_item_status(item_id, "Error")
-            # Update item error msg?
-            # QueueManager items are dicts, we can add error field?
-            # Not standardized, but useful.
+            qm.update_item_status(item_id, "Error", {"error": str(e)})
             _log_to_history(item, None)
             if page:
-                page.open(
-                    ft.SnackBar(
-                        content=ft.Text(f"{LM.get('download_error')}: {err_str}"),
-                        bgcolor=ft.colors.ERROR,
+
+                async def show_error_snack():
+                    page.open(
+                        ft.SnackBar(
+                            content=ft.Text(f"{LM.get('download_error')}: {err_str}"),
+                            bgcolor=ft.colors.ERROR,
+                        )
                     )
-                )
+
+                page.run_task(show_error_snack)
     finally:
         if item_id:
             qm.unregister_cancel_token(item_id, cancel_token)

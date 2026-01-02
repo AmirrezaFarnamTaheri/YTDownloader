@@ -88,7 +88,7 @@ class TestAuditFixes(unittest.TestCase):
         mock_exists.return_value = True
         mock_is_file.return_value = True
 
-        importer = BatchImporter(MagicMock(), MagicMock())
+        importer = BatchImporter(MagicMock())
 
         # Unsafe
         mock_is_safe.return_value = False

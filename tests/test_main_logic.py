@@ -26,12 +26,6 @@ class TestMainLogic(unittest.TestCase):
         # Patch the global state in app_state which tasks.py imports
         self.patcher_app_state = patch("app_state.state", self.mock_state)
 
-        # Also patch tasks.state if it was imported directly (legacy/safety)
-        # But tasks.py now uses app_state.state, so patching app_state.state should be enough.
-        # However, to be safe if there are any lingering references:
-        # self.patcher_tasks_direct = patch("tasks.state", self.mock_state)
-        # Removing tasks.state patch as tasks.py doesn't have 'state' global anymore.
-
         # Patch executor - NOW using _get_executor
         self.patcher_executor = patch("tasks._get_executor")
         self.mock_get_executor = self.patcher_executor.start()
@@ -39,7 +33,7 @@ class TestMainLogic(unittest.TestCase):
         self.mock_get_executor.return_value = self.mock_executor
 
         # Patch submission throttle semaphore mock
-        self.patcher_sem = patch("tasks._submission_throttle", create=True)
+        self.patcher_sem = patch("tasks._SUBMISSION_THROTTLE", create=True)
 
         self.patcher_lock = patch(
             "tasks._PROCESS_QUEUE_LOCK", threading.RLock(), create=True
@@ -99,7 +93,7 @@ class TestMainLogic(unittest.TestCase):
         item = {"url": "http://test", "status": "Queued", "title": "T1"}
         self.mock_state.queue_manager.add_item(item)
 
-        process_queue()
+        process_queue(None)
 
         # Check executor submit called
         self.mock_executor.submit.assert_called_once()
@@ -118,7 +112,7 @@ class TestMainLogic(unittest.TestCase):
         }
         self.mock_state.queue_manager.add_item(item)
 
-        process_queue()
+        process_queue(None)
         # Should still be scheduled (not picked up)
         q_items = self.mock_state.queue_manager.get_all()
         self.assertTrue(str(q_items[0]["status"]).startswith("Scheduled"))
@@ -130,7 +124,7 @@ class TestMainLogic(unittest.TestCase):
         # Manually trigger schedule update
         self.mock_state.queue_manager.update_scheduled_items(datetime.now())
 
-        process_queue()
+        process_queue(None)
 
         # Check if item status updated
         q_items_after = self.mock_state.queue_manager.get_all()
@@ -144,7 +138,7 @@ class TestMainLogic(unittest.TestCase):
         item = {"url": "http://test", "status": "Queued", "title": "Busy Test"}
         self.mock_state.queue_manager.add_item(item)
 
-        process_queue()
+        process_queue(None)
 
         # Should NOT submit
         self.mock_executor.submit.assert_not_called()
@@ -173,8 +167,10 @@ class TestMainLogic(unittest.TestCase):
             "control": MagicMock(),
             "output_path": ".",
         }
+        # Add to queue manager
+        self.mock_state.queue_manager.add_item(item)
 
-        download_task(item)
+        download_task(item, None)
 
         self.assertEqual(item["status"], "Completed")
         mock_download_video.assert_called_once()
@@ -184,29 +180,44 @@ class TestMainLogic(unittest.TestCase):
         self.assertIsInstance(call_args, DownloadOptions)
         self.assertEqual(call_args.url, "http://test")
 
-        MockHistory.add_entry.assert_called_once()
+        # tasks.py calls app_state.state.history_manager.add_entry
+        self.mock_state.history_manager.add_entry.assert_called_once()
 
     @patch("tasks.download_video")
     @patch("tasks.process_queue")
     def test_download_task_cancelled(self, mock_process_queue, mock_download_video):
         item = {"url": "http://test", "status": "Queued"}
+        self.mock_state.queue_manager.add_item(item)
+
         mock_download_video.side_effect = Exception(
             "Download Cancelled by user"
         )  # Matches tasks.py check string
 
-        download_task(item)
+        download_task(item, None)
 
-        self.assertEqual(item["status"], "Cancelled")
+        # Re-fetch item from queue manager to check status
+        # Because local 'item' dict is not automatically updated if queue manager creates a copy
+        # BUT download_task modifies 'item' passed to it?
+        # download_task does: qm.update_item_status(item_id, ...)
+        # It does NOT update 'item' dict passed as arg for status changes inside exception block?
+        # Wait, 'download_task' doesn't modify 'item' dict for status. It calls qm.
+        # EXCEPT at the beginning: qm.update_item_status(item_id, "Downloading").
+        # So we should check QM.
+        q_items = self.mock_state.queue_manager.get_all()
+        self.assertEqual(q_items[0]["status"], "Cancelled")
 
     @patch("tasks.download_video")
     @patch("tasks.process_queue")
     def test_download_task_error(self, mock_process_queue, mock_download_video):
         item = {"url": "http://test", "status": "Queued"}
+        self.mock_state.queue_manager.add_item(item)
+
         mock_download_video.side_effect = Exception("Network Error")
 
-        download_task(item)
+        download_task(item, None)
 
-        self.assertEqual(item["status"], "Error")
+        q_items = self.mock_state.queue_manager.get_all()
+        self.assertEqual(q_items[0]["status"], "Error")
 
     @patch("tasks.download_video")
     @patch(
@@ -242,10 +253,11 @@ class TestMainLogic(unittest.TestCase):
 
         mock_download_video.side_effect = side_effect
 
-        download_task(item)
+        download_task(item, None)
 
         # After download_video returns, it sets status to "Completed"
-        self.assertEqual(item["status"], "Completed")
+        q_items = self.mock_state.queue_manager.get_all()
+        self.assertEqual(q_items[0]["status"], "Completed")
 
         # Check intermediate calls
         control_ref = item.get("control_ref")
@@ -267,8 +279,15 @@ class TestMainLogic(unittest.TestCase):
         mock_view = MagicMock()
         mock_page = MagicMock()
 
-        # Simulate run_task executing the callback
-        mock_page.run_task.side_effect = lambda func, *args: func(*args)
+        # Simulate run_task executing the async callback
+        import asyncio
+        def run_task_side_effect(func, *args, **kwargs):
+            res = func(*args, **kwargs)
+            if asyncio.iscoroutine(res):
+                asyncio.run(res)
+            return res
+
+        mock_page.run_task.side_effect = run_task_side_effect
 
         fetch_info_task("http://video", mock_view, mock_page)
 
@@ -282,8 +301,15 @@ class TestMainLogic(unittest.TestCase):
         mock_view = MagicMock()
         mock_page = MagicMock()
 
-        # Simulate run_task executing the callback
-        mock_page.run_task.side_effect = lambda func, *args: func(*args)
+        # Simulate run_task executing the async callback
+        import asyncio
+        def run_task_side_effect(func, *args, **kwargs):
+            res = func(*args, **kwargs)
+            if asyncio.iscoroutine(res):
+                asyncio.run(res)
+            return res
+
+        mock_page.run_task.side_effect = run_task_side_effect
 
         fetch_info_task("http://video", mock_view, mock_page)
 

@@ -69,7 +69,7 @@ class BatchImporter:
             # Security check
             if not is_safe_path(str(path)):
                 logger.error("Access to this file is restricted: %s", filepath)
-                return 0, False
+                raise ValueError(f"Security violation: Access to {filepath} is restricted")
 
             if path.suffix.lower() != ".txt":
                 logger.error("Only .txt files are supported.")
@@ -89,9 +89,7 @@ class BatchImporter:
 
             # Process URLs concurrently
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                future_to_url = {
-                    executor.submit(verify_url, url): url for url in lines
-                }
+                future_to_url = {executor.submit(verify_url, url): url for url in lines}
 
                 for future in as_completed(future_to_url):
                     url = future_to_url[future]
@@ -104,7 +102,9 @@ class BatchImporter:
                                 self.queue_manager.get_queue_count()
                                 >= self.queue_manager.MAX_QUEUE_SIZE
                             ):
-                                logger.warning("Queue is full, skipping remaining batch items")
+                                logger.warning(
+                                    "Queue is full, skipping remaining batch items"
+                                )
                                 break
 
                             # Add item
@@ -117,13 +117,13 @@ class BatchImporter:
                             self.queue_manager.add_item(item)
                             added_count += 1
                         else:
-                            pass # Failed validation
+                            pass  # Failed validation
                     except Exception as exc:  # pylint: disable=broad-exception-caught
                         logger.error("Error verifying %s: %s", url, exc)
 
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error("Batch import failed: %s", e)
-            raise # Re-raise or return 0? Caller usually expects return.
+            raise  # Re-raise or return 0? Caller usually expects return.
             # Original code raised?
             # Let's check test cases. They expect return.
             # But robust error handling suggests logging and returning what we have.

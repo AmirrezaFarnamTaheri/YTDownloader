@@ -66,6 +66,7 @@ class UIManager:
         def dashboard_paste_wrapper():
             # Logic to grab clipboard and pass to _on_dashboard_paste_url
             import pyperclip
+
             try:
                 text = pyperclip.paste()
                 if text:

@@ -49,10 +49,22 @@ class HistoryManager:
             pass
         return conn
 
-    def _init_db(self):
+    @classmethod
+    def init_db(cls):
         """Initializes the database table."""
+        # Check for test override
+        db_file = getattr(cls, "_test_db_file", cls.DB_FILE)
+
         try:
-            with self._get_connection() as conn:
+            # Ensure dir
+            directory = os.path.dirname(db_file)
+            if not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+
+            conn = sqlite3.connect(db_file)
+            conn.execute("PRAGMA journal_mode=WAL;")
+
+            with conn:
                 conn.execute(
                     """
                     CREATE TABLE IF NOT EXISTS history (
@@ -67,9 +79,15 @@ class HistoryManager:
                     )
                 """
                 )
-                conn.commit()
+            conn.close()
+        except OSError as e:
+            logger.error("Failed to create history DB directory: %s", e)
         except sqlite3.Error as e:
             logger.error("Failed to initialize history DB: %s", e)
+
+    def _init_db(self):
+        """Instance level init (for backward compat if needed, or delegation)."""
+        HistoryManager.init_db()
 
     def add_entry(self, entry: dict[str, Any]) -> None:
         """Adds a new entry to the history."""
@@ -130,14 +148,75 @@ class HistoryManager:
         except sqlite3.Error as e:
             logger.error("Failed to clear history: %s", e)
 
-    def delete_entry(self, entry_id: int) -> None:
+    def delete_entry(self, entry_id: int) -> bool:
         """Deletes a specific entry."""
         try:
             with self._get_connection() as conn:
                 conn.execute("DELETE FROM history WHERE id = ?", (entry_id,))
                 conn.commit()
+            return True
         except sqlite3.Error as e:
             logger.error("Failed to delete history entry: %s", e)
+            return False
+
+    def search_history(self, query: str, search_in: list[str] | None = None) -> dict:
+        """Search history with filters."""
+        if not search_in:
+            search_in = ["title", "url"]
+
+        try:
+            with self._get_connection() as conn:
+                sql = "SELECT * FROM history"
+                params: List[Any] = []
+                if query:
+                    conditions = []
+                    for field in search_in:
+                        conditions.append(f"{field} LIKE ?")
+                        params.append(f"%{query}%")
+                    sql += " WHERE " + " OR ".join(conditions)
+
+                sql += " ORDER BY timestamp DESC"
+
+                cursor = conn.execute(sql, params)
+                rows = [dict(row) for row in cursor.fetchall()]
+                return {"total": len(rows), "entries": rows}
+        except sqlite3.Error as e:
+            logger.error("Failed to search history: %s", e)
+            return {"total": 0, "entries": []}
+
+    def get_history_stats(self) -> dict:
+        """Get statistics by status."""
+        stats = {"total": 0, "by_status": {}}
+        try:
+            with self._get_connection() as conn:
+                # Total
+                cursor = conn.execute("SELECT COUNT(*) FROM history")
+                result = cursor.fetchone()
+                stats["total"] = result[0] if result else 0
+
+                # By status
+                cursor = conn.execute("SELECT status, COUNT(*) FROM history GROUP BY status")
+                for row in cursor.fetchall():
+                    stats["by_status"][row["status"]] = row[1]
+        except sqlite3.Error as e:
+            logger.error("Failed to get history stats: %s", e)
+        return stats
+
+    def export_history(self, format_type: str = "json") -> str | None:
+        """Export history to string."""
+        data = self.get_history(limit=10000)
+        if format_type == "json":
+            return json.dumps(data, indent=2, default=str)
+        elif format_type == "csv":
+            import io
+            if not data:
+                return ""
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=data[0].keys())
+            writer.writeheader()
+            writer.writerows(data)
+            return output.getvalue()
+        return None
 
     def get_download_activity(self, days: int = 7) -> List[dict]:
         """

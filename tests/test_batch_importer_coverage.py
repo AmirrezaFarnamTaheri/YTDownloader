@@ -64,6 +64,7 @@ class TestBatchImporterCoverage(unittest.TestCase):
 
         def side_effect(url, timeout=3):
             return "http://valid.com" in url
+
         mock_verify.side_effect = side_effect
 
         self.mock_queue.get_queue_count.return_value = 0
@@ -71,7 +72,7 @@ class TestBatchImporterCoverage(unittest.TestCase):
 
         count, truncated = self.importer.import_from_file("test.txt")
 
-        self.assertEqual(count, 1) # Only valid one added
+        self.assertEqual(count, 1)  # Only valid one added
         self.assertEqual(self.mock_queue.add_item.call_count, 1)
 
     @patch("batch_importer.Path")

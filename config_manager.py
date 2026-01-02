@@ -168,18 +168,18 @@ class ConfigManager:
                     try:
                         cookies = keyring.get_password(SERVICE_NAME, "cookies")
                         if cookies:
-                             # If keyring has cookies, prefer them over file
-                             data["cookies"] = cookies
+                            # If keyring has cookies, prefer them over file
+                            data["cookies"] = cookies
                         elif "cookies" in data:
-                             # Fallback: Migration scenario.
-                             # If file has cookies but keyring doesn't, we might want to migrate later.
-                             # But for now, just use them.
-                             # If they were obfuscated with old logic, they might be garbage if we removed deobfuscate logic.
-                             # Since we removed _deobfuscate, we assume new version doesn't support old obfuscation.
-                             # This forces a reset of cookies if they were obfuscated, which is acceptable for security upgrade.
-                             # Or we can treat them as plain text if they look like it.
-                             pass
-                    except Exception as e: # pylint: disable=broad-exception-caught
+                            # Fallback: Migration scenario.
+                            # If file has cookies but keyring doesn't, we might want to migrate later.
+                            # But for now, just use them.
+                            # If they were obfuscated with old logic, they might be garbage if we removed deobfuscate logic.
+                            # Since we removed _deobfuscate, we assume new version doesn't support old obfuscation.
+                            # This forces a reset of cookies if they were obfuscated, which is acceptable for security upgrade.
+                            # Or we can treat them as plain text if they look like it.
+                            pass
+                    except Exception as e:  # pylint: disable=broad-exception-caught
                         logger.warning("Failed to load cookies from keyring: %s", e)
 
                     ConfigManager._validate_schema(data)

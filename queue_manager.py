@@ -88,6 +88,20 @@ class QueueManager:
                     return True
         return False
 
+    def get_active_count(self) -> int:
+        """Get the number of currently active downloads."""
+        with self._lock:
+            return sum(
+                1
+                for item in self._queue
+                if item.get("status") in ("Downloading", "Allocating", "Processing")
+            )
+
+    def get_queue_count(self) -> int:
+        """Get the total number of items in the queue."""
+        with self._lock:
+            return len(self._queue)
+
     def add_listener(self, listener: Callable[[], None]) -> None:
         """Add a listener callback for queue changes."""
         with self._listeners_lock:

@@ -11,6 +11,7 @@ from tasks import download_task
 class TestMainIntegration(unittest.TestCase):
     def setUp(self):
         self.mock_state = MagicMock()
+        self.mock_state.shutdown_flag.is_set.return_value = False
 
         # Patch app_state.state instead of tasks.state
         self.patcher_app_state = patch("app_state.state", self.mock_state)
@@ -42,7 +43,7 @@ class TestMainIntegration(unittest.TestCase):
             "filepath": "/tmp/vid.mp4",
         }
 
-        download_task(item)
+        download_task(item, None)
 
         self.mock_video.assert_called()
         call_args = self.mock_video.call_args[0][0]
@@ -56,11 +57,12 @@ class TestMainIntegration(unittest.TestCase):
         self.mock_state.queue_manager.update_item_status.assert_any_call(
             "123",
             "Completed",
-            {"filename": "vid.mp4", "filepath": "/tmp/vid.mp4", "progress": 1.0},
+            {"filename": "vid.mp4", "filepath": "/tmp/vid.mp4"},
         )
 
         # Verify history
-        self.mock_history.add_entry.assert_called()
+        # tasks.py calls app_state.state.history_manager.add_entry
+        self.mock_state.history_manager.add_entry.assert_called()
 
     def test_download_task_failure(self):
         item = {
@@ -71,7 +73,7 @@ class TestMainIntegration(unittest.TestCase):
         }
         self.mock_video.side_effect = Exception("Download Error")
 
-        download_task(item)
+        download_task(item, None)
 
         self.mock_state.queue_manager.update_item_status.assert_any_call(
             "456", "Downloading"
