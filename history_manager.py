@@ -51,39 +51,68 @@ class HistoryManager:
 
     @classmethod
     def init_db(cls):
-        """Initializes the database table."""
-        # Check for test override
+        """Initializes the database table and handles migrations."""
         db_file = getattr(cls, "_test_db_file", cls.DB_FILE)
 
         try:
-            # Ensure dir
             directory = os.path.dirname(db_file)
             if not os.path.exists(directory):
                 os.makedirs(directory, exist_ok=True)
 
-            conn = sqlite3.connect(db_file)
-            conn.execute("PRAGMA journal_mode=WAL;")
+            with sqlite3.connect(db_file) as conn:
+                conn.execute("PRAGMA journal_mode=WAL;")
+                cursor = conn.cursor()
 
-            with conn:
-                conn.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS history (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        url TEXT NOT NULL,
-                        title TEXT,
-                        status TEXT,
-                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        filename TEXT,
-                        filepath TEXT,
-                        file_size TEXT
-                    )
-                """
+                # Check if table exists
+                cursor.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='history'"
                 )
-            conn.close()
+                table_exists = cursor.fetchone()
+
+                if not table_exists:
+                    # Create new table
+                    cursor.execute(
+                        """
+                        CREATE TABLE history (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            url TEXT NOT NULL,
+                            title TEXT,
+                            status TEXT,
+                            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            filename TEXT,
+                            filepath TEXT,
+                            file_size TEXT
+                        )
+                        """
+                    )
+                else:
+                    # Perform migration if necessary
+                    cursor.execute("PRAGMA table_info(history)")
+                    columns = [row[1] for row in cursor.fetchall()]
+                    if "output_path" in columns and "filepath" not in columns:
+                        logger.info("Migrating history database schema...")
+                        # Rename old columns and add new ones
+                        cursor.execute(
+                            "ALTER TABLE history RENAME COLUMN output_path TO filepath"
+                        )
+                        if "format_str" in columns:
+                            # This column is removed, we can drop it if we want, but it's not critical.
+                            pass
+                        if "filename" not in columns:
+                            cursor.execute(
+                                "ALTER TABLE history ADD COLUMN filename TEXT"
+                            )
+
+                # Ensure indexes exist
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)"
+                )
+                conn.commit()
+
         except OSError as e:
             logger.error("Failed to create history DB directory: %s", e)
         except sqlite3.Error as e:
-            logger.error("Failed to initialize history DB: %s", e)
+            logger.error("Failed to initialize/migrate history DB: %s", e)
 
     def _init_db(self):
         """Instance level init (for backward compat if needed, or delegation)."""
@@ -143,7 +172,10 @@ class HistoryManager:
             with self._get_connection() as conn:
                 conn.execute("DELETE FROM history")
                 conn.commit()
-                # Vacuum to reclaim space
+
+            # Vacuum must run outside an active transaction
+            db_file = self._resolve_db_file()
+            with sqlite3.connect(db_file, isolation_level=None) as conn:
                 conn.execute("VACUUM")
         except sqlite3.Error as e:
             logger.error("Failed to clear history: %s", e)
@@ -195,7 +227,9 @@ class HistoryManager:
                 stats["total"] = result[0] if result else 0
 
                 # By status
-                cursor = conn.execute("SELECT status, COUNT(*) FROM history GROUP BY status")
+                cursor = conn.execute(
+                    "SELECT status, COUNT(*) FROM history GROUP BY status"
+                )
                 for row in cursor.fetchall():
                     stats["by_status"][row["status"]] = row[1]
         except sqlite3.Error as e:
@@ -209,6 +243,7 @@ class HistoryManager:
             return json.dumps(data, indent=2, default=str)
         elif format_type == "csv":
             import io
+
             if not data:
                 return ""
             output = io.StringIO()
