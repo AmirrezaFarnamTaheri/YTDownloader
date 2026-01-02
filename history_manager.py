@@ -91,17 +91,32 @@ class HistoryManager:
                     columns = [row[1] for row in cursor.fetchall()]
                     if "output_path" in columns and "filepath" not in columns:
                         logger.info("Migrating history database schema...")
-                        # Rename old columns and add new ones
+                        # Use copy-swap method for broader compatibility
                         cursor.execute(
-                            "ALTER TABLE history RENAME COLUMN output_path TO filepath"
-                        )
-                        if "format_str" in columns:
-                            # This column is removed, we can drop it if we want, but it's not critical.
-                            pass
-                        if "filename" not in columns:
-                            cursor.execute(
-                                "ALTER TABLE history ADD COLUMN filename TEXT"
+                            """
+                            CREATE TABLE history_new (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                url TEXT NOT NULL,
+                                title TEXT,
+                                status TEXT,
+                                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                filename TEXT,
+                                filepath TEXT,
+                                file_size TEXT
                             )
+                            """
+                        )
+                        # Copy data, mapping output_path to filepath
+                        # We assume file_size exists in old schema as per usage
+                        cursor.execute(
+                            """
+                            INSERT INTO history_new (id, url, title, status, timestamp, filepath, file_size)
+                            SELECT id, url, title, status, timestamp, output_path, file_size
+                            FROM history
+                            """
+                        )
+                        cursor.execute("DROP TABLE history")
+                        cursor.execute("ALTER TABLE history_new RENAME TO history")
 
                 # Ensure indexes exist
                 cursor.execute(
@@ -174,9 +189,7 @@ class HistoryManager:
                 conn.commit()
 
             # Vacuum must run outside an active transaction
-            db_file = self._resolve_db_file()
-            with sqlite3.connect(db_file, isolation_level=None) as conn:
-                conn.execute("VACUUM")
+            self.vacuum()
         except sqlite3.Error as e:
             logger.error("Failed to clear history: %s", e)
 
@@ -193,6 +206,12 @@ class HistoryManager:
 
     def search_history(self, query: str, search_in: list[str] | None = None) -> dict:
         """Search history with filters."""
+        if not search_in:
+            search_in = ["title", "url"]
+
+        # Whitelist fields to prevent SQL injection
+        valid_fields = {"url", "title", "status", "filename", "filepath"}
+        search_in = [f for f in search_in if f in valid_fields]
         if not search_in:
             search_in = ["title", "url"]
 
@@ -344,7 +363,9 @@ class HistoryManager:
     def vacuum(self):
         """Optimizes the database."""
         try:
-            with self._get_connection() as conn:
+            db_file = self._resolve_db_file()
+            # Connect with isolation_level=None to ensure VACUUM runs outside a transaction
+            with sqlite3.connect(db_file, isolation_level=None) as conn:
                 conn.execute("VACUUM")
         except sqlite3.Error as e:
             logger.warning("Failed to vacuum DB: %s", e)

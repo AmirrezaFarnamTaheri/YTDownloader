@@ -28,12 +28,6 @@ def verify_url(url: str, timeout: int = 3) -> bool:
         )
         if response.status_code < 400:
             return True
-        # Fallback on servers that disallow HEAD
-        if response.status_code == 405:
-            response = requests.get(
-                url, timeout=timeout, stream=True, allow_redirects=True, headers=headers
-            )
-            return response.status_code < 400
         return False
     except requests.RequestException:
         return False
@@ -106,13 +100,13 @@ class BatchImporter:
                     executor.submit(verify_url, url): url for url in valid_syntax
                 }
 
+                queue_full = False
+
                 for future in as_completed(future_to_url):
                     url = future_to_url[future]
                     try:
                         is_valid = future.result()
                         if is_valid:
-                            # Add to queue
-                            # Check if queue is full
                             if (
                                 self.queue_manager.get_queue_count()
                                 >= self.queue_manager.MAX_QUEUE_SIZE
@@ -120,9 +114,7 @@ class BatchImporter:
                                 logger.warning(
                                     "Queue is full, skipping remaining batch items"
                                 )
-                                for f in future_to_url:
-                                    f.cancel()
-                                executor.shutdown(wait=False, cancel_futures=True)
+                                queue_full = True
                                 break
 
                             # Add item
@@ -156,13 +148,12 @@ class BatchImporter:
                     except Exception as exc:  # pylint: disable=broad-exception-caught
                         logger.error("Error verifying %s: %s", url, exc)
 
+                if queue_full:
+                    for f in future_to_url:
+                        f.cancel()
+
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Batch import failed: %s", e)
-            raise  # Re-raise or return 0? Caller usually expects return.
-            # Original code raised?
-            # Let's check test cases. They expect return.
-            # But robust error handling suggests logging and returning what we have.
-            # The original code might have just crashed or returned.
-            # I'll return what we have.
+            logger.error("Batch import failed: %s", e, exc_info=True)
+            return added_count, was_truncated
 
         return added_count, was_truncated
