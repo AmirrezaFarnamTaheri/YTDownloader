@@ -11,7 +11,9 @@ from views.dashboard_view import DashboardView
 class TestDashboardLogic(unittest.TestCase):
     def setUp(self):
         self.mock_queue = MagicMock()
-        self.view = DashboardView(MagicMock(), MagicMock(), MagicMock(), self.mock_queue)
+        self.view = DashboardView(
+            MagicMock(), MagicMock(), MagicMock(), self.mock_queue
+        )
         self.view.page = MagicMock()
         self.view.update = MagicMock()
 
@@ -19,7 +21,7 @@ class TestDashboardLogic(unittest.TestCase):
         self.mock_queue.get_statistics.return_value = {
             "downloading": 2,
             "queued": 5,
-            "completed": 10
+            "completed": 10,
         }
 
         self.view._refresh_stats()
@@ -38,7 +40,7 @@ class TestDashboardLogic(unittest.TestCase):
 
     @patch("views.dashboard_view.shutil.disk_usage")
     def test_refresh_storage(self, mock_usage):
-        mock_usage.return_value = (100, 40, 60) # total, used, free
+        mock_usage.return_value = (100, 40, 60)  # total, used, free
 
         self.view._refresh_storage()
 
@@ -48,6 +50,7 @@ class TestDashboardLogic(unittest.TestCase):
         # Section 0 is free, Section 1 is used in implementation
         self.assertEqual(self.view.storage_chart.sections[0].value, 60)
         self.assertEqual(self.view.storage_chart.sections[1].value, 40)
+
 
 if __name__ == "__main__":
     unittest.main()

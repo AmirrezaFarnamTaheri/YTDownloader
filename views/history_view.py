@@ -104,7 +104,9 @@ class HistoryView(BaseView):
             )
         else:
             # Explicitly pass empty search query to match test expectation/API consistency
-            items = HistoryManager.get_history(limit=self.limit, offset=self.offset, search_query="")
+            items = HistoryManager.get_history(
+                limit=self.limit, offset=self.offset, search_query=""
+            )
 
         if not items and self.offset == 0:
             logger.info("History list is empty")

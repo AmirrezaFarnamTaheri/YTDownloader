@@ -32,9 +32,7 @@ class TestBatchImporterCoverage(unittest.TestCase):
         new_callable=mock_open,
         read_data="http://url1.com\nhttp://url2.com",
     )
-    def test_import_from_file_success(
-        self, mock_file, MockPath, mock_is_safe
-    ):
+    def test_import_from_file_success(self, mock_file, MockPath, mock_is_safe):
         # Configure Path mock
         mock_path_obj = MockPath.return_value
         mock_path_obj.exists.return_value = True
@@ -43,7 +41,7 @@ class TestBatchImporterCoverage(unittest.TestCase):
         mock_is_safe.return_value = True
 
         # Patch instance method verify_url
-        with patch.object(self.importer, 'verify_url', return_value=True):
+        with patch.object(self.importer, "verify_url", return_value=True):
             self.mock_queue.get_queue_count.return_value = 0
             self.mock_queue.MAX_QUEUE_SIZE = 1000
 
@@ -59,9 +57,7 @@ class TestBatchImporterCoverage(unittest.TestCase):
     @patch(
         "builtins.open", new_callable=mock_open, read_data="invalid\nhttp://valid.com"
     )
-    def test_import_from_file_mixed(
-        self, mock_file, MockPath, mock_is_safe
-    ):
+    def test_import_from_file_mixed(self, mock_file, MockPath, mock_is_safe):
         mock_path_obj = MockPath.return_value
         mock_path_obj.exists.return_value = True
         mock_path_obj.is_file.return_value = True
@@ -72,7 +68,7 @@ class TestBatchImporterCoverage(unittest.TestCase):
             return "http://valid.com" in url
 
         # Patch instance method
-        with patch.object(self.importer, 'verify_url', side_effect=side_effect):
+        with patch.object(self.importer, "verify_url", side_effect=side_effect):
             self.mock_queue.get_queue_count.return_value = 0
             self.mock_queue.MAX_QUEUE_SIZE = 1000
 
@@ -92,21 +88,21 @@ class TestBatchImporterCoverage(unittest.TestCase):
     @patch("batch_importer.is_safe_path")
     @patch("batch_importer.Path")
     @patch("builtins.open", new_callable=mock_open)
-    def test_import_from_file_limit(
-        self, mock_file, MockPath, mock_is_safe
-    ):
+    def test_import_from_file_limit(self, mock_file, MockPath, mock_is_safe):
         mock_path_obj = MockPath.return_value
         mock_path_obj.exists.return_value = True
         mock_path_obj.is_file.return_value = True
         mock_path_obj.suffix = ".txt"
         mock_is_safe.return_value = True
 
-        with patch.object(self.importer, 'verify_url', return_value=True):
+        with patch.object(self.importer, "verify_url", return_value=True):
             self.mock_queue.get_queue_count.return_value = 0
             self.mock_queue.MAX_QUEUE_SIZE = 1000
 
             data = "\n".join([f"http://url{i}.com" for i in range(105)])
-            mock_file.return_value.__iter__.side_effect = lambda: iter(data.splitlines())
+            mock_file.return_value.__iter__.side_effect = lambda: iter(
+                data.splitlines()
+            )
 
             count, truncated = self.importer.import_from_file("test.txt")
 
@@ -124,7 +120,7 @@ class TestBatchImporterCoverage(unittest.TestCase):
         mock_path_obj.suffix = ".txt"
         mock_is_safe.return_value = True
 
-        with patch.object(self.importer, 'verify_url', return_value=True):
+        with patch.object(self.importer, "verify_url", return_value=True):
             self.mock_queue.get_queue_count.return_value = 1000
             self.mock_queue.MAX_QUEUE_SIZE = 1000
 

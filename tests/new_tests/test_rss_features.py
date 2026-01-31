@@ -54,15 +54,14 @@ class TestRSSFeatures(unittest.TestCase):
         self.assertEqual(len(self.manager.get_feeds()), 1)
 
     def test_export_opml(self):
-        self.manager.feeds = [
-            {"url": "http://feed1.com", "name": "Feed & Name"}
-        ]
+        self.manager.feeds = [{"url": "http://feed1.com", "name": "Feed & Name"}]
 
         opml = self.manager.export_opml()
 
         self.assertIn('xmlUrl="http://feed1.com"', opml)
         self.assertIn('text="Feed &amp; Name"', opml)
         self.assertIn('<opml version="2.0">', opml)
+
 
 if __name__ == "__main__":
     unittest.main()

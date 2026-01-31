@@ -20,9 +20,11 @@ class TestHistoryViewUI(unittest.TestCase):
 
         self.view.load()
 
-        MockHistoryManager.get_history.assert_called_with(limit=50, offset=0, search_query="")
+        MockHistoryManager.get_history.assert_called_with(
+            limit=50, offset=0, search_query=""
+        )
         self.assertEqual(len(self.view.history_list.controls), 1)
-        self.view.load_more_btn.visible = False # 1 < 50
+        self.view.load_more_btn.visible = False  # 1 < 50
 
     @patch("views.history_view.HistoryManager")
     def test_search_submit(self, MockHistoryManager):
@@ -33,7 +35,9 @@ class TestHistoryViewUI(unittest.TestCase):
 
         self.assertEqual(self.view.current_search, "query")
         self.assertEqual(self.view.offset, 0)
-        MockHistoryManager.get_history.assert_called_with(limit=50, offset=0, search_query="query")
+        MockHistoryManager.get_history.assert_called_with(
+            limit=50, offset=0, search_query="query"
+        )
 
     @patch("views.history_view.HistoryManager")
     def test_load_more(self, MockHistoryManager):
@@ -46,7 +50,10 @@ class TestHistoryViewUI(unittest.TestCase):
         self.view._load_more(None)
 
         self.assertEqual(self.view.offset, 50)
-        MockHistoryManager.get_history.assert_called_with(limit=50, offset=50, search_query="")
+        MockHistoryManager.get_history.assert_called_with(
+            limit=50, offset=50, search_query=""
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
