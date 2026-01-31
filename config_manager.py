@@ -6,11 +6,11 @@ with atomic file operations and error recovery.
 Now uses keyring for secure cookie storage.
 """
 
+import base64
 import json
 import logging
 import os
 import tempfile
-import base64
 from pathlib import Path
 from typing import Any, Literal, cast
 

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from downloader.types import DownloadOptions
 from queue_manager import QueueManager
-from tasks import download_task, process_queue, fetch_info_task
+from tasks import download_task, fetch_info_task, process_queue
 from utils import CancelToken
 
 

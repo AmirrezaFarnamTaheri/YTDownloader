@@ -2,9 +2,9 @@
 Tests for UI extended functionality.
 """
 
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import sys
 
 # Mock flet if needed
 try:

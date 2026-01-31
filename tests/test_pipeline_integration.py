@@ -9,12 +9,12 @@ Simulates adding to queue -> processing -> downloading -> history.
 import threading
 import time
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import tasks  # Import module to ensure dynamic lookup
 from app_state import state
 from downloader.types import DownloadOptions
 from queue_manager import QueueManager
-import tasks  # Import module to ensure dynamic lookup
 
 
 class TestPipelineIntegration(unittest.TestCase):
