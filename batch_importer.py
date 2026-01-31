@@ -37,9 +37,7 @@ class BatchImporter:
         Verify if a URL is reachable using a HEAD request.
         """
         try:
-            response = self.session.head(
-                url, timeout=timeout, allow_redirects=True
-            )
+            response = self.session.head(url, timeout=timeout, allow_redirects=True)
             return response.status_code < 400
         except requests.RequestException:
             return False

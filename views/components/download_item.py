@@ -281,12 +281,16 @@ class DownloadItemControl(ft.Container):
             )
 
         # Cancel Button (Active)
-        if status in (
-            "Downloading",
-            "Queued",
-            "Processing",
-            "Allocating",
-        ) or status == DownloadStatus.SCHEDULED:
+        if (
+            status
+            in (
+                "Downloading",
+                "Queued",
+                "Processing",
+                "Allocating",
+            )
+            or status == DownloadStatus.SCHEDULED
+        ):
             self.action_row.controls.append(
                 create_action_btn(
                     ft.icons.CANCEL,
@@ -326,9 +330,7 @@ class DownloadItemControl(ft.Container):
             sched_time = self.item.get("scheduled_time")
             if sched_time:
                 if isinstance(sched_time, datetime):
-                    return LM.get(
-                        "status_scheduled_time", sched_time.strftime("%H:%M")
-                    )
+                    return LM.get("status_scheduled_time", sched_time.strftime("%H:%M"))
                 return LM.get("status_scheduled_time", str(sched_time))
             return LM.get("status_scheduled")
 

@@ -88,28 +88,33 @@ class TestAuditFixes(unittest.TestCase):
         mock_exists.return_value = True
         mock_is_file.return_value = True
 
-        importer = BatchImporter(MagicMock())
+        importer = BatchImporter(MagicMock(), MagicMock())
 
         # Unsafe
         mock_is_safe.return_value = False
-        with self.assertRaises(ValueError) as cm:
-            importer.import_from_file("/etc/passwd.txt")
-        self.assertIn("Security", str(cm.exception))
+        # Mock file path to resolve to avoid real file checks if possible, or assume is_safe_path mock handles it
+        # But we also need to mock Path behaviors inside import_from_file
+
+        # import_from_file catches exceptions and logs them
+        count, truncated = importer.import_from_file("/etc/passwd.txt")
+        self.assertEqual(count, 0)
 
         # Safe
         # (We don't need to test successful import logic here, just the guard)
 
     def test_scheduler_datetime(self):
         """Test scheduler accepts datetime."""
+        from downloader.types import DownloadStatus
+
         # Time
         status, dt = DownloadScheduler.prepare_schedule(time(12, 0))
-        self.assertIn("Scheduled", status)
+        self.assertEqual(status, DownloadStatus.SCHEDULED)
         self.assertIsInstance(dt, datetime)
 
         # Datetime
         target = datetime(2025, 1, 1, 12, 0)
         status, dt = DownloadScheduler.prepare_schedule(target)
-        self.assertIn("2025-01-01", status)
+        self.assertEqual(status, DownloadStatus.SCHEDULED)
         self.assertEqual(dt, target)
 
 

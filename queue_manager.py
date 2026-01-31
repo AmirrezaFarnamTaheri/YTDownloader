@@ -248,10 +248,9 @@ class QueueManager:
                 status = item.get("status")
                 scheduled_time = item.get("scheduled_time")
                 # Check for Enum or legacy string starting with Scheduled
-                is_scheduled = (
-                    status == DownloadStatus.SCHEDULED
-                    or str(status).startswith("Scheduled")
-                )
+                is_scheduled = status == DownloadStatus.SCHEDULED or str(
+                    status
+                ).startswith("Scheduled")
                 if is_scheduled and scheduled_time:
                     if now >= scheduled_time:
                         item["status"] = "Queued"

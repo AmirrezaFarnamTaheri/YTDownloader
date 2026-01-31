@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from downloader.types import DownloadStatus
 from tasks import DownloadJob
 
+
 class TestDownloadJob(unittest.TestCase):
     def setUp(self):
         self.mock_page = MagicMock()
@@ -66,6 +67,7 @@ class TestDownloadJob(unittest.TestCase):
 
         calls = qm.update_item_status.call_args_list
         self.assertTrue(any(c[0][1] == DownloadStatus.ERROR for c in calls))
+
 
 if __name__ == "__main__":
     unittest.main()

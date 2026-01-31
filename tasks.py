@@ -146,7 +146,9 @@ class DownloadJob:
 
     def _build_options(self) -> DownloadOptions:
         preferred_path = app_state.state.config.get("download_path")
-        output_path = self.item.get("output_path") or get_default_download_path(preferred_path)
+        output_path = self.item.get("output_path") or get_default_download_path(
+            preferred_path
+        )
 
         # Ensure item has the resolved path
         if not self.item.get("output_path"):
@@ -154,8 +156,12 @@ class DownloadJob:
 
         # Resolve Proxy/Rate Limit/Cookies from item or global config
         proxy = self.item.get("proxy") or app_state.state.config.get("proxy")
-        rate_limit = self.item.get("rate_limit") or app_state.state.config.get("rate_limit")
-        cookies = self.item.get("cookies_from_browser") or app_state.state.config.get("cookies")
+        rate_limit = self.item.get("rate_limit") or app_state.state.config.get(
+            "rate_limit"
+        )
+        cookies = self.item.get("cookies_from_browser") or app_state.state.config.get(
+            "cookies"
+        )
 
         # Clean empty strings
         proxy = proxy if isinstance(proxy, str) and proxy else None
@@ -203,7 +209,7 @@ class DownloadJob:
                     "progress": progress_val,
                     "speed": d.get("_speed_str", ""),
                     "eta": d.get("_eta_str", ""),
-                    "size": d.get("_total_bytes_str", "")
+                    "size": d.get("_total_bytes_str", ""),
                 }
 
                 self.qm.update_item_status(
@@ -213,17 +219,23 @@ class DownloadJob:
                 logger.debug("Error in progress hook: %s", e)
 
         elif d["status"] == "finished":
-            self.qm.update_item_status(self.item_id, DownloadStatus.PROCESSING, {"progress": 1.0})
+            self.qm.update_item_status(
+                self.item_id, DownloadStatus.PROCESSING, {"progress": 1.0}
+            )
 
     def _handle_error(self, e: Exception):
         err_str = str(e)
-        if "Cancelled" in err_str or (self.cancel_token and self.cancel_token.cancelled):
+        if "Cancelled" in err_str or (
+            self.cancel_token and self.cancel_token.cancelled
+        ):
             logger.info("Download cancelled for %s", self.url)
             self.qm.update_item_status(self.item_id, DownloadStatus.CANCELLED)
             _log_to_history(self.item, None)
         else:
             logger.error("Download failed for %s: %s", self.url, e)
-            self.qm.update_item_status(self.item_id, DownloadStatus.ERROR, {"error": str(e)})
+            self.qm.update_item_status(
+                self.item_id, DownloadStatus.ERROR, {"error": str(e)}
+            )
             _log_to_history(self.item, None)
             if self.page:
                 self._notify_error()
@@ -232,9 +244,12 @@ class DownloadJob:
         async def show():
             self.page.open(
                 ft.SnackBar(
-                    content=ft.Text(f"{LM.get('download_complete')}: {self.item.get('title')}")
+                    content=ft.Text(
+                        f"{LM.get('download_complete')}: {self.item.get('title')}"
+                    )
                 )
             )
+
         self.page.run_task(show)
 
     def _notify_error(self):
@@ -242,9 +257,10 @@ class DownloadJob:
             self.page.open(
                 ft.SnackBar(
                     content=ft.Text(f"{LM.get('download_error')} (Check logs)"),
-                    bgcolor=ft.colors.ERROR
+                    bgcolor=ft.colors.ERROR,
                 )
             )
+
         self.page.run_task(show)
 
 

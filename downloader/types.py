@@ -172,16 +172,19 @@ class QueueItem(TypedDict, total=False):
     id: str
     url: str
     title: str
-    status: Literal[
-        "Queued",
-        "Allocating",
-        "Downloading",
-        "Processing",
-        "Completed",
-        "Error",
-        "Cancelled",
-        "Paused",
-    ] | DownloadStatus
+    status: (
+        Literal[
+            "Queued",
+            "Allocating",
+            "Downloading",
+            "Processing",
+            "Completed",
+            "Error",
+            "Cancelled",
+            "Paused",
+        ]
+        | DownloadStatus
+    )
     scheduled_time: datetime | None
     progress: float
     speed: str

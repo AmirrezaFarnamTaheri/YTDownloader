@@ -365,3 +365,80 @@ class RSSManager:
         """Get the latest video from a feed."""
         items = cls.parse_feed(url)
         return items[0] if items else None
+
+    def import_opml(self, opml_content: str) -> int:
+        """
+        Import feeds from OPML content.
+        Returns count of new feeds added.
+        """
+        try:
+            if safe_fromstring is None:
+                safe_log_error("defusedxml not installed - cannot parse OPML")
+                return 0
+
+            root = safe_fromstring(opml_content)
+            added_count = 0
+
+            # Find all 'outline' elements with xmlUrl attribute
+            # OPML structure: opml -> body -> outline (recursive)
+            for outline in root.findall(".//outline"):
+                xml_url = outline.attrib.get("xmlUrl")
+                if xml_url:
+                    if not any(f["url"] == xml_url for f in self.feeds):
+                        # Use title or text or url as name
+                        name = (
+                            outline.attrib.get("title")
+                            or outline.attrib.get("text")
+                            or xml_url
+                        )
+                        self.feeds.append({"url": xml_url, "name": name})
+                        added_count += 1
+
+            if added_count > 0:
+                self._save_feeds()
+                logger.info("Imported %d feeds from OPML", added_count)
+
+            return added_count
+
+        except Exception as e:
+            safe_log_error("Failed to import OPML: %s", e)
+            return 0
+
+    def export_opml(self) -> str:
+        """Export feeds to OPML format."""
+        feeds = self.get_feeds()
+
+        # Simple string construction to avoid dependency on lxml/builder
+        # and standard ElementTree doesn't write clean XML without extra work.
+        lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<opml version="2.0">',
+            "  <head>",
+            "    <title>StreamCatch Feeds</title>",
+            f'    <dateCreated>{datetime.now().strftime("%a, %d %b %Y %H:%M:%S %z")}</dateCreated>',
+            "  </head>",
+            "  <body>",
+        ]
+
+        for feed in feeds:
+            # Escape XML entities
+            url = (
+                str(feed["url"])
+                .replace("&", "&amp;")
+                .replace('"', "&quot;")
+                .replace("<", "&lt;")
+            )
+            name = (
+                str(feed.get("name", url))
+                .replace("&", "&amp;")
+                .replace('"', "&quot;")
+                .replace("<", "&lt;")
+            )
+            lines.append(
+                f'    <outline text="{name}" title="{name}" type="rss" xmlUrl="{url}"/>'
+            )
+
+        lines.append("  </body>")
+        lines.append("</opml>")
+
+        return "\n".join(lines)

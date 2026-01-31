@@ -95,7 +95,7 @@ class AppState:
 
         self.ffmpeg_available = False  # Updated in background
 
-        self.history_manager = HistoryManager() # Instance created, DB init later
+        self.history_manager = HistoryManager()  # Instance created, DB init later
 
         # Feature flags / States
         self.cinema_mode = False
@@ -144,7 +144,9 @@ class AppState:
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.debug("Social manager connection failed (non-critical): %s", e)
 
-        threading.Thread(target=_background_init, daemon=True, name="AppStateInit").start()
+        threading.Thread(
+            target=_background_init, daemon=True, name="AppStateInit"
+        ).start()
 
         self._initialized = True
         self._init_complete.set()

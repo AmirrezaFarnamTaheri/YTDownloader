@@ -25,10 +25,16 @@ class TestQueueManagerRefactor(unittest.TestCase):
         # Ideally it should be DownloadStatus.QUEUED
         # But for backward compat it might use string.
         # Let's check what it sets.
-        self.assertEqual(q_item["status"], "Queued") # Current implementation defaults to string "Queued"
+        self.assertEqual(
+            q_item["status"], "Queued"
+        )  # Current implementation defaults to string "Queued"
 
     def test_update_status_enum(self):
-        item = {"url": "http://example.com", "title": "Test", "status": DownloadStatus.QUEUED}
+        item = {
+            "url": "http://example.com",
+            "title": "Test",
+            "status": DownloadStatus.QUEUED,
+        }
         self.qm.add_item(item)
         item_id = self.qm.get_item_by_index(0)["id"]
 
@@ -42,7 +48,7 @@ class TestQueueManagerRefactor(unittest.TestCase):
         item = {
             "url": "http://example.com",
             "status": DownloadStatus.SCHEDULED,
-            "scheduled_time": "future" # Mock
+            "scheduled_time": "future",  # Mock
         }
         self.qm.add_item(item)
         q_item = self.qm.get_item_by_index(0)
@@ -57,10 +63,13 @@ class TestQueueManagerRefactor(unittest.TestCase):
         claimed = self.qm.claim_next_downloadable()
         self.assertIsNotNone(claimed)
         self.assertEqual(claimed["url"], "1")
-        self.assertEqual(claimed["status"], "Allocating") # claim_next sets "Allocating" (string)
+        self.assertEqual(
+            claimed["status"], "Allocating"
+        )  # claim_next sets "Allocating" (string)
 
         claimed2 = self.qm.claim_next_downloadable()
         self.assertIsNone(claimed2)
+
 
 if __name__ == "__main__":
     unittest.main()

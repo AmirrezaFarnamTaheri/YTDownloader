@@ -87,6 +87,13 @@ class DashboardView(BaseView):
             "0", size=32, weight=ft.FontWeight.BOLD, color=Theme.Status.SUCCESS
         )
 
+        self.refresh_btn = ft.IconButton(
+            ft.icons.REFRESH,
+            tooltip=LM.get("refresh_dashboard", "Refresh"),
+            on_click=lambda _: self.load(),
+            icon_color=Theme.Text.SECONDARY,
+        )
+
         self.recent_history_list = ft.Column(spacing=10)
 
         self.content_area = ft.Container(
@@ -141,11 +148,17 @@ class DashboardView(BaseView):
                     ),
                     ft.Container(height=20),
                     # Recent History
-                    ft.Text(
-                        LM.get("recent_history", "Recent History"),
-                        size=20,
-                        weight=ft.FontWeight.BOLD,
-                        color=Theme.Text.PRIMARY,
+                    ft.Row(
+                        [
+                            ft.Text(
+                                LM.get("recent_history", "Recent History"),
+                                size=20,
+                                weight=ft.FontWeight.BOLD,
+                                color=Theme.Text.PRIMARY,
+                            ),
+                            self.refresh_btn,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
                     ft.Container(
                         content=self.recent_history_list, **Theme.get_card_decoration()
