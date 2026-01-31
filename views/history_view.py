@@ -21,6 +21,20 @@ class HistoryView(BaseView):
         super().__init__(LM.get("history"), ft.icons.HISTORY)
 
         self.history_list = ft.ListView(expand=True, spacing=10, padding=10)
+        self.offset = 0
+        self.limit = 50
+        self.current_search = ""
+
+        # Search Bar
+        self.search_field = ft.TextField(
+            expand=True,
+            on_submit=self._on_search_submit,
+            on_change=self._on_search_change,  # Live search
+            **Theme.get_input_decoration(
+                hint_text=LM.get("search_history", "Search history..."),
+                prefix_icon=ft.icons.SEARCH,
+            ),
+        )
 
         # Header actions
         self.clear_btn = ft.OutlinedButton(
@@ -33,24 +47,56 @@ class HistoryView(BaseView):
             ),
         )
 
-        self.add_control(
-            ft.Row(
-                [
-                    ft.Container(expand=True),
-                    self.clear_btn,
-                ],
-                alignment=ft.MainAxisAlignment.END,
-            )
+        # Load More Button
+        self.load_more_btn = ft.ElevatedButton(
+            LM.get("load_more", "Load More"),
+            on_click=self._load_more,
+            visible=False,
         )
+
+        # Header Row
+        header = ft.Row(
+            [
+                self.search_field,
+                self.clear_btn,
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
+        self.add_control(ft.Container(content=header, padding=10))
         self.add_control(self.history_list)
+        self.add_control(
+            ft.Container(content=self.load_more_btn, alignment=ft.alignment.center)
+        )
 
-    def load(self):
+    def load(self, reset=True):
         """Loads history items from the database."""
-        logger.debug("Loading history items")
-        self.history_list.controls.clear()
-        items = HistoryManager.get_history(limit=50)
+        if reset:
+            self.offset = 0
+            self.history_list.controls.clear()
 
-        if not items:
+        logger.debug(
+            "Loading history items (offset=%d, query=%s)",
+            self.offset,
+            self.current_search,
+        )
+
+        try:
+            # pylint: disable=import-outside-toplevel
+            from app_state import state
+
+            hm = getattr(state, "history_manager", None) or HistoryManager()
+            items = hm.get_history(
+                limit=self.limit,
+                offset=self.offset,
+                search_query=self.current_search or "",
+            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to load history: %s", e)
+            items = []
+
+        if not items and self.offset == 0:
             logger.info("History list is empty")
             self.history_list.controls.append(
                 ft.Container(
@@ -69,8 +115,8 @@ class HistoryView(BaseView):
                     expand=True,
                 )
             )
+            self.load_more_btn.visible = False
         else:
-            logger.debug("Rendering %d history items", len(items))
             for item in items:
                 control = HistoryItemControl(
                     item,
@@ -80,7 +126,30 @@ class HistoryView(BaseView):
                 )
                 self.history_list.controls.append(control)
 
+            # Show load more if we got a full page
+            self.load_more_btn.visible = len(items) == self.limit
+
         self.update()
+
+    # pylint: disable=unused-argument
+    def _on_search_submit(self, e):
+        self.current_search = self.search_field.value.strip()
+        self.load(reset=True)
+
+    # pylint: disable=unused-argument
+    def _on_search_change(self, e):
+        # Optional: Debounce here if needed. For now, simple live search on enter or explicit.
+        # But user might expect live search.
+        # Let's stick to submit for performance or use a simple check.
+        val = self.search_field.value.strip()
+        if not val:
+            self.current_search = ""
+            self.load(reset=True)
+
+    # pylint: disable=unused-argument
+    def _load_more(self, e):
+        self.offset += self.limit
+        self.load(reset=False)
 
     def clear_history(self, e):
         """Clears the history with a confirmation dialog."""
@@ -94,7 +163,12 @@ class HistoryView(BaseView):
         def confirm_clear(e):
             try:
                 logger.info("User confirmed history clear")
-                HistoryManager.clear_history()
+                # pylint: disable=import-outside-toplevel
+                from app_state import state
+
+                hm = getattr(state, "history_manager", None) or HistoryManager()
+                hm.clear_history()
+
                 self.load()
                 if self.page:
                     self.page.open(
@@ -149,7 +223,12 @@ class HistoryView(BaseView):
         try:
             item_id = item.get("id")
             if item_id:
-                HistoryManager.delete_entry(item_id)
+                # pylint: disable=import-outside-toplevel
+                from app_state import state
+
+                hm = getattr(state, "history_manager", None) or HistoryManager()
+                hm.delete_entry(item_id)
+
                 self.load()  # Reload the list
                 if self.page:
                     self.page.open(

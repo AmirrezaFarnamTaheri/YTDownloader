@@ -15,10 +15,10 @@ from history_manager import HistoryManager
 class TestHistoryManager(unittest.TestCase):
 
     def setUp(self):
-        # Use a temporary DB file for testing
-        self.db_file = Path("test_history.db").resolve()
-        if self.db_file.exists():
-            os.remove(self.db_file)
+        # Use a unique temporary DB file for testing to avoid collisions
+        import uuid
+
+        self.db_file = Path(f"test_history_{uuid.uuid4()}.db").resolve()
 
         # Patch the class-level DB_FILE via a property or by patching the module level
         # HistoryManager._resolve_db_file uses _test_db_file if present

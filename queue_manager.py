@@ -10,7 +10,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Any, cast
 
-from downloader.types import QueueItem
+from downloader.types import DownloadStatus, QueueItem
 from utils import CancelToken
 
 logger = logging.getLogger(__name__)
@@ -245,9 +245,13 @@ class QueueManager:
         updated = 0
         with self._lock:
             for item in self._queue:
-                status = str(item.get("status", ""))
+                status = item.get("status")
                 scheduled_time = item.get("scheduled_time")
-                if status.startswith("Scheduled") and scheduled_time:
+                # Check for Enum or legacy string starting with Scheduled
+                is_scheduled = status == DownloadStatus.SCHEDULED or str(
+                    status
+                ).startswith("Scheduled")
+                if is_scheduled and scheduled_time:
                     if now >= scheduled_time:
                         item["status"] = "Queued"
                         item["scheduled_time"] = None
@@ -411,7 +415,9 @@ class QueueManager:
                     cancelled_count += 1
 
                 # Also cancel scheduled items
-                elif status.startswith("Scheduled"):
+                elif status == DownloadStatus.SCHEDULED or str(status).startswith(
+                    "Scheduled"
+                ):
                     item["status"] = "Cancelled"
                     item["scheduled_time"] = None
                     cancelled_count += 1
@@ -488,7 +494,9 @@ class QueueManager:
                     stats["cancelled"] += 1
                 elif status == "Paused":
                     stats["paused"] += 1
-                elif status.startswith("Scheduled"):
+                elif status == DownloadStatus.SCHEDULED or str(status).startswith(
+                    "Scheduled"
+                ):
                     stats["scheduled"] += 1
 
             return stats

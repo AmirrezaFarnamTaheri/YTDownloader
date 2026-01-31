@@ -6,6 +6,7 @@ Supports resumable downloads, retry with exponential backoff, and robust filenam
 
 import logging
 import os
+import random
 import re
 import time
 import urllib.parse
@@ -24,6 +25,17 @@ logger = logging.getLogger(__name__)
 CHUNK_SIZE_BYTES = 64 * 1024  # 64KB chunks for better throughput
 REQUEST_TIMEOUT = (15, 60)  # (connect timeout, read timeout)
 
+# Global session for connection reuse
+_SESSION = requests.Session()
+
+# Rotating User-Agents
+_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+]
+
 
 class GenericDownloader:
     """
@@ -32,6 +44,11 @@ class GenericDownloader:
     """
 
     # pylint: disable=too-few-public-methods
+
+    @staticmethod
+    def _get_random_ua() -> str:
+        """Return a random User-Agent."""
+        return random.choice(_USER_AGENTS)
 
     @staticmethod
     def _extract_filename_from_cd(cd_header: str) -> str | None:
@@ -137,7 +154,7 @@ class GenericDownloader:
     ) -> dict[str, str]:
         """Prepare HTTP headers for request."""
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            "User-Agent": GenericDownloader._get_random_ua(),
         }
         if is_resume and downloaded_bytes > 0:
             headers["Range"] = f"bytes={downloaded_bytes}-"
@@ -181,7 +198,7 @@ class GenericDownloader:
         # 1. HEAD Request
         try:
             GenericDownloader._check_cancel(cancel_token)
-            h = requests.head(url, allow_redirects=True, timeout=10)
+            h = _SESSION.head(url, allow_redirects=True, timeout=10)
             h.raise_for_status()
             final_url = h.url
             try:
@@ -245,7 +262,7 @@ class GenericDownloader:
                 )
 
                 logger.debug("Starting download (try %d)", retry_count + 1)
-                with requests.get(
+                with _SESSION.get(
                     final_url, stream=True, headers=headers, timeout=REQUEST_TIMEOUT
                 ) as r:
                     r.raise_for_status()

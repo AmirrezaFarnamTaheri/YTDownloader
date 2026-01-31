@@ -10,9 +10,8 @@ import json
 import logging
 import os
 import tempfile
-import base64
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, cast
 
 # Import keyring
 import keyring

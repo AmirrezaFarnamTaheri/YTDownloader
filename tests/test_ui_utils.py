@@ -49,11 +49,21 @@ class TestUIUtils(unittest.TestCase):
 
     @patch("shutil.which")
     def test_is_ffmpeg_available_true(self, mock_which):
+        import ui_utils
+
+        # Reset cache
+        ui_utils._ffmpeg_available_cache = None
+
         mock_which.return_value = "/usr/bin/ffmpeg"
         self.assertTrue(is_ffmpeg_available())
 
     @patch("shutil.which")
     def test_is_ffmpeg_available_false(self, mock_which):
+        import ui_utils
+
+        # Reset cache
+        ui_utils._ffmpeg_available_cache = None
+
         mock_which.return_value = None
         self.assertFalse(is_ffmpeg_available())
 

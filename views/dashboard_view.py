@@ -87,6 +87,13 @@ class DashboardView(BaseView):
             "0", size=32, weight=ft.FontWeight.BOLD, color=Theme.Status.SUCCESS
         )
 
+        self.refresh_btn = ft.IconButton(
+            ft.icons.REFRESH,
+            tooltip=LM.get("refresh_dashboard", "Refresh"),
+            on_click=lambda _: self.load(),
+            icon_color=Theme.Text.SECONDARY,
+        )
+
         self.recent_history_list = ft.Column(spacing=10)
 
         self.content_area = ft.Container(
@@ -141,11 +148,17 @@ class DashboardView(BaseView):
                     ),
                     ft.Container(height=20),
                     # Recent History
-                    ft.Text(
-                        LM.get("recent_history", "Recent History"),
-                        size=20,
-                        weight=ft.FontWeight.BOLD,
-                        color=Theme.Text.PRIMARY,
+                    ft.Row(
+                        [
+                            ft.Text(
+                                LM.get("recent_history", "Recent History"),
+                                size=20,
+                                weight=ft.FontWeight.BOLD,
+                                color=Theme.Text.PRIMARY,
+                            ),
+                            self.refresh_btn,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
                     ft.Container(
                         content=self.recent_history_list, **Theme.get_card_decoration()
@@ -312,8 +325,7 @@ class DashboardView(BaseView):
 
         for i, day in enumerate(activity_data):
             count = day.get("count", 0)
-            if count > max_count:
-                max_count = count
+            max_count = max(max_count, count)
 
             groups.append(
                 ft.BarChartGroup(
@@ -377,9 +389,6 @@ class DashboardView(BaseView):
         """Updates storage usage pie chart."""
         try:
             total, used, free = shutil.disk_usage(".")
-            # Avoid division by zero
-            percent = used / total if total > 0 else 0
-
             gb = 1024**3
 
             # Update Pie Chart
@@ -404,7 +413,16 @@ class DashboardView(BaseView):
 
     def _refresh_history(self):
         """Updates recent history list."""
-        items = HistoryManager.get_history(limit=3)
+        try:
+            # pylint: disable=import-outside-toplevel
+            from app_state import state
+
+            hm = getattr(state, "history_manager", None) or HistoryManager()
+            items = hm.get_history(limit=3)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to load history: %s", e)
+            items = []
+
         self.recent_history_list.controls.clear()
 
         if not items:

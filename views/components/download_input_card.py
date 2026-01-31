@@ -171,6 +171,14 @@ class DownloadInputCard(ft.Container):
         self.url_input.error_text = None
         self.update()
 
+    def trigger_auto_fetch(self):
+        """Triggers the fetch action automatically."""
+        if not self.url_input.value:
+            return
+        # Debounce or direct call
+        # Since this is UI thread, direct call is fine as fetch is async
+        self._on_fetch_click(None)
+
     def set_fetch_disabled(self, disabled: bool):
         """Enables/disables the fetch button."""
         self.fetch_btn.disabled = disabled

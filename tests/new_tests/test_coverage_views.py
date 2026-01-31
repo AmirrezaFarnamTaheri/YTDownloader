@@ -70,8 +70,8 @@ with patch.dict(
     ft.border.all = lambda width, color: (width, color)
     ft.colors.with_opacity = lambda opacity, color: color
 
-    from views.download_view import DownloadView
     from views.components.download_input_card import DownloadInputCard
+    from views.download_view import DownloadView
 
 
 class TestDownloadView(unittest.TestCase):

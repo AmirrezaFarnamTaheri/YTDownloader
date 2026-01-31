@@ -68,8 +68,8 @@ with patch.dict(
     ft.icons.DOWNLOAD = "download"
     ft.colors.with_opacity = lambda o, c: c
 
-    from views.download_view import DownloadView
     from views.components.download_input_card import DownloadInputCard
+    from views.download_view import DownloadView
 
 
 class TestViewInteractions(unittest.TestCase):

@@ -24,38 +24,42 @@ class AppLayout(ft.Row):
         self.expand = True
         self.spacing = 0
 
-        # Define Navigation Destinations
-        self.destinations = [
-            ft.NavigationRailDestination(
-                icon=ft.icons.DASHBOARD_OUTLINED,
-                selected_icon=ft.icons.DASHBOARD_ROUNDED,
-                label=LM.get("dashboard", "Dashboard"),
+        # Define Navigation Data
+        nav_data = [
+            (
+                ft.icons.DASHBOARD_OUTLINED,
+                ft.icons.DASHBOARD_ROUNDED,
+                "dashboard",
+                "Dashboard",
             ),
-            ft.NavigationRailDestination(
-                icon=ft.icons.DOWNLOAD_OUTLINED,
-                selected_icon=ft.icons.DOWNLOAD_ROUNDED,
-                label=LM.get("download"),
+            (ft.icons.DOWNLOAD_OUTLINED, ft.icons.DOWNLOAD_ROUNDED, "download", None),
+            (ft.icons.LIST_ALT_OUTLINED, ft.icons.LIST_ALT_ROUNDED, "queue", None),
+            (
+                ft.icons.HISTORY_TOGGLE_OFF_OUTLINED,
+                ft.icons.HISTORY_ROUNDED,
+                "history",
+                None,
             ),
+            (ft.icons.RSS_FEED_OUTLINED, ft.icons.RSS_FEED_ROUNDED, "rss", None),
+            (ft.icons.SETTINGS_OUTLINED, ft.icons.SETTINGS_ROUNDED, "settings", None),
+        ]
+
+        self.rail_destinations = [
             ft.NavigationRailDestination(
-                icon=ft.icons.LIST_ALT_OUTLINED,
-                selected_icon=ft.icons.LIST_ALT_ROUNDED,
-                label=LM.get("queue"),
-            ),
-            ft.NavigationRailDestination(
-                icon=ft.icons.HISTORY_TOGGLE_OFF_OUTLINED,
-                selected_icon=ft.icons.HISTORY_ROUNDED,
-                label=LM.get("history"),
-            ),
-            ft.NavigationRailDestination(
-                icon=ft.icons.RSS_FEED_OUTLINED,
-                selected_icon=ft.icons.RSS_FEED_ROUNDED,
-                label=LM.get("rss"),
-            ),
-            ft.NavigationRailDestination(
-                icon=ft.icons.SETTINGS_OUTLINED,
-                selected_icon=ft.icons.SETTINGS_ROUNDED,
-                label=LM.get("settings"),
-            ),
+                icon=icon,
+                selected_icon=selected,
+                label=LM.get(key, default) if default else LM.get(key),
+            )
+            for icon, selected, key, default in nav_data
+        ]
+
+        self.bottom_destinations = [
+            ft.NavigationDestination(
+                icon=icon,
+                selected_icon=selected,
+                label=LM.get(key, default) if default else LM.get(key),
+            )
+            for icon, selected, key, default in nav_data
         ]
 
         # Navigation Rail (Sidebar)
@@ -63,7 +67,7 @@ class AppLayout(ft.Row):
             selected_index=0,  # type: ignore
             label_type=ft.NavigationRailLabelType.ALL,
             on_change=self.on_nav_change,
-            destinations=self.destinations,
+            destinations=self.rail_destinations,
             bgcolor=Theme.BG_LIGHT,
             indicator_color=Theme.Primary.MAIN,
             extended=True,
@@ -76,7 +80,7 @@ class AppLayout(ft.Row):
         self.bottom_nav = ft.NavigationBar(
             selected_index=0,
             on_change=self.on_nav_change,
-            destinations=self.destinations,
+            destinations=self.bottom_destinations,
             visible=False,
         )
 

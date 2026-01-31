@@ -71,8 +71,7 @@ class HistoryManager:
 
                 if not table_exists:
                     # Create new table
-                    cursor.execute(
-                        """
+                    cursor.execute("""
                         CREATE TABLE history (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             url TEXT NOT NULL,
@@ -83,8 +82,7 @@ class HistoryManager:
                             filepath TEXT,
                             file_size TEXT
                         )
-                        """
-                    )
+                        """)
                 else:
                     # Perform migration if necessary
                     cursor.execute("PRAGMA table_info(history)")
@@ -92,8 +90,7 @@ class HistoryManager:
                     if "output_path" in columns and "filepath" not in columns:
                         logger.info("Migrating history database schema...")
                         # Use copy-swap method for broader compatibility
-                        cursor.execute(
-                            """
+                        cursor.execute("""
                             CREATE TABLE history_new (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                                 url TEXT NOT NULL,
@@ -104,23 +101,23 @@ class HistoryManager:
                                 filepath TEXT,
                                 file_size TEXT
                             )
-                            """
-                        )
+                            """)
                         # Copy data, mapping output_path to filepath
                         # We assume file_size exists in old schema as per usage
-                        cursor.execute(
-                            """
+                        cursor.execute("""
                             INSERT INTO history_new (id, url, title, status, timestamp, filepath, file_size)
                             SELECT id, url, title, status, timestamp, output_path, file_size
                             FROM history
-                            """
-                        )
+                            """)
                         cursor.execute("DROP TABLE history")
                         cursor.execute("ALTER TABLE history_new RENAME TO history")
 
                 # Ensure indexes exist
                 cursor.execute(
                     "CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)"
+                )
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_history_status ON history(status)"
                 )
                 conn.commit()
 
@@ -195,13 +192,22 @@ class HistoryManager:
 
     def delete_entry(self, entry_id: int) -> bool:
         """Deletes a specific entry."""
+        return self.delete_entries([entry_id])
+
+    def delete_entries(self, entry_ids: list[int]) -> bool:
+        """Deletes multiple entries by ID."""
+        if not entry_ids:
+            return False
         try:
             with self._get_connection() as conn:
-                conn.execute("DELETE FROM history WHERE id = ?", (entry_id,))
+                # Use parameterized query with 'IN' clause
+                placeholders = ",".join("?" * len(entry_ids))
+                sql = f"DELETE FROM history WHERE id IN ({placeholders})"
+                conn.execute(sql, entry_ids)
                 conn.commit()
             return True
         except sqlite3.Error as e:
-            logger.error("Failed to delete history entry: %s", e)
+            logger.error("Failed to delete history entries: %s", e)
             return False
 
     def search_history(self, query: str, search_in: list[str] | None = None) -> dict:

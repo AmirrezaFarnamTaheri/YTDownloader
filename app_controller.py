@@ -23,7 +23,7 @@ from localization_manager import LocalizationManager as LM
 
 # Helpers
 from rate_limiter import RateLimiter
-from tasks import process_queue, fetch_info_task
+from tasks import fetch_info_task, process_queue
 from ui_manager import UIManager
 from ui_utils import get_default_download_path, open_folder, play_file, validate_url
 

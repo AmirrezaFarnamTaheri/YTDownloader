@@ -20,8 +20,8 @@ class TestGenericDownloaderEdge(unittest.TestCase):
     def setUp(self):
         self.downloader = GenericDownloader()
 
-    @patch("downloader.engines.generic.requests.get")
-    @patch("downloader.engines.generic.requests.head")
+    @patch("downloader.engines.generic._SESSION.get")
+    @patch("downloader.engines.generic._SESSION.head")
     def test_download_retry_logic(self, mock_head, mock_get):
         """Test that download retries on connection errors."""
         # HEAD response
@@ -67,8 +67,8 @@ class TestGenericDownloaderEdge(unittest.TestCase):
         # Verify it retried (called get 3 times)
         self.assertEqual(mock_get.call_count, 3)
 
-    @patch("downloader.engines.generic.requests.get")
-    @patch("downloader.engines.generic.requests.head")
+    @patch("downloader.engines.generic._SESSION.get")
+    @patch("downloader.engines.generic._SESSION.head")
     def test_download_cancel(self, mock_head, mock_get):
         """Test that download respects cancellation token."""
         mock_response = MagicMock()
@@ -115,8 +115,8 @@ class TestGenericDownloaderEdge(unittest.TestCase):
 
                 self.assertIn("Cancelled", str(cm.exception))
 
-    @patch("downloader.engines.generic.requests.get")
-    @patch("downloader.engines.generic.requests.head")
+    @patch("downloader.engines.generic._SESSION.get")
+    @patch("downloader.engines.generic._SESSION.head")
     def test_bad_content_length(self, mock_head, mock_get):
         """Test behavior when Content-Length header is invalid."""
         mock_response = MagicMock()

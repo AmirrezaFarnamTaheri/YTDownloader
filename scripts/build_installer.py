@@ -161,6 +161,8 @@ def build_installer():
             "--include-package=pypresence",
             "--include-package=pydrive2",
             "--include-package=defusedxml",
+            "--include-package=keyring",
+            "--include-package=certifi",
         ]
     )
 

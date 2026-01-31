@@ -259,8 +259,15 @@ def is_safe_path(filepath: str) -> bool:
         return False
 
 
+_ffmpeg_available_cache: bool | None = None
+
+
 def is_ffmpeg_available() -> bool:
-    """Check if ffmpeg is available in the system path with timeout."""
+    """Check if ffmpeg is available in the system path with timeout and caching."""
+    global _ffmpeg_available_cache
+    if _ffmpeg_available_cache is not None:
+        return _ffmpeg_available_cache
+
     result = [False]
 
     def check():
@@ -275,6 +282,7 @@ def is_ffmpeg_available() -> bool:
     thread.start()
     thread.join(timeout=1.0)
 
+    _ffmpeg_available_cache = result[0]
     return result[0]
 
 
