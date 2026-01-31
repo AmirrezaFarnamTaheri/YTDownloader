@@ -4,7 +4,6 @@ Handles importing URLs from text files.
 """
 
 import logging
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -78,9 +77,9 @@ class BatchImporter:
                 return 0, False
 
             # Limit to prevent abuse
-            MAX_BATCH_SIZE = 100
-            if len(lines) > MAX_BATCH_SIZE:
-                lines = lines[:MAX_BATCH_SIZE]
+            max_batch_size = 100
+            if len(lines) > max_batch_size:
+                lines = lines[:max_batch_size]
                 was_truncated = True
 
             # Pre-filter syntactically invalid URLs

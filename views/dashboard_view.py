@@ -325,8 +325,7 @@ class DashboardView(BaseView):
 
         for i, day in enumerate(activity_data):
             count = day.get("count", 0)
-            if count > max_count:
-                max_count = count
+            max_count = max(max_count, count)
 
             groups.append(
                 ft.BarChartGroup(
@@ -390,9 +389,6 @@ class DashboardView(BaseView):
         """Updates storage usage pie chart."""
         try:
             total, used, free = shutil.disk_usage(".")
-            # Avoid division by zero
-            percent = used / total if total > 0 else 0
-
             gb = 1024**3
 
             # Update Pie Chart
@@ -417,7 +413,16 @@ class DashboardView(BaseView):
 
     def _refresh_history(self):
         """Updates recent history list."""
-        items = HistoryManager.get_history(limit=3)
+        try:
+            # pylint: disable=import-outside-toplevel
+            from app_state import state
+
+            hm = getattr(state, "history_manager", None) or HistoryManager()
+            items = hm.get_history(limit=3)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to load history: %s", e)
+            items = []
+
         self.recent_history_list.controls.clear()
 
         if not items:

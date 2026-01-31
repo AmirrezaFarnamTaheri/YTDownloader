@@ -15,7 +15,6 @@ import app_state
 from downloader.core import download_video
 from downloader.info import get_video_info
 from downloader.types import DownloadOptions, DownloadStatus
-from history_manager import HistoryManager
 from localization_manager import LocalizationManager as LM
 from queue_manager import CancelToken
 from ui_utils import get_default_download_path
@@ -31,7 +30,7 @@ _ACTIVE_COUNT_LOCK = threading.Lock()
 
 # Legacy aliases for tests
 _executor_lock = threading.Lock()
-_executor = None
+_executor = None  # pylint: disable=invalid-name
 
 
 def configure_concurrency(max_workers):
@@ -56,6 +55,7 @@ def configure_concurrency(max_workers):
     _SUBMISSION_THROTTLE = threading.Semaphore(max_workers)
 
     logger.info("Concurrency limit updated to %d", max_workers)
+    return True
 
 
 def _get_max_workers() -> int:
@@ -284,6 +284,7 @@ def process_queue(page: ft.Page | None) -> None:
         return
 
     # Attempt to acquire semaphore non-blocking
+    # pylint: disable=consider-using-with
     if not _SUBMISSION_THROTTLE.acquire(blocking=False):
         return
 
@@ -314,6 +315,7 @@ def process_queue(page: ft.Page | None) -> None:
         submitted = True
 
     except Exception:
+        # pylint: disable=unsupported-membership-test, unsubscriptable-object
         if item and "id" in item:
             qm.update_item_status(item["id"], DownloadStatus.QUEUED)
         raise

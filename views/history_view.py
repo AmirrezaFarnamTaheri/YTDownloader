@@ -82,31 +82,19 @@ class HistoryView(BaseView):
             self.current_search,
         )
 
-        if self.current_search:
-            # Note: search_history expects page/limit logic differently or manually handled
-            # But search_history returns dict with 'entries'.
-            # We need to implement offset/limit in search_history if we want pagination there.
-            # Assuming search_history returns all or limited list.
-            # Ideally HistoryManager should support limit/offset for search too.
-            # For now, we fallback to get_history if no query, or search_history.
-            # HistoryManager.search_history returns ALL matches currently (no limit arg in signature in memory, but let's check).
-            # If search_history doesn't support pagination, we might load all (careful).
-            # Checking HistoryManager code... `limit` and `offset` arguments were added to `get_history`.
-            # `search_history` has `LIMIT ? OFFSET ?` in SQL query?
-            # Let's check `history_manager.py` content from previous reads.
-            # `search_history` implemented `SELECT * FROM history ...` without limit/offset args in Python method signature.
-            # We will use `get_history` with `search_query` arg which was added in previous refactor?
-            # Wait, I read `history_manager.py` earlier. `get_history` has `search_query` arg.
-            # `def get_history(self, limit: int = 50, offset: int = 0, search_query: str = "")`
-            # Yes! So we can use that.
-            items = HistoryManager.get_history(
-                limit=self.limit, offset=self.offset, search_query=self.current_search
+        try:
+            # pylint: disable=import-outside-toplevel
+            from app_state import state
+
+            hm = getattr(state, "history_manager", None) or HistoryManager()
+            items = hm.get_history(
+                limit=self.limit,
+                offset=self.offset,
+                search_query=self.current_search or "",
             )
-        else:
-            # Explicitly pass empty search query to match test expectation/API consistency
-            items = HistoryManager.get_history(
-                limit=self.limit, offset=self.offset, search_query=""
-            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to load history: %s", e)
+            items = []
 
         if not items and self.offset == 0:
             logger.info("History list is empty")
@@ -143,10 +131,12 @@ class HistoryView(BaseView):
 
         self.update()
 
+    # pylint: disable=unused-argument
     def _on_search_submit(self, e):
         self.current_search = self.search_field.value.strip()
         self.load(reset=True)
 
+    # pylint: disable=unused-argument
     def _on_search_change(self, e):
         # Optional: Debounce here if needed. For now, simple live search on enter or explicit.
         # But user might expect live search.
@@ -156,6 +146,7 @@ class HistoryView(BaseView):
             self.current_search = ""
             self.load(reset=True)
 
+    # pylint: disable=unused-argument
     def _load_more(self, e):
         self.offset += self.limit
         self.load(reset=False)
@@ -172,7 +163,12 @@ class HistoryView(BaseView):
         def confirm_clear(e):
             try:
                 logger.info("User confirmed history clear")
-                HistoryManager.clear_history()
+                # pylint: disable=import-outside-toplevel
+                from app_state import state
+
+                hm = getattr(state, "history_manager", None) or HistoryManager()
+                hm.clear_history()
+
                 self.load()
                 if self.page:
                     self.page.open(
@@ -227,7 +223,12 @@ class HistoryView(BaseView):
         try:
             item_id = item.get("id")
             if item_id:
-                HistoryManager.delete_entry(item_id)
+                # pylint: disable=import-outside-toplevel
+                from app_state import state
+
+                hm = getattr(state, "history_manager", None) or HistoryManager()
+                hm.delete_entry(item_id)
+
                 self.load()  # Reload the list
                 if self.page:
                     self.page.open(

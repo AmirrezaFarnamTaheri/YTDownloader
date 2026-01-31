@@ -30,9 +30,11 @@ class TestDashboardLogic(unittest.TestCase):
         self.assertEqual(self.view.queued_downloads_text.value, "5")
         self.assertEqual(self.view.completed_downloads_text.value, "10")
 
-    @patch("views.dashboard_view.HistoryManager")
-    def test_refresh_history(self, MockHistoryManager):
-        MockHistoryManager.get_history.return_value = [{"title": "A"}, {"title": "B"}]
+    @patch("app_state.state")
+    def test_refresh_history(self, mock_state):
+        mock_hm = MagicMock()
+        mock_state.history_manager = mock_hm
+        mock_hm.get_history.return_value = [{"title": "A"}, {"title": "B"}]
 
         self.view._refresh_history()
 

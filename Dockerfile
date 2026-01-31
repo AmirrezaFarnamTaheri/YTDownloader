@@ -10,15 +10,15 @@ ENV FLET_SERVER_PORT=8550
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies with pinned versions for reproducibility
+# Install system dependencies
 # ffmpeg: for video merging/processing
 # aria2: for download acceleration
 # git: often needed for pip installing from git repos
 # curl: for healthcheck
 RUN apt-get update && apt-get install -y \
-    ffmpeg=7:5.1.6-0+deb12u1 \
-    aria2=1.36.0-1+deb12u1 \
-    git=1:2.39.5-0+deb12u1 \
+    ffmpeg \
+    aria2 \
+    git \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
