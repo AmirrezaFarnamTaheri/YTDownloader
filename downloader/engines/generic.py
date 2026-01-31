@@ -170,6 +170,8 @@ class GenericDownloader:
             if os.path.commonpath([final_abs, output_abs]) != output_abs:
                 raise ValueError("Path traversal detected")
         except ValueError as e:
+            if "different drive" in str(e).lower() or "paths" in str(e).lower():
+                raise ValueError("Detected path traversal attempt in filename") from e
             raise ValueError(f"Security violation: {e}") from e
 
     @staticmethod

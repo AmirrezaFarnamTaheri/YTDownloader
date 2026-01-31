@@ -73,7 +73,7 @@ class HistoryItemControl(ft.Container):
                     tooltip=LM.get("open_folder"),
                     icon_color=Theme.Primary.MAIN,
                     on_click=lambda _: self.on_open_folder(
-                        self.item.get("output_path")
+                        self.item.get("filepath")
                     ),
                 ),
                 ft.IconButton(
