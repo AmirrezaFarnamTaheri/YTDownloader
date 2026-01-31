@@ -20,14 +20,14 @@ class QueueManager:
     """
     Thread-safe manager for the download queue.
 
-    # pylint: disable=too-many-public-methods
-
     Status Lifecycle:
     - "Queued" -> "Allocating" -> "Downloading" -> "Processing" -> "Completed"
     - "Queued" -> "Allocating" -> "Downloading" -> "Error"
     - "Queued" -> "Allocating" -> "Downloading" -> "Cancelled"
     - "Scheduled (HH:MM)" -> "Queued" (when time reached)
     """
+
+    # pylint: disable=too-many-public-methods
 
     MAX_QUEUE_SIZE = 1000
 
