@@ -170,6 +170,7 @@ def global_crash_handler(exctype: type, value: BaseException, tb: Any) -> None:
         if stack:
             # Get last frame
             # (Note: standard traceback objects don't easily give access to frame locals without 'inspect')
+            # pylint: disable=unused-import
             import inspect
 
             if tb:

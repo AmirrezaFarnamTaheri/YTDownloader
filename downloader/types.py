@@ -5,9 +5,9 @@ Configuration dataclasses and type definitions for the downloader.
 import ipaddress
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum, auto
+from enum import Enum
 from typing import Any, Literal, TypedDict
 from urllib.parse import urlparse
 

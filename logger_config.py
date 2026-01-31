@@ -9,6 +9,7 @@ import threading
 from pathlib import Path
 
 # Module-level flag and lock to prevent re-initialization race conditions
+# pylint: disable=invalid-name
 _logging_initialized = False
 _logging_lock = threading.Lock()
 
