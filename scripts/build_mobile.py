@@ -134,6 +134,7 @@ def _run_build(root: Path, args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    """Main entry point for the mobile build script."""
     args = _parse_args()
     root = Path(__file__).resolve().parent.parent
     requirements_path = root / "requirements.txt"

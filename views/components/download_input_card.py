@@ -154,6 +154,7 @@ class DownloadInputCard(ft.Container):
         if self.on_paste_callback:
             self.on_paste_callback(e)
 
+    # pylint: disable=unused-argument
     def _on_fetch_click(self, e):
         url = self.url_input.value.strip() if self.url_input.value else ""
         if url:
