@@ -16,7 +16,7 @@ import flet as ft
 from app_state import AppState
 from localization_manager import LocalizationManager as LM
 from theme import Theme
-from ui_utils import get_default_download_path, open_folder
+from ui_utils import get_default_download_path, open_folder, validate_url
 from views.base_view import BaseView
 from views.components.download_input_card import DownloadInputCard
 from views.components.download_preview import DownloadPreviewCard
@@ -190,8 +190,13 @@ class DownloadView(BaseView):
             try:
                 content = pyperclip.paste()
                 if content:
-                    self.input_card.set_url(content.strip())
+                    url = content.strip()
+                    self.input_card.set_url(url)
                     self.input_card.url_input.focus()
+
+                    # Smart Auto-Fetch
+                    if validate_url(url):
+                        self.input_card.trigger_auto_fetch()
             except pyperclip.PyperclipException:
                 logger.warning("Clipboard access not available")
         except Exception as ex:

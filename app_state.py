@@ -93,16 +93,9 @@ class AppState:
         self.is_paused = False
         self.video_info: dict[str, Any] | None = None
 
-        self.ffmpeg_available = is_ffmpeg_available()
-        logger.info("FFmpeg available: %s", self.ffmpeg_available)
+        self.ffmpeg_available = False  # Updated in background
 
-        try:
-            HistoryManager.init_db()
-            logger.info("History database initialized.")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error("Failed to initialize history database: %s", e)
-
-        self.history_manager = HistoryManager()
+        self.history_manager = HistoryManager() # Instance created, DB init later
 
         # Feature flags / States
         self.cinema_mode = False
@@ -110,7 +103,6 @@ class AppState:
         self.social_manager = SocialManager()
 
         # Instantiate SyncManager with dependencies to avoid circular imports
-        # Pass HistoryManager class if needed, or instance if refactored
         self.sync_manager = SyncManager(
             self.cloud_manager, self.config, history_manager=HistoryManager
         )
@@ -130,17 +122,29 @@ class AppState:
         self._video_info_cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
         self._video_info_max_size = self.config.get("metadata_cache_size", 50)
 
-        # Try connecting to social - but with error isolation
-        def _safe_social_connect():
+        # Background Initialization of heavy components
+        def _background_init():
+            # 1. FFmpeg Check (Warms cache)
+            self.ffmpeg_available = is_ffmpeg_available()
+            logger.info("FFmpeg available: %s", self.ffmpeg_available)
+
+            # 2. Database Init
             try:
-                logger.debug("Waiting for init to complete before connecting social...")
-                self._init_complete.wait(timeout=5.0)  # Wait for init to complete
+                HistoryManager.init_db()
+                logger.info("History database initialized.")
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.error("Failed to initialize history database: %s", e)
+
+            # 3. Social Manager
+            try:
+                # Wait briefly for main loop to be ready if needed,
+                # but we are in init so it's fine.
                 logger.debug("Connecting social manager...")
                 self.social_manager.connect()
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.debug("Social manager connection failed (non-critical): %s", e)
 
-        threading.Thread(target=_safe_social_connect, daemon=True).start()
+        threading.Thread(target=_background_init, daemon=True, name="AppStateInit").start()
 
         self._initialized = True
         self._init_complete.set()

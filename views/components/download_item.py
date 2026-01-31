@@ -7,10 +7,12 @@ Features progress bar, status icon, action buttons, and metadata badges.
 
 import logging
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 import flet as ft
 
+from downloader.types import DownloadStatus
 from localization_manager import LocalizationManager as LM
 from theme import Theme
 
@@ -134,6 +136,19 @@ class DownloadItemControl(ft.Container):
         self.update_actions()
         self._update_progress_internal(update_ui=False)
 
+    def update_state(self, new_item: dict[str, Any]):
+        """
+        Efficiently updates the control state with new item data.
+        """
+        self.item = new_item
+        # Restore weakref if missing in the new copy
+        if "control_ref" not in self.item:
+            import weakref
+
+            self.item["control_ref"] = weakref.ref(self)
+
+        self._update_progress_internal(update_ui=True)
+
     def _update_meta_badges(self):
         """Updates metadata badges based on item info."""
         self.meta_badges.controls.clear()
@@ -221,7 +236,7 @@ class DownloadItemControl(ft.Container):
         elif status == "Cancelled":
             self.status_badge.bgcolor = ft.colors.with_opacity(0.2, Theme.TEXT_MUTED)
             self.status_text.color = Theme.TEXT_MUTED
-        elif str(status).startswith("Scheduled"):
+        elif status == DownloadStatus.SCHEDULED:
             self.status_badge.bgcolor = ft.colors.with_opacity(0.2, Theme.WARNING)
             self.status_text.color = Theme.WARNING
         else:
@@ -266,9 +281,12 @@ class DownloadItemControl(ft.Container):
             )
 
         # Cancel Button (Active)
-        if status in ("Downloading", "Queued", "Processing", "Allocating") or str(
-            status
-        ).startswith("Scheduled"):
+        if status in (
+            "Downloading",
+            "Queued",
+            "Processing",
+            "Allocating",
+        ) or status == DownloadStatus.SCHEDULED:
             self.action_row.controls.append(
                 create_action_btn(
                     ft.icons.CANCEL,
@@ -304,12 +322,14 @@ class DownloadItemControl(ft.Container):
         if not status:
             return LM.get("status_unknown")
 
-        if str(status).startswith("Scheduled"):
-            label = str(status)
-            if "(" in label and ")" in label:
-                time_part = label[label.find("(") + 1 : label.rfind(")")]
-                if time_part:
-                    return LM.get("status_scheduled_time", time_part)
+        if status == DownloadStatus.SCHEDULED:
+            sched_time = self.item.get("scheduled_time")
+            if sched_time:
+                if isinstance(sched_time, datetime):
+                    return LM.get(
+                        "status_scheduled_time", sched_time.strftime("%H:%M")
+                    )
+                return LM.get("status_scheduled_time", str(sched_time))
             return LM.get("status_scheduled")
 
         status_map = {

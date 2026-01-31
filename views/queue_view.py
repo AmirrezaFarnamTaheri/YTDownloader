@@ -154,52 +154,14 @@ class QueueView(BaseView):
             if isinstance(c, DownloadItemControl)
         }
 
-        current_ids = [item.get("id") for item in items]
-
-        # 1. Remove controls for items that are no longer in the queue
-        to_remove = []
-        for ctrl in self.list_view.controls:
-            if isinstance(ctrl, DownloadItemControl):
-                if ctrl.item.get("id") not in current_ids:
-                    to_remove.append(ctrl)
-
-        for ctrl in to_remove:
-            self.list_view.controls.remove(ctrl)
-
-        # 2. Add new controls or update existing ones
-        # We want to maintain order matching 'items'
-
-        # Since ListView in Flet is a list of controls, reordering is expensive if we clear/add.
-        # But if the order in 'items' changes (e.g. reordering), we might need to reflect that.
-        # For simplicity and performance, we'll append new ones and update existing.
-        # If strict reordering is needed, we might need more complex logic.
-        # Assuming queue order is stable mostly.
-
-        # If strict order synchronization is needed:
-        # We can reconstruct the list, reusing existing controls instances.
-
+        # Reconstruct list in correct order
         new_controls_list = []
         for item in items:
             item_id = item.get("id")
             if item_id in existing_controls:
-                # Update existing control with new item data state
-                # The control handles its own granular updates via `_update_progress_internal` usually,
-                # but if `rebuild` is called, we might need to refresh general state.
-                # However, DownloadItemControl stores `self.item`. We should update it.
-                # NOTE: DownloadItemControl might not expose a method to swap the item dict completely,
-                # but we can check if critical fields changed.
-                # Actually, in this architecture, `rebuild` is likely called on major events.
-                # Let's reuse the control.
+                # Reuse existing control and update state
                 ctrl = existing_controls[item_id]
-                # Update the underlying item reference if needed, or just let it be if it's the same object reference
-                # (QueueManager usually returns copies, so it's a new dict).
-                # We might need a method on Control to update state.
-                # If we just keep the old control, it might hold stale data if not updated via progress hook.
-                # But progress hook updates specific controls.
-                # If we swap the item dict:
-                ctrl.item = item
-                # Force a UI refresh of the control if status changed
-                ctrl.update()
+                ctrl.update_state(item)
                 new_controls_list.append(ctrl)
             else:
                 # Create new
@@ -213,8 +175,6 @@ class QueueView(BaseView):
                 )
                 new_controls_list.append(control)
 
-        self.list_view.controls = new_controls_list
-
         # Bulk Actions State
         has_active = any(
             item.get("status") in ("Downloading", "Queued", "Processing", "Allocating")
@@ -226,7 +186,24 @@ class QueueView(BaseView):
         self.cancel_all_btn.disabled = not has_active
         self.clear_completed_btn.disabled = not has_completed
 
-        self.update()
+        # Check for structure changes
+        structure_changed = False
+        if len(self.list_view.controls) != len(new_controls_list):
+            structure_changed = True
+        else:
+            for i, c in enumerate(new_controls_list):
+                if self.list_view.controls[i] is not c:
+                    structure_changed = True
+                    break
+
+        if structure_changed:
+            self.list_view.controls = new_controls_list
+            self.update()
+        else:
+            # Only update auxiliary controls
+            self.stats_text.update()
+            self.cancel_all_btn.update()
+            self.clear_completed_btn.update()
 
     def _update_stats(self, items):
         """Update queue statistics display."""

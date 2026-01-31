@@ -7,6 +7,8 @@ from datetime import datetime
 from datetime import time as dt_time
 from datetime import timedelta
 
+from downloader.types import DownloadStatus
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,21 +33,21 @@ class DownloadScheduler:
         Raises:
             TypeError: If scheduled_time is not None, datetime.time, or datetime instance
         """
-        status = "Queued"
+        status = DownloadStatus.QUEUED
         sched_dt = None
 
         if scheduled_time is not None:
             # Validate input type
             if isinstance(scheduled_time, datetime):
                 sched_dt = scheduled_time
-                status = f"Scheduled ({sched_dt.strftime('%Y-%m-%d %H:%M')})"
+                status = DownloadStatus.SCHEDULED
                 logger.info("Download scheduled for %s", sched_dt)
             elif isinstance(scheduled_time, dt_time):
                 now = datetime.now()
                 sched_dt = datetime.combine(now.date(), scheduled_time)
                 if sched_dt < now:
                     sched_dt += timedelta(days=1)
-                status = f"Scheduled ({sched_dt.strftime('%H:%M')})"
+                status = DownloadStatus.SCHEDULED
                 logger.info("Download scheduled for %s", sched_dt)
             else:
                 logger.warning(

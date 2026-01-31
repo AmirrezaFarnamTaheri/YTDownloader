@@ -122,6 +122,9 @@ class HistoryManager:
                 cursor.execute(
                     "CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)"
                 )
+                cursor.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_history_status ON history(status)"
+                )
                 conn.commit()
 
         except OSError as e:

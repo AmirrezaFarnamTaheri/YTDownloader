@@ -23,6 +23,8 @@ class YTDLPWrapper:
     Ensures consistent behavior for cancellation and progress reporting.
     """
 
+    _SUPPORT_CACHE: dict[str, bool] = {}
+
     def __init__(self, options: dict[str, Any]):
         self.options = options.copy()
 
@@ -30,23 +32,33 @@ class YTDLPWrapper:
     def supports(url: str) -> bool:
         """
         Check if yt-dlp supports the URL by querying its extractors.
+        Uses caching to improve performance on repeated checks.
 
         Returns True if yt-dlp has an extractor for this URL,
         False otherwise (allowing fallback to generic downloader).
         """
         if not url:
             return False
+
+        # Check cache
+        if url in YTDLPWrapper._SUPPORT_CACHE:
+            return YTDLPWrapper._SUPPORT_CACHE[url]
+
         try:
             # Use yt-dlp's extractor system to check URL support
+            # We iterate through extractors. This can be slow, so we cache the result.
             for ie in yt_dlp.extractor.gen_extractors():
                 if ie.suitable(url):
                     # Skip generic extractors as we want specific support
                     if ie.IE_NAME in ("generic", "Generic"):
                         continue
+                    YTDLPWrapper._SUPPORT_CACHE[url] = True
                     return True
+
+            YTDLPWrapper._SUPPORT_CACHE[url] = False
             return False
         except Exception:  # pylint: disable=broad-exception-caught
-            # On any error, assume yt-dlp might support it
+            # On any error, assume yt-dlp might support it to be safe
             return True
 
     def download(

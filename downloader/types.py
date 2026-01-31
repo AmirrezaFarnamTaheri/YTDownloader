@@ -7,8 +7,26 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum, auto
 from typing import Any, Literal, TypedDict
 from urllib.parse import urlparse
+
+
+class DownloadStatus(str, Enum):
+    """Enumeration of possible download statuses."""
+
+    QUEUED = "Queued"
+    ALLOCATING = "Allocating"
+    DOWNLOADING = "Downloading"
+    PROCESSING = "Processing"
+    COMPLETED = "Completed"
+    ERROR = "Error"
+    CANCELLED = "Cancelled"
+    PAUSED = "Paused"
+    SCHEDULED = "Scheduled"
+
+    def __str__(self):
+        return self.value
 
 
 @dataclass
@@ -163,7 +181,7 @@ class QueueItem(TypedDict, total=False):
         "Error",
         "Cancelled",
         "Paused",
-    ]
+    ] | DownloadStatus
     scheduled_time: datetime | None
     progress: float
     speed: str

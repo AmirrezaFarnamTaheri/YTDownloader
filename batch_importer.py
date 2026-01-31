@@ -10,27 +10,10 @@ from pathlib import Path
 
 import requests
 
+from downloader.types import DownloadStatus
 from ui_utils import is_safe_path
 
 logger = logging.getLogger(__name__)
-
-
-def verify_url(url: str, timeout: int = 3) -> bool:
-    """
-    Verify if a URL is reachable using a HEAD request.
-    Returns True if the URL is reachable (status code < 400), False otherwise.
-    """
-    try:
-        # Use a user agent to avoid being blocked by some servers
-        headers = {"User-Agent": "StreamCatch/2.0.0"}
-        response = requests.head(
-            url, timeout=timeout, allow_redirects=True, headers=headers
-        )
-        if response.status_code < 400:
-            return True
-        return False
-    except requests.RequestException:
-        return False
 
 
 class BatchImporter:
@@ -38,9 +21,28 @@ class BatchImporter:
     Imports URLs from a text file, verifies them, and adds them to the queue.
     """
 
-    def __init__(self, queue_manager):
+    def __init__(self, queue_manager, config):
         self.queue_manager = queue_manager
+        self.config = config
         self.max_workers = 5  # Concurrent verification
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+        )
+
+    def verify_url(self, url: str, timeout: int = 3) -> bool:
+        """
+        Verify if a URL is reachable using a HEAD request.
+        """
+        try:
+            response = self.session.head(
+                url, timeout=timeout, allow_redirects=True
+            )
+            return response.status_code < 400
+        except requests.RequestException:
+            return False
 
     def import_from_file(self, filepath: str) -> tuple[int, bool]:
         """
@@ -97,7 +99,7 @@ class BatchImporter:
             # Process URLs concurrently
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 future_to_url = {
-                    executor.submit(verify_url, url): url for url in valid_syntax
+                    executor.submit(self.verify_url, url): url for url in valid_syntax
                 }
 
                 queue_full = False
@@ -118,28 +120,25 @@ class BatchImporter:
                                 break
 
                             # Add item
-                            from app_state import state
-
-                            config = state.config
-                            dl_path = config.get("download_path")
-                            output_template = config.get(
+                            dl_path = self.config.get("download_path")
+                            output_template = self.config.get(
                                 "output_template", "%(title)s.%(ext)s"
                             )
 
                             item = {
                                 "url": url,
-                                "status": "Queued",
+                                "status": DownloadStatus.QUEUED,
                                 "title": "Pending...",
                                 "added_time": 0,
                                 "output_path": dl_path,
                                 "output_template": output_template,
-                                "video_format": config.get("video_format", "best"),
-                                "proxy": config.get("proxy"),
-                                "rate_limit": config.get("rate_limit"),
-                                "sponsorblock": config.get("sponsorblock", False),
-                                "use_aria2c": config.get("use_aria2c", False),
-                                "gpu_accel": config.get("gpu_accel", "None"),
-                                "cookies_from_browser": config.get("cookies"),
+                                "video_format": self.config.get("video_format", "best"),
+                                "proxy": self.config.get("proxy"),
+                                "rate_limit": self.config.get("rate_limit"),
+                                "sponsorblock": self.config.get("sponsorblock", False),
+                                "use_aria2c": self.config.get("use_aria2c", False),
+                                "gpu_accel": self.config.get("gpu_accel", "None"),
+                                "cookies_from_browser": self.config.get("cookies"),
                             }
                             self.queue_manager.add_item(item)
                             added_count += 1
