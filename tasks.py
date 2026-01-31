@@ -7,7 +7,7 @@ Executes operations that shouldn't block the UI thread.
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, cast
 
 import flet as ft
 
@@ -115,6 +115,9 @@ class DownloadJob:
             logger.error("Invalid job item: %s", self.item)
             return
 
+        # Explicitly assert item_id is not None for mypy
+        assert self.item_id is not None
+
         # Check shutdown
         flag = getattr(app_state.state, "shutdown_flag", None)
         if flag and flag.is_set():
@@ -197,6 +200,9 @@ class DownloadJob:
         if self.cancel_token:
             self.cancel_token.check()
 
+        if not self.item_id:
+            return
+
         if d["status"] == "downloading":
             try:
                 p = d.get("_percent_str", "0%").replace("%", "")
@@ -213,14 +219,14 @@ class DownloadJob:
                 }
 
                 self.qm.update_item_status(
-                    self.item_id, DownloadStatus.DOWNLOADING, updates
+                    str(self.item_id), DownloadStatus.DOWNLOADING, updates  # type: ignore
                 )
             except Exception as e:
                 logger.debug("Error in progress hook: %s", e)
 
         elif d["status"] == "finished":
             self.qm.update_item_status(
-                self.item_id, DownloadStatus.PROCESSING, {"progress": 1.0}
+                str(self.item_id), DownloadStatus.PROCESSING, {"progress": 1.0}  # type: ignore
             )
 
     def _handle_error(self, e: Exception):
@@ -229,12 +235,14 @@ class DownloadJob:
             self.cancel_token and self.cancel_token.cancelled
         ):
             logger.info("Download cancelled for %s", self.url)
-            self.qm.update_item_status(self.item_id, DownloadStatus.CANCELLED)
+            self.qm.update_item_status(
+                str(self.item_id), DownloadStatus.CANCELLED  # type: ignore
+            )
             _log_to_history(self.item, None)
         else:
             logger.error("Download failed for %s: %s", self.url, e)
             self.qm.update_item_status(
-                self.item_id, DownloadStatus.ERROR, {"error": str(e)}
+                str(self.item_id), DownloadStatus.ERROR, {"error": str(e)}  # type: ignore
             )
             _log_to_history(self.item, None)
             if self.page:
@@ -311,7 +319,9 @@ def process_queue(page: ft.Page | None) -> None:
             finally:
                 sem.release()
 
-        executor.submit(_job_wrapper, item, page, throttle_ref)
+        # Cast item to dict to satisfy mypy if needed, though TypedDict should be fine.
+        # But if submit expects dict[Any, Any], TypedDict might be strictly incompatible in some Mypy versions.
+        executor.submit(_job_wrapper, cast(dict, item), page, throttle_ref)
         submitted = True
 
     except Exception:

@@ -234,7 +234,8 @@ def global_crash_handler(exctype: type, value: BaseException, tb: Any) -> None:
                 import ctypes  # pylint: disable=import-outside-toplevel
 
                 msg = f"Critical Error:\n{value}\n\nLog saved to:\n{log_path}"
-                ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
+                if hasattr(ctypes, "windll"):
+                    ctypes.windll.user32.MessageBoxW(0, msg, "StreamCatch Crashed", 0x10)
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
     except Exception:  # pylint: disable=broad-exception-caught

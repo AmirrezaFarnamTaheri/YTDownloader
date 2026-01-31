@@ -156,10 +156,13 @@ class TelegramExtractor:
         # pylint: disable=import-outside-toplevel
         from downloader.engines.generic import GenericDownloader
 
-        return GenericDownloader.download(
-            video_url,
-            output_path,
-            progress_hook,
-            cancel_token,
-            filename=filename,
+        # Explicit cast to dict to satisfy return type check
+        return dict(
+            GenericDownloader.download(
+                video_url,
+                output_path,
+                progress_hook,
+                cancel_token,
+                filename=filename,
+            )
         )

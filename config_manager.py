@@ -72,7 +72,7 @@ class ConfigManager:
             raise ValueError("Configuration must be a dictionary")
 
         # Type mapping for simple fields
-        type_map = {
+        type_map: dict[str, type | tuple[type, ...]] = {
             "use_aria2c": bool,
             "rss_feeds": list,
             "language": str,

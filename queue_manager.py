@@ -180,7 +180,8 @@ class QueueManager:
                     # We assume status is a valid Literal
                     item["status"] = cast(Any, status)
                     if updates:
-                        item.update(updates)
+                        # pylint: disable=no-member
+                        item.update(cast(Any, updates))
                     updated = True
                     break
 

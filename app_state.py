@@ -69,6 +69,8 @@ class AppState:
                     cls._instance = instance
         return cls._instance
 
+    _initialized: bool
+
     def __init__(self) -> None:  # pylint: disable=too-many-statements
         # Prevent double initialization
         with self._init_lock:

@@ -11,7 +11,7 @@ import os
 import threading
 import time
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import flet as ft
 
@@ -247,7 +247,8 @@ class AppController:
                     break
         else:
             if item in q:
-                idx = q.index(item)
+                # Cast item to QueueItem to satisfy mypy (TypedDict/dict compatibility)
+                idx = q.index(cast(Any, item))
 
         if idx != -1:
             new_idx = idx + direction
