@@ -27,6 +27,8 @@ class QueueManager:
     - "Scheduled (HH:MM)" -> "Queued" (when time reached)
     """
 
+    # pylint: disable=too-many-public-methods
+
     MAX_QUEUE_SIZE = 1000
 
     def __init__(self) -> None:
@@ -178,7 +180,8 @@ class QueueManager:
                     # We assume status is a valid Literal
                     item["status"] = cast(Any, status)
                     if updates:
-                        item.update(updates)
+                        # pylint: disable=no-member
+                        item.update(cast(Any, updates))
                     updated = True
                     break
 

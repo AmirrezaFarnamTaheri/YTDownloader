@@ -12,7 +12,7 @@ import time
 try:  # pragma: no cover - optional dependency
     from pypresence import Presence
 except ImportError:
-    Presence = None  # type: ignore[assignment]
+    Presence = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 

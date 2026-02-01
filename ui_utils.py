@@ -259,6 +259,7 @@ def is_safe_path(filepath: str) -> bool:
         return False
 
 
+# pylint: disable=invalid-name
 _ffmpeg_available_cache: bool | None = None
 
 

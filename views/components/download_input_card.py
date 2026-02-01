@@ -4,6 +4,7 @@ Contains the URL input, fetch button, and download options.
 """
 
 import logging
+from typing import Callable
 
 import flet as ft
 
@@ -24,10 +25,10 @@ class DownloadInputCard(ft.Container):
 
     def __init__(
         self,
-        on_fetch: callable,
-        on_paste: callable,
+        on_fetch: "Callable",
+        on_paste: "Callable",
         app_state,
-        on_options_changed: callable = None,
+        on_options_changed: "Callable | None" = None,
     ):
         super().__init__()
         self.on_fetch = on_fetch
@@ -154,6 +155,7 @@ class DownloadInputCard(ft.Container):
         if self.on_paste_callback:
             self.on_paste_callback(e)
 
+    # pylint: disable=unused-argument
     def _on_fetch_click(self, e):
         url = self.url_input.value.strip() if self.url_input.value else ""
         if url:

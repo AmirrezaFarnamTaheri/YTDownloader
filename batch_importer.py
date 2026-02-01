@@ -6,6 +6,7 @@ Handles importing URLs from text files.
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import Any
 
 import requests
 
@@ -95,7 +96,8 @@ class BatchImporter:
 
             # Process URLs concurrently
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                future_to_url = {
+                # Type hint for futures to avoid mypy confusion if it misinfers
+                future_to_url: dict[Any, str] = {
                     executor.submit(self.verify_url, url): url for url in valid_syntax
                 }
 

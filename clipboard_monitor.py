@@ -17,6 +17,7 @@ from ui_utils import validate_url
 # Lock for clipboard state access
 _clipboard_state_lock = threading.Lock()
 _monitor_lock = threading.Lock()
+# pylint: disable=invalid-name
 _monitor_thread = None
 
 logger = logging.getLogger(__name__)

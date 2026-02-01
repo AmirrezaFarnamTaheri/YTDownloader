@@ -11,7 +11,7 @@ import tempfile
 import threading
 import zipfile
 
-from ui_utils import is_safe_path
+# from ui_utils import is_safe_path  # Unused import
 
 logger = logging.getLogger(__name__)
 

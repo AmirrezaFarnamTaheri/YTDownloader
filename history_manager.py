@@ -243,7 +243,7 @@ class HistoryManager:
 
     def get_history_stats(self) -> dict:
         """Get statistics by status."""
-        stats = {"total": 0, "by_status": {}}
+        stats: dict[str, Any] = {"total": 0, "by_status": {}}
         try:
             with self._get_connection() as conn:
                 # Total
@@ -266,7 +266,7 @@ class HistoryManager:
         data = self.get_history(limit=10000)
         if format_type == "json":
             return json.dumps(data, indent=2, default=str)
-        elif format_type == "csv":
+        if format_type == "csv":
             import io
 
             if not data:

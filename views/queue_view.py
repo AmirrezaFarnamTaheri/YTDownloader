@@ -235,6 +235,7 @@ class QueueView(BaseView):
             else f"{total} {LM.get('items', 'items')}"
         )
 
+    # pylint: disable=unused-argument
     def _on_cancel_all(self, e):
         """Cancel all active downloads."""
         logger.info("User requested cancel all downloads")
@@ -252,6 +253,7 @@ class QueueView(BaseView):
         except Exception as ex:
             logger.error("Failed to cancel all: %s", ex)
 
+    # pylint: disable=unused-argument
     def _on_clear_completed(self, e):
         """Remove all completed, errored, and cancelled items from queue."""
         logger.info("User requested clear completed downloads")

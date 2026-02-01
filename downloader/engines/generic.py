@@ -104,7 +104,7 @@ class GenericDownloader:
         filename = filename.strip(" .")
 
         # Handle reserved names on Windows
-        root = filename.split(".")[0].upper()
+        root = filename.split(".", 1)[0].upper()
         if root in RESERVED_FILENAMES:
             filename = f"_{filename}"
 
@@ -150,7 +150,7 @@ class GenericDownloader:
 
     @staticmethod
     def _prepare_headers(
-        downloaded_bytes: int, total_size: int, is_resume: bool
+        downloaded_bytes: int, _total_size: int, is_resume: bool
     ) -> dict[str, str]:
         """Prepare HTTP headers for request."""
         headers = {
@@ -170,6 +170,8 @@ class GenericDownloader:
             if os.path.commonpath([final_abs, output_abs]) != output_abs:
                 raise ValueError("Path traversal detected")
         except ValueError as e:
+            if "different drive" in str(e).lower() or "paths" in str(e).lower():
+                raise ValueError("Detected path traversal attempt in filename") from e
             raise ValueError(f"Security violation: {e}") from e
 
     @staticmethod

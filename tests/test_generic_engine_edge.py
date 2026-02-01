@@ -149,3 +149,24 @@ class TestGenericDownloaderEdge(unittest.TestCase):
         val = args.get("total_bytes")
         if val is not None:
             self.assertEqual(val, 0)
+
+    @patch("os.path.commonpath")
+    def test_verify_path_security_different_drive(self, mock_commonpath):
+        """Test security check with different drive error."""
+        # Simulate different drive error on Windows
+        mock_commonpath.side_effect = ValueError("Paths are on different drives")
+
+        with self.assertRaises(ValueError) as cm:
+            GenericDownloader._verify_path_security("D:\\file.txt", "C:\\Downloads")
+
+        self.assertIn("Detected path traversal attempt", str(cm.exception))
+
+    @patch("os.path.commonpath")
+    def test_verify_path_security_other_error(self, mock_commonpath):
+        """Test security check with other ValueError."""
+        mock_commonpath.side_effect = ValueError("Some other error")
+
+        with self.assertRaises(ValueError) as cm:
+            GenericDownloader._verify_path_security("path1", "path2")
+
+        self.assertIn("Security violation", str(cm.exception))

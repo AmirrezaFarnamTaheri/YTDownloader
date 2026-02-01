@@ -31,13 +31,13 @@ class TestHistoryViewCoverage(unittest.TestCase):
         view.page = self.mock_page
 
         # Mock history data as dicts (based on implementation)
-        mock_history_manager.get_history.return_value = [
+        mock_history_manager.return_value.get_history.return_value = [
             {
                 "title": "Title",
                 "url": "http://url",
                 "timestamp": "2023",
                 "file_size": "10MB",
-                "output_path": "/tmp",
+                "filepath": "/tmp",
             }
         ]
 
@@ -55,9 +55,11 @@ class TestHistoryViewCoverage(unittest.TestCase):
                 title_text = col.controls[0]
                 self.assertIn("Title", title_text.value)
 
+    @patch("app_state.state")
     @patch("views.history_view.HistoryManager")
-    def test_clear_history(self, mock_history_manager):
+    def test_clear_history(self, mock_history_manager, mock_state):
         """Test clearing history."""
+        mock_state.history_manager = None
         view = HistoryView()
         view.page = MagicMock()
 
@@ -75,7 +77,7 @@ class TestHistoryViewCoverage(unittest.TestCase):
         yes_btn = dlg.actions[0]
         yes_btn.on_click(None)
 
-        mock_history_manager.clear_history.assert_called()
+        mock_history_manager.return_value.clear_history.assert_called()
         view.page.close.assert_called()
 
     @patch("views.history_view.open_folder")
