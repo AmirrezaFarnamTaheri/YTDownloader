@@ -207,12 +207,6 @@ class QueueManager:
                     if q_item.get("id") == item_id:
                         target = q_item
                         break
-            else:
-                # Fallback for legacy items without IDs (shouldn't happen with strict types)
-                for q_item in self._queue:
-                    if q_item == item:
-                        target = q_item
-                        break
 
             if target:
                 if item_id:
@@ -250,7 +244,6 @@ class QueueManager:
             for item in self._queue:
                 status = item.get("status")
                 scheduled_time = item.get("scheduled_time")
-                # Check for Enum or legacy string starting with Scheduled
                 is_scheduled = status == DownloadStatus.SCHEDULED or str(
                     status
                 ).startswith("Scheduled")

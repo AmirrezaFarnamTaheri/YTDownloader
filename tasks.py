@@ -28,34 +28,6 @@ _SUBMISSION_THROTTLE = threading.Semaphore(
 )  # Control task submission rate to executor
 _ACTIVE_COUNT_LOCK = threading.Lock()
 
-# Legacy aliases for tests
-_executor_lock = threading.Lock()
-_executor = None  # pylint: disable=invalid-name
-
-
-def configure_concurrency(max_workers):
-    """
-    Reconfigures the global thread pool executor with a new max_workers limit.
-    Correctly updates the submission throttle without orphaning running tasks.
-    """
-    global _executor, _SUBMISSION_THROTTLE
-
-    # Update global executor reference to force new pool creation on next use
-    # We don't shutdown the old one immediately if we want running tasks to finish,
-    # but ThreadPoolExecutor(wait=False) is typical for "fire and forget" shutdown.
-    with _executor_lock:
-        if _executor:
-            _executor.shutdown(wait=False)
-            _executor = None
-
-    # Update throttle semaphore
-    # We create a new semaphore. Running tasks will release the OLD semaphore instance
-    # if they captured it in their closure. New tasks will use the NEW semaphore.
-    # This might temporarily exceed the limit if we reduce it, but it's safe.
-    _SUBMISSION_THROTTLE = threading.Semaphore(max_workers)
-
-    logger.info("Concurrency limit updated to %d", max_workers)
-    return True
 
 
 def _get_max_workers() -> int:
@@ -332,13 +304,6 @@ def process_queue(page: ft.Page | None) -> None:
     finally:
         if not submitted:
             throttle_ref.release()
-
-
-# Legacy wrapper if needed (for tests relying on download_task function directly)
-def download_task(item: dict, page: ft.Page | None) -> None:
-    """Legacy wrapper for DownloadJob."""
-    job = DownloadJob(item, page)
-    job.run()
 
 
 def fetch_info_task(url: str, view_card: Any, page: Any) -> None:

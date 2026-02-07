@@ -262,20 +262,6 @@ class AppController:
         updated = False
         if item_id:
             updated = state.queue_manager.retry_item(item_id)
-        if not updated:
-            # Fallback for legacy items without IDs
-            if item.get("status") in ("Error", "Cancelled"):
-                item.update(
-                    {
-                        "status": "Queued",
-                        "scheduled_time": None,
-                        "progress": 0,
-                        "speed": "",
-                        "eta": "",
-                        "size": "",
-                        "error": None,
-                    }
-                )
         self.ui.update_queue_view()
 
     def on_play_item(self, item: dict[str, Any]):
