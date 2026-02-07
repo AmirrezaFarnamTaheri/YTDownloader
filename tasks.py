@@ -29,7 +29,7 @@ _SUBMISSION_THROTTLE = threading.Semaphore(
 _ACTIVE_COUNT_LOCK = threading.Lock()
 
 _executor_lock = threading.Lock()
-_executor: ThreadPoolExecutor | None = None
+_executor: ThreadPoolExecutor | None = None  # pylint: disable=invalid-name
 
 
 def _get_max_workers() -> int:
