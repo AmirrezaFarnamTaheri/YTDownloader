@@ -107,7 +107,10 @@ class DownloadInputCard(ft.Container):
         self.force_generic_cb = ft.Checkbox(
             label=LM.get("force_generic"),
             value=False,
-            tooltip=LM.get("force_generic_tooltip", "Force generic downloader (skip specialized extraction)")
+            tooltip=LM.get(
+                "force_generic_tooltip",
+                "Force generic downloader (skip specialized extraction)",
+            ),
         )
 
         self._build_ui()

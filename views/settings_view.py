@@ -18,7 +18,6 @@ from ui_utils import (
 )
 from views.base_view import BaseView
 
-
 # pylint: disable=missing-class-docstring, too-many-instance-attributes
 
 
@@ -139,9 +138,7 @@ class SettingsView(BaseView):
             icon=ft.icons.SAVE_ROUNDED,
             bgcolor=Theme.Primary.MAIN,
             color=Theme.Text.PRIMARY,
-            style=ft.ButtonStyle(
-                padding=20, shape=ft.RoundedRectangleBorder(radius=8)
-            ),
+            style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=8)),
             tooltip=LM.get("save_settings_tooltip", "Save all changes"),
         )
 
@@ -226,7 +223,7 @@ class SettingsView(BaseView):
         if self.page:
             if mode == "High Contrast":
                 self.page.theme = Theme.get_high_contrast_theme()
-                self.page.theme_mode = ft.ThemeMode.SYSTEM # Or force dark/light?
+                self.page.theme_mode = ft.ThemeMode.SYSTEM  # Or force dark/light?
                 # Usually high contrast handles colors itself.
             else:
                 self.page.theme = Theme.get_theme()

@@ -4,15 +4,12 @@ from views.settings_view import SettingsView
 from views.components.download_input_card import DownloadInputCard
 import flet as ft
 
+
 class TestSettingsFeatures:
 
     @pytest.fixture
     def mock_config(self):
-        return {
-            "theme_mode": "System",
-            "high_contrast": False,
-            "compact_mode": False
-        }
+        return {"theme_mode": "System", "high_contrast": False, "compact_mode": False}
 
     @pytest.fixture
     def settings_view(self, mock_config):
@@ -50,12 +47,13 @@ class TestSettingsFeatures:
             mock_save.assert_called()
             mock_cb.assert_called_with(True)
 
+
 class TestDownloadInputCardFeatures:
 
     def test_search_query_transformation(self):
         mock_fetch = MagicMock()
         card = DownloadInputCard(mock_fetch, lambda x: None, MagicMock())
-        card.page = MagicMock() # For update()
+        card.page = MagicMock()  # For update()
 
         # input: "funny cat videos" (no url)
         card.url_input.value = "funny cat videos"

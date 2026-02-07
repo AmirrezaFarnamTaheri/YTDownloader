@@ -115,12 +115,16 @@ class TestDownloaderOptions(unittest.TestCase):
 
     @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
-    @patch("shutil.which") # Mock shutil.which for ffmpeg check inside download_video
+    @patch("shutil.which")  # Mock shutil.which for ffmpeg check inside download_video
     @patch("downloader.core._check_disk_space", return_value=True)
-    def test_download_video_aria2c(self, mock_disk, mock_which, mock_wrapper_class, mock_is_telegram):
+    def test_download_video_aria2c(
+        self, mock_disk, mock_which, mock_wrapper_class, mock_is_telegram
+    ):
         mock_is_telegram.return_value = False
         # Mock aria2c existence
-        mock_which.side_effect = lambda x: "/usr/bin/aria2c" if x == "aria2c" else "/usr/bin/ffmpeg"
+        mock_which.side_effect = lambda x: (
+            "/usr/bin/aria2c" if x == "aria2c" else "/usr/bin/ffmpeg"
+        )
 
         options = DownloadOptions(url="http://yt.link", use_aria2c=True)
         download_video(options)
@@ -132,7 +136,9 @@ class TestDownloaderOptions(unittest.TestCase):
     @patch("downloader.core.YTDLPWrapper")
     @patch("shutil.which", return_value="/usr/bin/ffmpeg")
     @patch("downloader.core._check_disk_space", return_value=True)
-    def test_download_video_cookies(self, mock_disk, mock_which, mock_wrapper_class, mock_is_telegram):
+    def test_download_video_cookies(
+        self, mock_disk, mock_which, mock_wrapper_class, mock_is_telegram
+    ):
         mock_is_telegram.return_value = False
 
         options = DownloadOptions(url="http://yt.link", cookies_from_browser="chrome")
@@ -172,7 +178,7 @@ class TestDownloaderRobustness(unittest.TestCase):
         # Invalid url type
         with self.assertRaises(TypeError):
             # pylint: disable=no-value-for-parameter
-            options = DownloadOptions(url=123) # type: ignore
+            options = DownloadOptions(url=123)  # type: ignore
             download_video(options)
 
     @patch("yt_dlp.YoutubeDL")
@@ -183,7 +189,7 @@ class TestDownloaderRobustness(unittest.TestCase):
         item = {}
 
         with patch("downloader.core.GenericDownloader.download") as mock_download:
-            mock_download.return_value = {} # Return dict
+            mock_download.return_value = {}  # Return dict
             options = DownloadOptions(
                 url="http://url.com",
                 progress_hook=mock_hook,
@@ -251,7 +257,9 @@ class TestDownloaderRobustness(unittest.TestCase):
     @patch("downloader.core.YTDLPWrapper")
     @patch("shutil.which", return_value="/usr/bin/ffmpeg")
     @patch("downloader.core._check_disk_space", return_value=True)
-    def test_download_video_with_ranges(self, mock_disk, mock_which, mock_wrapper_class):
+    def test_download_video_with_ranges(
+        self, mock_disk, mock_which, mock_wrapper_class
+    ):
         options = DownloadOptions(
             url="http://test.com",
             progress_hook=lambda d: None,
@@ -275,7 +283,12 @@ class TestDownloaderExecution(unittest.TestCase):
     @patch("downloader.core._check_disk_space", return_value=True)
     @patch("downloader.core.shutil")
     def test_download_video_generic_fallback(
-        self, mock_shutil, mock_disk_space, mock_telegram_extractor, mock_generic_downloader, mock_ytdlp_wrapper
+        self,
+        mock_shutil,
+        mock_disk_space,
+        mock_telegram_extractor,
+        mock_generic_downloader,
+        mock_ytdlp_wrapper,
     ):
         mock_shutil.which.return_value = "/usr/bin/ffmpeg"
         mock_telegram_extractor.is_telegram_url.return_value = False
@@ -285,7 +298,7 @@ class TestDownloaderExecution(unittest.TestCase):
             url="http://example.com/file.zip",
             output_path="/tmp",
             output_template="%(title)s.%(ext)s",
-            force_generic=True
+            force_generic=True,
         )
 
         mock_ytdlp_wrapper.supports.return_value = False
@@ -301,7 +314,12 @@ class TestDownloaderExecution(unittest.TestCase):
     @patch("downloader.core._check_disk_space", return_value=True)
     @patch("downloader.core.shutil")
     def test_download_video_ytdlp(
-        self, mock_shutil, mock_disk_space, mock_telegram_extractor, mock_generic_downloader, mock_ytdlp_wrapper
+        self,
+        mock_shutil,
+        mock_disk_space,
+        mock_telegram_extractor,
+        mock_generic_downloader,
+        mock_ytdlp_wrapper,
     ):
         mock_shutil.which.return_value = "/usr/bin/ffmpeg"
         mock_telegram_extractor.is_telegram_url.return_value = False
@@ -311,7 +329,7 @@ class TestDownloaderExecution(unittest.TestCase):
             output_path="/tmp",
             output_template="%(title)s.%(ext)s",
             force_generic=False,
-            playlist=False
+            playlist=False,
         )
 
         mock_ytdlp_wrapper.supports.return_value = True

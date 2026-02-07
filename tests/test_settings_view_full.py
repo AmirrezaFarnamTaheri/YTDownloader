@@ -8,6 +8,7 @@ import sys
 if "tasks" not in sys.modules:
     sys.modules["tasks"] = MagicMock()
 
+
 class TestSettingsViewFull:
     @pytest.fixture
     def mock_config(self):
@@ -23,7 +24,7 @@ class TestSettingsViewFull:
             "compact_mode": False,
             "use_aria2c": False,
             "gpu_accel": "None",
-            "clipboard_monitor_enabled": False
+            "clipboard_monitor_enabled": False,
         }
 
     @pytest.fixture
