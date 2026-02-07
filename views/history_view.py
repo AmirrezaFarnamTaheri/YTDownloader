@@ -102,7 +102,11 @@ class HistoryView(BaseView):
                 ft.Container(
                     content=ft.Column(
                         [
-                            ft.Icon(ft.icons.HISTORY_ROUNDED, size=64, color=Theme.TEXT_MUTED),
+                            ft.Icon(
+                                ft.icons.HISTORY_ROUNDED,
+                                size=64,
+                                color=Theme.TEXT_MUTED,
+                            ),
                             ft.Text(
                                 LM.get("no_history"),
                                 color=Theme.Text.SECONDARY,

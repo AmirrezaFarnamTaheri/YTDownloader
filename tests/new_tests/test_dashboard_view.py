@@ -3,21 +3,25 @@ from unittest.mock import MagicMock, patch
 import flet as ft
 from views.dashboard_view import DashboardView
 
+
 @pytest.fixture
 def mock_app_state():
     # Patch app_state.state global
     with patch("app_state.state") as mock:
-        mock.history_manager.get_download_activity.return_value = [{"label": "Mon", "count": 1}]
+        mock.history_manager.get_download_activity.return_value = [
+            {"label": "Mon", "count": 1}
+        ]
         mock.history_manager.get_total_download_size.return_value = 0
         mock.history_manager.get_history.return_value = []
         yield mock
+
 
 def test_dashboard_view_init(mock_app_state):
     view = DashboardView(
         on_navigate=MagicMock(),
         on_paste_url=MagicMock(),
         on_batch_import=MagicMock(),
-        queue_manager=MagicMock()
+        queue_manager=MagicMock(),
     )
     # view.content is usually set by BaseView or Container inheritance.
     # In dashboard_view.py, it inherits BaseView.
@@ -27,6 +31,7 @@ def test_dashboard_view_init(mock_app_state):
     assert isinstance(view.content, ft.Column)
     assert view.activity_chart is not None
 
+
 def test_dashboard_refresh(mock_app_state):
     qm = MagicMock()
     qm.get_statistics.return_value = {"downloading": 1, "queued": 2, "completed": 3}
@@ -35,7 +40,7 @@ def test_dashboard_refresh(mock_app_state):
         on_navigate=MagicMock(),
         on_paste_url=MagicMock(),
         on_batch_import=MagicMock(),
-        queue_manager=qm
+        queue_manager=qm,
     )
 
     view.update = MagicMock()
@@ -46,19 +51,20 @@ def test_dashboard_refresh(mock_app_state):
 
     with patch("shutil.disk_usage") as mock_disk:
         mock_disk.return_value = (100, 50, 50)
-        view.load() # Use load() instead of refresh_data()
+        view.load()  # Use load() instead of refresh_data()
 
     view.storage_chart.update.assert_called()
     view.activity_chart.update.assert_called()
 
     assert view.active_downloads_text.value == "1"
 
+
 def test_dashboard_cleanup(mock_app_state):
     view = DashboardView(
         on_navigate=MagicMock(),
         on_paste_url=MagicMock(),
         on_batch_import=MagicMock(),
-        queue_manager=MagicMock()
+        queue_manager=MagicMock(),
     )
     view.timer_active = True
 

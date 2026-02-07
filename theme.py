@@ -182,9 +182,15 @@ class Theme:
             "filled": True,
             "bgcolor": Theme.BG_INPUT,
             "hint_text": hint_text,
-            "hint_style": ft.TextStyle(color=Theme.TEXT_MUTED, size=Theme.FONT_SIZE_BODY),
-            "label_style": ft.TextStyle(color=Theme.TEXT_SECONDARY, size=Theme.FONT_SIZE_BODY),
-            "text_style": ft.TextStyle(color=Theme.TEXT_PRIMARY, size=Theme.FONT_SIZE_BODY),
+            "hint_style": ft.TextStyle(
+                color=Theme.TEXT_MUTED, size=Theme.FONT_SIZE_BODY
+            ),
+            "label_style": ft.TextStyle(
+                color=Theme.TEXT_SECONDARY, size=Theme.FONT_SIZE_BODY
+            ),
+            "text_style": ft.TextStyle(
+                color=Theme.TEXT_PRIMARY, size=Theme.FONT_SIZE_BODY
+            ),
             "border": ft.InputBorder.OUTLINE,
             "border_width": 1,
             "border_color": Theme.BORDER,

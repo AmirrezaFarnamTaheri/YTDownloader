@@ -8,6 +8,7 @@ with patch.dict(sys.modules, {"flet": MagicMock()}):
     import flet as ft
     import main
 
+
 @pytest.fixture
 def mock_dependencies():
     # Create mocks
@@ -31,15 +32,22 @@ def mock_dependencies():
         "state": mock_state,
         "Theme": mock_theme,
         "UI_cls": mock_ui_cls,
-        "Controller_cls": mock_controller_cls
+        "Controller_cls": mock_controller_cls,
     }
+
 
 def test_main_initialization_success(mock_dependencies):
     page = MagicMock()
     page.platform = "linux"
 
     # Directly patch the attributes in the main module object
-    with patch.object(main, "LM", mock_dependencies["LM"]),          patch.object(main, "state", mock_dependencies["state"]),          patch.object(main, "Theme", mock_dependencies["Theme"]),          patch.object(main, "UIManager", mock_dependencies["UI_cls"]),          patch.object(main, "AppController", mock_dependencies["Controller_cls"]):
+    with (
+        patch.object(main, "LM", mock_dependencies["LM"]),
+        patch.object(main, "state", mock_dependencies["state"]),
+        patch.object(main, "Theme", mock_dependencies["Theme"]),
+        patch.object(main, "UIManager", mock_dependencies["UI_cls"]),
+        patch.object(main, "AppController", mock_dependencies["Controller_cls"]),
+    ):
 
         # Execute main
         main.main(page)
@@ -52,12 +60,19 @@ def test_main_initialization_success(mock_dependencies):
     # Check if initialize_views was called on the instance
     mock_dependencies["UI_cls"].return_value.initialize_views.assert_called()
 
+
 def test_main_initialization_failure(mock_dependencies):
     page = MagicMock()
 
     mock_dependencies["LM"].load_language.side_effect = Exception("Config Error")
 
-    with patch.object(main, "LM", mock_dependencies["LM"]),          patch.object(main, "state", mock_dependencies["state"]),          patch.object(main, "Theme", mock_dependencies["Theme"]),          patch.object(main, "UIManager", mock_dependencies["UI_cls"]),          patch.object(main, "AppController", mock_dependencies["Controller_cls"]):
+    with (
+        patch.object(main, "LM", mock_dependencies["LM"]),
+        patch.object(main, "state", mock_dependencies["state"]),
+        patch.object(main, "Theme", mock_dependencies["Theme"]),
+        patch.object(main, "UIManager", mock_dependencies["UI_cls"]),
+        patch.object(main, "AppController", mock_dependencies["Controller_cls"]),
+    ):
 
         with pytest.raises(Exception, match="Config Error"):
             main.main(page)
@@ -65,8 +80,13 @@ def test_main_initialization_failure(mock_dependencies):
     page.clean.assert_called()
     page.add.assert_called()
 
+
 def test_global_crash_handler_logging():
-    with patch.object(main.logger, "critical") as mock_critical,          patch("builtins.open", new_callable=MagicMock) as mock_open:
+    with (
+        patch.object(main.logger, "critical") as mock_critical,
+        patch("builtins.open", new_callable=MagicMock) as mock_open,
+        patch("os.name", "posix"),  # Force POSIX to avoid Windows MessageBox
+    ):
 
         try:
             raise ValueError("Test Crash")

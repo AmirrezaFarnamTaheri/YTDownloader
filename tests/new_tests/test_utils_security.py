@@ -8,6 +8,7 @@ from ui_utils import validate_rate_limit, validate_output_template
 
 # --- Security Tests ---
 
+
 def test_sanitize_output_path_absolute():
     # Should resolve absolute path to be relative to default or raise?
     # The implementation likely just strips or resolves.
@@ -19,6 +20,7 @@ def test_sanitize_output_path_absolute():
     # Assuming it sanitizes.
     pass
 
+
 @patch("os.path.abspath")
 @patch("os.path.expanduser")
 def test_validate_output_template_security(mock_expand, mock_abs):
@@ -26,6 +28,7 @@ def test_validate_output_template_security(mock_expand, mock_abs):
     assert validate_output_template("../secret") is False
     assert validate_output_template("normal/%(title)s") is True
     assert validate_output_template("/absolute/path") is False
+
 
 def test_validate_rate_limit():
     assert validate_rate_limit("50K") is True
@@ -35,7 +38,9 @@ def test_validate_rate_limit():
     assert validate_rate_limit("bad") is False
     assert validate_rate_limit(None) is True  # No limit
 
+
 # --- Utils Tests ---
+
 
 def test_cancel_token_basics():
     token = CancelToken()
@@ -48,6 +53,7 @@ def test_cancel_token_basics():
     with pytest.raises(InterruptedError):
         token.check()
 
+
 def test_cancel_token_pause_resume():
     token = CancelToken()
     token.pause()
@@ -58,6 +64,7 @@ def test_cancel_token_pause_resume():
 
     # Should not raise
     token.check()
+
 
 def test_cancel_token_timeout():
     # Set short timeout

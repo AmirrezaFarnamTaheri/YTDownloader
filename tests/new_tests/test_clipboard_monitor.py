@@ -5,11 +5,13 @@ import time
 import clipboard_monitor
 from clipboard_monitor import start_clipboard_monitor, _clipboard_loop
 
+
 @pytest.fixture(autouse=True)
 def reset_globals():
     clipboard_monitor._monitor_thread = None
     yield
     clipboard_monitor._monitor_thread = None
+
 
 @pytest.fixture
 def mock_state():
@@ -19,14 +21,17 @@ def mock_state():
         mock.last_clipboard_content = ""
         yield mock
 
+
 @pytest.fixture
 def mock_pyperclip():
     with patch("clipboard_monitor.pyperclip") as mock:
         # Define the Exception class on the mock
         class MockPyperclipException(Exception):
             pass
+
         mock.PyperclipException = MockPyperclipException
         yield mock
+
 
 def test_start_clipboard_monitor_success(mock_state, mock_pyperclip):
     page = MagicMock()
@@ -37,6 +42,7 @@ def test_start_clipboard_monitor_success(mock_state, mock_pyperclip):
         assert res is True
         mock_thread_cls.assert_called_once()
 
+
 def test_start_clipboard_monitor_failure(mock_state, mock_pyperclip):
     # Raise the mocked exception
     mock_pyperclip.paste.side_effect = mock_pyperclip.PyperclipException("No access")
@@ -44,12 +50,14 @@ def test_start_clipboard_monitor_failure(mock_state, mock_pyperclip):
     res = start_clipboard_monitor(MagicMock(), MagicMock())
     assert res is False
 
+
 def test_clipboard_loop_logic(mock_state, mock_pyperclip):
     page = MagicMock()
     view = MagicMock()
     view.url_input.value = ""
 
     loop_count = 0
+
     def side_effect_sleep(sec):
         nonlocal loop_count
         loop_count += 1

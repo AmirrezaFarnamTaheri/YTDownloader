@@ -119,7 +119,9 @@ class RSSView(BaseView):
                     ft.Container(
                         content=ft.Row(
                             [
-                                ft.Icon(ft.icons.RSS_FEED_ROUNDED, color=Theme.Primary.MAIN),
+                                ft.Icon(
+                                    ft.icons.RSS_FEED_ROUNDED, color=Theme.Primary.MAIN
+                                ),
                                 ft.Column(
                                     [
                                         ft.Text(

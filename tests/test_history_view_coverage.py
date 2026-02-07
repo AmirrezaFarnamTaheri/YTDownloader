@@ -51,7 +51,11 @@ class TestHistoryViewCoverage(unittest.TestCase):
 
         view.load()
 
-        self.assertEqual(len(view.history_list.controls), 1, "Should have exactly 1 history item control")
+        self.assertEqual(
+            len(view.history_list.controls),
+            1,
+            "Should have exactly 1 history item control",
+        )
 
         # Verify content
         control = view.history_list.controls[0]
