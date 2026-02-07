@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from downloader.types import DownloadOptions
 from queue_manager import QueueManager
-from tasks import download_task, fetch_info_task, process_queue
+from tasks import DownloadJob, fetch_info_task, process_queue
 from utils import CancelToken
 
 
@@ -87,9 +87,7 @@ class TestMainLogic(unittest.TestCase):
         mock_sleep.assert_called_once()
 
     # --- Process Queue Tests ---
-
-    @patch("tasks.download_task")
-    def test_process_queue_starts_download(self, mock_download_task):
+    def test_process_queue_starts_download(self):
         item = {"url": "http://test", "status": "Queued", "title": "T1"}
         self.mock_state.queue_manager.add_item(item)
 
@@ -170,7 +168,7 @@ class TestMainLogic(unittest.TestCase):
         # Add to queue manager
         self.mock_state.queue_manager.add_item(item)
 
-        download_task(item, None)
+        DownloadJob(item, None).run()
 
         self.assertEqual(item["status"], "Completed")
         mock_download_video.assert_called_once()
@@ -193,7 +191,7 @@ class TestMainLogic(unittest.TestCase):
             "Download Cancelled by user"
         )  # Matches tasks.py check string
 
-        download_task(item, None)
+        DownloadJob(item, None).run()
 
         # Re-fetch item from queue manager to check status
         # Because local 'item' dict is not automatically updated if queue manager creates a copy
@@ -214,7 +212,7 @@ class TestMainLogic(unittest.TestCase):
 
         mock_download_video.side_effect = Exception("Network Error")
 
-        download_task(item, None)
+        DownloadJob(item, None).run()
 
         q_items = self.mock_state.queue_manager.get_all()
         self.assertEqual(q_items[0]["status"], "Error")
@@ -253,7 +251,7 @@ class TestMainLogic(unittest.TestCase):
 
         mock_download_video.side_effect = side_effect
 
-        download_task(item, None)
+        DownloadJob(item, None).run()
 
         # After download_video returns, it sets status to "Completed"
         q_items = self.mock_state.queue_manager.get_all()

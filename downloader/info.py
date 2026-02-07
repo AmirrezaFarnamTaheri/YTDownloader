@@ -178,8 +178,6 @@ def get_video_info(
             )
             # yt-dlp expects cookiesfrombrowser
             ydl_opts["cookiesfrombrowser"] = cookies_tuple
-            # Keep legacy key for compatibility if any downstream uses it
-            ydl_opts["cookies_from_browser"] = cookies_tuple
 
         logger.info("Fetching video info for: %s", url)
 

@@ -18,7 +18,7 @@ class HistoryView(BaseView):
     """View for displaying download history."""
 
     def __init__(self):
-        super().__init__(LM.get("history"), ft.icons.HISTORY)
+        super().__init__(LM.get("history"), ft.icons.HISTORY_ROUNDED)
 
         self.history_list = ft.ListView(expand=True, spacing=10, padding=10)
         self.offset = 0
@@ -32,14 +32,14 @@ class HistoryView(BaseView):
             on_change=self._on_search_change,  # Live search
             **Theme.get_input_decoration(
                 hint_text=LM.get("search_history", "Search history..."),
-                prefix_icon=ft.icons.SEARCH,
+                prefix_icon=ft.icons.SEARCH_ROUNDED,
             ),
         )
 
         # Header actions
         self.clear_btn = ft.OutlinedButton(
             LM.get("clear_history"),
-            icon=ft.icons.DELETE_SWEEP,
+            icon=ft.icons.DELETE_SWEEP_ROUNDED,
             on_click=self.clear_history,
             style=ft.ButtonStyle(
                 color=Theme.Status.ERROR,
@@ -102,7 +102,11 @@ class HistoryView(BaseView):
                 ft.Container(
                     content=ft.Column(
                         [
-                            ft.Icon(ft.icons.HISTORY, size=64, color=Theme.TEXT_MUTED),
+                            ft.Icon(
+                                ft.icons.HISTORY_ROUNDED,
+                                size=64,
+                                color=Theme.TEXT_MUTED,
+                            ),
                             ft.Text(
                                 LM.get("no_history"),
                                 color=Theme.Text.SECONDARY,

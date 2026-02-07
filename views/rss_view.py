@@ -23,7 +23,7 @@ class RSSView(BaseView):
     """View for managing and viewing RSS feeds."""
 
     def __init__(self, config):
-        super().__init__(LM.get("rss"), ft.icons.RSS_FEED)
+        super().__init__(LM.get("rss"), ft.icons.RSS_FEED_ROUNDED)
         self.config = config
         self.rss_manager = RSSManager(config)
         self.feed_list = ft.ListView(expand=True, spacing=10, padding=10)
@@ -33,7 +33,7 @@ class RSSView(BaseView):
             label=LM.get("rss_feed_url"),
             expand=True,
             on_submit=self.add_rss,
-            **Theme.get_input_decoration(prefix_icon=ft.icons.RSS_FEED),
+            **Theme.get_input_decoration(prefix_icon=ft.icons.RSS_FEED_ROUNDED),
         )
 
         self.tabs = ft.Tabs(
@@ -45,7 +45,7 @@ class RSSView(BaseView):
             tabs=[
                 ft.Tab(
                     text=LM.get("feeds"),
-                    icon=ft.icons.RSS_FEED,
+                    icon=ft.icons.RSS_FEED_ROUNDED,
                     content=ft.Container(
                         content=ft.Column(
                             [
@@ -60,7 +60,7 @@ class RSSView(BaseView):
                                             icon_size=32,
                                         ),
                                         ft.IconButton(
-                                            icon=ft.icons.REFRESH,
+                                            icon=ft.icons.REFRESH_ROUNDED,
                                             tooltip=LM.get("refresh_feeds", "Refresh"),
                                             icon_color=Theme.Text.SECONDARY,
                                             on_click=self.refresh_feeds,
@@ -119,7 +119,9 @@ class RSSView(BaseView):
                     ft.Container(
                         content=ft.Row(
                             [
-                                ft.Icon(ft.icons.RSS_FEED, color=Theme.Primary.MAIN),
+                                ft.Icon(
+                                    ft.icons.RSS_FEED_ROUNDED, color=Theme.Primary.MAIN
+                                ),
                                 ft.Column(
                                     [
                                         ft.Text(

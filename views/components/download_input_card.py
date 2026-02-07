@@ -45,18 +45,18 @@ class DownloadInputCard(ft.Container):
             autofocus=True,
             on_submit=lambda e: self._on_fetch_click(e),
             suffix=ft.IconButton(
-                icon=ft.icons.CONTENT_PASTE,
+                icon=ft.icons.CONTENT_PASTE_ROUNDED,
                 tooltip=LM.get("paste_from_clipboard"),
                 on_click=self._on_paste_click,
             ),
             **Theme.get_input_decoration(
-                hint_text=LM.get("url_placeholder"), prefix_icon=ft.icons.LINK
+                hint_text=LM.get("url_placeholder"), prefix_icon=ft.icons.LINK_ROUNDED
             ),
         )
 
         self.fetch_btn = ft.ElevatedButton(
             LM.get("fetch_info"),
-            icon=ft.icons.SEARCH,
+            icon=ft.icons.SEARCH_ROUNDED,
             on_click=self._on_fetch_click,
             style=ft.ButtonStyle(
                 padding=20,

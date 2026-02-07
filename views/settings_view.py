@@ -22,7 +22,7 @@ from .base_view import BaseView
 
 class SettingsView(BaseView):
     def __init__(self, config, on_toggle_clipboard: Callable[..., None] | None = None):
-        super().__init__(LM.get("settings"), ft.icons.SETTINGS)
+        super().__init__(LM.get("settings"), ft.icons.SETTINGS_ROUNDED)
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.on_toggle_clipboard = on_toggle_clipboard
@@ -98,7 +98,7 @@ class SettingsView(BaseView):
                 ft.dropdown.Option("vulkan"),
             ],
             value=self.config.get("gpu_accel", "None"),
-            **Theme.get_input_decoration(prefix_icon=ft.icons.MEMORY),
+            **Theme.get_input_decoration(prefix_icon=ft.icons.MEMORY_ROUNDED),
         )
 
         # Appearance Section
@@ -111,7 +111,7 @@ class SettingsView(BaseView):
             ],
             value=self.config.get("theme_mode", "System"),
             on_change=self._on_theme_change,
-            **Theme.get_input_decoration(prefix_icon=ft.icons.BRIGHTNESS_6),
+            **Theme.get_input_decoration(prefix_icon=ft.icons.BRIGHTNESS_6_ROUNDED),
         )
 
         self.high_contrast_switch = ft.Switch(
@@ -130,7 +130,7 @@ class SettingsView(BaseView):
         self.save_btn = ft.ElevatedButton(
             LM.get("save_settings"),
             on_click=self.save_settings,
-            icon=ft.icons.SAVE,
+            icon=ft.icons.SAVE_ROUNDED,
             bgcolor=Theme.Primary.MAIN,
             color=Theme.Text.PRIMARY,
             style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=8)),

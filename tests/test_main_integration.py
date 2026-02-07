@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from downloader.types import DownloadOptions
-from tasks import download_task
+from tasks import DownloadJob
 
 
 class TestMainIntegration(unittest.TestCase):
@@ -43,7 +43,7 @@ class TestMainIntegration(unittest.TestCase):
             "filepath": "/tmp/vid.mp4",
         }
 
-        download_task(item, None)
+        DownloadJob(item, None).run()
 
         self.mock_video.assert_called()
         call_args = self.mock_video.call_args[0][0]
@@ -73,7 +73,7 @@ class TestMainIntegration(unittest.TestCase):
         }
         self.mock_video.side_effect = Exception("Download Error")
 
-        download_task(item, None)
+        DownloadJob(item, None).run()
 
         self.mock_state.queue_manager.update_item_status.assert_any_call(
             "456", "Downloading"

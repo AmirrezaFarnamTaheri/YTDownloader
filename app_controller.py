@@ -259,23 +259,8 @@ class AppController:
     def on_retry_item(self, item: dict[str, Any]):
         """Callback to retry a failed/cancelled item."""
         item_id = item.get("id")
-        updated = False
         if item_id:
-            updated = state.queue_manager.retry_item(item_id)
-        if not updated:
-            # Fallback for legacy items without IDs
-            if item.get("status") in ("Error", "Cancelled"):
-                item.update(
-                    {
-                        "status": "Queued",
-                        "scheduled_time": None,
-                        "progress": 0,
-                        "speed": "",
-                        "eta": "",
-                        "size": "",
-                        "error": None,
-                    }
-                )
+            state.queue_manager.retry_item(item_id)
         self.ui.update_queue_view()
 
     def on_play_item(self, item: dict[str, Any]):

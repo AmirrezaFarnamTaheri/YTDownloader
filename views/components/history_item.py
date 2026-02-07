@@ -69,7 +69,7 @@ class HistoryItemControl(ft.Container):
         self.action_row = ft.Row(
             controls=[
                 ft.IconButton(
-                    ft.icons.FOLDER_OPEN,
+                    ft.icons.FOLDER_OPEN_ROUNDED,
                     tooltip=LM.get("open_folder"),
                     icon_color=Theme.Primary.MAIN,
                     on_click=lambda _: self.on_open_folder(self.item.get("filepath")),

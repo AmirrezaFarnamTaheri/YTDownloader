@@ -46,7 +46,6 @@ class BatchImporter:
         """
         Reads URLs from the file, verifies them, and adds valid ones to the queue.
         Returns a tuple: (added_count, was_truncated)
-        Compatible with legacy callers expecting tuple return.
         """
         added_count = 0
         was_truncated = False

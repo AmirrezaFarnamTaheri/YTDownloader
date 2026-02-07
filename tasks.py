@@ -28,34 +28,8 @@ _SUBMISSION_THROTTLE = threading.Semaphore(
 )  # Control task submission rate to executor
 _ACTIVE_COUNT_LOCK = threading.Lock()
 
-# Legacy aliases for tests
 _executor_lock = threading.Lock()
-_executor = None  # pylint: disable=invalid-name
-
-
-def configure_concurrency(max_workers):
-    """
-    Reconfigures the global thread pool executor with a new max_workers limit.
-    Correctly updates the submission throttle without orphaning running tasks.
-    """
-    global _executor, _SUBMISSION_THROTTLE
-
-    # Update global executor reference to force new pool creation on next use
-    # We don't shutdown the old one immediately if we want running tasks to finish,
-    # but ThreadPoolExecutor(wait=False) is typical for "fire and forget" shutdown.
-    with _executor_lock:
-        if _executor:
-            _executor.shutdown(wait=False)
-            _executor = None
-
-    # Update throttle semaphore
-    # We create a new semaphore. Running tasks will release the OLD semaphore instance
-    # if they captured it in their closure. New tasks will use the NEW semaphore.
-    # This might temporarily exceed the limit if we reduce it, but it's safe.
-    _SUBMISSION_THROTTLE = threading.Semaphore(max_workers)
-
-    logger.info("Concurrency limit updated to %d", max_workers)
-    return True
+_executor: ThreadPoolExecutor | None = None  # pylint: disable=invalid-name
 
 
 def _get_max_workers() -> int:
@@ -77,14 +51,57 @@ def _get_executor() -> ThreadPoolExecutor:
         return _executor
 
 
-def _log_to_history(item: dict, result: dict | None) -> None:
-    """Helper to add completed/failed download to history."""
+def configure_concurrency(max_workers: int) -> bool:
+    """
+    Updates the concurrency settings (max workers).
+    Re-initializes the semaphore and executor.
+
+    Args:
+        max_workers: New maximum number of concurrent downloads.
+
+    Returns:
+        True if updated successfully, False otherwise.
+    """
+    global _SUBMISSION_THROTTLE, _executor
+
+    if max_workers < 1:
+        return False
+
+    logger.info("Updating concurrency to %d workers", max_workers)
+
+    try:
+        # Update semaphore (re-create)
+        # Note: This resets the semaphore. If items are currently running,
+        # this might allow extra items temporarily until they finish.
+        # Ideally we'd resize, but Semaphore doesn't support resizing.
+        # This is acceptable for a settings change.
+        _SUBMISSION_THROTTLE = threading.Semaphore(max_workers)
+
+        # Update Executor
+        with _executor_lock:
+            if _executor:
+                # We don't want to kill running tasks, just prevent new ones on old executor?
+                # ThreadPoolExecutor doesn't support dynamic resizing well in older python versions.
+                # But we can just leave the old one to die (shutdown(wait=False)) and create new?
+                # Actually, shutdown(wait=False) might kill pending? No, it stops accepting new.
+                # But we manage submission via process_queue anyway.
+                _executor.shutdown(wait=False)
+                _executor = None
+
+        return True
+    except Exception as e:
+        logger.error("Failed to configure concurrency: %s", e)
+        return False
+
+
+def _log_to_history(item: dict, result: dict | None):
+    """Log download result to history database."""
     try:
         if app_state.state.history_manager:
             entry = {
-                "url": item.get("url", ""),
+                "url": item.get("url"),
                 "title": item.get("title", "Unknown"),
-                "status": str(item.get("status", "Unknown")),
+                "status": "Completed" if result else "Failed",
                 "filename": result.get("filename") if result else "",
                 "filepath": result.get("filepath") if result else "",
                 "file_size": (
@@ -332,13 +349,6 @@ def process_queue(page: ft.Page | None) -> None:
     finally:
         if not submitted:
             throttle_ref.release()
-
-
-# Legacy wrapper if needed (for tests relying on download_task function directly)
-def download_task(item: dict, page: ft.Page | None) -> None:
-    """Legacy wrapper for DownloadJob."""
-    job = DownloadJob(item, page)
-    job.run()
 
 
 def fetch_info_task(url: str, view_card: Any, page: Any) -> None:
