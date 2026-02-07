@@ -97,7 +97,7 @@ def test_global_crash_handler_logging():
         patch.dict(sys.modules, {"ctypes": mock_ctypes}),
         # Mock Path to avoid "NotImplementedError: cannot instantiate 'PosixPath' on your system"
         # if main.py does 'Path.home() / ...'
-        patch("main.Path") as mock_path
+        patch("main.Path") as mock_path,
     ):
         # Configure mock path
         mock_path.home.return_value = MagicMock()

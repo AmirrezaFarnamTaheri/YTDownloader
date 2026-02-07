@@ -35,7 +35,7 @@ def test_validate_output_template_security(mock_expand, mock_abs):
     # We should test a path that is definitely absolute on the current platform
     # OR we can mock Path.is_absolute.
 
-    if os.name == 'nt':
+    if os.name == "nt":
         # Windows absolute path
         assert validate_output_template("C:/absolute/path") is False
         # /path is relative on windows (relative to current drive)
