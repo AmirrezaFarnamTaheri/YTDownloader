@@ -2,16 +2,11 @@
 
 StreamCatch is evolving into a comprehensive media management platform. We have recently completed a major overhaul to include IDM-like features, generic file support, and enhanced UI.
 
-## 🚀 v4.0: The "Intelligence & Ecosystem" Update
+## 🚀 v5.0: The "Intelligence & Ecosystem" Update
 
 ### 1. User Experience (UX) & Accessibility
-*   **Accessibility First**:
-    *   **Screen Reader Support**: Semantic labels for NVDA, JAWS, and VoiceOver.
-    *   **High Contrast Mode**: Dedicated theme for visually impaired users.
-    *   **Keyboard Navigation**: Full keyboard support (J/K to move, D to delete, Space to pause).
 *   **Voice Control**: Integration with SpeechRecognition for voice commands.
 *   **Adaptive Interface**:
-    *   **Compact Mode**: "Widget" style floating window.
     *   **TV Mode**: 10-foot UI for HTPCs.
 *   **Natural Language Input**: Type commands like "Download the latest video from MKBHD in 1080p".
 *   **Theme Store**: Community-submitted themes.
@@ -29,7 +24,6 @@ StreamCatch is evolving into a comprehensive media management platform. We have 
 
 ### 3. AI & Smart Features
 *   **Video Summarization**: Local LLM integration (Llama 3, Phi-3) for summaries.
-*   **Smart Auto-Tagging**: AI-based categorization and tagging.
 *   **Content Recommendations**: Suggestions based on history.
 *   **Sentiment Analysis**: Analyze comment sentiment.
 *   **Auto-Categorization**: Organize into folders (Music, Tech, Gaming).
@@ -39,7 +33,19 @@ StreamCatch is evolving into a comprehensive media management platform. We have 
 *   **Home Automation**: Home Assistant / MQTT support.
 *   **Media Server Hooks**: Plex/Jellyfin notification triggers.
 
-## ✅ Completed in v3.5 (Current)
+## ✅ Completed in v4.0 (Current)
+*   **Accessibility First**:
+    *   **High Contrast Mode**: Dedicated theme for visually impaired users.
+*   **Adaptive Interface**:
+    *   **Compact Mode**: "Widget" style floating window with responsive layout.
+*   **Smart Auto-Tagging**:
+    *   **Keyword Detection**: Automatically tags downloads based on title and uploader (Music, Gaming, Tech, etc.).
+*   **Enhanced Testing**:
+    *   **Comprehensive Coverage**: Significantly expanded test suite covering core components, UI, and synchronization logic.
+*   **Documentation**:
+    *   **Centralized Docs**: Moved all documentation to `wiki/` for better organization.
+
+## ✅ Completed in v3.5
 *   **Refactored Architecture**:
     *   **Modular Codebase**: Separated State, Tasks, and UI logic for better maintainability.
     *   **New Branding**: "Linear Velocity" logo design.

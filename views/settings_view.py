@@ -21,11 +21,12 @@ from .base_view import BaseView
 
 
 class SettingsView(BaseView):
-    def __init__(self, config, on_toggle_clipboard: Callable[..., None] | None = None):
+    def __init__(self, config, on_toggle_clipboard: Callable[..., None] | None = None, on_compact_mode_change=None):
         super().__init__(LM.get("settings"), ft.icons.SETTINGS_ROUNDED)
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.on_toggle_clipboard = on_toggle_clipboard
+        self.on_compact_mode_change = on_compact_mode_change
 
         # General / Network Section
         self.proxy_input = ft.TextField(
@@ -229,6 +230,13 @@ class SettingsView(BaseView):
             ConfigManager.save_config(self.config)
             self.page.update()
 
+    def _on_compact_mode_change(self, e):
+        # Auto-save compact_mode preference
+        self.config["compact_mode"] = e.control.value
+        ConfigManager.save_config(self.config)
+        if self.on_compact_mode_change:
+            self.on_compact_mode_change(e.control.value)
+
     def _on_high_contrast_change(self, e):
         if self.page:
             self.page.theme = (
@@ -238,6 +246,9 @@ class SettingsView(BaseView):
             )
             # Re-apply mode
             self._on_theme_change(None)
+            # Auto-save high_contrast preference
+            self.config["high_contrast"] = e.control.value
+            ConfigManager.save_config(self.config)
 
     # pylint: disable=missing-function-docstring, unused-argument
 

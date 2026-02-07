@@ -514,3 +514,25 @@ def mock_dependencies():
     if "dateutil" not in sys.modules:
         sys.modules["dateutil"] = MagicMock()
         sys.modules["dateutil.parser"] = MagicMock()
+
+# Explicitly add keyring mock at end of file if not present (not great but works if global)
+# Or define a fixture that patches sys.modules? No, config_manager imports it at module level.
+
+# So we must patch sys.modules before config_manager is imported.
+# conftest.py is imported first, so any code at top level runs.
+
+if "keyring" not in sys.modules:
+    import sys
+    from unittest.mock import MagicMock
+
+    keyring_mock = MagicMock()
+    keyring_mock.get_password.return_value = None
+
+    class MockPasswordDeleteError(Exception):
+        pass
+
+    keyring_mock.errors = MagicMock()
+    keyring_mock.errors.PasswordDeleteError = MockPasswordDeleteError
+
+    sys.modules["keyring"] = keyring_mock
+    sys.modules["keyring.errors"] = keyring_mock.errors
