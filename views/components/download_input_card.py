@@ -4,6 +4,7 @@ Contains the URL input, fetch button, and download options.
 """
 
 import logging
+import re
 from typing import Callable
 
 import flet as ft
@@ -44,6 +45,7 @@ class DownloadInputCard(ft.Container):
             expand=True,
             autofocus=True,
             on_submit=lambda e: self._on_fetch_click(e),
+            tooltip=LM.get("video_url_tooltip", "Enter URL or search query"),
             suffix=ft.IconButton(
                 icon=ft.icons.CONTENT_PASTE_ROUNDED,
                 tooltip=LM.get("paste_from_clipboard"),
@@ -58,6 +60,7 @@ class DownloadInputCard(ft.Container):
             LM.get("fetch_info"),
             icon=ft.icons.SEARCH_ROUNDED,
             on_click=self._on_fetch_click,
+            tooltip=LM.get("fetch_info_tooltip", "Fetch video metadata"),
             style=ft.ButtonStyle(
                 padding=20,
                 shape=ft.RoundedRectangleBorder(radius=8),
@@ -75,6 +78,7 @@ class DownloadInputCard(ft.Container):
             width=140,
             disabled=True,
             text_size=12,
+            tooltip=LM.get("time_start_tooltip", "Start time (HH:MM:SS)"),
             **Theme.get_input_decoration(hint_text=LM.get("time_placeholder")),
         )
         self.time_end = ft.TextField(
@@ -82,6 +86,7 @@ class DownloadInputCard(ft.Container):
             width=140,
             disabled=True,
             text_size=12,
+            tooltip=LM.get("time_end_tooltip", "End time (HH:MM:SS)"),
             **Theme.get_input_decoration(hint_text=LM.get("time_placeholder")),
         )
 
@@ -95,10 +100,18 @@ class DownloadInputCard(ft.Container):
                 ft.dropdown.Option("edge", LM.get("browser_edge")),
             ],
             value="None",
+            tooltip=LM.get("cookies_tooltip", "Use cookies from browser"),
             **Theme.get_input_decoration(hint_text=LM.get("select_cookies")),
         )
 
-        self.force_generic_cb = ft.Checkbox(label=LM.get("force_generic"), value=False)
+        self.force_generic_cb = ft.Checkbox(
+            label=LM.get("force_generic"),
+            value=False,
+            tooltip=LM.get(
+                "force_generic_tooltip",
+                "Force generic downloader (skip specialized extraction)",
+            ),
+        )
 
         self._build_ui()
 
@@ -159,6 +172,13 @@ class DownloadInputCard(ft.Container):
     def _on_fetch_click(self, e):
         url = self.url_input.value.strip() if self.url_input.value else ""
         if url:
+            # Natural Language / Search Detection
+            # If it doesn't start with http/https/rtmp/etc, treat as search
+            if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", url):
+                logger.info("Non-URL input detected, using ytsearch1 prefix: %s", url)
+                url = f"ytsearch1:{url}"
+                # Optionally update UI to show it's searching
+
             self.fetch_btn.disabled = True
             self.url_input.error_text = None
             self.update()
@@ -207,7 +227,7 @@ class DownloadInputCard(ft.Container):
             self.time_end.disabled = False
 
             # Determine Panel Type
-            url = info.get("original_url", "")
+            url = info.get("original_url", "") or info.get("webpage_url", "")
 
             # Simple heuristic
             if "youtube" in url or "youtu.be" in url:

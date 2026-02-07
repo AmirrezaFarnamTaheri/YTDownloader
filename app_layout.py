@@ -17,12 +17,13 @@ class AppLayout(ft.Row):
     Supports responsiveness via checking page width.
     """
 
-    def __init__(self, page: ft.Page, on_nav_change):
+    def __init__(self, page: ft.Page, on_nav_change, compact_mode: bool = False):
         super().__init__()
         self.page = page
         self.on_nav_change = on_nav_change
         self.expand = True
         self.spacing = 0
+        self.forced_compact_mode = compact_mode
 
         # Define Navigation Data
         nav_data = [
@@ -88,7 +89,7 @@ class AppLayout(ft.Row):
         self.content_area = ft.Container(
             expand=True,
             bgcolor=Theme.BG_DARK,
-            padding=20,  # Consistent padding
+            padding=20,  # Initial padding
             content=ft.Column(),  # Placeholder
         )
 
@@ -114,7 +115,7 @@ class AppLayout(ft.Row):
         self.content_area.update()
 
     def toggle_compact_mode(self, is_compact: bool):
-        """Toggles sidebar compact mode."""
+        """Toggles sidebar compact mode and adjusts padding."""
         self.rail.extended = not is_compact
         self.sidebar_container.width = 72 if is_compact else 200
         self.rail.label_type = (
@@ -122,8 +123,13 @@ class AppLayout(ft.Row):
             if is_compact
             else ft.NavigationRailLabelType.ALL
         )
+
+        # Adjust padding
+        self.content_area.padding = 10 if is_compact else 20
+
         self.sidebar_container.update()
         self.rail.update()
+        self.content_area.update()
 
     def toggle_mobile_mode(self, is_mobile: bool):
         """Toggles between Sidebar and Bottom Navigation."""
@@ -131,7 +137,6 @@ class AppLayout(ft.Row):
             self.sidebar_container.visible = False
             self.v_divider.visible = False
             # Bottom nav is usually attached to Page.navigation_bar
-            # But we can also insert it if page structure allows.
             # Best practice in Flet: assign to page.navigation_bar
             self.page.navigation_bar = self.bottom_nav
             self.bottom_nav.visible = True
@@ -158,7 +163,7 @@ class AppLayout(ft.Row):
         if width < 600:
             if self.sidebar_container.visible:
                 self.toggle_mobile_mode(True)
-        elif width < 1200:
+        elif width < 1200 or self.forced_compact_mode:
             # Tablet/Small Laptop: Compact Rail
             if not self.sidebar_container.visible:
                 self.toggle_mobile_mode(False)

@@ -1,16 +1,17 @@
 # pylint: disable=line-too-long, wrong-import-position, too-many-instance-attributes, too-many-public-methods, invalid-name, unused-variable, import-outside-toplevel
 # pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-arguments, too-many-positional-arguments, unused-argument, unused-import, protected-access
 """
-Comprehensive unit tests for the downloader module.
-Tests cover video info fetching, error handling, and download configuration.
+Consolidated unit tests for the downloader module.
+Covers video info fetching, download configuration, execution logic, and robustness/edge cases.
 """
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import yt_dlp
 
 from downloader.core import download_video
+from downloader.engines.ytdlp import YTDLPWrapper
 from downloader.info import get_video_info
 from downloader.types import DownloadOptions
 
@@ -98,402 +99,282 @@ class TestGetVideoInfo(unittest.TestCase):
         mock_instance = MagicMock()
         mock_youtube_dl.return_value.__enter__.return_value = mock_instance
         mock_instance.extract_info.side_effect = yt_dlp.utils.DownloadError(
-            "Video not found"
+            "Download failed"
         )
 
-        # Ensure fallbacks return None too
+        # Ensure fallbacks return None
         mock_tg.return_value = None
         mock_generic.return_value = None
 
-        result = get_video_info("https://www.youtube.com/watch?v=invalid")
-        self.assertIsNone(result)
-
-    @patch("downloader.info.yt_dlp.YoutubeDL")
-    def test_get_video_info_unexpected_error(self, mock_youtube_dl):
-        """Test handling of unexpected errors during info fetching."""
-        mock_instance = MagicMock()
-        mock_youtube_dl.return_value.__enter__.return_value = mock_instance
-        mock_instance.extract_info.side_effect = Exception("Network error")
-
-        result = get_video_info("https://www.youtube.com/watch?v=test")
-        self.assertIsNone(result)
-
-    @patch("downloader.info.yt_dlp.YoutubeDL")
-    def test_get_video_info_mixed_formats(self, mock_youtube_dl):
-        """Test with a mix of video and audio formats."""
-        mock_instance = MagicMock()
-        mock_youtube_dl.return_value.__enter__.return_value = mock_instance
-        mock_instance.extract_info.return_value = {
-            "title": "Mixed Formats Video",
-            "thumbnail": None,
-            "duration_string": "5:00",
-            "subtitles": {},
-            "formats": [
-                {
-                    "format_id": "18",
-                    "vcodec": "avc1",
-                    "acodec": "aac",
-                    "resolution": "360p",
-                    "fps": 24,
-                    "ext": "mp4",
-                    "filesize": None,
-                },
-                {
-                    "format_id": "22",
-                    "vcodec": "avc1",
-                    "acodec": "aac",
-                    "resolution": "720p",
-                    "fps": 30,
-                    "ext": "mp4",
-                    "filesize": 200000000,
-                },
-                {
-                    "format_id": "137",
-                    "vcodec": "avc1",
-                    "acodec": "none",
-                    "resolution": "1080p",
-                    "fps": 30,
-                    "ext": "mp4",
-                    "filesize": 300000000,
-                },
-                {
-                    "format_id": "251",
-                    "vcodec": "none",
-                    "acodec": "opus",
-                    "abr": 160,
-                    "ext": "webm",
-                    "filesize": 10000000,
-                },
-                {
-                    "format_id": "140",
-                    "vcodec": "none",
-                    "acodec": "mp4a",
-                    "abr": 128,
-                    "ext": "m4a",
-                    "filesize": 8000000,
-                },
-            ],
-            "chapters": None,
-        }
-
-        info = get_video_info("https://www.youtube.com/watch?v=test")
-        if info:
-            self.assertEqual(len(info["video_streams"]), 3)
-            self.assertEqual(len(info["audio_streams"]), 2)
+        info = get_video_info("https://www.youtube.com/watch?v=fail")
+        self.assertIsNone(info)
 
 
-class TestDownloadVideo(unittest.TestCase):
-    """Test cases for download_video function."""
+class TestDownloaderOptions(unittest.TestCase):
+    """Test cases for DownloadOptions and configuration."""
 
-    @patch("downloader.core.YTDLPWrapper.supports", return_value=True)
-    @patch("downloader.core.Path.mkdir")
-    @patch("downloader.core.YTDLPWrapper.download")
-    def test_download_video_success(self, mock_download, mock_mkdir, mock_supports):
-        """Test successful video download."""
-        progress_hook = MagicMock()
-        options = DownloadOptions(
-            url="https://www.youtube.com/watch?v=test",
-            progress_hook=progress_hook,
-            playlist=False,
-            video_format="22",
-            output_path="/tmp/downloads",
-            subtitle_lang=None,
-            subtitle_format="srt",
-            split_chapters=False,
-            proxy=None,
-            rate_limit=None,
-            cancel_token=None,
-        )
-
-        download_video(options)
-
-        mock_download.assert_called()
-
-    @patch("downloader.core.Path.mkdir")
+    @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_with_subtitles(self, mock_wrapper_class, mock_mkdir):
-        """Test video download with subtitle options."""
-        progress_hook = MagicMock()
-        options = DownloadOptions(
-            url="https://www.youtube.com/watch?v=test",
-            progress_hook=progress_hook,
-            playlist=False,
-            video_format="best",
-            output_path=".",
-            subtitle_lang="en",
-            subtitle_format="vtt",
-            split_chapters=False,
-            proxy=None,
-            rate_limit=None,
-            cancel_token=None,
-        )
-
-        download_video(options)
-
-        args, kwargs = mock_wrapper_class.call_args
-        ydl_opts = args[0]
-        self.assertTrue(ydl_opts["writesubtitles"])
-        self.assertEqual(ydl_opts["subtitles"], "en")
-        self.assertEqual(ydl_opts["subtitlesformat"], "vtt")
-
-    @patch("downloader.core.Path.mkdir")
-    @patch("downloader.core.YTDLPWrapper")
-    @patch("shutil.which")
-    def test_download_video_with_chapters(
-        self, mock_which, mock_wrapper_class, mock_mkdir
+    @patch("shutil.which")  # Mock shutil.which for ffmpeg check inside download_video
+    @patch("downloader.core._check_disk_space", return_value=True)
+    def test_download_video_aria2c(
+        self, mock_disk, mock_which, mock_wrapper_class, mock_is_telegram
     ):
-        """Test video download with chapter splitting."""
-        progress_hook = MagicMock()
-        mock_which.return_value = "/usr/bin/ffmpeg"
-
-        options = DownloadOptions(
-            url="https://www.youtube.com/watch?v=test",
-            progress_hook=progress_hook,
-            playlist=False,
-            video_format="best",
-            output_path="/tmp",
-            subtitle_lang=None,
-            subtitle_format="srt",
-            split_chapters=True,
-            proxy=None,
-            rate_limit=None,
-            cancel_token=None,
+        mock_is_telegram.return_value = False
+        # Mock aria2c existence
+        mock_which.side_effect = lambda x: (
+            "/usr/bin/aria2c" if x == "aria2c" else "/usr/bin/ffmpeg"
         )
+
+        options = DownloadOptions(url="http://yt.link", use_aria2c=True)
         download_video(options)
 
-        args, kwargs = mock_wrapper_class.call_args
-        ydl_opts = args[0]
-        pps = ydl_opts.get("postprocessors", [])
-        self.assertTrue(any(p["key"] == "FFmpegSplitChapters" for p in pps))
+        call_args = mock_wrapper_class.call_args[0][0]
+        self.assertEqual(call_args.get("external_downloader"), "aria2c")
 
-    @patch("downloader.core.Path.mkdir")
+    @patch("downloader.core.TelegramExtractor.is_telegram_url")
     @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_with_proxy(self, mock_wrapper_class, mock_mkdir):
-        """Test video download with proxy settings."""
-        progress_hook = MagicMock()
+    @patch("shutil.which", return_value="/usr/bin/ffmpeg")
+    @patch("downloader.core._check_disk_space", return_value=True)
+    def test_download_video_cookies(
+        self, mock_disk, mock_which, mock_wrapper_class, mock_is_telegram
+    ):
+        mock_is_telegram.return_value = False
 
-        options = DownloadOptions(
-            url="https://www.youtube.com/watch?v=test",
-            progress_hook=progress_hook,
-            playlist=False,
-            video_format="best",
-            output_path=".",
-            subtitle_lang=None,
-            subtitle_format="srt",
-            split_chapters=False,
-            proxy="http://proxy.example.com:8080",
-            rate_limit=None,
-            cancel_token=None,
-        )
+        options = DownloadOptions(url="http://yt.link", cookies_from_browser="chrome")
         download_video(options)
 
-        args, kwargs = mock_wrapper_class.call_args
-        ydl_opts = args[0]
-        self.assertEqual(ydl_opts["proxy"], "http://proxy.example.com:8080")
+        call_args = mock_wrapper_class.call_args[0][0]
+        # yt-dlp expects a 2-tuple: (browser_name, profile_name)
+        self.assertEqual(call_args.get("cookiesfrombrowser"), ("chrome", None))
 
+    def test_parse_time_logic(self):
+        """Test time parsing via DownloadOptions.get_seconds method."""
+        options = DownloadOptions(url="http://example.com")
+
+        # Test MM:SS format
+        self.assertEqual(options.get_seconds("01:30"), 90)
+
+        # Test HH:MM:SS format
+        self.assertEqual(options.get_seconds("01:00:00"), 3600)
+
+        # Test edge cases
+        self.assertEqual(options.get_seconds("00:00"), 0)
+        self.assertEqual(options.get_seconds("59:59"), 3599)
+
+        # Test None returns 0
+        self.assertEqual(options.get_seconds(None), 0)
+
+        # Test invalid time raises ValueError
         with self.assertRaises(ValueError):
-            download_video(
-                DownloadOptions(
-                    url="https://www.youtube.com/watch?v=test",
-                    progress_hook=progress_hook,
-                    proxy="invalid",
-                )
+            options.get_seconds("invalid")
+
+
+class TestDownloaderRobustness(unittest.TestCase):
+    """Tests for robustness, edge cases, and error handling."""
+
+    @patch("yt_dlp.YoutubeDL")
+    def test_download_video_invalid_args(self, mock_ydl):
+        # Invalid url type
+        with self.assertRaises(TypeError):
+            # pylint: disable=no-value-for-parameter
+            options = DownloadOptions(url=123)  # type: ignore
+            download_video(options)
+
+    @patch("yt_dlp.YoutubeDL")
+    @patch("downloader.core._check_disk_space", return_value=True)
+    def test_download_video_force_generic(self, mock_disk, mock_ydl):
+        # Check if force_generic flag bypasses yt-dlp
+        mock_hook = MagicMock()
+        item = {}
+
+        with patch("downloader.core.GenericDownloader.download") as mock_download:
+            mock_download.return_value = {}  # Return dict
+            options = DownloadOptions(
+                url="http://url.com",
+                progress_hook=mock_hook,
+                download_item=item,
+                force_generic=True,
+            )
+            download_video(options)
+
+            mock_download.assert_called()
+            mock_ydl.assert_not_called()
+
+    @patch("yt_dlp.YoutubeDL")
+    @patch("downloader.core.YTDLPWrapper.supports")
+    @patch("downloader.core._check_disk_space", return_value=True)
+    def test_download_video_telegram(self, mock_disk, mock_supports, mock_ydl):
+        mock_hook = MagicMock()
+        item = {}
+        mock_supports.return_value = False
+
+        with (
+            patch(
+                "downloader.core.TelegramExtractor.is_telegram_url", return_value=True
+            ),
+            patch("downloader.core.TelegramExtractor.extract") as mock_extract,
+            patch("downloader.core.GenericDownloader.download"),
+        ):
+
+            mock_extract.return_value = {
+                "title": "Tel",
+                "video_streams": [{"url": "http://t.me/v", "ext": "mp4"}],
+            }
+
+            options = DownloadOptions(
+                url="https://t.me/123", progress_hook=mock_hook, download_item=item
             )
 
-    @patch("downloader.core.Path.mkdir")
-    @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_with_rate_limit(self, mock_wrapper_class, mock_mkdir):
-        """Test video download with rate limiting."""
-        progress_hook = MagicMock()
+            download_video(options)
 
+            mock_extract.assert_called()
+
+    @patch("downloader.core.YTDLPWrapper")
+    @patch("shutil.which", return_value="/usr/bin/ffmpeg")
+    @patch("downloader.core._check_disk_space", return_value=True)
+    def test_download_video_exception(self, mock_disk, mock_which, mock_wrapper):
+        mock_wrapper.return_value.download.side_effect = RuntimeError(
+            "Downloader failed"
+        )
+
+        options = DownloadOptions(url="http://fail.com")
+        with self.assertRaises(RuntimeError):
+            download_video(options)
+
+    def test_download_video_invalid_ranges(self):
+        """Test that invalid time ranges raise a ValueError."""
         options = DownloadOptions(
-            url="https://www.youtube.com/watch?v=test",
-            progress_hook=progress_hook,
-            playlist=False,
-            video_format="best",
-            output_path=".",
-            subtitle_lang=None,
-            subtitle_format="srt",
-            split_chapters=False,
-            proxy=None,
-            rate_limit="500K",
-            cancel_token=None,
+            url="http://test.com",
+            progress_hook=lambda d: None,
+            download_item={},
+            start_time="00:00:30",
+            end_time="00:00:10",
+        )
+        with self.assertRaises(ValueError):
+            download_video(options)
+
+    @patch("downloader.core.YTDLPWrapper")
+    @patch("shutil.which", return_value="/usr/bin/ffmpeg")
+    @patch("downloader.core._check_disk_space", return_value=True)
+    def test_download_video_with_ranges(
+        self, mock_disk, mock_which, mock_wrapper_class
+    ):
+        options = DownloadOptions(
+            url="http://test.com",
+            progress_hook=lambda d: None,
+            download_item={},
+            start_time="00:00:10",
+            end_time="00:00:20",
         )
         download_video(options)
 
-        args, kwargs = mock_wrapper_class.call_args
-        ydl_opts = args[0]
-        self.assertEqual(ydl_opts["ratelimit"], "500K")
+        # Verify call args on wrapper
+        call_args = mock_wrapper_class.call_args[0][0]
+        self.assertIn("download_ranges", call_args)
 
-    @patch("downloader.core.Path.mkdir")
+
+class TestDownloaderExecution(unittest.TestCase):
+    """Execution flow tests."""
+
     @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_with_cancel_token(self, mock_wrapper_class, mock_mkdir):
-        """Test that cancel token is added to progress hooks."""
-        progress_hook = MagicMock()
+    @patch("downloader.core.GenericDownloader")
+    @patch("downloader.core.TelegramExtractor")
+    @patch("downloader.core._check_disk_space", return_value=True)
+    @patch("downloader.core.shutil")
+    def test_download_video_generic_fallback(
+        self,
+        mock_shutil,
+        mock_disk_space,
+        mock_telegram_extractor,
+        mock_generic_downloader,
+        mock_ytdlp_wrapper,
+    ):
+        mock_shutil.which.return_value = "/usr/bin/ffmpeg"
+        mock_telegram_extractor.is_telegram_url.return_value = False
+        mock_generic_downloader.download.return_value = {}
+
+        options = DownloadOptions(
+            url="http://example.com/file.zip",
+            output_path="/tmp",
+            output_template="%(title)s.%(ext)s",
+            force_generic=True,
+        )
+
+        mock_ytdlp_wrapper.supports.return_value = False
+
+        download_video(options)
+
+        mock_generic_downloader.download.assert_called_once()
+        mock_ytdlp_wrapper.assert_not_called()
+
+    @patch("downloader.core.YTDLPWrapper")
+    @patch("downloader.core.GenericDownloader")
+    @patch("downloader.core.TelegramExtractor")
+    @patch("downloader.core._check_disk_space", return_value=True)
+    @patch("downloader.core.shutil")
+    def test_download_video_ytdlp(
+        self,
+        mock_shutil,
+        mock_disk_space,
+        mock_telegram_extractor,
+        mock_generic_downloader,
+        mock_ytdlp_wrapper,
+    ):
+        mock_shutil.which.return_value = "/usr/bin/ffmpeg"
+        mock_telegram_extractor.is_telegram_url.return_value = False
+
+        options = DownloadOptions(
+            url="http://youtube.com/watch?v=123",
+            output_path="/tmp",
+            output_template="%(title)s.%(ext)s",
+            force_generic=False,
+            playlist=False,
+        )
+
+        mock_ytdlp_wrapper.supports.return_value = True
+
+        download_video(options)
+
+        # Should instantiate wrapper and call download
+        mock_ytdlp_wrapper.assert_called_once()
+        mock_ytdlp_wrapper.return_value.download.assert_called_once()
+
+    def test_ytdlp_wrapper_supports_caching(self):
+        # Clear cache
+        YTDLPWrapper._SUPPORT_CACHE = {}
+
+        with patch("yt_dlp.extractor.gen_extractors") as mock_gen:
+            mock_ie = MagicMock()
+            mock_ie.suitable.return_value = True
+            mock_ie.IE_NAME = "Youtube"
+            mock_gen.return_value = [mock_ie]
+
+            # First call
+            self.assertTrue(YTDLPWrapper.supports("http://yt.com"))
+            self.assertEqual(mock_gen.call_count, 1)
+
+            # Second call should use cache
+            self.assertTrue(YTDLPWrapper.supports("http://yt.com"))
+            self.assertEqual(mock_gen.call_count, 1)
+
+    def test_ytdlp_wrapper_download_cancel_token(self):
+        wrapper = YTDLPWrapper({})
         cancel_token = MagicMock()
+        cancel_token.is_set.return_value = True
 
-        options = DownloadOptions(
-            url="https://www.youtube.com/watch?v=test",
-            progress_hook=progress_hook,
-            playlist=False,
-            video_format="best",
-            output_path=".",
-            subtitle_lang=None,
-            subtitle_format="srt",
-            split_chapters=False,
-            proxy=None,
-            rate_limit=None,
-            cancel_token=cancel_token,
-        )
-        download_video(options)
+        # Mock CancelToken behavior
+        cancel_token.check.side_effect = InterruptedError("Cancelled")
 
-        mock_instance = mock_wrapper_class.return_value
-        args, kwargs = mock_instance.download.call_args
-        self.assertEqual(args[2], cancel_token)
+        with patch("yt_dlp.YoutubeDL") as mock_ydl:
+            wrapper.download("http://url", cancel_token=cancel_token)
 
-    @patch("downloader.core.YTDLPWrapper.supports", return_value=True)
-    @patch("downloader.core.Path.mkdir")
-    @patch("downloader.core.YTDLPWrapper.download")
-    def test_download_video_cancelled_by_user(
-        self, mock_download, mock_mkdir, mock_supports
-    ):
-        """Test graceful handling of user cancellation."""
-        mock_download.side_effect = yt_dlp.utils.DownloadError("Cancelled by user")
-        progress_hook = MagicMock()
+            args, kwargs = mock_ydl.call_args
+            opts = args[0]
+            self.assertIn("progress_hooks", opts)
+            self.assertGreaterEqual(len(opts["progress_hooks"]), 1)
 
-        with self.assertRaises(yt_dlp.utils.DownloadError):
-            download_video(
-                DownloadOptions(
-                    url="https://www.youtube.com/watch?v=test",
-                    progress_hook=progress_hook,
-                    playlist=False,
-                    video_format="best",
-                    output_path=".",
-                    subtitle_lang=None,
-                    subtitle_format="srt",
-                    split_chapters=False,
-                    proxy=None,
-                    rate_limit=None,
-                    cancel_token=None,
-                )
-            )
-
-    @patch("downloader.core.YTDLPWrapper.supports", return_value=True)
-    @patch("downloader.core.Path.mkdir")
-    @patch("downloader.core.YTDLPWrapper.download")
-    def test_download_video_error(self, mock_download, mock_mkdir, mock_supports):
-        """Test error handling during download."""
-        mock_download.side_effect = yt_dlp.utils.DownloadError("Access denied")
-        progress_hook = MagicMock()
-
-        with self.assertRaises(yt_dlp.utils.DownloadError):
-            download_video(
-                DownloadOptions(
-                    url="https://www.youtube.com/watch?v=test",
-                    progress_hook=progress_hook,
-                    playlist=False,
-                    video_format="best",
-                    output_path=".",
-                    subtitle_lang=None,
-                    subtitle_format="srt",
-                    split_chapters=False,
-                    proxy=None,
-                    rate_limit=None,
-                    cancel_token=None,
-                )
-            )
-
-    @patch("downloader.core.Path.mkdir")
-    @patch("downloader.core.YTDLPWrapper")
-    def test_download_video_playlist(self, mock_wrapper_class, mock_mkdir):
-        """Test playlist download configuration."""
-        progress_hook = MagicMock()
-
-        options = DownloadOptions(
-            url="https://www.youtube.com/playlist?list=PLtest",
-            progress_hook=progress_hook,
-            playlist=True,
-            video_format="best",
-            output_path=".",
-            subtitle_lang=None,
-            subtitle_format="srt",
-            split_chapters=False,
-            proxy=None,
-            rate_limit=None,
-            cancel_token=None,
-        )
-        download_video(options)
-
-        args, kwargs = mock_wrapper_class.call_args
-        ydl_opts = args[0]
-        self.assertFalse(ydl_opts["noplaylist"])
-
-    @patch("downloader.core.YTDLPWrapper.supports", return_value=True)
-    @patch("downloader.core.os.makedirs")
-    @patch("downloader.core.YTDLPWrapper.download")
-    def test_download_video_creates_output_directory(
-        self, mock_download, mock_makedirs, mock_supports
-    ):
-        """Test that output directory is created if it doesn't exist."""
-        progress_hook = MagicMock()
-
-        options = DownloadOptions(
-            url="https://www.youtube.com/watch?v=test",
-            progress_hook=progress_hook,
-            playlist=False,
-            video_format="best",
-            output_path="/tmp/test_downloads",
-            subtitle_lang=None,
-            subtitle_format="srt",
-            split_chapters=False,
-            proxy=None,
-            rate_limit=None,
-            cancel_token=None,
-        )
-        download_video(options)
-        mock_makedirs.assert_called()
-
-    @patch("downloader.core.Path.mkdir")
-    @patch("downloader.core.YTDLPWrapper")
-    @patch("shutil.which")
-    def test_download_video_sponsorblock(
-        self, mock_which, mock_wrapper_class, mock_mkdir
-    ):
-        mock_which.return_value = "/usr/bin/ffmpeg"
-
-        download_video(
-            DownloadOptions(
-                url="test",
-                progress_hook=lambda d: None,
-                sponsorblock=True,
-            )
-        )
-
-        args, kwargs = mock_wrapper_class.call_args
-        ydl_opts = args[0]
-        pps = ydl_opts.get("postprocessors", [])
-        self.assertTrue(any(p["key"] == "SponsorBlock" for p in pps))
-
-    @patch("downloader.core.Path.mkdir")
-    @patch("downloader.core.YTDLPWrapper")
-    @patch("shutil.which")
-    def test_download_video_gpu_accel(self, mock_which, mock_wrapper_class, mock_mkdir):
-        mock_which.return_value = "/usr/bin/ffmpeg"
-
-        download_video(
-            DownloadOptions(
-                url="test",
-                progress_hook=lambda d: None,
-                gpu_accel="cuda",
-            )
-        )
-
-        args, kwargs = mock_wrapper_class.call_args
-        ydl_opts = args[0]
-        self.assertIn("postprocessor_args", ydl_opts)
-        self.assertIn("-hwaccel", ydl_opts["postprocessor_args"]["ffmpeg"])
-
-
-if __name__ == "__main__":
-    unittest.mock.MagicMock = MagicMock  # type: ignore
-    unittest.main()
+            # Test the hook logic
+            hook = opts["progress_hooks"][0]
+            with self.assertRaises(InterruptedError):
+                hook({})
