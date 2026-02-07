@@ -28,6 +28,8 @@ _SUBMISSION_THROTTLE = threading.Semaphore(
 )  # Control task submission rate to executor
 _ACTIVE_COUNT_LOCK = threading.Lock()
 
+_executor_lock = threading.Lock()
+_executor: ThreadPoolExecutor | None = None
 
 
 def _get_max_workers() -> int:
@@ -49,14 +51,57 @@ def _get_executor() -> ThreadPoolExecutor:
         return _executor
 
 
-def _log_to_history(item: dict, result: dict | None) -> None:
-    """Helper to add completed/failed download to history."""
+def configure_concurrency(max_workers: int) -> bool:
+    """
+    Updates the concurrency settings (max workers).
+    Re-initializes the semaphore and executor.
+
+    Args:
+        max_workers: New maximum number of concurrent downloads.
+
+    Returns:
+        True if updated successfully, False otherwise.
+    """
+    global _SUBMISSION_THROTTLE, _executor
+
+    if max_workers < 1:
+        return False
+
+    logger.info("Updating concurrency to %d workers", max_workers)
+
+    try:
+        # Update semaphore (re-create)
+        # Note: This resets the semaphore. If items are currently running,
+        # this might allow extra items temporarily until they finish.
+        # Ideally we'd resize, but Semaphore doesn't support resizing.
+        # This is acceptable for a settings change.
+        _SUBMISSION_THROTTLE = threading.Semaphore(max_workers)
+
+        # Update Executor
+        with _executor_lock:
+            if _executor:
+                # We don't want to kill running tasks, just prevent new ones on old executor?
+                # ThreadPoolExecutor doesn't support dynamic resizing well in older python versions.
+                # But we can just leave the old one to die (shutdown(wait=False)) and create new?
+                # Actually, shutdown(wait=False) might kill pending? No, it stops accepting new.
+                # But we manage submission via process_queue anyway.
+                _executor.shutdown(wait=False)
+                _executor = None
+
+        return True
+    except Exception as e:
+        logger.error("Failed to configure concurrency: %s", e)
+        return False
+
+
+def _log_to_history(item: dict, result: dict | None):
+    """Log download result to history database."""
     try:
         if app_state.state.history_manager:
             entry = {
-                "url": item.get("url", ""),
+                "url": item.get("url"),
                 "title": item.get("title", "Unknown"),
-                "status": str(item.get("status", "Unknown")),
+                "status": "Completed" if result else "Failed",
                 "filename": result.get("filename") if result else "",
                 "filepath": result.get("filepath") if result else "",
                 "file_size": (

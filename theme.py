@@ -1,5 +1,6 @@
 """
 Application theme definitions and constants.
+Refined Soulful Palette V4 (Polished Typography & Spacing).
 """
 
 from typing import Any
@@ -9,8 +10,8 @@ import flet as ft
 
 class Theme:
     """
-    Main theme class containing color definitions and theme generation logic.
-    Soulful Palette V3 (Refined, Higher Contrast, Modern).
+    Main theme class containing color definitions, typography, and theme generation logic.
+    Soulful Palette V4 (Refined, Higher Contrast, Modern).
     """
 
     # --- Colors ---
@@ -44,6 +45,19 @@ class Theme:
     # Borders & Dividers
     BORDER = "#334155"  # Slate 700
     DIVIDER = "#334155"  # Alias for Divider color
+
+    # --- Typography Constants ---
+    FONT_FAMILY = "Roboto, Segoe UI, sans-serif"
+    FONT_SIZE_BODY = 14
+    FONT_SIZE_TITLE = 20
+    FONT_SIZE_HEADER = 24
+    FONT_SIZE_SMALL = 12
+
+    # --- Spacing Constants ---
+    PADDING_SMALL = 10
+    PADDING_MEDIUM = 20
+    PADDING_LARGE = 30
+    BORDER_RADIUS = 12
 
     # --- Subclasses for Usage ---
     # pylint: disable=too-few-public-methods
@@ -100,6 +114,7 @@ class Theme:
             ),
             # pylint: disable=no-member
             visual_density=ft.ThemeVisualDensity.COMFORTABLE,
+            font_family=Theme.FONT_FAMILY,
             page_transitions=ft.PageTransitionsTheme(
                 android=ft.PageTransitionTheme.ZOOM,
                 ios=ft.PageTransitionTheme.CUPERTINO,
@@ -110,7 +125,7 @@ class Theme:
             scrollbar_theme=ft.ScrollbarTheme(
                 thumb_color=ft.colors.WHITE,
                 radius=0,
-                thickness=10,
+                thickness=12,
                 interactive=True,
             ),
         )
@@ -138,6 +153,7 @@ class Theme:
             ),
             # pylint: disable=no-member
             visual_density=ft.ThemeVisualDensity.COMFORTABLE,
+            font_family=Theme.FONT_FAMILY,
             page_transitions=ft.PageTransitionsTheme(
                 android=ft.PageTransitionTheme.ZOOM,
                 ios=ft.PageTransitionTheme.CUPERTINO,
@@ -147,8 +163,8 @@ class Theme:
             ),
             scrollbar_theme=ft.ScrollbarTheme(
                 thumb_color=Theme.BG_HOVER,
-                radius=4,
-                thickness=6,
+                radius=6,
+                thickness=8,
                 interactive=True,
             ),
         )
@@ -166,13 +182,15 @@ class Theme:
             "filled": True,
             "bgcolor": Theme.BG_INPUT,
             "hint_text": hint_text,
-            "hint_style": ft.TextStyle(color=Theme.TEXT_MUTED),
+            "hint_style": ft.TextStyle(color=Theme.TEXT_MUTED, size=Theme.FONT_SIZE_BODY),
+            "label_style": ft.TextStyle(color=Theme.TEXT_SECONDARY, size=Theme.FONT_SIZE_BODY),
+            "text_style": ft.TextStyle(color=Theme.TEXT_PRIMARY, size=Theme.FONT_SIZE_BODY),
             "border": ft.InputBorder.OUTLINE,
-            "border_width": 0,
-            "border_color": ft.colors.TRANSPARENT,
+            "border_width": 1,
+            "border_color": Theme.BORDER,
             "focused_border_color": Theme.PRIMARY,
-            "focused_border_width": 1,
-            "content_padding": 15,
+            "focused_border_width": 2,
+            "content_padding": 18,
             "dense": True,
             "border_radius": 8,
         }
@@ -189,10 +207,13 @@ class Theme:
         """
         return {
             "bgcolor": Theme.BG_CARD,
-            "border_radius": 12,
-            "padding": 20,
+            "border_radius": Theme.BORDER_RADIUS,
+            "padding": Theme.PADDING_MEDIUM,
             "shadow": ft.BoxShadow(
-                blur_radius=10,
-                color=ft.colors.with_opacity(0.1, ft.colors.BLACK),
+                blur_radius=12,
+                spread_radius=1,
+                color=ft.colors.with_opacity(0.15, ft.colors.BLACK),
+                offset=ft.Offset(0, 4),
             ),
+            "border": ft.border.all(1, Theme.BORDER),
         }
