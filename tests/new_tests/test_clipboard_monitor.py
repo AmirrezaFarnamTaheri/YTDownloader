@@ -1,9 +1,11 @@
-import pytest
-from unittest.mock import MagicMock, patch
 import threading
 import time
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 import clipboard_monitor
-from clipboard_monitor import start_clipboard_monitor, _clipboard_loop
+from clipboard_monitor import _clipboard_loop, start_clipboard_monitor
 
 
 @pytest.fixture(autouse=True)

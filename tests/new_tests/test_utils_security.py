@@ -1,10 +1,12 @@
-import pytest
 import os
 import time
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from downloader.core import _sanitize_output_path
+from ui_utils import validate_output_template, validate_rate_limit
 from utils import CancelToken
-from ui_utils import validate_rate_limit, validate_output_template
 
 # --- Security Tests ---
 
@@ -27,7 +29,22 @@ def test_validate_output_template_security(mock_expand, mock_abs):
     # Should reject ..
     assert validate_output_template("../secret") is False
     assert validate_output_template("normal/%(title)s") is True
-    assert validate_output_template("/absolute/path") is False
+
+    # Test absolute path rejection in a platform-agnostic way
+    # On Windows, /absolute/path is not absolute.
+    # We should test a path that is definitely absolute on the current platform
+    # OR we can mock Path.is_absolute.
+
+    if os.name == 'nt':
+        # Windows absolute path
+        assert validate_output_template("C:/absolute/path") is False
+        # /path is relative on windows (relative to current drive)
+        # So assert validate_output_template("/absolute/path") is True (technically valid per pathlib on Windows?)
+        # Actually validate_output_template checks: Path(template).is_absolute()
+        pass
+    else:
+        # Posix
+        assert validate_output_template("/absolute/path") is False
 
 
 def test_validate_rate_limit():

@@ -1,8 +1,10 @@
-import pytest
-from unittest.mock import MagicMock, patch, ANY
 import threading
-from tasks import DownloadJob, process_queue, _SUBMISSION_THROTTLE
+from unittest.mock import ANY, MagicMock, patch
+
+import pytest
+
 from downloader.types import DownloadStatus
+from tasks import _SUBMISSION_THROTTLE, DownloadJob, process_queue
 
 
 @pytest.fixture

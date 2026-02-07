@@ -1,6 +1,8 @@
-import pytest
-from unittest.mock import MagicMock, patch, ANY
 import os
+from unittest.mock import ANY, MagicMock, patch
+
+import pytest
+
 from downloader.core import download_video
 from downloader.engines.ytdlp import YTDLPWrapper
 from downloader.types import DownloadOptions

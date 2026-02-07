@@ -1,11 +1,13 @@
-import pytest
-from unittest.mock import MagicMock, patch
-import sys
 import logging
+import sys
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Mock flet before importing main
 with patch.dict(sys.modules, {"flet": MagicMock()}):
     import flet as ft
+
     import main
 
 
@@ -82,11 +84,26 @@ def test_main_initialization_failure(mock_dependencies):
 
 
 def test_global_crash_handler_logging():
+    # We need to mock ctypes AND avoid patching os.name if it breaks pathlib.
+    # Instead, we check if main.os.name == 'nt' inside main.py
+
+    # Let's mock ctypes module in sys.modules to effectively neuter it
+    mock_ctypes = MagicMock()
+
+    # Also patch Path.home() and Path() to return a mock to avoid FS issues
     with (
         patch.object(main.logger, "critical") as mock_critical,
         patch("builtins.open", new_callable=MagicMock) as mock_open,
-        patch("os.name", "posix"),  # Force POSIX to avoid Windows MessageBox
+        patch.dict(sys.modules, {"ctypes": mock_ctypes}),
+        # Mock Path to avoid "NotImplementedError: cannot instantiate 'PosixPath' on your system"
+        # if main.py does 'Path.home() / ...'
+        patch("main.Path") as mock_path
     ):
+        # Configure mock path
+        mock_path.home.return_value = MagicMock()
+        # Division operator on path
+        mock_path.home.return_value.__truediv__.return_value = MagicMock()
+        mock_path.return_value = MagicMock()
 
         try:
             raise ValueError("Test Crash")

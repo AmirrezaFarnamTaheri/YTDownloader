@@ -1,6 +1,8 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
 import flet as ft
+import pytest
+
 from views.dashboard_view import DashboardView
 
 
