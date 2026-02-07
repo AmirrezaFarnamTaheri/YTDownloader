@@ -3,20 +3,29 @@ from unittest.mock import MagicMock
 from views.components.panels.youtube_panel import YouTubePanel
 import flet as ft
 
+
 class TestYouTubePanel:
     @pytest.fixture
     def mock_info(self):
         return {
             "title": "Test Video",
             "video_streams": [
-                {"format_id": "137", "resolution": "1080p", "ext": "mp4", "filesize": 1048576},
-                {"format_id": "22", "resolution": "720p", "ext": "mp4", "filesize_str": "50MB"}
+                {
+                    "format_id": "137",
+                    "resolution": "1080p",
+                    "ext": "mp4",
+                    "filesize": 1048576,
+                },
+                {
+                    "format_id": "22",
+                    "resolution": "720p",
+                    "ext": "mp4",
+                    "filesize_str": "50MB",
+                },
             ],
-            "audio_streams": [
-                {"format_id": "140", "abr": 128, "ext": "m4a"}
-            ],
+            "audio_streams": [{"format_id": "140", "abr": 128, "ext": "m4a"}],
             "subtitles": {"en": [{"url": "http://sub.srt"}]},
-            "_type": "video"
+            "_type": "video",
         }
 
     @pytest.fixture
@@ -37,7 +46,7 @@ class TestYouTubePanel:
         # Expect "best" + 2 streams
         assert len(opts) == 3
         assert opts[0].key == "best"
-        assert opts[1].key == "137" # format_id
+        assert opts[1].key == "137"  # format_id
         # Check filesize formatting
         assert "1.0 MB" in opts[1].text
         assert "50MB" in opts[2].text

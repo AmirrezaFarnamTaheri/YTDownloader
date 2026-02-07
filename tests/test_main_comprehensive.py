@@ -4,13 +4,16 @@ import main
 import flet as ft
 import sys
 
+
 class TestMainComprehensive:
     @patch("main.ft.app")
     @patch("main.state")
     @patch("main.UIManager")
     @patch("main.LM")
     @patch("main.Theme")
-    def test_main_app_start(self, mock_theme, mock_lm, mock_ui_manager, mock_state, mock_ft_app):
+    def test_main_app_start(
+        self, mock_theme, mock_lm, mock_ui_manager, mock_state, mock_ft_app
+    ):
         # We can't easily test the if __name__ == "__main__" block without running it as script.
         pass
 
@@ -21,11 +24,11 @@ class TestMainComprehensive:
     def test_main_function(self, mock_theme, mock_lm, mock_ui_manager, mock_state):
         mock_page = MagicMock()
         mock_page.platform = ft.PagePlatform.WINDOWS
-        mock_lm.get.return_value = "StreamCatch" # Return string, not Mock
+        mock_lm.get.return_value = "StreamCatch"  # Return string, not Mock
 
         # Setup UIManager mock
         ui_instance = mock_ui_manager.return_value
-        ui_instance.initialize_views.return_value = MagicMock() # layout
+        ui_instance.initialize_views.return_value = MagicMock()  # layout
 
         # Run main(page)
         main.main(mock_page)
@@ -40,15 +43,17 @@ class TestMainComprehensive:
         ui_instance.initialize_views.assert_called()
 
         # Verify Page update or add
-        mock_page.add.assert_called() # main.py: PAGE.add(layout)
+        mock_page.add.assert_called()  # main.py: PAGE.add(layout)
         # mock_page.update.assert_called() # main.py doesn't call update explicitly maybe, add does it?
 
-    @patch("main.AppController") # Mock AppController class
+    @patch("main.AppController")  # Mock AppController class
     @patch("main.state")
     @patch("main.UIManager")
     @patch("main.LM")
     @patch("main.Theme")
-    def test_cleanup_on_disconnect(self, mock_theme, mock_lm, mock_ui_manager, mock_state, mock_app_controller):
+    def test_cleanup_on_disconnect(
+        self, mock_theme, mock_lm, mock_ui_manager, mock_state, mock_app_controller
+    ):
         mock_page = MagicMock()
 
         # Run main to setup handlers
@@ -68,6 +73,6 @@ class TestMainComprehensive:
 
     def test_global_crash_handler(self):
         with pytest.raises(SystemExit):
-             with patch("logging.critical") as mock_log:
-                  main.global_crash_handler(ValueError, ValueError("test"), None)
-                  mock_log.assert_called()
+            with patch("logging.critical") as mock_log:
+                main.global_crash_handler(ValueError, ValueError("test"), None)
+                mock_log.assert_called()

@@ -8,7 +8,6 @@ StreamCatch is evolving into a comprehensive media management platform. We have 
 *   **Voice Control**: Integration with SpeechRecognition for voice commands.
 *   **Adaptive Interface**:
     *   **TV Mode**: 10-foot UI for HTPCs.
-*   **Natural Language Input**: Type commands like "Download the latest video from MKBHD in 1080p".
 *   **Theme Store**: Community-submitted themes.
 
 ### 2. Performance & Core Engineering
@@ -36,8 +35,10 @@ StreamCatch is evolving into a comprehensive media management platform. We have 
 ## ✅ Completed in v4.0 (Current)
 *   **Accessibility First**:
     *   **High Contrast Mode**: Dedicated theme for visually impaired users.
+    *   **Tooltips**: Enhanced accessibility with descriptive tooltips for controls.
 *   **Adaptive Interface**:
     *   **Compact Mode**: "Widget" style floating window with responsive layout.
+*   **Natural Language Input**: Type commands or search queries directly into the input field (e.g. "funny cats") to search YouTube.
 *   **Smart Auto-Tagging**:
     *   **Keyword Detection**: Automatically tags downloads based on title and uploader (Music, Gaming, Tech, etc.).
 *   **Enhanced Testing**:

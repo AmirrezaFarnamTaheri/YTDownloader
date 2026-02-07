@@ -515,6 +515,7 @@ def mock_dependencies():
         sys.modules["dateutil"] = MagicMock()
         sys.modules["dateutil.parser"] = MagicMock()
 
+
 # Explicitly add keyring mock at end of file if not present (not great but works if global)
 # Or define a fixture that patches sys.modules? No, config_manager imports it at module level.
 

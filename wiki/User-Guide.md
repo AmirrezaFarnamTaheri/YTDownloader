@@ -24,19 +24,25 @@ Upon opening StreamCatch, you will see the main Dashboard. The interface is divi
     -   **Time Range**: Specify Start/End times (e.g., `00:01:30` to `00:02:00`) to download a clip.
 4.  **Queue It**: Click **Add to Queue**. The download starts automatically in the background.
 
-### 2. Batch Import
+### 2. Search (Natural Language Input)
+Don't have a link?
+1.  Type a query directly into the "Video URL" field (e.g., "funny cats", "lofi hip hop").
+2.  Click **Fetch Info**.
+3.  StreamCatch will automatically search YouTube for the top result and fetch its metadata.
+
+### 3. Batch Import
 Have a list of links?
 1.  Create a `.txt` file with one URL per line.
 2.  Click the **Batch Import** (Upload) icon in the Download tab header.
 3.  Select your file. StreamCatch will queue all valid links instantly.
 
-### 3. Scheduling
+### 4. Scheduling
 Plan downloads for later (e.g., off-peak hours):
 1.  Click the **Schedule** (Clock) icon.
 2.  Pick a time.
 3.  The *next* item you add to the queue will be scheduled for that time.
 
-### 4. Browser Cookies (Bypassing Restrictions)
+### 5. Browser Cookies (Bypassing Restrictions)
 Some content (Age-gated, Premium) requires authentication. StreamCatch can borrow cookies from your browser:
 1.  In the **Download** tab, look for the "Browser Cookies" dropdown.
 2.  Select your browser (e.g., Chrome, Firefox).
@@ -52,7 +58,8 @@ Navigate to the **Queue** tab to manage active tasks:
 
 ## Configuration
 In the **Settings** tab, you can configure:
--   **Theme**: Toggle between Light, Dark, and System mode.
+-   **Theme**: Toggle between System, Light, Dark, and **High Contrast** mode (for accessibility).
+-   **Compact Mode**: Enable a streamlined interface with reduced padding, perfect for smaller screens or multitasking.
 -   **Language**: Choose your preferred UI language (restart required for full refresh).
 -   **Downloads Folder**: Set the default location for saved files.
 -   **Output Template**: Customize how filenames are generated.

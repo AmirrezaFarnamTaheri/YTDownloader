@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch, mock_open
 from sync_manager import SyncManager
 from datetime import datetime
 
+
 class TestSyncManagerComprehensive:
     @pytest.fixture
     def mock_cloud_manager(self):
@@ -20,12 +21,14 @@ class TestSyncManagerComprehensive:
     @pytest.fixture
     def mock_config(self):
         config = MagicMock()
+
         def get_side_effect(key, default=None):
             if key == "auto_sync_enabled":
                 return True
             if key == "auto_sync_interval":
                 return 60
             return default
+
         config.get.side_effect = get_side_effect
         return config
 
@@ -36,12 +39,12 @@ class TestSyncManagerComprehensive:
     def test_start_auto_sync(self, sync_manager):
         # Assuming start_auto_sync creates a thread
         with patch("sync_manager.threading.Thread") as mock_thread:
-             sync_manager.start_auto_sync()
+            sync_manager.start_auto_sync()
 
-             # Should create a thread targeting _auto_sync_loop
-             if sync_manager._thread:
-                  mock_thread.assert_called()
-                  sync_manager._thread.start.assert_called()
+            # Should create a thread targeting _auto_sync_loop
+            if sync_manager._thread:
+                mock_thread.assert_called()
+                sync_manager._thread.start.assert_called()
 
     def test_stop_auto_sync(self, sync_manager):
         # Setup fake thread
@@ -78,9 +81,11 @@ class TestSyncManagerComprehensive:
 
         try:
             with patch.object(sync_manager, "_import_history_db") as mock_import_db:
-                 sync_manager.import_data(tmp_zip_path)
-                 sync_manager.config.save_config.assert_called_with({"test": "new_config"})
-                 mock_import_db.assert_called()
+                sync_manager.import_data(tmp_zip_path)
+                sync_manager.config.save_config.assert_called_with(
+                    {"test": "new_config"}
+                )
+                mock_import_db.assert_called()
         finally:
             if os.path.exists(tmp_zip_path):
                 os.remove(tmp_zip_path)
@@ -96,9 +101,11 @@ class TestSyncManagerComprehensive:
             tmp_config_path = tmp_config.name
 
         def download_side_effect(filename, local_path):
-             import shutil
-             shutil.copy(tmp_config_path, local_path)
-             return True
+            import shutil
+
+            shutil.copy(tmp_config_path, local_path)
+            return True
+
         sync_manager.cloud.download_file.side_effect = download_side_effect
 
         try:

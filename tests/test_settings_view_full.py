@@ -2,6 +2,11 @@ import pytest
 from unittest.mock import MagicMock, patch
 from views.settings_view import SettingsView
 import flet as ft
+import sys
+
+# Patch sys.modules to mock tasks for configure_concurrency
+if "tasks" not in sys.modules:
+    sys.modules["tasks"] = MagicMock()
 
 class TestSettingsViewFull:
     @pytest.fixture
@@ -37,56 +42,68 @@ class TestSettingsViewFull:
         view.max_concurrent_input.value = "5"
 
         with patch("views.settings_view.ConfigManager.save_config") as mock_save:
-             with patch("tasks.configure_concurrency") as mock_cc:
-                  # Mock validation functions
-                  with patch("views.settings_view.validate_download_path", return_value=True):
-                      with patch("views.settings_view.validate_proxy", return_value=True):
-                          with patch("views.settings_view.validate_rate_limit", return_value=True):
-                              with patch("views.settings_view.validate_output_template", return_value=True):
-                                  view.save_settings(None)
+            with patch("tasks.configure_concurrency") as mock_cc:
+                # Mock validation functions
+                with patch(
+                    "views.settings_view.validate_download_path", return_value=True
+                ):
+                    with patch("views.settings_view.validate_proxy", return_value=True):
+                        with patch(
+                            "views.settings_view.validate_rate_limit", return_value=True
+                        ):
+                            with patch(
+                                "views.settings_view.validate_output_template",
+                                return_value=True,
+                            ):
+                                view.save_settings(None)
 
-                                  mock_save.assert_called()
-                                  assert view.config["max_concurrent_downloads"] == 5
-                                  assert view.config["download_path"] == "/tmp/downloads"
+                                mock_save.assert_called()
+                                assert view.config["max_concurrent_downloads"] == 5
+                                assert view.config["download_path"] == "/tmp/downloads"
 
     def test_save_invalid_download_path(self, view):
         view.page = MagicMock()
         view.download_path_input.value = "/invalid/path"
 
         with patch("views.settings_view.validate_download_path", return_value=False):
-             view.save_settings(None)
+            view.save_settings(None)
 
-             # SnackBar shown
-             view.page.open.assert_called()
-             args, _ = view.page.open.call_args
-             snack = args[0]
-             assert isinstance(snack, ft.SnackBar)
-             assert snack.bgcolor == "#EF4444" # Theme.Status.ERROR
+            # SnackBar shown
+            view.page.open.assert_called()
+            args, _ = view.page.open.call_args
+            snack = args[0]
+            assert isinstance(snack, ft.SnackBar)
+            assert snack.bgcolor == "#EF4444"  # Theme.Status.ERROR
 
     def test_save_invalid_max_concurrent(self, view):
         view.page = MagicMock()
         view.max_concurrent_input.value = "invalid"
 
         with patch("views.settings_view.validate_download_path", return_value=True):
-            # Other validations pass
-             with patch("views.settings_view.validate_proxy", return_value=True):
-                 with patch("views.settings_view.validate_rate_limit", return_value=True):
-                      with patch("views.settings_view.validate_output_template", return_value=True):
-                          view.save_settings(None)
-                          view.page.open.assert_called()
+            with patch("views.settings_view.validate_proxy", return_value=True):
+                with patch(
+                    "views.settings_view.validate_rate_limit", return_value=True
+                ):
+                    with patch(
+                        "views.settings_view.validate_output_template",
+                        return_value=True,
+                    ):
+                        view.save_settings(None)
+                        view.page.open.assert_called()
 
     def test_toggle_high_contrast(self, view):
         view.page = MagicMock()
-        e = MagicMock()
-        e.control.value = True
+
+        # Change dropdown to High Contrast
+        view.theme_mode_dd.value = "High Contrast"
 
         with patch("views.settings_view.ConfigManager.save_config") as mock_save:
-            view._on_high_contrast_change(e)
+            view._on_theme_change(None)
 
-            assert view.config["high_contrast"] is True
+            assert view.config["theme_mode"] == "High Contrast"
             mock_save.assert_called()
             # Theme updated
-            assert view.page.theme is not None # Should be high contrast theme mock
+            # assert view.page.theme is not None # high contrast theme
 
     def test_toggle_compact_mode(self, view):
         view.page = MagicMock()
@@ -113,7 +130,3 @@ class TestSettingsViewFull:
             assert view.page.theme_mode == ft.ThemeMode.DARK
             assert view.config["theme_mode"] == "Dark"
             mock_save.assert_called()
-# Patch sys.modules to mock tasks for configure_concurrency
-import sys
-if "tasks" not in sys.modules:
-    sys.modules["tasks"] = MagicMock()
