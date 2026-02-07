@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from views.settings_view import SettingsView
-from views.components.download_input_card import DownloadInputCard
+
 import flet as ft
+import pytest
+
+from views.components.download_input_card import DownloadInputCard
+from views.settings_view import SettingsView
 
 
 class TestSettingsFeatures:

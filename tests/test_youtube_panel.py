@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import MagicMock
-from views.components.panels.youtube_panel import YouTubePanel
+
 import flet as ft
+import pytest
+
+from views.components.panels.youtube_panel import YouTubePanel
 
 
 class TestYouTubePanel:

@@ -7,7 +7,7 @@ Tests for ConfigManager.
 import os
 import unittest
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
 from config_manager import ConfigManager
 

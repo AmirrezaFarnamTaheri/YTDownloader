@@ -6,14 +6,14 @@ Covers video info fetching, download configuration, execution logic, and robustn
 """
 
 import unittest
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import ANY, MagicMock, patch
 
 import yt_dlp
 
 from downloader.core import download_video
+from downloader.engines.ytdlp import YTDLPWrapper
 from downloader.info import get_video_info
 from downloader.types import DownloadOptions
-from downloader.engines.ytdlp import YTDLPWrapper
 
 
 class TestGetVideoInfo(unittest.TestCase):

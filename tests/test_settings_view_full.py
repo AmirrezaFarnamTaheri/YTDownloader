@@ -1,8 +1,10 @@
-import pytest
-from unittest.mock import MagicMock, patch
-from views.settings_view import SettingsView
-import flet as ft
 import sys
+from unittest.mock import MagicMock, patch
+
+import flet as ft
+import pytest
+
+from views.settings_view import SettingsView
 
 # Patch sys.modules to mock tasks for configure_concurrency
 if "tasks" not in sys.modules:

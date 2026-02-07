@@ -1,12 +1,14 @@
-import pytest
-import os
 import json
-import zipfile
+import os
 import tempfile
 import threading
-from unittest.mock import MagicMock, patch, mock_open
-from sync_manager import SyncManager
+import zipfile
 from datetime import datetime
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
+
+from sync_manager import SyncManager
 
 
 class TestSyncManagerComprehensive:

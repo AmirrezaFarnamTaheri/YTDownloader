@@ -1,8 +1,10 @@
-import pytest
-from unittest.mock import MagicMock, patch
-import main
-import flet as ft
 import sys
+from unittest.mock import MagicMock, patch
+
+import flet as ft
+import pytest
+
+import main
 
 
 class TestMainComprehensive:
