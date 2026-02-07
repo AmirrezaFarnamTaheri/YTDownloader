@@ -73,7 +73,7 @@ class QueueView(BaseView):
 
         self.clear_completed_btn = ft.OutlinedButton(
             LM.get("clear_completed", "Clear Completed"),
-            icon=ft.icons.DELETE_SWEEP,
+            icon=ft.icons.DELETE_SWEEP_ROUNDED,
             on_click=self._on_clear_completed,
             style=ft.ButtonStyle(
                 color=Theme.Text.SECONDARY,

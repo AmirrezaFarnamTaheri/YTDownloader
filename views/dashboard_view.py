@@ -40,7 +40,7 @@ class DashboardView(BaseView):
         on_batch_import: Callable[[], None],
         queue_manager,
     ):
-        super().__init__(LM.get("dashboard"), ft.icons.DASHBOARD)
+        super().__init__(LM.get("dashboard"), ft.icons.DASHBOARD_ROUNDED)
         self.on_navigate = on_navigate
         self.on_paste_url = on_paste_url
         self.on_batch_import = on_batch_import
@@ -88,7 +88,7 @@ class DashboardView(BaseView):
         )
 
         self.refresh_btn = ft.IconButton(
-            ft.icons.REFRESH,
+            ft.icons.REFRESH_ROUNDED,
             tooltip=LM.get("refresh_dashboard", "Refresh"),
             on_click=lambda _: self.load(),
             icon_color=Theme.Text.SECONDARY,

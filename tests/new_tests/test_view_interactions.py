@@ -65,7 +65,7 @@ with patch.dict(
     ft.MainAxisAlignment.END = "end"
     ft.CrossAxisAlignment.START = "start"
     ft.ScrollMode.AUTO = "auto"
-    ft.icons.DOWNLOAD = "download"
+    ft.icons.DOWNLOAD_ROUNDED = "download"
     ft.colors.with_opacity = lambda o, c: c
 
     from views.components.download_input_card import DownloadInputCard

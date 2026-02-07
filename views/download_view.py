@@ -47,7 +47,7 @@ class DownloadView(BaseView):
         on_schedule: Callable,
         app_state: AppState,
     ):
-        super().__init__(LM.get("new_download"), ft.icons.DOWNLOAD)
+        super().__init__(LM.get("new_download"), ft.icons.DOWNLOAD_ROUNDED)
         self.on_fetch_info = on_fetch_info
         self.on_add_to_queue = on_add_to_queue
         self.on_paste_url = (
@@ -69,7 +69,7 @@ class DownloadView(BaseView):
         # 5. Main Actions
         self.add_btn = ft.ElevatedButton(
             LM.get("add_to_queue"),
-            icon=ft.icons.ADD,
+            icon=ft.icons.ADD_ROUNDED,
             on_click=self._on_add_click,
             disabled=True,
             style=ft.ButtonStyle(
@@ -145,7 +145,7 @@ class DownloadView(BaseView):
             footer.controls.append(
                 ft.TextButton(
                     LM.get("open_downloads_folder"),
-                    icon=ft.icons.FOLDER_OPEN,
+                    icon=ft.icons.FOLDER_OPEN_ROUNDED,
                     on_click=lambda _: self._open_downloads_folder(),
                     style=ft.ButtonStyle(color=Theme.TEXT_MUTED),
                 )

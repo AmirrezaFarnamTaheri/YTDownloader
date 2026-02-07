@@ -183,7 +183,7 @@ class DownloadItemControl(ft.Container):
             return ft.Icon(ft.icons.PHOTO_CAMERA, color=ft.colors.PINK_400, size=32)
         if "twitter" in url or "x.com" in url:
             return ft.Icon(ft.icons.ALTERNATE_EMAIL, color=ft.colors.BLUE_400, size=32)
-        return ft.Icon(ft.icons.LINK, color=Theme.Primary.MAIN, size=32)
+        return ft.Icon(ft.icons.LINK_ROUNDED, color=Theme.Primary.MAIN, size=32)
 
     def update_progress(self):
         """Update progress bar and text (External Call)."""
@@ -265,7 +265,7 @@ class DownloadItemControl(ft.Container):
         if status == "Completed":
             self.action_row.controls.append(
                 create_action_btn(
-                    ft.icons.PLAY_ARROW,
+                    ft.icons.PLAY_ARROW_ROUNDED,
                     LM.get("play"),
                     Theme.Status.SUCCESS,
                     lambda _: self.on_play(self.item),
@@ -273,7 +273,7 @@ class DownloadItemControl(ft.Container):
             )
             self.action_row.controls.append(
                 create_action_btn(
-                    ft.icons.FOLDER_OPEN,
+                    ft.icons.FOLDER_OPEN_ROUNDED,
                     LM.get("open_folder"),
                     Theme.Text.SECONDARY,
                     lambda _: self.on_open_folder(self.item),
@@ -304,7 +304,7 @@ class DownloadItemControl(ft.Container):
         if status in ("Error", "Cancelled"):
             self.action_row.controls.append(
                 create_action_btn(
-                    ft.icons.REFRESH,
+                    ft.icons.REFRESH_ROUNDED,
                     LM.get("retry"),
                     Theme.Primary.MAIN,
                     lambda _: self.on_retry(self.item),
