@@ -16,7 +16,7 @@ from typing import Any
 import requests
 
 from downloader.types import DownloadResult
-from downloader.utils.constants import RESERVED_FILENAMES
+from downloader.constants import RESERVED_FILENAMES
 from ui_utils import format_file_size, validate_url
 
 logger = logging.getLogger(__name__)
