@@ -85,12 +85,16 @@ class TestMainComprehensive:
                     with patch("main.Path") as mock_path:
                         # Mock the path object and its parent directory creation
                         mock_log_path = MagicMock()
-                        mock_path.home.return_value.__truediv__.return_value.__truediv__.return_value = mock_log_path
+                        mock_path.home.return_value.__truediv__.return_value.__truediv__.return_value = (
+                            mock_log_path
+                        )
 
                         # Mock parent.exists/mkdir
                         mock_log_path.parent.exists.return_value = True
 
                         # Mock open to avoid actual file I/O
                         with patch("builtins.open", MagicMock()):
-                            main.global_crash_handler(ValueError, ValueError("test"), None)
+                            main.global_crash_handler(
+                                ValueError, ValueError("test"), None
+                            )
                             mock_log.assert_called()
