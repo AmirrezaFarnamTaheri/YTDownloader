@@ -32,7 +32,7 @@ StreamCatch is evolving into a comprehensive media management platform. We have 
 *   **Home Automation**: Home Assistant / MQTT support.
 *   **Media Server Hooks**: Plex/Jellyfin notification triggers.
 
-## ✅ Completed in v4.0 (Current)
+## ✅ Completed in v4.0 (Stable Completed in v4.0 (Current) Finalized)
 *   **Accessibility First**:
     *   **High Contrast Mode**: Dedicated theme for visually impaired users.
     *   **Tooltips**: Enhanced accessibility with descriptive tooltips for controls.
