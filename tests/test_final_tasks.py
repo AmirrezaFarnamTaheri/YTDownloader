@@ -2,7 +2,14 @@ import pytest
 import threading
 from unittest.mock import MagicMock, patch, ANY
 import app_state
-from tasks import DownloadJob, process_queue, DownloadStatus, fetch_info_task, _SUBMISSION_THROTTLE
+from tasks import (
+    DownloadJob,
+    process_queue,
+    DownloadStatus,
+    fetch_info_task,
+    _SUBMISSION_THROTTLE,
+)
+
 
 @pytest.fixture
 def mock_state():
@@ -20,25 +27,32 @@ def mock_state():
 
         yield mock_state
 
+
 def test_download_job_run_success(mock_state):
     item = {"id": "123", "url": "http://test.com", "title": "Test Video"}
     page = MagicMock()
 
     with patch("tasks.download_video") as mock_dv:
-        mock_dv.return_value = {"filepath": "/tmp/test.mp4", "file_size": 1000, "status": "finished"}
+        mock_dv.return_value = {
+            "filepath": "/tmp/test.mp4",
+            "file_size": 1000,
+            "status": "finished",
+        }
 
         job = DownloadJob(item, page)
         job.run()
 
         # Verify status updates
         # Should start with DOWNLOADING
-        mock_state.queue_manager.update_item_status.assert_any_call("123", DownloadStatus.DOWNLOADING)
+        mock_state.queue_manager.update_item_status.assert_any_call(
+            "123", DownloadStatus.DOWNLOADING
+        )
 
         # Should finish with COMPLETED
         mock_state.queue_manager.update_item_status.assert_any_call(
             "123",
             DownloadStatus.COMPLETED,
-            {"filepath": "/tmp/test.mp4", "file_size": 1000, "status": "finished"}
+            {"filepath": "/tmp/test.mp4", "file_size": 1000, "status": "finished"},
         )
 
         # Verify history logging
@@ -47,6 +61,7 @@ def test_download_job_run_success(mock_state):
         # Verify success notification
         # page.run_task is async, mock it
         page.run_task.assert_called_once()
+
 
 def test_download_job_run_error(mock_state):
     item = {"id": "123", "url": "http://test.com"}
@@ -60,13 +75,12 @@ def test_download_job_run_error(mock_state):
 
         # Verify status updates
         mock_state.queue_manager.update_item_status.assert_any_call(
-            "123",
-            DownloadStatus.ERROR,
-            {"error": "Download failed"}
+            "123", DownloadStatus.ERROR, {"error": "Download failed"}
         )
 
         # Verify error notification
         page.run_task.assert_called_once()
+
 
 def test_download_job_cancellation(mock_state):
     item = {"id": "123", "url": "http://test.com"}
@@ -85,7 +99,10 @@ def test_download_job_cancellation(mock_state):
         job.run()
 
         # Should be marked as CANCELLED
-        mock_state.queue_manager.update_item_status.assert_any_call("123", DownloadStatus.CANCELLED)
+        mock_state.queue_manager.update_item_status.assert_any_call(
+            "123", DownloadStatus.CANCELLED
+        )
+
 
 def test_download_job_shutdown(mock_state):
     item = {"id": "123", "url": "http://test.com"}
@@ -97,11 +114,14 @@ def test_download_job_shutdown(mock_state):
     job.run()
 
     # Should be marked as CANCELLED immediately
-    mock_state.queue_manager.update_item_status.assert_called_with("123", DownloadStatus.CANCELLED)
+    mock_state.queue_manager.update_item_status.assert_called_with(
+        "123", DownloadStatus.CANCELLED
+    )
 
     # download_video should NOT be called
     with patch("tasks.download_video") as mock_dv:
         assert not mock_dv.called
+
 
 def test_process_queue_throttling(mock_state):
     # Test that process_queue respects max workers
@@ -116,11 +136,15 @@ def test_process_queue_throttling(mock_state):
             assert not mock_sem.acquire.called
             assert not mock_state.queue_manager.claim_next_downloadable.called
 
+
 def test_process_queue_submission(mock_state):
     # Test successful submission
 
     mock_state.queue_manager.get_active_count.return_value = 0
-    mock_state.queue_manager.claim_next_downloadable.return_value = {"id": "1", "url": "http://test.com"}
+    mock_state.queue_manager.claim_next_downloadable.return_value = {
+        "id": "1",
+        "url": "http://test.com",
+    }
 
     with patch("tasks._get_max_workers", return_value=3):
         # We need to mock the semaphore properly.
@@ -145,6 +169,7 @@ def test_process_queue_submission(mock_state):
                 # Should submit to executor
                 mock_exec.return_value.submit.assert_called_once()
 
+
 def test_fetch_info_task_success(mock_state):
     url = "http://test.com"
     view_card = MagicMock()
@@ -160,6 +185,7 @@ def test_fetch_info_task_success(mock_state):
         assert mock_state.video_info == {"title": "Test Info"}
         page.run_task.assert_called_once()
 
+
 def test_fetch_info_task_failure(mock_state):
     url = "http://test.com"
     view_card = MagicMock()
@@ -173,6 +199,7 @@ def test_fetch_info_task_failure(mock_state):
         # Should notify error
         page.run_task.assert_called_once()
 
+
 def test_download_job_options(mock_state):
     item = {
         "id": "123",
@@ -181,7 +208,7 @@ def test_download_job_options(mock_state):
         "proxy": "http://proxy",
         "rate_limit": "1M",
         "video_format": "audio",
-        "audio_only": True
+        "audio_only": True,
     }
     mock_state.config.get.return_value = None
 
@@ -199,6 +226,7 @@ def test_download_job_options(mock_state):
         assert options.rate_limit == "1M"
         assert options.video_format == "audio"
 
+
 def test_progress_hook(mock_state):
     item = {"id": "123", "url": "http://test.com"}
     job = DownloadJob(item, None)
@@ -209,7 +237,7 @@ def test_progress_hook(mock_state):
         "_percent_str": "50%",
         "_speed_str": "1M/s",
         "_eta_str": "10s",
-        "_total_bytes_str": "100MB"
+        "_total_bytes_str": "100MB",
     }
 
     job._progress_hook(d)
@@ -217,14 +245,12 @@ def test_progress_hook(mock_state):
     mock_state.queue_manager.update_item_status.assert_any_call(
         "123",
         DownloadStatus.DOWNLOADING,
-        {"progress": 0.5, "speed": "1M/s", "eta": "10s", "size": "100MB"}
+        {"progress": 0.5, "speed": "1M/s", "eta": "10s", "size": "100MB"},
     )
 
     d_finished = {"status": "finished"}
     job._progress_hook(d_finished)
 
     mock_state.queue_manager.update_item_status.assert_any_call(
-        "123",
-        DownloadStatus.PROCESSING,
-        {"progress": 1.0}
+        "123", DownloadStatus.PROCESSING, {"progress": 1.0}
     )

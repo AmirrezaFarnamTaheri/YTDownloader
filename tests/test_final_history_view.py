@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from views.history_view import HistoryView
 import app_state
 
+
 @pytest.fixture
 def mock_history_view():
     with patch("views.history_view.ft") as mock_ft:
@@ -11,10 +12,13 @@ def mock_history_view():
         # But conftest mocks flet globally in sys.modules, so BaseView should pick up mock flet.
         return HistoryView()
 
+
 def test_load_history_success():
     # Setup
     mock_hm = MagicMock()
-    mock_hm.get_history.return_value = [{"id": "1", "url": "test", "status": "finished"}]
+    mock_hm.get_history.return_value = [
+        {"id": "1", "url": "test", "status": "finished"}
+    ]
 
     with patch("app_state.state.history_manager", mock_hm):
         view = HistoryView()
@@ -27,6 +31,7 @@ def test_load_history_success():
         # Verify
         mock_hm.get_history.assert_called_once()
         assert len(view.history_list.controls) == 1
+
 
 def test_load_history_empty():
     mock_hm = MagicMock()
@@ -44,6 +49,7 @@ def test_load_history_empty():
         assert len(view.history_list.controls) == 1
         # Check load more visibility
         assert view.load_more_btn.visible is False
+
 
 def test_clear_history_flow():
     mock_hm = MagicMock()
@@ -70,7 +76,8 @@ def test_clear_history_flow():
         mock_hm.clear_history.assert_called_once()
 
         # Verify snackbar shown
-        assert view.page.open.call_count >= 2 # Dialog + Snackbar
+        assert view.page.open.call_count >= 2  # Dialog + Snackbar
+
 
 def test_delete_item():
     mock_hm = MagicMock()
@@ -87,6 +94,7 @@ def test_delete_item():
         # Should reload
         mock_hm.get_history.assert_called()
 
+
 def test_copy_url_safe():
     view = HistoryView()
     view.page = MagicMock()
@@ -94,7 +102,8 @@ def test_copy_url_safe():
     view._copy_url_safe("http://test.com")
 
     view.page.set_clipboard.assert_called_with("http://test.com")
-    view.page.open.assert_called_once() # Snackbar
+    view.page.open.assert_called_once()  # Snackbar
+
 
 def test_search_history():
     mock_hm = MagicMock()
