@@ -1,4 +1,3 @@
-import sys
 from unittest.mock import MagicMock, patch
 
 import flet as ft
@@ -76,5 +75,7 @@ class TestMainComprehensive:
     def test_global_crash_handler(self):
         with pytest.raises(SystemExit):
             with patch("logging.critical") as mock_log:
-                main.global_crash_handler(ValueError, ValueError("test"), None)
-                mock_log.assert_called()
+                # Patch os.name to prevent Windows MessageBox blocking
+                with patch("main.os.name", "posix"):
+                    main.global_crash_handler(ValueError, ValueError("test"), None)
+                    mock_log.assert_called()
