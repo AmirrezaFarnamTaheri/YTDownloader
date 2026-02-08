@@ -1,4 +1,3 @@
-import sys
 from unittest.mock import MagicMock, patch
 
 import flet as ft
@@ -76,5 +75,26 @@ class TestMainComprehensive:
     def test_global_crash_handler(self):
         with pytest.raises(SystemExit):
             with patch("logging.critical") as mock_log:
-                main.global_crash_handler(ValueError, ValueError("test"), None)
-                mock_log.assert_called()
+                with patch("main.os.name", "posix"):
+                    # Mock Path.home() to return a valid temporary path
+                    # This prevents the "NotImplementedError: cannot instantiate 'PosixPath' on your system"
+                    # which happens when 'posix' is forced on Windows but pathlib tries to use PosixPath behavior
+                    # incompatible with the underlying OS.
+                    # Actually, better to just mock Path object or the specific home() call.
+
+                    with patch("main.Path") as mock_path:
+                        # Mock the path object and its parent directory creation
+                        mock_log_path = MagicMock()
+                        mock_path.home.return_value.__truediv__.return_value.__truediv__.return_value = (
+                            mock_log_path
+                        )
+
+                        # Mock parent.exists/mkdir
+                        mock_log_path.parent.exists.return_value = True
+
+                        # Mock open to avoid actual file I/O
+                        with patch("builtins.open", MagicMock()):
+                            main.global_crash_handler(
+                                ValueError, ValueError("test"), None
+                            )
+                            mock_log.assert_called()

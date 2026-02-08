@@ -13,7 +13,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup, Tag
 
-from downloader.utils.constants import RESERVED_FILENAMES
+from downloader.constants import RESERVED_FILENAMES
 from ui_utils import validate_url
 
 logger = logging.getLogger(__name__)

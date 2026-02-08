@@ -6,12 +6,12 @@
 
 ## Documentation
 
-Detailed documentation is available in **[Project Docs](project_docs/Home.md)**:
+Detailed documentation is available in **[Project Docs](wiki/Home.md)**:
 
-*   **[User Guide](project_docs/User-Guide.md)**: Installation, usage, scheduling, and configuration.
-*   **[Developer Guide](project_docs/Developer-Guide.md)**: Architecture, setup, testing, and contribution.
-*   **[Troubleshooting](project_docs/Troubleshooting.md)**: Solutions to common issues.
-*   **[Roadmap](project_docs/Roadmap.md)**: Upcoming features and plans.
+*   **[User Guide](wiki/User-Guide.md)**: Installation, usage, scheduling, and configuration.
+*   **[Developer Guide](wiki/Developer-Guide.md)**: Architecture, setup, testing, and contribution.
+*   **[Troubleshooting](wiki/Troubleshooting.md)**: Solutions to common issues.
+*   **[Roadmap](wiki/Roadmap.md)**: Upcoming features and plans.
 
 ## Features
 
@@ -35,7 +35,7 @@ Detailed documentation is available in **[Project Docs](project_docs/Home.md)**:
 
 ## Installation & Building
 
-Please see the [Installation Guide](project_docs/Installation.md) for detailed instructions.
+Please see the [Installation Guide](wiki/Installation.md) for detailed instructions.
 
 Native desktop builds are produced with **Nuitka** as compiled native binaries (not Python wrappers) via:
 
