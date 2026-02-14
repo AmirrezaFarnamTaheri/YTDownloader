@@ -15,39 +15,39 @@ class Theme:
     """
 
     # --- Colors ---
-    # Primary: A vibrant, electric violet/indigo
-    PRIMARY = "#818CF8"  # Indigo 400
-    PRIMARY_DARK = "#4F46E5"  # Indigo 600
+    # Primary: clean teal for emphasis and action elements
+    PRIMARY = "#14B8A6"  # Teal 500
+    PRIMARY_DARK = "#0F766E"  # Teal 700
 
-    # Accent: A popping pink for highlights
-    ACCENT = "#F472B6"  # Pink 400
-    ACCENT_SECONDARY = "#2DD4BF"  # Teal 400
+    # Accent colors for callouts and stat contrast
+    ACCENT = "#F97316"  # Orange 500
+    ACCENT_SECONDARY = "#84CC16"  # Lime 500
 
-    # Backgrounds: Deep, rich darks
-    BG_DARK = "#0F172A"  # Slate 900
-    BG_CARD = "#1E293B"  # Slate 800
-    BG_HOVER = "#334155"  # Slate 700
-    BG_INPUT = "#020617"  # Slate 950
-    BG_SURFACE_VARIANT = "#1E293B"
-    BG_LIGHT = "#1E293B"  # Light background used for sidebar in dark mode apps
+    # Backgrounds: layered deep navy surfaces
+    BG_DARK = "#0B1220"
+    BG_CARD = "#111C2E"
+    BG_HOVER = "#1E2A40"
+    BG_INPUT = "#08101D"
+    BG_SURFACE_VARIANT = "#152238"
+    BG_LIGHT = "#0E172A"
 
     # Text
-    TEXT_PRIMARY = "#F8FAFC"  # Slate 50
-    TEXT_SECONDARY = "#94A3B8"  # Slate 400
-    TEXT_MUTED = "#64748B"  # Slate 500
+    TEXT_PRIMARY = "#F1F5F9"
+    TEXT_SECONDARY = "#CBD5E1"
+    TEXT_MUTED = "#94A3B8"
 
     # Status
-    SUCCESS = "#34D399"  # Emerald 400
-    WARNING = "#FBBF24"  # Amber 400
-    ERROR = "#EF4444"  # Red 500
-    INFO = "#60A5FA"  # Blue 400
+    SUCCESS = "#22C55E"
+    WARNING = "#F59E0B"
+    ERROR = "#EF4444"
+    INFO = "#38BDF8"
 
     # Borders & Dividers
-    BORDER = "#334155"  # Slate 700
+    BORDER = "#334155"
     DIVIDER = "#334155"  # Alias for Divider color
 
     # --- Typography Constants ---
-    FONT_FAMILY = "Roboto, Segoe UI, sans-serif"
+    FONT_FAMILY = "Poppins, Nunito Sans, Segoe UI, sans-serif"
     FONT_SIZE_BODY = 14
     FONT_SIZE_TITLE = 20
     FONT_SIZE_HEADER = 24
@@ -64,20 +64,20 @@ class Theme:
     class Surface:
         """Surface color definitions."""
 
-        BG = "#1E293B"
-        CARD = "#1E293B"
-        INPUT = "#020617"
+        BG = "#111C2E"
+        CARD = "#111C2E"
+        INPUT = "#08101D"
 
     class Primary:
         """Primary color definitions."""
 
-        MAIN = "#818CF8"
+        MAIN = "#14B8A6"
 
     class Text:
         """Text color definitions."""
 
-        PRIMARY = "#F8FAFC"
-        SECONDARY = "#94A3B8"
+        PRIMARY = "#F1F5F9"
+        SECONDARY = "#CBD5E1"
 
     class Divider:
         """Divider color definitions."""
@@ -87,10 +87,28 @@ class Theme:
     class Status:
         """Status color definitions."""
 
-        SUCCESS = "#34D399"
+        SUCCESS = "#22C55E"
         ERROR = "#EF4444"
-        WARNING = "#FBBF24"
-        INFO = "#60A5FA"
+        WARNING = "#F59E0B"
+        INFO = "#38BDF8"
+
+    @staticmethod
+    def get_surface_gradient() -> ft.LinearGradient:
+        """Background gradient for primary content surfaces."""
+        return ft.LinearGradient(
+            begin=ft.alignment.top_left,
+            end=ft.alignment.bottom_right,
+            colors=["#0B1220", "#111C2E"],
+        )
+
+    @staticmethod
+    def get_sidebar_gradient() -> ft.LinearGradient:
+        """Background gradient for navigation surfaces."""
+        return ft.LinearGradient(
+            begin=ft.alignment.top_center,
+            end=ft.alignment.bottom_center,
+            colors=["#0E172A", "#111C2E"],
+        )
 
     @staticmethod
     def get_high_contrast_theme() -> ft.Theme:

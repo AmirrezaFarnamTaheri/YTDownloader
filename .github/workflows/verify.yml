@@ -45,6 +45,10 @@ jobs:
       run: |
         isort --check-only --diff .
 
+    - name: Run ruff
+      run: |
+        ruff check . --exclude tests
+
     - name: Run pylint
       run: |
         pylint --output-format=colorized $(git ls-files '*.py' | grep -v '^tests/')

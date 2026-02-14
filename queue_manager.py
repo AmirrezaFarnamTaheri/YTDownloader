@@ -147,10 +147,16 @@ class QueueManager:
                 item["status"] = "Queued"
 
             queue_item = cast(QueueItem, item)
+            item_id_for_display = str(queue_item.get("id", "unknown"))
+            display_name = (
+                queue_item.get("title")
+                or queue_item.get("url")
+                or f"Item {item_id_for_display[:8]}"
+            )
 
             logger.info(
                 "Adding item to queue: %s (ID: %s)",
-                queue_item.get("title", queue_item.get("url")),
+                display_name,
                 queue_item["id"],
             )
             self._queue.append(queue_item)

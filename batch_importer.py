@@ -70,7 +70,7 @@ class BatchImporter:
                 logger.error("Only .txt files are supported.")
                 return 0, False
 
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 lines = [line.strip() for line in f if line.strip()]
 
             if not lines:

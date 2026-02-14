@@ -1,93 +1,85 @@
-# Troubleshooting Guide
+# Troubleshooting
 
-This guide addresses common issues encountered when using StreamCatch.
+## Build Issues
 
-## Installation Issues
+### `Nuitka not installed` / desktop build fails
 
-### "Nuitka not found" during build
-Ensure you have installed all dependencies:
 ```bash
-pip install -r requirements-dev.txt
+python3 -m pip install -r requirements-dev.txt
 ```
-Nuitka is required to compile the application.
 
-### "Flet binary not found"
-If you are running from source, ensure `flet` is installed:
+Then rerun:
+
 ```bash
-pip install flet==0.21.2
+python3 scripts/build_installer.py
 ```
-On the first run, Flet will download the necessary binaries. If you are offline, you must pre-download them.
+
+### `Flet CLI not found` during APK build
+
+Ensure mobile requirements are installed and `flet` is on PATH:
+
+```bash
+python3 -m pip install -r requirements-mobile.txt
+python3 scripts/build_mobile.py --target apk
+```
 
 ## Runtime Issues
 
-### "FFmpeg not found"
-StreamCatch requires FFmpeg for merging video and audio formats.
-*   **Windows**: Download FFmpeg and add it to your PATH, or place `ffmpeg.exe` and `ffprobe.exe` in the same directory as `StreamCatch.exe`.
-*   **Linux**: `sudo apt install ffmpeg`
-*   **macOS**: `brew install ffmpeg`
+### FFmpeg missing
 
-### Download Fails Immediately
-*   **Check your internet connection.**
-*   **Check the URL**: Ensure the URL is valid and accessible in a browser.
-*   **Update**: Some sites change their layout frequently. StreamCatch relies on `yt-dlp`. If the internal `yt-dlp` is outdated (in the compiled build), you may need a newer version of StreamCatch.
-*   **Cookies**: Some videos (age-gated, premium) require authentication. Use the "Browser Cookies" feature in the Download View to select your browser (e.g., Chrome, Firefox).
+Symptoms: merge/postprocess/subtitle embedding fails.
 
-### "SponsorBlock" not working
-SponsorBlock relies on a community database. If a video is new, segments might not be submitted yet. Ensure the "SponsorBlock" toggle is enabled in the settings.
+- Windows: add `ffmpeg.exe` to PATH.
+- Linux: `sudo apt install ffmpeg`
+- macOS: `brew install ffmpeg`
 
-## Performance
+### Metadata fetch fails
 
-### UI is slow or unresponsive
-*   If downloading many files (100+), the UI update overhead might be high.
-*   Try "Compact Mode" in settings to reduce visual complexity.
+- Verify URL in browser first.
+- Try browser-cookie selection for restricted content.
+- Try `Force Generic` for direct-file links.
 
-### High Memory Usage
-*   Downloading very large playlists or long streams can consume memory.
-*   The application tries to stream data to disk, but some metadata processing happens in memory.
+### Download starts then errors
 
-## Logs and Debugging
+- Check proxy/rate-limit settings.
+- Validate free disk space.
+- Confirm output path exists and is writable.
 
-If the application crashes, a log file is usually created.
-*   **Linux/macOS**: `~/.streamcatch/crash.log`
-*   **Windows**: `%USERPROFILE%\.streamcatch\crash.log`
+## Queue/UI Issues
 
-You can also run the application from a terminal to see real-time logs:
-```bash
-./StreamCatch
-```
+### Queue appears stuck
 
+- Check if items are `Paused` and press `Resume All`.
+- Check if items are `Scheduled` for a future time.
+- Review logs for throttling or network errors.
 
-### Download Stuck at 0%
-**Symptom**: The progress bar appears but does not move.
-**Solution**:
-1.  Check your internet connection.
-2.  The site might be throttling requests. Try enabling "Force Generic" in advanced options.
-3.  If using a Proxy, verify the settings in the Settings tab.
+### Blank/incorrect UI state
 
+- Resize app window to force layout refresh.
+- Toggle theme mode once in Settings.
+- Restart app after changing language.
 
-### "Sign In Required" (403 Forbidden)
-**Symptom**: Download fails with an error indicating authentication is needed.
-**Solution**:
-1.  Go to the **Download** tab.
-2.  Select your browser in the "Browser Cookies" dropdown.
-3.  Ensure you are logged into the website in that browser.
+## Sync/Import Issues
 
+### Import rejected due invalid archive
 
-### UI Glitches / Blank Screen
-**Symptom**: The app opens but the window is blank or distorted.
-**Solution**:
-1.  Resize the window; this forces a redraw.
-2.  If persistent, clear the configuration file:
-    -   **Windows**: Delete `%USERPROFILE%\\.streamcatch\\config.json`
-    -   **Linux**: Delete `~/.streamcatch/config.json`
+- Ensure zip contains `config.json` and optional `history.db`.
+- Avoid archives with nested/unsafe paths.
 
-## Reporting Bugs
+### Cloud auth failures
 
-If you encounter a bug not listed here:
-1.  Open the application.
-2.  Reproduce the error.
-3.  Check the crash log: `~/.streamcatch/crash.log` (Linux/Mac) or `%USERPROFILE%\\.streamcatch\\crash.log` (Windows).
-4.  Open an issue on GitHub with:
-    -   Steps to reproduce.
-    -   The crash log content.
-    -   Your OS and App Version.
+- Ensure Google credentials file exists at configured path.
+- In CI/headless, pre-provision credentials where interactive auth is impossible.
+
+## Logs
+
+- App logs: `ytdownloader.log`
+- Crash reports:
+  - Linux/macOS: `~/.streamcatch/crash.log`
+  - Windows: `%USERPROFILE%\.streamcatch\crash.log`
+
+When opening an issue, include:
+
+- OS + app version
+- Steps to reproduce
+- Relevant log excerpts

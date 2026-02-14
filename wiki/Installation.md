@@ -1,28 +1,65 @@
-# Installation
+# Installation Guide
 
-## Windows
-1.  Download the latest `StreamCatch_Setup_vX.X.X.exe` from the [Releases](https://github.com/AmirrezaFarnamTaheri/YTDownloader/releases) page.
-2.  Double-click the installer.
-3.  Follow the on-screen prompts.
-4.  StreamCatch will be added to your Start Menu.
-5.  The installer ships a compiled native binary (no Python runtime required).
+## Prebuilt Releases
+
+Download binaries from:
+
+- <https://github.com/AmirrezaFarnamTaheri/YTDownloader/releases>
+
+## Windows (Installer / EXE)
+
+1. Download `StreamCatch-Windows-Installer.exe` (or `StreamCatch_Setup_vX.Y.Z.exe`).
+2. Run installer and follow prompts.
+3. Launch StreamCatch from Start Menu.
+
+Standalone binary builds place `StreamCatch.exe` in `dist/`.
 
 ## Linux (Debian/Ubuntu)
-1.  Download the `.deb` package (`streamcatch_X.X.X_amd64.deb`).
-2.  Install via terminal:
-    ```bash
-    sudo dpkg -i streamcatch_X.X.X_amd64.deb
-    sudo apt-get install -f  # Fix dependencies if needed
-    ```
-3.  Run `streamcatch` from the terminal or your application menu.
-4.  The package includes a compiled native binary.
+
+1. Download `StreamCatch-Linux-amd64.deb`.
+2. Install:
+
+```bash
+sudo dpkg -i StreamCatch-Linux-amd64.deb
+sudo apt-get install -f
+```
+
+3. Launch via app menu or `streamcatch` command.
 
 ## macOS
-1.  Download the `.dmg` file (`StreamCatch-X.X.X-macOS.dmg`).
-2.  Open the image.
-3.  Drag "StreamCatch.app" to your Applications folder.
-4.  **Note**: You may need to allow the app in "System Settings > Privacy & Security" if it's not signed by an identified developer.
-5.  The app bundle contains the compiled native binary.
 
-## From Source
-See [Developer Guide](Developer-Guide.md#setup).
+1. Download `StreamCatch-macOS.dmg`.
+2. Open DMG and drag app into `Applications`.
+3. If needed, approve app under macOS Security settings.
+
+## Android (APK)
+
+1. Download `StreamCatch-Android.apk` from Releases.
+2. Enable trusted/unknown-source install on your device.
+3. Install APK and launch.
+
+## Build From Source
+
+### App Runtime
+
+```bash
+python3 -m pip install -r requirements.txt
+python3 main.py
+```
+
+### Desktop Native Build
+
+```bash
+python3 scripts/build_installer.py
+```
+
+### Android APK Build
+
+```bash
+python3 scripts/build_mobile.py --target apk
+```
+
+## Notes
+
+- FFmpeg is recommended for full post-processing features.
+- Mobile builds require Flutter/Flet mobile toolchain availability.

@@ -294,3 +294,10 @@ class TestAppStateCleanup:
         state.cleanup()
 
         assert state.shutdown_flag.is_set()
+
+    def test_sync_manager_uses_history_instance(self):
+        """SyncManager should use the AppState HistoryManager instance."""
+        from app_state import AppState
+
+        state = AppState()
+        assert state.sync_manager.history is state.history_manager

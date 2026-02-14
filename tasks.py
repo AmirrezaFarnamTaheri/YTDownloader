@@ -384,7 +384,8 @@ def fetch_info_task(url: str, view_card: Any, page: Any) -> None:
             page.run_task(update_ui)
 
     except Exception as e:
-        logger.error("Fetch info failed: %s", e, exc_info=True)
+        error_message = str(e)
+        logger.error("Fetch info failed: %s", error_message, exc_info=True)
         if page:
 
             async def show_error():
@@ -392,7 +393,9 @@ def fetch_info_task(url: str, view_card: Any, page: Any) -> None:
                     view_card.set_fetch_disabled(False)
                 page.open(
                     ft.SnackBar(
-                        content=ft.Text(f"{LM.get('error_fetch_info')}: {str(e)}")
+                        content=ft.Text(
+                            f"{LM.get('error_fetch_info')}: {error_message}"
+                        )
                     )
                 )
 

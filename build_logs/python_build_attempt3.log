@@ -1,0 +1,12 @@
+ERROR: No C compiler found (gcc/clang). Nuitka cannot build native binaries.
+ERROR: Install build tools, e.g. on Debian/Ubuntu: sudo apt-get install build-essential
+
+============================================================
+StreamCatch Build Script
+============================================================
+
+Step 1: Checking Python environment...
+Python: 3.12.3 (main, Nov  6 2025, 13:44:16) [GCC 13.3.0]
+Root: /mnt/d/GitHub/YTDownloader
+Dist: /mnt/d/GitHub/YTDownloader/dist
+Nuitka version: 4.0

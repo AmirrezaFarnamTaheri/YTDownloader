@@ -1,34 +1,51 @@
-# Features
+# Feature Matrix
 
-StreamCatch is packed with powerful features designed to make media downloading seamless and robust.
+## Download Capabilities
 
-## 📥 Smart Downloading
-*   **Universal Support**: Download from YouTube, Twitter/X, Instagram, TikTok, Twitch, and 1000+ other sites via `yt-dlp`.
-*   **Generic File Downloader**: Download any file from a direct link (PDF, ISO, ZIP, etc.) with resume capability.
-*   **Batch Import**: Import lists of URLs from `.txt` or `.csv` files. StreamCatch verifies links in parallel before queuing.
-*   **Clipboard Monitor**: Automatically detects URLs copied to your clipboard and prompts to download.
+- `yt-dlp` integration for broad website support.
+- Telegram public link extraction pipeline.
+- Generic direct-file fallback with resume + retries.
+- Audio extraction, subtitle selection, chapter split support.
+- Time-range clipping for partial downloads.
 
-## 🚀 Performance
-*   **Multi-threaded Engine**: Uses a thread pool to handle concurrent downloads efficiently.
-*   **Network Resilience**: Smart retry logic with exponential backoff for failed downloads.
-*   **Rate Limiting**: Set global speed limits (e.g., `5M`, `500K`) to manage bandwidth.
-*   **Aria2c Integration**: Optional integration with `aria2c` for accelerated downloading.
+## Queue and Scheduling
 
-## 🎨 Modern UI
-*   **Dashboard**: Visual overview of system storage, active tasks, and download activity history.
-*   **Dark Mode**: Fully themed Material 3 dark mode by default, with Light and System options.
-*   **Responsive Design**:
-    *   **Desktop**: Sidebar navigation for efficient management.
-    *   **Mobile**: Bottom navigation bar and optimized touch targets.
-    *   **Compact Mode**: Automatically adjusts for smaller windows.
+- Full queue lifecycle tracking with status transitions.
+- Reordering, retry, cancel item, cancel all.
+- Pause-all and resume-all queue controls.
+- Scheduled downloads with automatic transition to queued state.
+- Configurable concurrency via runtime settings.
 
-## 🛡️ Security & Privacy
-*   **SSRF Protection**: Blocks downloads from private/local IP ranges to prevent server-side request forgery attacks.
-*   **Config Encryption**: Sensitive data (like cookies) is obfuscated in the configuration file using a machine-specific key.
-*   **Safe File Handling**: Filename sanitization and path traversal prevention.
+## Dashboard and UI
 
-## ⚙️ Advanced Control
-*   **Scheduling**: Schedule downloads to start at a specific time.
-*   **Browser Cookies**: Import cookies from Chrome/Firefox/Edge to access age-gated or premium content.
-*   **Metadata Embedding**: Automatically embeds thumbnails, chapters, and metadata into files.
-*   **Proxy Support**: Full HTTP/SOCKS proxy support for bypassing geo-restrictions.
+- Quick actions for navigation and imports.
+- Download statistics (active/queued/completed/failed + success rate).
+- Activity chart (rolling 7-day history).
+- System health chips (FFmpeg, sync, concurrency, cache, disk free).
+- Responsive layout (rail vs mobile bottom navigation).
+
+## Data and Persistence
+
+- SQLite history storage with indexes + WAL mode.
+- Export/import settings and history.
+- Safe backup/restore with traversal protections.
+- Localization support (`en`, `es`, `fa`).
+
+## Integrations
+
+- RSS feed ingestion.
+- Discord Rich Presence integration.
+- Google Drive cloud backup integration (via PyDrive2).
+
+## Security and Hardening
+
+- URL/proxy validation with private-network restrictions.
+- Path sanitization for output templates and filenames.
+- Atomic config writes and restrictive permissions where possible.
+- Zip-slip checks during import.
+
+## Packaging
+
+- Desktop native build path (Nuitka).
+- Windows installer packaging (Inno Setup).
+- Android APK build path (Flet build tooling).

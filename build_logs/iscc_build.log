@@ -1,0 +1,70 @@
+Inno Setup 6 Command-Line Compiler
+Copyright (C) 1997-2025 Jordan Russell. All rights reserved.
+Portions Copyright (C) 2000-2025 Martijn Laan. All rights reserved.
+Portions Copyright (C) 2001-2004 Alex Yackimoff. All rights reserved.
+https://www.innosetup.com
+
+Compiler engine version: Inno Setup 6.6.1
+Non-commercial use only
+
+Preprocessing
+   Reading file: C:\Users\Acer\AppData\Local\Programs\Inno Setup 6\ISPPBuiltins.iss
+Parsing [Setup] section, line 20
+Parsing [Setup] section, line 21
+Parsing [Setup] section, line 22
+Parsing [Setup] section, line 24
+Parsing [Setup] section, line 25
+Parsing [Setup] section, line 26
+Parsing [Setup] section, line 27
+Parsing [Setup] section, line 28
+Parsing [Setup] section, line 29
+Parsing [Setup] section, line 31
+Parsing [Setup] section, line 32
+Parsing [Setup] section, line 33
+Parsing [Setup] section, line 34
+Parsing [Setup] section, line 35
+Parsing [Setup] section, line 36
+Reading file (WizardImageFile)
+Reading file (WizardSmallImageFile)
+Preparing Setup program executable
+   Verification successful
+   Updating icons (Setup.e32)
+   Updating version info (Setup.e32)
+Determining language code pages
+Parsing [Languages] section, line 39
+   Reading file: C:\Users\Acer\AppData\Local\Programs\Inno Setup 6\Default.isl
+   Messages in script file
+Reading default messages from Default.isl
+Parsing [Languages] section, line 39
+   Reading file: C:\Users\Acer\AppData\Local\Programs\Inno Setup 6\Default.isl
+Parsing [LangOptions], [Messages], and [CustomMessages] sections
+   Messages in script file
+Reading [Code] section
+Parsing [Tasks] section, line 42
+Parsing [Icons] section, line 51
+Parsing [Icons] section, line 52
+Parsing [Run] section, line 55
+Parsing [Files] section, line 45
+Parsing [Files] section, line 46
+Parsing [Files] section, line 47
+Deleting StreamCatch_Setup_v2.0.0.exe from output directory
+Creating setup files
+   Verification successful
+   Updating icons (Setup.exe)
+   Compressing: D:\GitHub\YTDownloader\installers\..\dist\StreamCatch.exe
+   Compressing: D:\GitHub\YTDownloader\installers\..\locales\en.json
+   Compressing: D:\GitHub\YTDownloader\installers\..\locales\es.json
+   Compressing: D:\GitHub\YTDownloader\installers\..\locales\fa.json
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\icon.png
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\icon_macos.png
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\icon_macos_native.icns
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\icon_windows.png
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\icon_windows_native.ico
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\logo.svg
+   Compressing Setup program executable
+   Updating version info (Setup.exe)
+   Updating manifest (Setup.exe)
+
+
+Successful compile (6.250 sec). Resulting Setup program filename is:
+D:\GitHub\YTDownloader\installers\output\StreamCatch_Setup_v2.0.0.exe

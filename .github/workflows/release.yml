@@ -23,6 +23,7 @@ jobs:
     with:
       build_android: true
       build_ios: false # Disabled by default
+      tag_name: ${{ github.event.inputs.tag_name }}
     secrets: inherit
 
   publish:

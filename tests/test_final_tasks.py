@@ -202,6 +202,25 @@ def test_fetch_info_task_failure(mock_state):
         page.run_task.assert_called_once()
 
 
+def test_fetch_info_task_failure_deferred_callback(mock_state):
+    """Ensure error callback works even when run_task executes later."""
+    callbacks = []
+    view_card = MagicMock()
+    page = MagicMock()
+    page.run_task.side_effect = lambda cb: callbacks.append(cb)
+
+    with patch("tasks.get_video_info", side_effect=Exception("Deferred failure")):
+        fetch_info_task("http://test.com", view_card, page)
+
+    assert len(callbacks) == 1
+
+    # Execute deferred callback after exception block has finished.
+    import asyncio
+
+    asyncio.run(callbacks[0]())
+    page.open.assert_called_once()
+
+
 def test_download_job_options(mock_state):
     item = {
         "id": "123",

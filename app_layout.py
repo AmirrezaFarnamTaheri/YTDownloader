@@ -83,12 +83,14 @@ class AppLayout(ft.Row):
             on_change=self.on_nav_change,
             destinations=self.bottom_destinations,
             visible=False,
+            bgcolor=Theme.BG_LIGHT,
         )
 
         # Content Area
         self.content_area = ft.Container(
             expand=True,
             bgcolor=Theme.BG_DARK,
+            gradient=Theme.get_surface_gradient(),
             padding=20,  # Initial padding
             content=ft.Column(),  # Placeholder
         )
@@ -98,6 +100,7 @@ class AppLayout(ft.Row):
             content=self.rail,
             width=200,  # Initial width
             bgcolor=Theme.BG_LIGHT,
+            gradient=Theme.get_sidebar_gradient(),
         )
 
         # Vertical Divider
@@ -109,10 +112,20 @@ class AppLayout(ft.Row):
             self.content_area,
         ]
 
+    @staticmethod
+    def _safe_update(control: ft.Control) -> None:
+        """Update a control only when it has been attached to a page."""
+        try:
+            control.update()
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            if "Control must be added to the page first" in str(ex):
+                return
+            raise
+
     def set_content(self, view_control: ft.Control):
         """Updates the main content area."""
         self.content_area.content = view_control
-        self.content_area.update()
+        self._safe_update(self.content_area)
 
     def toggle_compact_mode(self, is_compact: bool):
         """Toggles sidebar compact mode and adjusts padding."""
@@ -127,9 +140,9 @@ class AppLayout(ft.Row):
         # Adjust padding
         self.content_area.padding = 10 if is_compact else 20
 
-        self.sidebar_container.update()
-        self.rail.update()
-        self.content_area.update()
+        self._safe_update(self.sidebar_container)
+        self._safe_update(self.rail)
+        self._safe_update(self.content_area)
 
     def toggle_mobile_mode(self, is_mobile: bool):
         """Toggles between Sidebar and Bottom Navigation."""
@@ -140,16 +153,16 @@ class AppLayout(ft.Row):
             # Best practice in Flet: assign to page.navigation_bar
             self.page.navigation_bar = self.bottom_nav
             self.bottom_nav.visible = True
-            self.page.update()
+            self._safe_update(self.page)
         else:
             self.sidebar_container.visible = True
             self.v_divider.visible = True
             self.page.navigation_bar = None
             self.bottom_nav.visible = False
-            self.page.update()
+            self._safe_update(self.page)
 
-        self.sidebar_container.update()
-        self.v_divider.update()
+        self._safe_update(self.sidebar_container)
+        self._safe_update(self.v_divider)
 
     def handle_resize(self, width: float, height: float):
         """
@@ -181,7 +194,7 @@ class AppLayout(ft.Row):
     def set_navigation_index(self, index: int):
         """Sets the selected navigation index programmatically."""
         self.rail.selected_index = index  # type: ignore
-        self.rail.update()
+        self._safe_update(self.rail)
         if self.bottom_nav.visible:
             self.bottom_nav.selected_index = index
-            self.bottom_nav.update()
+            self._safe_update(self.bottom_nav)

@@ -1,5 +1,6 @@
 """Build installer script"""
 
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -81,6 +82,61 @@ def _find_iscc() -> str | None:
     return None
 
 
+def _module_available(module_name: str) -> bool:
+    """Return True if the module can be imported in the active interpreter."""
+    try:
+        return importlib.util.find_spec(module_name) is not None
+    except (ImportError, ValueError, AttributeError):
+        return False
+
+
+def _append_optional_package_includes(cmd: list[str], package_names: list[str]) -> None:
+    """
+    Append Nuitka package includes only when modules are available.
+
+    This avoids hard build failures when Windows-local Python envs are
+    partially provisioned.
+    """
+    missing: list[str] = []
+    for package_name in package_names:
+        if _module_available(package_name):
+            cmd.append(f"--include-package={package_name}")
+        else:
+            missing.append(package_name)
+
+    if missing:
+        print(
+            "WARNING: Missing optional runtime packages for explicit Nuitka includes: "
+            + ", ".join(missing)
+        )
+        print(
+            "WARNING: Build continues, but install requirements for best runtime parity:"
+            " pip install -r requirements.txt"
+        )
+
+
+def _check_native_compiler() -> None:
+    """Fail early with a helpful message when no C compiler is present."""
+    # Nuitka on Windows can bootstrap toolchains itself with
+    # --assume-yes-for-downloads; don't block that flow.
+    if os.name == "nt":
+        return
+
+    if shutil.which("gcc") or shutil.which("clang"):
+        return
+
+    print(
+        "ERROR: No C compiler found (gcc/clang). Nuitka cannot build native binaries.",
+        file=sys.stderr,
+    )
+    if os.name != "nt":
+        print(
+            "ERROR: Install build tools, e.g. on Debian/Ubuntu: sudo apt-get install build-essential",
+            file=sys.stderr,
+        )
+    sys.exit(1)
+
+
 def build_installer():
     """
     Build a compiled StreamCatch binary and, on Windows with Inno Setup
@@ -123,6 +179,8 @@ def build_installer():
                 "WARNING: Could not determine Nuitka version via module, but import succeeded."
             )
 
+    _check_native_compiler()
+
     print("\nStep 2: Building with Nuitka...")
 
     # Build compiled binary
@@ -142,13 +200,19 @@ def build_installer():
         # macOS so we can easily assemble a .app bundle for the DMG step.
     ]
 
-    if sys.platform != "darwin":
+    # For fast local verification builds, allow disabling onefile packaging:
+    # STREAMCATCH_ONEFILE=0 python scripts/build_installer.py
+    onefile_enabled = os.environ.get("STREAMCATCH_ONEFILE", "1").strip() != "0"
+    if sys.platform != "darwin" and onefile_enabled:
         cmd.append("--onefile")
+
+    # LTO significantly increases build time and can be unstable on constrained hosts.
+    # Opt-in via STREAMCATCH_ENABLE_LTO=1 for release-grade optimization.
+    lto_enabled = os.environ.get("STREAMCATCH_ENABLE_LTO", "").strip() == "1"
 
     cmd.extend(
         [
-            # Enable LTO for optimization
-            "--lto=yes",
+            "--lto=yes" if lto_enabled else "--lto=no",
             # Flet often needs explicit data for assets
             f"--include-data-dir={root / 'assets'}=assets",
             f"--include-data-dir={root / 'locales'}=locales",
@@ -156,15 +220,30 @@ def build_installer():
             f"--output-filename={output_name}",
             # Optimizations for yt-dlp build time
             "--nofollow-import-to=yt_dlp.extractor.lazy_extractors",
+            "--nofollow-import-to=pytest",
             "--include-package-data=yt_dlp",
-            # Include important runtime dependencies that might be missed
-            "--include-package=pypresence",
-            "--include-package=pydrive2",
-            "--include-package=defusedxml",
-            "--include-package=keyring",
-            "--include-package=certifi",
         ]
     )
+
+    # Debian/Ubuntu Python builds may not ship static libpython by default.
+    if os.name != "nt":
+        cmd.append("--static-libpython=no")
+
+    # Optional explicit package inclusion can significantly increase compile time.
+    # Keep it opt-in for release builds that require strict bundling parity.
+    include_optional = (
+        os.environ.get("STREAMCATCH_INCLUDE_OPTIONAL_PACKAGES", "").strip() == "1"
+    )
+    if include_optional:
+        _append_optional_package_includes(
+            cmd,
+            ["pypresence", "pydrive2", "defusedxml", "keyring", "certifi"],
+        )
+    else:
+        print(
+            "INFO: Skipping explicit optional-package includes "
+            "(set STREAMCATCH_INCLUDE_OPTIONAL_PACKAGES=1 to enable)."
+        )
 
     # Windows specific flags
     version_str = os.environ.get("APP_VERSION", "2.0.0").lstrip("v")
@@ -221,6 +300,8 @@ def build_installer():
     cmd = [c for c in cmd if c]
 
     print(f"Build command: {' '.join(cmd)}\n")
+    if os.name == "nt" and not onefile_enabled:
+        print("INFO: STREAMCATCH_ONEFILE=0 -> building non-onefile standalone output.")
 
     try:
         subprocess.check_call(cmd)
@@ -241,7 +322,13 @@ def build_installer():
         if iscc:
             print("Step 3: Building Windows installer...")
             try:
-                subprocess.check_call([iscc, str(root / "installers" / "setup.iss")])
+                subprocess.check_call(
+                    [
+                        iscc,
+                        f"/DMyAppVersion={version_str}",
+                        str(root / "installers" / "setup.iss"),
+                    ]
+                )
                 print("[OK] Installer built in installers/output/\n")
             except subprocess.CalledProcessError as e:
                 print(

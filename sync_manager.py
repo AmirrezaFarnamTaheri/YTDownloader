@@ -197,18 +197,43 @@ class SyncManager:
             for k, v in new_config.items():
                 self.config.set(k, v)
 
+    @staticmethod
+    def _coerce_history_db_path(candidate: object) -> str | None:
+        """Return a usable DB path string, or None when candidate is invalid."""
+        if isinstance(candidate, os.PathLike):
+            candidate = os.fspath(candidate)
+        if not isinstance(candidate, str):
+            return None
+
+        path = candidate.strip()
+        if not path or "\x00" in path:
+            return None
+        # Protect against repr-style mock values that can accidentally become filenames.
+        if path.startswith("<") and path.endswith(">"):
+            return None
+        if "MagicMock" in path:
+            return None
+        return os.path.expanduser(path)
+
     def _resolve_history_db_path(self) -> str:
         """Return the resolved history database path."""
+        fallback = os.path.expanduser("~/.streamcatch/history.db")
+
         if self.history:
             if hasattr(self.history, "_resolve_db_file"):
                 try:
-                    return str(self.history._resolve_db_file())
+                    resolved = self._coerce_history_db_path(
+                        self.history._resolve_db_file()
+                    )
+                    if resolved:
+                        return resolved
                 except Exception as exc:  # pylint: disable=broad-exception-caught
                     logger.debug("Failed to resolve history DB path: %s", exc)
             db_path = getattr(self.history, "DB_FILE", None)
-            if db_path:
-                return str(db_path)
-        return os.path.expanduser("~/.streamcatch/history.db")
+            resolved = self._coerce_history_db_path(db_path)
+            if resolved:
+                return resolved
+        return fallback
 
     def _replace_history_db(self, source_path: str) -> None:
         """Replace the local history DB with a downloaded file."""

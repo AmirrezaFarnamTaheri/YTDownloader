@@ -91,3 +91,30 @@ class TestQueueViewCoverage(unittest.TestCase):
 
         self.view.selected_index = 5
         self.assertIsNone(self.view.get_selected_item())
+
+    def test_clear_completed_uses_queue_manager_api(self):
+        """Test clearing completed items via QueueManager.clear_completed."""
+        self.mock_queue_manager.clear_completed.return_value = 2
+
+        self.view._on_clear_completed(None)
+
+        self.mock_queue_manager.clear_completed.assert_called_once()
+        self.mock_page.open.assert_called()
+
+    def test_pause_all_action(self):
+        """Test pause-all action delegates to queue manager."""
+        self.mock_queue_manager.pause_all.return_value = 3
+
+        self.view._on_pause_all(None)
+
+        self.mock_queue_manager.pause_all.assert_called_once()
+        self.mock_page.open.assert_called()
+
+    def test_resume_all_action(self):
+        """Test resume-all action delegates to queue manager."""
+        self.mock_queue_manager.resume_all.return_value = 1
+
+        self.view._on_resume_all(None)
+
+        self.mock_queue_manager.resume_all.assert_called_once()
+        self.mock_page.open.assert_called()

@@ -89,6 +89,18 @@ jobs:
       run: |
         python scripts/build_mobile.py --target apk
 
+    - name: Verify APK output
+      shell: bash
+      run: |
+        shopt -s globstar nullglob
+        apk_files=(build/**/*.apk)
+        if [ ${#apk_files[@]} -eq 0 ]; then
+          echo "ERROR: No APK artifact found under build/"
+          exit 1
+        fi
+        echo "Generated APK artifacts:"
+        printf '%s\n' "${apk_files[@]}"
+
     - name: Upload APK
       uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392  # v4.0.0
       with:
@@ -96,7 +108,7 @@ jobs:
         path: |
           build/apk/*.apk
           build/**/*.apk
-        if-no-files-found: warn
+        if-no-files-found: error
 
   # ===========================================================================
   # iOS Build (Requires Mac)

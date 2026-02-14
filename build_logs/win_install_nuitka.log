@@ -1,0 +1,18 @@
+Defaulting to user installation because normal site-packages is not writeable
+Collecting nuitka
+  Downloading nuitka-4.0.tar.gz (4.4 MB)
+     ---------------------------------------- 4.4/4.4 MB 4.7 MB/s  0:00:01
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: nuitka
+  Building wheel for nuitka (pyproject.toml): started
+  Building wheel for nuitka (pyproject.toml): finished with status 'done'
+  Created wheel for nuitka: filename=nuitka-4.0-cp310-cp310-win_amd64.whl size=3758806 sha256=1275487b72052842e2b160cd66bceac8d28f9a6674e472a47ec50146fabde46d
+  Stored in directory: c:\users\acer\appdata\local\pip\cache\wheels\4e\23\80\c060392a7793de0bf20ab348a9269e178f933234e02b4417fc
+Successfully built nuitka
+Installing collected packages: nuitka
+Successfully installed nuitka-4.0

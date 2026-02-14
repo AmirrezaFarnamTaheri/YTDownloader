@@ -91,3 +91,12 @@ class TestSyncManager(unittest.TestCase):
         # Let's assert it RAISES now.
         with self.assertRaises(FileNotFoundError):
             self.manager.import_data("non_existent_file.zip")
+
+    def test_resolve_history_db_path_fallback_for_invalid_mock_path(self):
+        history = MagicMock()
+        history._resolve_db_file.return_value = MagicMock()
+        manager = SyncManager(self.mock_cloud, self.mock_config, history)
+
+        resolved = manager._resolve_history_db_path()
+
+        self.assertEqual(resolved, os.path.expanduser("~/.streamcatch/history.db"))

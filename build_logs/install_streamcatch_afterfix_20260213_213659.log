@@ -1,0 +1,114 @@
+﻿2026-02-13 21:36:59.894   Log opened. (Time zone: UTC+03:30)
+2026-02-13 21:36:59.894   Setup version: Inno Setup version 6.6.1
+2026-02-13 21:36:59.894   Original Setup EXE: D:\GitHub\YTDownloader\installers\output\StreamCatch_Setup_v2.0.0.exe
+2026-02-13 21:36:59.894   Setup command line: /SL5="$908CA,45066141,882176,D:\GitHub\YTDownloader\installers\output\StreamCatch_Setup_v2.0.0.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /LOG=build_logs/install_streamcatch_afterfix_20260213_213659.log
+2026-02-13 21:36:59.894   Compatibility mode: Yes (DetectorsAppHealth)
+2026-02-13 21:36:59.894   Windows version: 10.0.26200
+2026-02-13 21:36:59.894   Windows architecture: x64 (64-bit)
+2026-02-13 21:36:59.894   Machine types supported by system: x86 x64
+2026-02-13 21:36:59.894   User privileges: None
+2026-02-13 21:36:59.896   Administrative install mode: No
+2026-02-13 21:36:59.896   Install mode root key: HKEY_CURRENT_USER
+2026-02-13 21:36:59.896   64-bit install mode: No
+2026-02-13 21:36:59.897   Created temporary directory: C:\Users\Acer\AppData\Local\Temp\is-XHBG2UZ20S.tmp
+2026-02-13 21:37:00.004   Found 1 files to register with RestartManager.
+2026-02-13 21:37:00.004   Calling RestartManager's RmGetList.
+2026-02-13 21:37:00.017   RmGetList finished successfully.
+2026-02-13 21:37:00.017   RestartManager found no applications using one of our files.
+2026-02-13 21:37:00.021   Starting the installation process.
+2026-02-13 21:37:00.023   Directory for uninstall files: C:\Users\Acer\AppData\Local\Programs\StreamCatch
+2026-02-13 21:37:00.031   Will append to existing uninstall log: C:\Users\Acer\AppData\Local\Programs\StreamCatch\unins001.dat
+2026-02-13 21:37:00.033   -- File entry --
+2026-02-13 21:37:00.033   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\unins001.exe
+2026-02-13 21:37:00.035   Time stamp of our file: 2026-02-13 21:36:59.682
+2026-02-13 21:37:00.035   Dest file exists.
+2026-02-13 21:37:00.035   Time stamp of existing file: 2026-02-13 21:14:03.574
+2026-02-13 21:37:00.035   Version of our file: 51.1053.0.0
+2026-02-13 21:37:00.127   Version of existing file: 51.1053.0.0
+2026-02-13 21:37:00.127   Installing the file.
+2026-02-13 21:37:00.134   Leaving temporary file in place for now.
+2026-02-13 21:37:00.134   -- File entry --
+2026-02-13 21:37:00.134   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\StreamCatch.exe
+2026-02-13 21:37:00.134   Time stamp of our file: 2026-02-13 21:36:32.000
+2026-02-13 21:37:00.134   Dest file exists.
+2026-02-13 21:37:00.134   Time stamp of existing file: 2026-02-13 19:25:48.000
+2026-02-13 21:37:00.134   Installing the file.
+2026-02-13 21:37:02.492   Successfully installed the file.
+2026-02-13 21:37:02.492   -- File entry --
+2026-02-13 21:37:02.492   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\locales\en.json
+2026-02-13 21:37:02.492   Time stamp of our file: 2026-02-12 23:38:28.000
+2026-02-13 21:37:02.492   Dest file exists.
+2026-02-13 21:37:02.492   Time stamp of existing file: 2026-02-12 23:38:28.000
+2026-02-13 21:37:02.492   Installing the file.
+2026-02-13 21:37:02.500   Successfully installed the file.
+2026-02-13 21:37:02.500   -- File entry --
+2026-02-13 21:37:02.500   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\locales\es.json
+2026-02-13 21:37:02.500   Time stamp of our file: 2026-02-12 23:38:36.000
+2026-02-13 21:37:02.500   Dest file exists.
+2026-02-13 21:37:02.500   Time stamp of existing file: 2026-02-12 23:38:36.000
+2026-02-13 21:37:02.500   Installing the file.
+2026-02-13 21:37:02.507   Successfully installed the file.
+2026-02-13 21:37:02.507   -- File entry --
+2026-02-13 21:37:02.507   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\locales\fa.json
+2026-02-13 21:37:02.507   Time stamp of our file: 2026-02-12 23:38:46.000
+2026-02-13 21:37:02.507   Dest file exists.
+2026-02-13 21:37:02.507   Time stamp of existing file: 2026-02-12 23:38:46.000
+2026-02-13 21:37:02.507   Installing the file.
+2026-02-13 21:37:02.514   Successfully installed the file.
+2026-02-13 21:37:02.514   -- File entry --
+2026-02-13 21:37:02.514   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\assets\icon.png
+2026-02-13 21:37:02.514   Time stamp of our file: 2025-12-01 21:21:38.000
+2026-02-13 21:37:02.514   Dest file exists.
+2026-02-13 21:37:02.514   Time stamp of existing file: 2025-12-01 21:21:38.000
+2026-02-13 21:37:02.514   Installing the file.
+2026-02-13 21:37:02.521   Successfully installed the file.
+2026-02-13 21:37:02.521   -- File entry --
+2026-02-13 21:37:02.521   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\assets\icon_macos.png
+2026-02-13 21:37:02.521   Time stamp of our file: 2025-12-01 21:21:38.000
+2026-02-13 21:37:02.521   Dest file exists.
+2026-02-13 21:37:02.521   Time stamp of existing file: 2025-12-01 21:21:38.000
+2026-02-13 21:37:02.521   Installing the file.
+2026-02-13 21:37:02.528   Successfully installed the file.
+2026-02-13 21:37:02.528   -- File entry --
+2026-02-13 21:37:02.528   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\assets\icon_macos_native.icns
+2026-02-13 21:37:02.528   Time stamp of our file: 2025-12-01 21:21:38.000
+2026-02-13 21:37:02.528   Dest file exists.
+2026-02-13 21:37:02.528   Time stamp of existing file: 2025-12-01 21:21:38.000
+2026-02-13 21:37:02.528   Installing the file.
+2026-02-13 21:37:02.535   Successfully installed the file.
+2026-02-13 21:37:02.535   -- File entry --
+2026-02-13 21:37:02.535   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\assets\icon_windows.png
+2026-02-13 21:37:02.536   Time stamp of our file: 2025-12-01 21:21:38.000
+2026-02-13 21:37:02.536   Dest file exists.
+2026-02-13 21:37:02.536   Time stamp of existing file: 2025-12-01 21:21:38.000
+2026-02-13 21:37:02.536   Installing the file.
+2026-02-13 21:37:02.542   Successfully installed the file.
+2026-02-13 21:37:02.542   -- File entry --
+2026-02-13 21:37:02.542   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\assets\icon_windows_native.ico
+2026-02-13 21:37:02.542   Time stamp of our file: 2025-12-01 21:21:38.000
+2026-02-13 21:37:02.542   Dest file exists.
+2026-02-13 21:37:02.542   Time stamp of existing file: 2025-12-01 21:21:38.000
+2026-02-13 21:37:02.542   Installing the file.
+2026-02-13 21:37:02.550   Successfully installed the file.
+2026-02-13 21:37:02.550   -- File entry --
+2026-02-13 21:37:02.550   Dest filename: C:\Users\Acer\AppData\Local\Programs\StreamCatch\assets\logo.svg
+2026-02-13 21:37:02.550   Time stamp of our file: 2025-11-25 23:33:14.000
+2026-02-13 21:37:02.550   Dest file exists.
+2026-02-13 21:37:02.550   Time stamp of existing file: 2025-11-25 23:33:14.000
+2026-02-13 21:37:02.550   Installing the file.
+2026-02-13 21:37:02.556   Successfully installed the file.
+2026-02-13 21:37:02.556   -- Icon entry --
+2026-02-13 21:37:02.556   Dest filename: C:\Users\Acer\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\StreamCatch.lnk
+2026-02-13 21:37:02.559   Creating the icon.
+2026-02-13 21:37:02.653   Successfully created the icon.
+2026-02-13 21:37:02.665   Saving uninstall information.
+2026-02-13 21:37:02.665   Renaming uninstaller.
+2026-02-13 21:37:02.669   Deleting uninstall key left over from previous non administrative install.
+2026-02-13 21:37:02.669   Creating new uninstall key: HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{A7E3F2D1-9B4C-5E6F-8A1B-C2D3E4F56789}}_is1
+2026-02-13 21:37:02.669   Writing uninstall key values.
+2026-02-13 21:37:02.670   Detected previous administrative 32-bit install? No
+2026-02-13 21:37:02.670   Detected previous administrative 64-bit install? No
+2026-02-13 21:37:02.674   Installation process succeeded.
+2026-02-13 21:37:02.674   Need to restart Windows? No
+2026-02-13 21:37:02.676   Deinitializing Setup.
+2026-02-13 21:37:02.681   Log closed.

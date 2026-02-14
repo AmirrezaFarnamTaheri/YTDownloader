@@ -116,7 +116,7 @@ class YouTubePanel(BasePanel):
                 ext = s.get("ext", "")
 
                 size_val = s.get("filesize")
-                if size_val and isinstance(size_val, (int, float)):
+                if size_val and isinstance(size_val, int | float):
                     size_str = f"{size_val / (1024 * 1024):.1f} MB"
                 else:
                     size_str = s.get("filesize_str", "") or ""

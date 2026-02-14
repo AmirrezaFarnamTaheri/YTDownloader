@@ -169,6 +169,8 @@
   "no_results": "نتیجه‌ای یافت نشد",
   "pause_all": "توقف همه",
   "resume_all": "ادامه همه",
+  "paused_items": "{0} مورد متوقف شد",
+  "resumed_items": "{0} مورد ادامه یافت",
   "select_all": "انتخاب همه",
   "deselect_all": "لغو انتخاب همه",
   "delete_selected": "حذف انتخاب‌شده‌ها",
@@ -178,5 +180,17 @@
   "settings_exported": "تنظیمات با موفقیت خروجی گرفته شد",
   "settings_imported": "تنظیمات با موفقیت وارد شد",
   "history_exported": "تاریخچه با موفقیت خروجی گرفته شد",
-  "history_imported": "تاریخچه با موفقیت وارد شد"
+  "history_imported": "تاریخچه با موفقیت وارد شد",
+  "failed": "ناموفق",
+  "success_rate": "نرخ موفقیت",
+  "system_health": "سلامت سیستم",
+  "ffmpeg": "FFmpeg",
+  "ready": "آماده",
+  "missing": "ناموجود",
+  "sync": "همگام‌سازی",
+  "enabled": "فعال",
+  "disabled": "غیرفعال",
+  "concurrency": "همزمانی",
+  "metadata_cache": "کش فراداده",
+  "disk_free": "فضای آزاد دیسک"
 }

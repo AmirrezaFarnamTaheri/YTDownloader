@@ -9,7 +9,7 @@ import logging
 import os
 import sqlite3
 from datetime import datetime, timedelta
-from typing import Any, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +154,7 @@ class HistoryManager:
 
     def get_history(
         self, limit: int = 50, offset: int = 0, search_query: str = ""
-    ) -> List[dict]:
+    ) -> list[dict]:
         """Retrieves history entries."""
         try:
             with self._get_connection() as conn:
@@ -224,7 +224,7 @@ class HistoryManager:
         try:
             with self._get_connection() as conn:
                 sql = "SELECT * FROM history"
-                params: List[Any] = []
+                params: list[Any] = []
                 if query:
                     conditions = []
                     for field in search_in:
@@ -278,7 +278,7 @@ class HistoryManager:
             return output.getvalue()
         return None
 
-    def get_download_activity(self, days: int = 7) -> List[dict]:
+    def get_download_activity(self, days: int = 7) -> list[dict]:
         """
         Returns download count per day for the last N days.
         Used for dashboard charts.

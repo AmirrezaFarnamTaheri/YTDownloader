@@ -1,0 +1,22 @@
+Nuitka-Options: Used command line options:
+Nuitka-Options:   --standalone --assume-yes-for-downloads --onefile --lto=no --include-data-dir=D:\GitHub\YTDownloader\assets=assets --include-data-dir=D:\GitHub\YTDownloader\locales=locales --output-dir=D:\GitHub\YTDownloader\dist --output-filename=StreamCatch.exe --nofollow-import-to=yt_dlp.extractor.lazy_extractors --nofollow-import-to=pytest --include-package-data=yt_dlp --windows-icon-from-ico=D:\GitHub\YTDownloader\assets\icon_windows_native.ico --windows-console-mode=disable --company-name=StreamCatch --product-name=StreamCatch --file-version=2.0.0.0 --product-version=2.0.0.0 --copyright="Copyright (c) 2024-2025 StreamCatch Team" D:\GitHub\YTDownloader\main.py
+Nuitka: Starting Python compilation with:
+Nuitka:   Version '4.0' on Python 3.10 (flavor 'CPython Official') commercial grade 'not installed'.
+
+[ERROR] Build failed with exit code 4294967295
+
+
+============================================================
+StreamCatch Build Script
+============================================================
+
+Step 1: Checking Python environment...
+Python: 3.10.10 (tags/v3.10.10:aad5f6a, Feb  7 2023, 17:20:36) [MSC v.1929 64 bit (AMD64)]
+Root: D:\GitHub\YTDownloader
+Dist: D:\GitHub\YTDownloader\dist
+Nuitka version: 4.0
+
+Step 2: Building with Nuitka...
+INFO: Skipping explicit optional-package includes (set STREAMCATCH_INCLUDE_OPTIONAL_PACKAGES=1 to enable).
+Build command: C:\Program Files\Python310\python.exe -m nuitka --standalone --assume-yes-for-downloads --onefile --lto=no --include-data-dir=D:\GitHub\YTDownloader\assets=assets --include-data-dir=D:\GitHub\YTDownloader\locales=locales --output-dir=D:\GitHub\YTDownloader\dist --output-filename=StreamCatch.exe --nofollow-import-to=yt_dlp.extractor.lazy_extractors --nofollow-import-to=pytest --include-package-data=yt_dlp --windows-icon-from-ico=D:\GitHub\YTDownloader\assets\icon_windows_native.ico --windows-console-mode=disable --company-name=StreamCatch --product-name=StreamCatch --file-version=2.0.0.0 --product-version=2.0.0.0 --copyright=Copyright (c) 2024-2025 StreamCatch Team D:\GitHub\YTDownloader\main.py
+

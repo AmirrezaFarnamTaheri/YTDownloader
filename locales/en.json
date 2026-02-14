@@ -169,6 +169,8 @@
   "no_results": "No results found",
   "pause_all": "Pause All",
   "resume_all": "Resume All",
+  "paused_items": "Paused {0} items",
+  "resumed_items": "Resumed {0} items",
   "select_all": "Select All",
   "deselect_all": "Deselect All",
   "delete_selected": "Delete Selected",
@@ -178,5 +180,17 @@
   "settings_exported": "Settings exported successfully",
   "settings_imported": "Settings imported successfully",
   "history_exported": "History exported successfully",
-  "history_imported": "History imported successfully"
+  "history_imported": "History imported successfully",
+  "failed": "Failed",
+  "success_rate": "Success Rate",
+  "system_health": "System Health",
+  "ffmpeg": "FFmpeg",
+  "ready": "Ready",
+  "missing": "Missing",
+  "sync": "Sync",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "concurrency": "Concurrency",
+  "metadata_cache": "Metadata Cache",
+  "disk_free": "Disk Free"
 }

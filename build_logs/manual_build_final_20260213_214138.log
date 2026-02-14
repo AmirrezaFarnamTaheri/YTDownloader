@@ -1,0 +1,133 @@
+Nuitka-Options: Used command line options:
+Nuitka-Options:   --standalone --assume-yes-for-downloads --onefile --lto=no --include-data-dir=D:\GitHub\YTDownloader\assets=assets --include-data-dir=D:\GitHub\YTDownloader\locales=locales --output-dir=D:\GitHub\YTDownloader\dist --output-filename=StreamCatch.exe --nofollow-import-to=yt_dlp.extractor.lazy_extractors --nofollow-import-to=pytest --include-package-data=yt_dlp --windows-icon-from-ico=D:\GitHub\YTDownloader\assets\icon_windows_native.ico --windows-console-mode=disable --company-name=StreamCatch --product-name=StreamCatch --file-version=2.0.0.0 --product-version=2.0.0.0 --copyright="Copyright (c) 2024-2025 StreamCatch Team" D:\GitHub\YTDownloader\main.py
+Nuitka:WARNING: The Python version '3.14' is only experimentally supported by Nuitka '2.8.9', but an upcoming release will change that. In the mean time use Python version '3.13' instead or newer Nuitka.
+Nuitka: Starting Python compilation with:
+Nuitka:   Version '2.8.9' on Python 3.14 (flavor 'CPython Official') commercial grade 'not installed'.
+Nuitka: Completed Python level compilation and optimization.
+Nuitka: Generating source code for C backend compiler.
+Nuitka: Running data composer tool for optimal constant value handling.
+Nuitka: Running C compilation via Scons.
+Nuitka-Scons: Backend C compiler: cl (cl 14.3).
+Nuitka-Scons: Backend C linking with 2399 files (no progress information available for this stage).
+Nuitka-Scons: Compiled 2399 C files using clcache with 2398 cache hits and 1 cache misses.
+Nuitka-Postprocessing: Adding 6 icon(s) from icon file 'D:\GitHub\YTDownloader\assets\icon_windows_native.ico'.
+Nuitka-Options: Included data file 'assets\icon.png' due to specified data dir 'D:\GitHub\YTDownloader\assets' on command line.
+Nuitka-Options: Included data file 'assets\icon_macos.png' due to specified data dir 'D:\GitHub\YTDownloader\assets' on command line.
+Nuitka-Options: Included data file 'assets\icon_macos_native.icns' due to specified data dir 'D:\GitHub\YTDownloader\assets' on command line.
+Nuitka-Options: Included data file 'assets\icon_windows.png' due to specified data dir 'D:\GitHub\YTDownloader\assets' on command line.
+Nuitka-Options: Included data file 'assets\icon_windows_native.ico' due to specified data dir 'D:\GitHub\YTDownloader\assets' on command line.
+Nuitka-Options: Included data file 'assets\logo.svg' due to specified data dir 'D:\GitHub\YTDownloader\assets' on command line.
+Nuitka-Options: Included data file 'locales\en.json' due to specified data dir 'D:\GitHub\YTDownloader\locales' on command line.
+Nuitka-Options: Included data file 'locales\es.json' due to specified data dir 'D:\GitHub\YTDownloader\locales' on command line.
+Nuitka-Options: Included data file 'locales\fa.json' due to specified data dir 'D:\GitHub\YTDownloader\locales' on command line.
+Nuitka-Options: Included data file 'yt_dlp\extractor\youtube\jsc\_builtin\vendor\yt.solver.bun.lib.js' due to package 'yt_dlp' package data.
+Nuitka-Options: Included data file 'yt_dlp\extractor\youtube\jsc\_builtin\vendor\yt.solver.core.js' due to package 'yt_dlp' package data.
+Nuitka-Options: Included data file 'yt_dlp\extractor\youtube\jsc\_builtin\vendor\yt.solver.deno.lib.js' due to package 'yt_dlp' package data.
+Nuitka-Plugins:data-files: Included data file 'certifi\cacert.pem' due to package data for 'certifi'.
+Nuitka-Plugins:data-files: Included 604 data files due to package data directory '.' for 'tzdata.zoneinfo'.
+Nuitka-Onefile: Creating single file from dist folder, this may take a while.
+Nuitka-Onefile: Running bootstrap binary compilation via Scons.
+Nuitka-Scons: Onefile C compiler: cl (cl 14.3).
+Nuitka-Scons: Onefile C linking.
+Nuitka-Scons: Compiled 1 C files using clcache with 1 cache hits and 0 cache misses.
+Nuitka-Postprocessing: Adding 6 icon(s) from icon file 'D:\GitHub\YTDownloader\assets\icon_windows_native.ico'.
+Nuitka-Onefile: Using compression for onefile payload.
+Nuitka-Onefile: Onefile payload compression ratio (23.48%) size 185761081 to 43613725.
+Nuitka-Onefile: Keeping onefile build directory 'D:\GitHub\YTDownloader\dist\main.onefile-build'.
+Nuitka: Keeping dist folder 'D:\GitHub\YTDownloader\dist\main.dist' for inspection, no need to use it.
+Nuitka: Keeping build directory 'D:\GitHub\YTDownloader\dist\main.build'.
+Nuitka: Successfully created 'D:\GitHub\YTDownloader\dist\StreamCatch.exe'.
+Inno Setup 6 Command-Line Compiler
+Copyright (C) 1997-2025 Jordan Russell. All rights reserved.
+Portions Copyright (C) 2000-2025 Martijn Laan. All rights reserved.
+Portions Copyright (C) 2001-2004 Alex Yackimoff. All rights reserved.
+https://www.innosetup.com
+
+Compiler engine version: Inno Setup 6.6.1
+Non-commercial use only
+
+Preprocessing
+   Reading file: C:\Users\Acer\AppData\Local\Programs\Inno Setup 6\ISPPBuiltins.iss
+Parsing [Setup] section, line 20
+Parsing [Setup] section, line 21
+Parsing [Setup] section, line 22
+Parsing [Setup] section, line 24
+Parsing [Setup] section, line 25
+Parsing [Setup] section, line 26
+Parsing [Setup] section, line 27
+Parsing [Setup] section, line 28
+Parsing [Setup] section, line 29
+Parsing [Setup] section, line 31
+Parsing [Setup] section, line 32
+Parsing [Setup] section, line 33
+Parsing [Setup] section, line 34
+Parsing [Setup] section, line 35
+Parsing [Setup] section, line 36
+Reading file (WizardImageFile)
+Reading file (WizardSmallImageFile)
+Preparing Setup program executable
+   Verification successful
+   Updating icons (Setup.e32)
+   Updating version info (Setup.e32)
+Determining language code pages
+Parsing [Languages] section, line 39
+   Reading file: C:\Users\Acer\AppData\Local\Programs\Inno Setup 6\Default.isl
+   Messages in script file
+Reading default messages from Default.isl
+Parsing [Languages] section, line 39
+   Reading file: C:\Users\Acer\AppData\Local\Programs\Inno Setup 6\Default.isl
+Parsing [LangOptions], [Messages], and [CustomMessages] sections
+   Messages in script file
+Reading [Code] section
+Parsing [Tasks] section, line 42
+Parsing [Icons] section, line 51
+Parsing [Icons] section, line 52
+Parsing [Run] section, line 55
+Parsing [Files] section, line 45
+Parsing [Files] section, line 46
+Parsing [Files] section, line 47
+Deleting StreamCatch_Setup_v2.0.0.exe from output directory
+Creating setup files
+   Verification successful
+   Updating icons (Setup.exe)
+   Compressing: D:\GitHub\YTDownloader\installers\..\dist\StreamCatch.exe
+   Compressing: D:\GitHub\YTDownloader\installers\..\locales\en.json
+   Compressing: D:\GitHub\YTDownloader\installers\..\locales\es.json
+   Compressing: D:\GitHub\YTDownloader\installers\..\locales\fa.json
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\icon.png
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\icon_macos.png
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\icon_macos_native.icns
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\icon_windows.png
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\icon_windows_native.ico
+   Compressing: D:\GitHub\YTDownloader\installers\..\assets\logo.svg
+   Compressing Setup program executable
+   Updating version info (Setup.exe)
+   Updating manifest (Setup.exe)
+
+
+Successful compile (3.812 sec). Resulting Setup program filename is:
+D:\GitHub\YTDownloader\installers\output\StreamCatch_Setup_v2.0.0.exe
+
+============================================================
+StreamCatch Build Script
+============================================================
+
+Step 1: Checking Python environment...
+Python: 3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]
+Root: D:\GitHub\YTDownloader
+Dist: D:\GitHub\YTDownloader\dist
+Nuitka version: 2.8.9
+
+Step 2: Building with Nuitka...
+INFO: Skipping explicit optional-package includes (set STREAMCATCH_INCLUDE_OPTIONAL_PACKAGES=1 to enable).
+Build command: C:\Python314\python.exe -m nuitka --standalone --assume-yes-for-downloads --onefile --lto=no --include-data-dir=D:\GitHub\YTDownloader\assets=assets --include-data-dir=D:\GitHub\YTDownloader\locales=locales --output-dir=D:\GitHub\YTDownloader\dist --output-filename=StreamCatch.exe --nofollow-import-to=yt_dlp.extractor.lazy_extractors --nofollow-import-to=pytest --include-package-data=yt_dlp --windows-icon-from-ico=D:\GitHub\YTDownloader\assets\icon_windows_native.ico --windows-console-mode=disable --company-name=StreamCatch --product-name=StreamCatch --file-version=2.0.0.0 --product-version=2.0.0.0 --copyright=Copyright (c) 2024-2025 StreamCatch Team D:\GitHub\YTDownloader\main.py
+
+
+[OK] Build completed successfully
+
+Step 3: Building Windows installer...
+[OK] Installer built in installers/output/
+
+============================================================
+Build complete!
+============================================================

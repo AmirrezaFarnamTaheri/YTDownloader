@@ -71,6 +71,26 @@ class QueueView(BaseView):
             ),
         )
 
+        self.pause_all_btn = ft.OutlinedButton(
+            LM.get("pause_all", "Pause All"),
+            icon=ft.icons.PAUSE_CIRCLE_OUTLINE_ROUNDED,
+            on_click=self._on_pause_all,
+            style=ft.ButtonStyle(
+                color=Theme.Status.WARNING,
+                side=ft.BorderSide(1, Theme.Status.WARNING),
+            ),
+        )
+
+        self.resume_all_btn = ft.OutlinedButton(
+            LM.get("resume_all", "Resume All"),
+            icon=ft.icons.PLAY_CIRCLE_OUTLINE_ROUNDED,
+            on_click=self._on_resume_all,
+            style=ft.ButtonStyle(
+                color=Theme.Status.SUCCESS,
+                side=ft.BorderSide(1, Theme.Status.SUCCESS),
+            ),
+        )
+
         self.clear_completed_btn = ft.OutlinedButton(
             LM.get("clear_completed", "Clear Completed"),
             icon=ft.icons.DELETE_SWEEP_ROUNDED,
@@ -87,6 +107,8 @@ class QueueView(BaseView):
                 self.stats_text,
                 ft.Container(expand=True),
                 self.clear_completed_btn,
+                self.pause_all_btn,
+                self.resume_all_btn,
                 self.cancel_all_btn,
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -104,6 +126,19 @@ class QueueView(BaseView):
         self.selected_index = 0
         self.content_col.controls.append(self.header_row)
         self.content_col.controls.append(self.list_view)
+
+    def _safe_update(self, control: ft.Control | None = None) -> None:
+        """Update control only when mounted; skip detached-control update errors."""
+        target: ft.Control = control or self
+        try:
+            target.update()
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            if "Control must be added to the page first" in str(ex):
+                logger.debug(
+                    "Skipping update for detached control: %s", target.__class__.__name__
+                )
+                return
+            raise
 
     def rebuild(self):
         """Updates the list of items using diff logic to minimize redraws."""
@@ -137,7 +172,9 @@ class QueueView(BaseView):
                 )
                 self.cancel_all_btn.disabled = True
                 self.clear_completed_btn.disabled = True
-                self.update()
+                self.pause_all_btn.disabled = True
+                self.resume_all_btn.disabled = True
+                self._safe_update()
             return
 
         # If previous state was empty/placeholder, clear it first
@@ -180,10 +217,14 @@ class QueueView(BaseView):
             item.get("status") in ("Downloading", "Queued", "Processing", "Allocating")
             for item in items
         )
+        has_queued = any(item.get("status") == "Queued" for item in items)
+        has_paused = any(item.get("status") == "Paused" for item in items)
         has_completed = any(
             item.get("status") in ("Completed", "Error", "Cancelled") for item in items
         )
         self.cancel_all_btn.disabled = not has_active
+        self.pause_all_btn.disabled = not has_queued
+        self.resume_all_btn.disabled = not has_paused
         self.clear_completed_btn.disabled = not has_completed
 
         # Check for structure changes
@@ -198,12 +239,14 @@ class QueueView(BaseView):
 
         if structure_changed:
             self.list_view.controls = new_controls_list
-            self.update()
+            self._safe_update()
         else:
             # Only update auxiliary controls
-            self.stats_text.update()
-            self.cancel_all_btn.update()
-            self.clear_completed_btn.update()
+            self._safe_update(self.stats_text)
+            self._safe_update(self.cancel_all_btn)
+            self._safe_update(self.pause_all_btn)
+            self._safe_update(self.resume_all_btn)
+            self._safe_update(self.clear_completed_btn)
 
     def _update_stats(self, items):
         """Update queue statistics display."""
@@ -254,16 +297,53 @@ class QueueView(BaseView):
             logger.error("Failed to cancel all: %s", ex)
 
     # pylint: disable=unused-argument
+    def _on_pause_all(self, e):
+        """Pause all queued downloads."""
+        try:
+            paused = self.queue_manager.pause_all()
+            self.rebuild()
+            if self.page and paused > 0:
+                self.page.open(
+                    ft.SnackBar(
+                        content=ft.Text(
+                            LM.get("paused_items", "Paused {0} items").format(paused)
+                        )
+                    )
+                )
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to pause all: %s", ex)
+
+    # pylint: disable=unused-argument
+    def _on_resume_all(self, e):
+        """Resume all paused downloads."""
+        try:
+            resumed = self.queue_manager.resume_all()
+            self.rebuild()
+            if self.page and resumed > 0:
+                self.page.open(
+                    ft.SnackBar(
+                        content=ft.Text(
+                            LM.get("resumed_items", "Resumed {0} items").format(resumed)
+                        )
+                    )
+                )
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            logger.error("Failed to resume all: %s", ex)
+
+    # pylint: disable=unused-argument
     def _on_clear_completed(self, e):
         """Remove all completed, errored, and cancelled items from queue."""
         logger.info("User requested clear completed downloads")
         try:
-            items = self.queue_manager.get_all()
             removed_count = 0
-            for item in items:
-                if item.get("status") in ("Completed", "Error", "Cancelled"):
-                    self.queue_manager.remove_item(item.get("id"))
-                    removed_count += 1
+            if hasattr(self.queue_manager, "clear_completed"):
+                removed_count = int(self.queue_manager.clear_completed())
+            else:
+                items = self.queue_manager.get_all()
+                for item in items:
+                    if item.get("status") in ("Completed", "Error", "Cancelled"):
+                        self.queue_manager.remove_item(item)
+                        removed_count += 1
             self.rebuild()
             if self.page and removed_count > 0:
                 self.page.open(

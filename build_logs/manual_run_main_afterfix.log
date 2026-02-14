@@ -1,0 +1,42 @@
+Failed to initialize/migrate history DB: file is not a database
+Failed to initialize/migrate history DB: file is not a database
+2026-02-13 21:40:11,394 - INFO - root - MainThread - Logging initialized successfully.
+2026-02-13 21:40:11,395 - INFO - __main__ - MainThread - ============================================================
+2026-02-13 21:40:11,395 - INFO - __main__ - MainThread - StreamCatch Starting...
+2026-02-13 21:40:11,395 - INFO - __main__ - MainThread - Python: 3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]
+2026-02-13 21:40:11,395 - INFO - __main__ - MainThread - Working Directory: D:\GitHub\YTDownloader
+2026-02-13 21:40:11,395 - INFO - __main__ - MainThread - ============================================================
+
+2026-02-13 21:40:11,395 - INFO - __main__ - MainThread - Initializing AppState...
+2026-02-13 21:40:11,395 - INFO - __main__ - MainThread - AppState initialized successfully
+2026-02-13 21:40:11,457 - INFO - flet_runtime - MainThread - Assets path configured: D:\GitHub\YTDownloader\assets
+2026-02-13 21:40:11,458 - INFO - flet_runtime - MainThread - Starting up TCP server on localhost:4561
+2026-02-13 21:40:11,461 - INFO - flet_runtime - MainThread - Flet app has started...
+2026-02-13 21:40:11,461 - INFO - flet_runtime - MainThread - App URL: tcp://localhost:4561
+2026-02-13 21:40:11,461 - INFO - flet_runtime - MainThread - Starting Flet View app...
+2026-02-13 21:40:11,462 - INFO - flet_runtime - MainThread - Flet View found in: C:\Users\Acer\AppData\Roaming\Python\Python314\site-packages\flet\bin\flet\flet.exe
+2026-02-13 21:40:11,624 - INFO - flet_runtime - MainThread - App session started
+2026-02-13 21:40:11,624 - INFO - __main__ - ThreadPoolExecutor-0_0 - Initializing main UI...
+2026-02-13 21:40:11,634 - ERROR - history_manager - ThreadPoolExecutor-0_0 - Failed to get history: file is not a database
+2026-02-13 21:40:11,636 - ERROR - history_manager - ThreadPoolExecutor-0_0 - Error getting activity stats: file is not a database
+2026-02-13 21:40:11,636 - CRITICAL - __main__ - ThreadPoolExecutor-0_0 - Failed to initialize main application: Control must be added to the page first.
+Traceback (most recent call last):
+  File "D:\GitHub\YTDownloader\main.py", line 117, in main
+    main_view = UI.initialize_views(
+        on_fetch_info_callback=CONTROLLER.on_fetch_info,
+    ...<9 lines>...
+        on_open_folder_callback=CONTROLLER.on_open_folder,
+    )
+  File "D:\GitHub\YTDownloader\ui_manager.py", line 129, in initialize_views
+    self.dashboard_view.load()
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\GitHub\YTDownloader\views\dashboard_view.py", line 351, in load
+    self._refresh_activity()  # New
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\GitHub\YTDownloader\views\dashboard_view.py", line 400, in _refresh_activity
+    self.activity_chart.update()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Acer\AppData\Roaming\Python\Python314\site-packages\flet_core\control.py", line 286, in update
+    assert self.__page, "Control must be added to the page first."
+           ^^^^^^^^^^^
+AssertionError: Control must be added to the page first.

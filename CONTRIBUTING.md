@@ -37,9 +37,11 @@ Have an idea for improvement? [Open an issue](https://github.com/AmirrezaFarnamT
 #### Setup Development Environment
 
 1. **Fork the repository** on GitHub.
-2. **Clone your fork** (replace `YOUR_USERNAME` with your GitHub username):
+2. **Clone your fork** (or clone upstream directly):
    ```bash
-   git clone https://github.com/YOUR_USERNAME/YTDownloader.git
+   git clone https://github.com/<your-username>/YTDownloader.git
+   # or:
+   # git clone https://github.com/AmirrezaFarnamTaheri/YTDownloader.git
    cd YTDownloader
    ```
 3. **Create a feature branch**:
@@ -99,7 +101,7 @@ Have an idea for improvement? [Open an issue](https://github.com/AmirrezaFarnamT
 
 - Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) standards.
 - Use 4 spaces for indentation (not tabs).
-- Maximum line length: 100 characters.
+- Maximum line length: 88 characters.
 - Use type hints for function signatures.
 - Write docstrings for all public functions/classes.
 
@@ -165,7 +167,7 @@ YTDownloader/
 |-- tests/
 |-- scripts/
 |-- .github/
-|-- project_docs/
+|-- wiki/
 ```
 
 ## Questions?

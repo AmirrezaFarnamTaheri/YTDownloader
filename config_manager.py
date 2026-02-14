@@ -13,8 +13,16 @@ import tempfile
 from pathlib import Path
 from typing import Any, cast
 
-# Import keyring
-import keyring
+# Import keyring when available; allow runtime without it.
+try:
+    import keyring
+    from keyring.errors import PasswordDeleteError
+
+    KEYRING_AVAILABLE = True
+except Exception:  # pylint: disable=broad-exception-caught
+    keyring = None  # type: ignore[assignment]
+    PasswordDeleteError = Exception  # type: ignore[assignment,misc]
+    KEYRING_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -113,8 +121,17 @@ class ConfigManager:
 
         if "theme_mode" in config:
             val = cast(str, config["theme_mode"]).lower()
-            if val not in ["system", "light", "dark"]:
-                raise ValueError("theme_mode must be one of: System, Light, Dark")
+            if val not in [
+                "system",
+                "light",
+                "dark",
+                "high contrast",
+                "high_contrast",
+                "high-contrast",
+            ]:
+                raise ValueError(
+                    "theme_mode must be one of: System, Light, Dark, High Contrast"
+                )
 
         if "max_concurrent_downloads" in config:
             val = config["max_concurrent_downloads"]
@@ -123,7 +140,7 @@ class ConfigManager:
 
         if "auto_sync_interval" in config:
             val = config["auto_sync_interval"]
-            if not isinstance(val, (int, float)) or val <= 0:
+            if not isinstance(val, int | float) or val <= 0:
                 raise ValueError("auto_sync_interval must be a positive number")
 
         if "output_template" in config:
@@ -164,22 +181,23 @@ class ConfigManager:
                     data = json.load(f)
 
                     # LOAD COOKIES FROM KEYRING
-                    try:
-                        cookies = keyring.get_password(SERVICE_NAME, "cookies")
-                        if cookies:
-                            # If keyring has cookies, prefer them over file
-                            data["cookies"] = cookies
-                        elif "cookies" in data:
-                            # Fallback: Migration scenario.
-                            # If file has cookies but keyring doesn't, we might want to migrate later.
-                            # But for now, just use them.
-                            # If they were obfuscated with old logic, they might be garbage if we removed deobfuscate logic.
-                            # Since we removed _deobfuscate, we assume new version doesn't support old obfuscation.
-                            # This forces a reset of cookies if they were obfuscated, which is acceptable for security upgrade.
-                            # Or we can treat them as plain text if they look like it.
-                            pass
-                    except Exception as e:  # pylint: disable=broad-exception-caught
-                        logger.warning("Failed to load cookies from keyring: %s", e)
+                    if KEYRING_AVAILABLE:
+                        try:
+                            cookies = keyring.get_password(SERVICE_NAME, "cookies")
+                            if cookies:
+                                # If keyring has cookies, prefer them over file
+                                data["cookies"] = cookies
+                            elif "cookies" in data:
+                                # Fallback: Migration scenario.
+                                # If file has cookies but keyring doesn't, we might want to migrate later.
+                                # But for now, just use them.
+                                # If they were obfuscated with old logic, they might be garbage if we removed deobfuscate logic.
+                                # Since we removed _deobfuscate, we assume new version doesn't support old obfuscation.
+                                # This forces a reset of cookies if they were obfuscated, which is acceptable for security upgrade.
+                                # Or we can treat them as plain text if they look like it.
+                                pass
+                        except Exception as e:  # pylint: disable=broad-exception-caught
+                            logger.warning("Failed to load cookies from keyring: %s", e)
 
                     ConfigManager._validate_schema(data)
                     config.update(data)
@@ -217,19 +235,24 @@ class ConfigManager:
         # Unconditionally pop cookies from save_data so they are never written to disk in plain text
         cookies_val = save_data.pop("cookies", None)
 
-        if cookies_val:
-            try:
-                keyring.set_password(SERVICE_NAME, "cookies", cookies_val)
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.error("Failed to save cookies to keyring: %s", e)
-        else:
-            # If cookies are cleared/empty, remove from keyring
-            try:
-                keyring.delete_password(SERVICE_NAME, "cookies")
-            except keyring.errors.PasswordDeleteError:
-                pass  # Password didn't exist
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.warning("Failed to delete cookies from keyring: %s", e)
+        if KEYRING_AVAILABLE:
+            if cookies_val:
+                try:
+                    keyring.set_password(SERVICE_NAME, "cookies", cookies_val)
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logger.error("Failed to save cookies to keyring: %s", e)
+            else:
+                # If cookies are cleared/empty, remove from keyring
+                try:
+                    keyring.delete_password(SERVICE_NAME, "cookies")
+                except PasswordDeleteError:
+                    pass  # Password didn't exist
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logger.warning("Failed to delete cookies from keyring: %s", e)
+        elif cookies_val:
+            logger.warning(
+                "Keyring is not available; cookies are not persisted securely."
+            )
 
         temp_path = None
 

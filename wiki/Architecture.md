@@ -1,61 +1,80 @@
 # Architecture Overview
 
-StreamCatch follows a modular, event-driven architecture built with Python and Flet.
+StreamCatch is a modular, event-driven desktop/mobile application built around a clear split between UI orchestration, queue/state management, and download execution engines.
 
-## High-Level Diagram
+## High-Level Topology
 
 ```mermaid
 graph TD
-    UI[Flet UI] --> AppController
-    AppController --> TaskManager[Task Manager]
-    AppController --> QueueManager[Queue Manager]
-    AppController --> RSSManager[RSS Manager]
-    AppController --> SyncManager[Sync Manager]
-    AppController --> SocialManager[Social Manager]
-    TaskManager --> Downloader[Downloader Engine]
-    Downloader --> YTDLP[yt-dlp Wrapper]
-    Downloader --> Generic[Generic Downloader]
-    QueueManager --> TaskManager
-    SyncManager --> CloudManager[Cloud Manager]
-    RSSManager --> TaskManager
+    UI[Flet UI Layer] --> AppController
+    AppController --> AppState
+    AppController --> QueueManager
+    AppController --> Tasks
+    Tasks --> DownloaderCore
+    DownloaderCore --> YTDLPWrapper
+    DownloaderCore --> GenericDownloader
+    DownloaderCore --> TelegramExtractor
+    AppState --> ConfigManager
+    AppState --> HistoryManager
+    AppState --> SyncManager
+    SyncManager --> CloudManager
+    UI --> HistoryManager
 ```
 
-## Key Components
+## Runtime Layers
 
-### 1. AppController (`app_controller.py`)
-The central coordinator. It initializes the UI, manages global state, and handles user interactions. It delegates tasks to specific managers.
+### 1. Presentation Layer (`views/`, `app_layout.py`, `ui_manager.py`)
 
-### 2. UI Layer (`views/`)
-Built using Flet. It uses a component-based approach:
-*   **Views**: High-level pages (e.g., `DownloadView`, `QueueView`, `RSSView`).
-*   **Components**: Reusable widgets (e.g., `DownloadItemControl`, `Panels`).
-*   **Theme**: Centralized styling in `theme.py`.
+- Implements all screens and shared controls using Flet.
+- `UIManager` instantiates views and handles navigation/index synchronization.
+- `AppLayout` switches between desktop rail and mobile bottom-navigation behavior.
 
-### 3. Task Management (`tasks.py`)
-Handles background processing using `ThreadPoolExecutor`. It manages concurrency, ensuring the UI remains responsive while downloads happen in the background.
+### 2. Orchestration Layer (`app_controller.py`, `tasks.py`)
 
-### 4. Downloader Engine (`downloader/`)
-A robust package handling the actual download logic.
-*   **Core**: Main entry point (`download_video`).
-*   **Engines**: Specific implementations for different backends (yt-dlp, generic HTTP).
-*   **Extractors**: Metadata extraction logic (Telegram, Generic).
+- `AppController` handles user-intent callbacks and delegates to services/managers.
+- Background queue loop runs separately from UI thread and processes scheduled items.
+- `tasks.py` owns download job execution, concurrency control, and queue submission.
 
-### 5. State Management
-*   **AppState**: A singleton holding global configuration and runtime state.
-*   **QueueManager**: Manages the list of downloads, their status, and persistence.
-*   **HistoryManager**: Logs completed downloads to a SQLite database.
+### 3. Domain and State Layer (`app_state.py`, managers)
 
-### 6. Extended Managers
-*   **RSSManager**: Manages RSS feed subscriptions, parsing, and automated checking.
-*   **SocialManager**: Handles integration with Discord Rich Presence.
-*   **SyncManager**: Manages configuration and database backup/restore to cloud providers (via `CloudManager`).
+- `AppState` is a process-wide singleton containing config, queue, history, and feature state.
+- `QueueManager` provides thread-safe queue mutation, lifecycle transitions, and cancellation.
+- `HistoryManager` stores immutable download outcomes in SQLite (WAL-enabled).
 
-## Data Flow
+### 4. Download Engine Layer (`downloader/`)
 
-1.  User enters a URL in `DownloadView`.
-2.  `AppController` triggers a metadata fetch via `tasks_extended.fetch_info_task`.
-3.  Metadata is displayed. User configures options and clicks "Download".
-4.  Item is added to `QueueManager`.
-5.  `tasks.process_queue` picks up the item and submits it to the `ThreadPoolExecutor`.
-6.  `download_task` executes, calling `downloader.core.download_video`.
-7.  Progress is reported back via callbacks, updating the UI in real-time.
+- `downloader.core.download_video()` is the primary execution entrypoint.
+- Strategy selection:
+  - Telegram URL -> `TelegramExtractor`
+  - Forced generic or unsupported URL -> `GenericDownloader`
+  - Otherwise -> `YTDLPWrapper`
+- Safety checks include output path sanitization, template constraints, and disk-space guardrails.
+
+### 5. Integration Layer (`sync_manager.py`, `cloud_manager.py`, `rss_manager.py`)
+
+- `SyncManager` exports/imports config+history with zip-slip protections.
+- `CloudManager` currently supports Google Drive integration (PyDrive2).
+- RSS feed manager drives watch-style ingestion into the queue.
+
+## Queue Lifecycle
+
+Supported status progression:
+
+- `Queued -> Allocating -> Downloading -> Processing -> Completed`
+- `Queued -> Allocating -> Downloading -> Error`
+- `Queued/Allocating/Downloading/Processing -> Cancelled`
+- `Scheduled -> Queued` when schedule condition is met
+- `Queued -> Paused -> Queued`
+
+## Threading Model
+
+- UI work executes on Flet/UI context.
+- Download jobs run in `ThreadPoolExecutor` workers.
+- Queue coordination uses locks + condition variable (`wait_for_items`).
+- Cancellation uses token registration per active item.
+
+## Packaging and Deployment Architecture
+
+- Desktop native packaging uses Nuitka (`scripts/build_installer.py`).
+- Mobile packaging uses Flet/Flutter (`scripts/build_mobile.py`).
+- GitHub workflows produce verified artifacts and release attachments.

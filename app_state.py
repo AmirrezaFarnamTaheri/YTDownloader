@@ -106,7 +106,7 @@ class AppState:
 
         # Instantiate SyncManager with dependencies to avoid circular imports
         self.sync_manager = SyncManager(
-            self.cloud_manager, self.config, history_manager=HistoryManager
+            self.cloud_manager, self.config, history_manager=self.history_manager
         )
 
         self.scheduled_time: time | None = None
@@ -117,7 +117,12 @@ class AppState:
         self.shutdown_flag = threading.Event()
 
         # New Feature Flags
-        self.high_contrast = self.config.get("high_contrast", False)
+        theme_mode_raw = str(self.config.get("theme_mode", "System")).strip().lower()
+        self.high_contrast = bool(
+            self.config.get("high_contrast", False)
+            or theme_mode_raw in {"high contrast", "high_contrast", "high-contrast"}
+        )
+        self.config["high_contrast"] = self.high_contrast
         self.compact_mode = self.config.get("compact_mode", False)
 
         # Use OrderedDict for proper LRU cache implementation

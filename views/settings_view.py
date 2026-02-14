@@ -3,7 +3,7 @@ Settings View module.
 """
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 import flet as ft
 
@@ -22,6 +22,8 @@ from views.base_view import BaseView
 
 
 class SettingsView(BaseView):
+    _THEME_CHOICES = ("System", "Light", "Dark", "High Contrast")
+
     def __init__(
         self,
         config,
@@ -33,6 +35,19 @@ class SettingsView(BaseView):
         self.logger = logging.getLogger(__name__)
         self.on_toggle_clipboard = on_toggle_clipboard
         self.on_compact_mode_change = on_compact_mode_change
+        stored_theme_mode = str(self.config.get("theme_mode", "System"))
+        if self.config.get("high_contrast", False) or stored_theme_mode.lower() in {
+            "high contrast",
+            "high_contrast",
+            "high-contrast",
+        }:
+            initial_theme_mode = "High Contrast"
+        else:
+            initial_theme_mode = (
+                stored_theme_mode
+                if stored_theme_mode in self._THEME_CHOICES
+                else "System"
+            )
 
         # --- Controls ---
         # General Section
@@ -120,7 +135,7 @@ class SettingsView(BaseView):
                 ft.dropdown.Option("Dark", LM.get("dark")),
                 ft.dropdown.Option("High Contrast", LM.get("high_contrast_mode")),
             ],
-            value=self.config.get("theme_mode", "System"),
+            value=initial_theme_mode,
             on_change=self._on_theme_change,
             **Theme.get_input_decoration(prefix_icon=ft.icons.BRIGHTNESS_6_ROUNDED),
         )
@@ -219,12 +234,12 @@ class SettingsView(BaseView):
     # pylint: disable=unused-argument
     def _on_theme_change(self, e):
         # Allow calling manually without 'e' to refresh
-        mode = self.theme_mode_dd.value
+        mode = self.theme_mode_dd.value or "System"
+        is_high_contrast = mode == "High Contrast"
         if self.page:
-            if mode == "High Contrast":
+            if is_high_contrast:
                 self.page.theme = Theme.get_high_contrast_theme()
-                self.page.theme_mode = ft.ThemeMode.SYSTEM  # Or force dark/light?
-                # Usually high contrast handles colors itself.
+                self.page.theme_mode = ft.ThemeMode.SYSTEM
             else:
                 self.page.theme = Theme.get_theme()
                 if mode == "Dark":
@@ -234,9 +249,14 @@ class SettingsView(BaseView):
                 else:
                     self.page.theme_mode = ft.ThemeMode.SYSTEM
 
-            # Auto-save theme preference for better UX
-            self.config["theme_mode"] = mode
-            ConfigManager.save_config(self.config)
+            # Auto-save theme preference for better UX.
+            # Keep "High Contrast" in theme_mode for backward compatibility and tests.
+            self.config["theme_mode"] = "High Contrast" if is_high_contrast else mode
+            self.config["high_contrast"] = is_high_contrast
+            try:
+                ConfigManager.save_config(self.config)
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                self.logger.error("Failed to persist theme settings: %s", exc)
             self.page.update()
 
     def _on_compact_mode_change(self, e):
@@ -319,7 +339,12 @@ class SettingsView(BaseView):
         self.config["output_template"] = tmpl_val
         self.config["use_aria2c"] = self.use_aria2c_switch.value
         self.config["gpu_accel"] = self.gpu_accel_dd.value
-        self.config["theme_mode"] = self.theme_mode_dd.value
+        selected_theme = self.theme_mode_dd.value or "System"
+        is_high_contrast = selected_theme == "High Contrast"
+        self.config["theme_mode"] = (
+            "High Contrast" if is_high_contrast else selected_theme
+        )
+        self.config["high_contrast"] = is_high_contrast
         self.config["compact_mode"] = self.compact_mode_switch.value
         self.config["language"] = language_after
         self.config["max_concurrent_downloads"] = max_concurrent

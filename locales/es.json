@@ -169,6 +169,8 @@
   "no_results": "No se encontraron resultados",
   "pause_all": "Pausar todo",
   "resume_all": "Reanudar todo",
+  "paused_items": "{0} elementos pausados",
+  "resumed_items": "{0} elementos reanudados",
   "select_all": "Seleccionar todo",
   "deselect_all": "Deseleccionar todo",
   "delete_selected": "Eliminar seleccionados",
@@ -178,5 +180,17 @@
   "settings_exported": "Configuración exportada correctamente",
   "settings_imported": "Configuración importada correctamente",
   "history_exported": "Historial exportado correctamente",
-  "history_imported": "Historial importado correctamente"
+  "history_imported": "Historial importado correctamente",
+  "failed": "Fallidos",
+  "success_rate": "Tasa de éxito",
+  "system_health": "Estado del sistema",
+  "ffmpeg": "FFmpeg",
+  "ready": "Listo",
+  "missing": "No disponible",
+  "sync": "Sincronización",
+  "enabled": "Activado",
+  "disabled": "Desactivado",
+  "concurrency": "Concurrencia",
+  "metadata_cache": "Caché de metadatos",
+  "disk_free": "Disco libre"
 }

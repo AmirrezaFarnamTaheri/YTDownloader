@@ -3,7 +3,7 @@ Dashboard View Module.
 
 Features a modern dashboard with system status, quick actions,
 active download summaries, and recent history.
-Refactored to use Charts for better visualization.
+Refactored to use charts, health indicators, and richer quick actions.
 """
 
 import logging
@@ -29,7 +29,8 @@ class DashboardView(BaseView):
     Features:
     - System storage status (PieChart)
     - Active downloads counter and statistics (Cards)
-    - Activity history (BarChart - Placeholder for now)
+    - Activity history (BarChart)
+    - System health chips (FFmpeg, sync, concurrency, cache)
     - Recent download history
     """
 
@@ -46,9 +47,6 @@ class DashboardView(BaseView):
         self.on_batch_import = on_batch_import
         self.queue_manager = queue_manager
 
-        # Widgets
-        self.status_cards_row = ft.Row(spacing=20, wrap=True)
-
         # Storage Pie Chart
         self.storage_chart = ft.PieChart(
             sections=[],
@@ -60,8 +58,6 @@ class DashboardView(BaseView):
             LM.get("storage_calculating"), size=12, color=Theme.TEXT_MUTED
         )
 
-        # Activity Bar Chart (Placeholder for Phase 3 req)
-        # Assuming simple activity stats for now
         self.activity_chart = ft.BarChart(
             bar_groups=[],
             border=ft.border.all(1, Theme.BORDER),
@@ -86,6 +82,16 @@ class DashboardView(BaseView):
         self.completed_downloads_text = ft.Text(
             "0", size=32, weight=ft.FontWeight.BOLD, color=Theme.Status.SUCCESS
         )
+        self.failed_downloads_text = ft.Text(
+            "0", size=32, weight=ft.FontWeight.BOLD, color=Theme.Status.ERROR
+        )
+        self.success_rate_text = ft.Text(
+            "100%",
+            size=14,
+            weight=ft.FontWeight.W_600,
+            color=Theme.Text.SECONDARY,
+        )
+        self.health_chips_row = ft.Row(spacing=8, wrap=True)
 
         self.refresh_btn = ft.IconButton(
             ft.icons.REFRESH_ROUNDED,
@@ -104,6 +110,23 @@ class DashboardView(BaseView):
                     ft.Container(height=20),
                     # Download Statistics
                     self._build_stats_section(),
+                    ft.Container(height=20),
+                    # System Health
+                    ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Text(
+                                    LM.get("system_health", "System Health"),
+                                    size=18,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=Theme.Text.PRIMARY,
+                                ),
+                                self.health_chips_row,
+                            ],
+                            spacing=12,
+                        ),
+                        **Theme.get_card_decoration(),
+                    ),
                     ft.Container(height=20),
                     # Charts Row
                     ft.Row(
@@ -228,6 +251,12 @@ class DashboardView(BaseView):
                     lambda _: self.on_batch_import(),
                     Theme.ACCENT_SECONDARY,
                 ),
+                quick_btn(
+                    ft.icons.FOLDER_OPEN_ROUNDED,
+                    LM.get("open_downloads_folder"),
+                    lambda _: self._open_downloads_root(),
+                    Theme.Primary.MAIN,
+                ),
             ],
             wrap=True,
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -289,9 +318,26 @@ class DashboardView(BaseView):
                             ft.icons.CHECK_CIRCLE,
                             Theme.Status.SUCCESS,
                         ),
+                        stat_card(
+                            LM.get("failed", "Failed"),
+                            self.failed_downloads_text,
+                            ft.icons.ERROR_OUTLINE,
+                            Theme.Status.ERROR,
+                        ),
                     ],
                     spacing=15,
                     wrap=True,
+                ),
+                ft.Row(
+                    [
+                        ft.Text(
+                            LM.get("success_rate", "Success Rate"),
+                            size=12,
+                            color=Theme.Text.SECONDARY,
+                        ),
+                        self.success_rate_text,
+                    ],
+                    spacing=10,
                 ),
             ],
             spacing=10,
@@ -303,6 +349,7 @@ class DashboardView(BaseView):
         self._refresh_stats()
         self._refresh_history()
         self._refresh_activity()  # New
+        self._refresh_health()
         if self.page:
             self.update()
 
@@ -378,12 +425,21 @@ class DashboardView(BaseView):
             self.active_downloads_text.value = str(stats.get("downloading", 0))
             self.queued_downloads_text.value = str(stats.get("queued", 0))
             self.completed_downloads_text.value = str(stats.get("completed", 0))
+            failed = stats.get("failed", 0)
+            self.failed_downloads_text.value = str(failed)
+            done_count = stats.get("completed", 0) + failed
+            success_rate = (
+                (stats.get("completed", 0) / done_count * 100) if done_count else 100
+            )
+            self.success_rate_text.value = f"{success_rate:.0f}%"
 
         except Exception as e:
             logger.debug("Error refreshing stats: %s", e)
             self.active_downloads_text.value = "0"
             self.queued_downloads_text.value = "0"
             self.completed_downloads_text.value = "0"
+            self.failed_downloads_text.value = "0"
+            self.success_rate_text.value = "100%"
 
     def _refresh_storage(self):
         """Updates storage usage pie chart."""
@@ -452,3 +508,90 @@ class DashboardView(BaseView):
         """Copy the URL for a history item."""
         if url and self.page:
             self.page.set_clipboard(url)
+
+    def _open_downloads_root(self):
+        """Open the default downloads folder."""
+        try:
+            from app_state import state
+            from ui_utils import get_default_download_path
+
+            root = get_default_download_path(state.config.get("download_path"))
+            if self.page:
+                open_folder(root, self.page)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.debug("Failed to open downloads root: %s", exc)
+
+    @staticmethod
+    def _build_health_chip(label: str, value: str, color: str) -> ft.Container:
+        """Build a small health chip used in the dashboard system-health row."""
+        return ft.Container(
+            content=ft.Row(
+                [
+                    ft.Container(width=8, height=8, border_radius=4, bgcolor=color),
+                    ft.Text(label, size=12, color=Theme.Text.SECONDARY),
+                    ft.Text(
+                        value,
+                        size=12,
+                        weight=ft.FontWeight.W_600,
+                        color=Theme.Text.PRIMARY,
+                    ),
+                ],
+                spacing=8,
+                tight=True,
+            ),
+            padding=ft.padding.symmetric(horizontal=12, vertical=8),
+            bgcolor=ft.colors.with_opacity(0.22, Theme.BG_HOVER),
+            border=ft.border.all(1, Theme.BORDER),
+            border_radius=999,
+        )
+
+    def _refresh_health(self) -> None:
+        """Refresh runtime health chips (ffmpeg, sync, concurrency, cache)."""
+        try:
+            from app_state import state
+
+            total, _, free = shutil.disk_usage(".")
+            free_pct = int((free / total) * 100) if total else 0
+            sync_enabled = bool(state.config.get("auto_sync_enabled", False))
+            ffmpeg_status = state.ffmpeg_available
+            concurrency = str(state.config.get("max_concurrent_downloads", 3))
+            cache_size = str(state.config.get("metadata_cache_size", 50))
+
+            self.health_chips_row.controls = [
+                self._build_health_chip(
+                    LM.get("ffmpeg", "FFmpeg"),
+                    (
+                        LM.get("ready", "Ready")
+                        if ffmpeg_status
+                        else LM.get("missing", "Missing")
+                    ),
+                    Theme.Status.SUCCESS if ffmpeg_status else Theme.Status.ERROR,
+                ),
+                self._build_health_chip(
+                    LM.get("sync", "Sync"),
+                    (
+                        LM.get("enabled", "Enabled")
+                        if sync_enabled
+                        else LM.get("disabled", "Disabled")
+                    ),
+                    Theme.Status.INFO if sync_enabled else Theme.Text.SECONDARY,
+                ),
+                self._build_health_chip(
+                    LM.get("concurrency", "Concurrency"),
+                    concurrency,
+                    Theme.ACCENT,
+                ),
+                self._build_health_chip(
+                    LM.get("metadata_cache", "Metadata Cache"),
+                    cache_size,
+                    Theme.ACCENT_SECONDARY,
+                ),
+                self._build_health_chip(
+                    LM.get("disk_free", "Disk Free"),
+                    f"{free_pct}%",
+                    Theme.Status.SUCCESS if free_pct >= 20 else Theme.Status.WARNING,
+                ),
+            ]
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.debug("Failed to refresh health chips: %s", exc)
+            self.health_chips_row.controls = []

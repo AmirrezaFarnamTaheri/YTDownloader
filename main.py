@@ -66,6 +66,8 @@ def main(pg: ft.Page) -> None:
             PAGE.theme_mode = ft.ThemeMode.LIGHT
         elif theme_mode_str == "system":
             PAGE.theme_mode = ft.ThemeMode.SYSTEM
+        elif theme_mode_str in {"high contrast", "high_contrast", "high-contrast"}:
+            PAGE.theme_mode = ft.ThemeMode.SYSTEM
         else:
             PAGE.theme_mode = ft.ThemeMode.DARK
 
@@ -170,9 +172,6 @@ def global_crash_handler(exctype: type, value: BaseException, tb: Any) -> None:
         if stack:
             # Get last frame
             # (Note: standard traceback objects don't easily give access to frame locals without 'inspect')
-            # pylint: disable=unused-import
-            import inspect
-
             if tb:
                 last_trace = tb
                 while last_trace.tb_next:
