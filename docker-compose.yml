@@ -15,4 +15,5 @@ services:
     environment:
       - FLET_WEB=1
       - FLET_SERVER_PORT=8550
+      - STREAMCATCH_DOWNLOAD_PATH=/app/downloads
     restart: unless-stopped

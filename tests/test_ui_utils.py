@@ -5,14 +5,19 @@ Unit tests for UI utility functions.
 """
 
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from ui_utils import (
     format_file_size,
     is_ffmpeg_available,
+    normalize_download_target,
+    run_on_ui_thread,
+    safe_request_with_redirects,
+    validate_download_target,
     validate_download_path,
     validate_proxy,
     validate_rate_limit,
+    validate_search_target,
     validate_url,
 )
 
@@ -24,6 +29,62 @@ class TestUIUtils(unittest.TestCase):
         self.assertTrue(validate_url("https://www.youtube.com/watch?v=test"))
         self.assertFalse(validate_url("ftp://test.com"))
         self.assertFalse(validate_url("short"))
+
+    @patch("socket.getaddrinfo")
+    def test_validate_url_rejects_private_dns_resolution(self, mock_getaddrinfo):
+        mock_getaddrinfo.return_value = [
+            (None, None, None, None, ("10.0.0.7", 0)),
+        ]
+
+        self.assertFalse(validate_url("https://example.com/video", resolve_host=True))
+
+    @patch("socket.getaddrinfo")
+    def test_validate_url_accepts_public_dns_resolution(self, mock_getaddrinfo):
+        mock_getaddrinfo.return_value = [
+            (None, None, None, None, ("8.8.8.8", 0)),
+        ]
+
+        self.assertTrue(validate_url("https://example.com/video", resolve_host=True))
+
+    def test_download_target_normalization(self):
+        self.assertEqual(
+            normalize_download_target("lofi study mix"),
+            "ytsearch1:lofi study mix",
+        )
+        self.assertEqual(
+            normalize_download_target("ytsearch5:ambient music"),
+            "ytsearch5:ambient music",
+        )
+        self.assertTrue(validate_download_target("https://youtube.com/watch?v=abc"))
+        self.assertFalse(validate_download_target("ytsearch0:bad count"))
+        self.assertFalse(validate_download_target("file:///etc/passwd"))
+
+    @patch("ui_utils.validate_url", return_value=True)
+    @patch("ui_utils.requests.request")
+    def test_safe_request_with_redirects_validates_each_hop(
+        self, mock_request, mock_validate
+    ):
+        first = MagicMock()
+        first.is_redirect = True
+        first.is_permanent_redirect = False
+        first.headers = {"Location": "https://example.com/final"}
+        final = MagicMock()
+        final.is_redirect = False
+        final.is_permanent_redirect = False
+        mock_request.side_effect = [first, final]
+
+        result = safe_request_with_redirects("GET", "https://example.com/start")
+
+        self.assertIs(result, final)
+        self.assertEqual(mock_request.call_count, 2)
+        mock_validate.assert_any_call("https://example.com/start", resolve_host=True)
+        mock_validate.assert_any_call("https://example.com/final", resolve_host=True)
+
+    def test_validate_search_target_limits_count_and_query(self):
+        self.assertTrue(validate_search_target("ytsearch50:valid"))
+        self.assertFalse(validate_search_target("ytsearch51:too many"))
+        self.assertFalse(validate_search_target("ytsearch1:"))
+        self.assertFalse(validate_search_target("ytsearch1:bad\x00query"))
 
     def test_validate_proxy(self):
         self.assertTrue(validate_proxy(""))
@@ -66,6 +127,29 @@ class TestUIUtils(unittest.TestCase):
 
         mock_which.return_value = None
         self.assertFalse(is_ffmpeg_available())
+
+    def test_run_on_ui_thread_wraps_sync_callback_as_async(self):
+        page = MagicMock()
+        captured = []
+        page.run_task.side_effect = lambda cb: captured.append(cb)
+        callback = MagicMock()
+
+        run_on_ui_thread(page, callback, "value")
+
+        self.assertEqual(len(captured), 1)
+
+        import asyncio
+
+        asyncio.run(captured[0]())
+        callback.assert_called_once_with("value")
+
+    def test_run_on_ui_thread_without_page_run_task_runs_sync_callback(self):
+        page = object()
+        callback = MagicMock()
+
+        run_on_ui_thread(page, callback)
+
+        callback.assert_called_once_with()
 
 
 if __name__ == "__main__":

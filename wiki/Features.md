@@ -1,51 +1,45 @@
-# Feature Matrix
+# Features
 
-## Download Capabilities
+## Downloads
 
-- `yt-dlp` integration for broad website support.
-- Telegram public link extraction pipeline.
-- Generic direct-file fallback with resume + retries.
-- Audio extraction, subtitle selection, chapter split support.
-- Time-range clipping for partial downloads.
+- YouTube and yt-dlp-supported sites.
+- Telegram public media links.
+- Direct file fallback downloader.
+- Search input through yt-dlp search targets.
+- Metadata preview before queueing.
+- Per-item output templates and filenames.
+- Browser-cookie source selection.
+- Subtitle language selection.
+- SponsorBlock and chapter splitting options.
+- Numeric yt-dlp rate-limit conversion from user-friendly values such as `5M`.
 
-## Queue and Scheduling
+## Queue
 
-- Full queue lifecycle tracking with status transitions.
-- Reordering, retry, cancel item, cancel all.
-- Pause-all and resume-all queue controls.
-- Scheduled downloads with automatic transition to queued state.
-- Configurable concurrency via runtime settings.
+- Concurrent background processing.
+- Scheduled downloads.
+- Cancel, retry, remove, reorder, pause, and resume.
+- Progress, speed, size, filename, and status updates.
+- Cancellation token registration per item.
 
-## Dashboard and UI
+## Library
 
-- Quick actions for navigation and imports.
-- Download statistics (active/queued/completed/failed + success rate).
-- Activity chart (rolling 7-day history).
-- System health chips (FFmpeg, sync, concurrency, cache, disk free).
-- Responsive layout (rail vs mobile bottom navigation).
+- Download history.
+- Live history search.
+- Activity and status stats.
+- RSS feeds with add-to-queue actions.
 
-## Data and Persistence
+## Sync and Settings
 
-- SQLite history storage with indexes + WAL mode.
-- Export/import settings and history.
-- Safe backup/restore with traversal protections.
-- Localization support (`en`, `es`, `fa`).
-
-## Integrations
-
-- RSS feed ingestion.
-- Discord Rich Presence integration.
-- Google Drive cloud backup integration (via PyDrive2).
-
-## Security and Hardening
-
-- URL/proxy validation with private-network restrictions.
-- Path sanitization for output templates and filenames.
-- Atomic config writes and restrictive permissions where possible.
-- Zip-slip checks during import.
+- Config validation and atomic saves.
+- Secure cookie storage through keyring when available.
+- Sanitized sync/export that strips secrets.
+- Auto-sync lifecycle controls.
+- Cloud sync integration.
+- Theme, compact mode, output folder, concurrency, and rate-limit settings.
 
 ## Packaging
 
-- Desktop native build path (Nuitka).
-- Windows installer packaging (Inno Setup).
-- Android APK build path (Flet build tooling).
+- Nuitka desktop builds.
+- Windows onefile installer.
+- Linux/macOS packaging paths in CI.
+- Android APK/AAB and iOS IPA build script support.

@@ -1,97 +1,110 @@
 # Developer Guide
 
-## Prerequisites
+## Setup
 
-- Python 3.10+ (tested with 3.10, 3.11, 3.12)
-- Git
-- FFmpeg (recommended)
-- Optional:
-  - `aria2c` for accelerated downloads
-  - Flutter toolchain for mobile packaging
-  - Inno Setup for Windows installer generation
+Requirements:
 
-## Local Setup
+- Python 3.10 or newer.
+- Git.
+- FFmpeg for realistic download/post-processing tests.
+- Inno Setup for Windows installer builds.
+- Nuitka and developer tools from `requirements-dev.txt`.
 
 ```bash
 git clone https://github.com/AmirrezaFarnamTaheri/YTDownloader.git
 cd YTDownloader
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-python3 -m pip install -r requirements.txt
-python3 -m pip install -r requirements-dev.txt
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements-dev.txt
 ```
 
-Run app:
+On macOS/Linux, use `source .venv/bin/activate`.
+
+## Run
 
 ```bash
-python3 main.py
+python main.py
 ```
 
-## Validation Workflow
-
-Run this before a PR:
+For web-server mode:
 
 ```bash
-python3 -m pytest -q -s
-mypy .
-ruff check . --exclude tests
-TMPDIR=/tmp python3 -m black --check .
-isort --check-only .
+FLET_SERVER_PORT=8550 python main.py --web
 ```
 
-## Test Strategy
+## Verification
 
-- Unit-heavy test suite with extensive mocking around Flet and integration boundaries.
-- Queue, task, downloader, sync, and UI controller coverage is prioritized.
-- Add regression tests for any bug fixes in threading, queue transitions, or callback timing.
-
-## Build Targets
-
-### Desktop Native (Nuitka)
+Run the full local gate before handing off changes:
 
 ```bash
-python3 scripts/build_installer.py
+python -m compileall .
+pytest -q
+git diff --check
+python scripts/build_installer.py --dry-run --skip-installer
+python scripts/build_mobile.py --target apk --dry-run
+python -m ruff check .
+python -m mypy .
 ```
 
-Outputs:
+The tests provide broad coverage but may mock Flet when the real Flet runtime is
+not installed. Real release validation should include at least one manual launch
+with real Flet and one real yt-dlp download.
 
-- Linux: `dist/streamcatch`
-- macOS: `dist/StreamCatch.app`
-- Windows: `dist/StreamCatch.exe` (+ installer if Inno Setup exists)
+## Build System
 
-### Android APK / Mobile
+### Desktop
 
 ```bash
-python3 scripts/build_mobile.py --target apk
+python scripts/build_installer.py
 ```
 
-Useful options:
+The desktop build uses Nuitka. By default it:
+
+- builds a standalone executable;
+- uses onefile mode on Windows and Linux;
+- embeds `assets/` and `locales/`;
+- checks that required runtime dependencies are installed;
+- explicitly includes runtime packages for release-grade bundling;
+- invokes Inno Setup on Windows when `iscc` is available.
+
+Useful environment variables:
 
 ```bash
-python3 scripts/build_mobile.py --target aab
-python3 scripts/build_mobile.py --target ipa
-python3 scripts/build_mobile.py --target apk --skip-requirements-swap
+STREAMCATCH_ONEFILE=0 python scripts/build_installer.py
+STREAMCATCH_ENABLE_LTO=1 python scripts/build_installer.py
+STREAMCATCH_INCLUDE_RUNTIME_PACKAGES=0 python scripts/build_installer.py
+APP_VERSION=2.1.0 python scripts/build_installer.py
 ```
 
-## CI/CD
+Use `STREAMCATCH_INCLUDE_RUNTIME_PACKAGES=0` only for quick local compiler
+experiments, not release builds.
 
-Primary workflows:
+### Mobile
 
-- `verify.yml`: lint, type-check, tests, and dependency vulnerability check.
-- `build-desktop.yml`: matrix desktop binary builds.
-- `build-mobile-flet.yml`: Android/iOS build pipeline.
-- `release.yml`: orchestrates builds and attaches artifacts to GitHub Release.
+```bash
+python scripts/build_mobile.py --target apk
+python scripts/build_mobile.py --target aab
+python scripts/build_mobile.py --target ipa
+```
 
-## Coding Conventions
+Mobile builds require the Flet/Flutter mobile toolchain.
 
-- Type annotations for public interfaces.
-- Explicit lifecycle/state transitions for queue operations.
-- Fail safely with logs at integration boundaries.
-- Keep UI logic thin; business logic belongs to managers/tasks/downloader modules.
+## Codebase Rules
+
+- Keep business logic in managers, tasks, and downloader modules.
+- Keep UI event handlers thin and route state changes through app controllers or
+  managers.
+- Use `ui_utils.run_on_ui_thread()` for Flet UI callbacks from worker threads.
+- Validate external URLs with the shared URL helpers.
+- Do not commit generated artifacts: logs, test databases, build outputs,
+  installers, exported configs, or caches.
+- Add regression tests for queue, threading, sync, downloader, build, or
+  validation changes.
 
 ## Release Flow
 
-1. Create/merge release-ready changes into `main`.
-2. Tag version (`vX.Y.Z`).
-3. GitHub Actions builds desktop/mobile artifacts.
-4. Release workflow publishes binaries (`.exe`, `.deb`, `.dmg`, `.apk`).
+1. Update version metadata.
+2. Run the verification gate.
+3. Build release artifacts through GitHub Actions or a clean local toolchain.
+4. Attach generated binaries/installers to a GitHub Release.
+5. Do not commit release artifacts back into git.

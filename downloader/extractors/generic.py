@@ -9,7 +9,7 @@ from typing import Any
 
 import requests
 
-from ui_utils import validate_url
+from ui_utils import safe_request_with_redirects, validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +27,11 @@ class GenericExtractor:
         Attempt to get metadata via HEAD request.
         """
         try:
-            if not validate_url(url):
+            if not validate_url(url, resolve_host=True):
                 logger.debug("Generic metadata skip: invalid URL %s", url)
                 return None
             # Simple HEAD to get content type/length
-            response = requests.head(url, timeout=5, allow_redirects=True)
+            response = safe_request_with_redirects("HEAD", url, timeout=5)
             content_type = response.headers.get("Content-Type", "")
 
             # Basic guess

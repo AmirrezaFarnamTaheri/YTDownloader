@@ -138,7 +138,7 @@ class TestAppControllerCoverage(unittest.TestCase):
     @patch("app_controller.validate_url")
     def test_on_fetch_info_invalid(self, mock_validate):
         mock_validate.return_value = False
-        self.controller.on_fetch_info("invalid")
+        self.controller.on_fetch_info("ftp://invalid.example/video")
         self.mock_page.open.assert_called()
         snack_bar = self.mock_page.open.call_args[0][0]
         self.assertEqual(snack_bar.content.value, LM.get("error_invalid_url"))
@@ -158,6 +158,25 @@ class TestAppControllerCoverage(unittest.TestCase):
         self.mock_state.queue_manager.add_item.assert_called()
         self.mock_ui.update_queue_view.assert_called()
         self.mock_page.open.assert_called()  # SnackBar
+
+    @patch("app_controller.get_default_download_path")
+    def test_on_add_to_queue_normalizes_search_query(self, mock_get_path):
+        mock_get_path.return_value = "/tmp"
+        self.mock_rate.return_value.check.return_value = True
+        self.mock_sched.return_value.prepare_schedule.return_value = ("Queued", None)
+        self.mock_state.get_video_info.return_value = None
+
+        self.controller.on_add_to_queue({"url": "lofi study mix"})
+
+        item = self.mock_state.queue_manager.add_item.call_args[0][0]
+        self.assertEqual(item["url"], "ytsearch1:lofi study mix")
+        self.assertEqual(item["title"], "ytsearch1:lofi study mix")
+
+    def test_on_add_to_queue_rejects_malformed_search_target(self):
+        self.controller.on_add_to_queue({"url": "ytsearch0:bad"})
+
+        self.mock_state.queue_manager.add_item.assert_not_called()
+        self.mock_page.open.assert_called()
 
     def test_on_add_to_queue_rate_limit(self):
         with patch("app_controller.validate_url", return_value=True):

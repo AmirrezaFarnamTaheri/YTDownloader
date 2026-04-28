@@ -99,3 +99,13 @@ class TestHistoryViewCoverage(unittest.TestCase):
         mock_open_folder.side_effect = Exception("Fail")
         # Should not crash
         view.open_folder_safe("/tmp/path")
+
+    def test_live_search_reloads_on_change(self):
+        view = HistoryView()
+        view.search_field.value = "needle"
+        view.load = MagicMock()
+
+        view._on_search_change(None)
+
+        self.assertEqual(view.current_search, "needle")
+        view.load.assert_called_once_with(reset=True)

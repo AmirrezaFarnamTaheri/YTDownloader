@@ -54,6 +54,7 @@ class DownloadOptions:
     split_chapters: bool = False
     proxy: str | None = None
     rate_limit: str | None = None
+    download_profile: str | None = None
     download_item: dict[str, Any] | None = None
     filename: str | None = None
     no_check_certificate: bool = False
@@ -206,9 +207,11 @@ class QueueItem(TypedDict, total=False):
     force_generic: bool
     cookies_from_browser: str | None
     chapters: bool
+    split_chapters: bool
     insta_type: str | None
     proxy: str | None
     rate_limit: str | None
+    download_profile: str | None
     # Internal
     filepath: str
     filename: str

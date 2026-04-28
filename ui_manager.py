@@ -71,8 +71,8 @@ class UIManager:
                 text = pyperclip.paste()
                 if text:
                     self._on_dashboard_paste_url(text)
-            except Exception:
-                pass
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                logger.debug("Dashboard paste action failed: %s", exc)
 
         self.dashboard_view = DashboardView(
             on_navigate=self.navigate_to,
@@ -102,7 +102,7 @@ class UIManager:
         self.queue_view.on_retry = on_retry_item_callback
 
         self.history_view = HistoryView()
-        self.rss_view = RSSView(state.config)
+        self.rss_view = RSSView(state.config, on_add_to_queue_callback)
         self.settings_view = SettingsView(state.config, on_toggle_clipboard_callback)
 
         # Match the order in AppLayout.destinations:

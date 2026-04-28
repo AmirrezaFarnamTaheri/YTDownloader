@@ -45,6 +45,12 @@ class TestConfigManager(unittest.TestCase):
         config = ConfigManager.load_config()
         self.assertEqual(config["theme_mode"], "System")
 
+    def test_env_download_path_overrides_empty_default(self):
+        with patch.dict(os.environ, {"STREAMCATCH_DOWNLOAD_PATH": "/app/downloads"}):
+            config = ConfigManager.load_config()
+
+        self.assertEqual(config["download_path"], "/app/downloads")
+
     def test_load_config_empty(self):
         """Test loading when file doesn't exist."""
         config = ConfigManager.load_config()

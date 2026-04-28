@@ -161,6 +161,30 @@ class YouTubePanel(BasePanel):
             self.playlist_cb.value = False
             self.playlist_cb.disabled = True
 
+    def apply_profile(self, profile: str) -> None:
+        """Apply a high-level download profile to detailed YouTube controls."""
+        if profile == "fast_720p":
+            available = {getattr(opt, "key", None) for opt in self.video_format_dd.options}
+            self.video_format_dd.value = "720p" if "720p" in available else "best"
+        elif profile == "audio_mp3":
+            self.video_format_dd.value = "audio"
+            if self.audio_format_dd.visible:
+                available_audio = {
+                    getattr(opt, "key", None) for opt in self.audio_format_dd.options
+                }
+                if "mp3" in available_audio:
+                    self.audio_format_dd.value = "mp3"
+        elif profile == "archive":
+            if not self.playlist_cb.disabled:
+                self.playlist_cb.value = True
+            self.chapters_cb.value = True
+            self.sponsorblock_cb.value = False
+        else:
+            self.video_format_dd.value = "best"
+
+        self.on_option_change()
+        self.update()
+
     def get_options(self) -> dict[str, Any]:
         return {
             "video_format": self.video_format_dd.value,
@@ -173,4 +197,5 @@ class YouTubePanel(BasePanel):
             "sponsorblock": self.sponsorblock_cb.value,
             "playlist": self.playlist_cb.value,
             "chapters": self.chapters_cb.value,
+            "split_chapters": self.chapters_cb.value,
         }

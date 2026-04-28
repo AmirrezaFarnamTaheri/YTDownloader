@@ -10,6 +10,7 @@ import flet as ft
 
 from localization_manager import LocalizationManager as LM
 from theme import Theme
+from ui_utils import format_file_size
 
 
 class DownloadPreviewCard(ft.Container):
@@ -70,6 +71,9 @@ class DownloadPreviewCard(ft.Container):
             color=Theme.Primary.MAIN,
             weight=ft.FontWeight.BOLD,
         )
+        self.format_text = ft.Text("", size=12, color=Theme.TEXT_SECONDARY)
+        self.size_text = ft.Text("", size=12, color=Theme.TEXT_SECONDARY)
+        self.source_text = ft.Text("", size=12, color=Theme.TEXT_SECONDARY)
 
         # Meta tags container (e.g. Duration, Quality hint)
         self.meta_row = ft.Row(
@@ -79,6 +83,15 @@ class DownloadPreviewCard(ft.Container):
             ],
             spacing=5,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+        self.detail_row = ft.Row(
+            [
+                self._meta_chip(ft.icons.HIGH_QUALITY_ROUNDED, self.format_text),
+                self._meta_chip(ft.icons.SD_STORAGE_ROUNDED, self.size_text),
+                self._meta_chip(ft.icons.PUBLIC_ROUNDED, self.source_text),
+            ],
+            spacing=8,
+            wrap=True,
         )
 
         self.content = ft.Row(
@@ -103,7 +116,8 @@ class DownloadPreviewCard(ft.Container):
                             ),
                             ft.Container(height=10),
                             self.meta_row,
-                            # We could add a "Ready to Download" badge here
+                            ft.Container(height=6),
+                            self.detail_row,
                         ],
                         expand=True,
                         alignment=ft.MainAxisAlignment.START,
@@ -115,6 +129,20 @@ class DownloadPreviewCard(ft.Container):
             alignment=ft.MainAxisAlignment.START,
             vertical_alignment=ft.CrossAxisAlignment.START,
             spacing=0,
+        )
+
+    @staticmethod
+    def _meta_chip(icon: str, text: ft.Text) -> ft.Container:
+        return ft.Container(
+            content=ft.Row(
+                [ft.Icon(icon, size=14, color=Theme.Primary.MAIN), text],
+                spacing=5,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            padding=ft.padding.symmetric(horizontal=10, vertical=6),
+            border=ft.border.all(1, Theme.BORDER),
+            border_radius=8,
+            bgcolor=Theme.BG_SURFACE_VARIANT,
         )
 
     def update_info(self, info: dict):
@@ -136,6 +164,20 @@ class DownloadPreviewCard(ft.Container):
             str(duration) if duration else LM.get("not_available")
         )
         self.author_text.value = info.get("uploader", LM.get("unknown_channel"))
+        self.format_text.value = (
+            info.get("resolution")
+            or info.get("format_note")
+            or info.get("ext")
+            or LM.get("status_unknown")
+        )
+        file_size = (
+            info.get("filesize")
+            or info.get("filesize_approx")
+            or info.get("size")
+            or info.get("file_size")
+        )
+        self.size_text.value = format_file_size(file_size)
+        self.source_text.value = info.get("extractor_key") or info.get("extractor") or "yt-dlp"
 
         self.visible = True
         self.update()

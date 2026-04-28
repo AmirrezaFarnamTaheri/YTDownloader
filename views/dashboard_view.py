@@ -195,6 +195,15 @@ class DashboardView(BaseView):
 
         self.controls = [self.content_area]
 
+    @staticmethod
+    def _safe_update(control) -> None:
+        """Update a Flet control only after it is mounted on a page."""
+        try:
+            if getattr(control, "page", None):
+                control.update()
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.debug("Deferred dashboard control update: %s", exc)
+
     def _build_header_section(self):
         """Builds the top section with Greeting and Quick Actions."""
 
@@ -397,7 +406,7 @@ class DashboardView(BaseView):
         self.activity_chart.bottom_axis.labels = labels
         # Adjust Y axis max to fit data + buffer, min 5
         self.activity_chart.max_y = max(max_count + 2, 5)
-        self.activity_chart.update()
+        self._safe_update(self.activity_chart)
 
     def _refresh_stats(self):
         """Updates download statistics from queue manager."""
@@ -455,7 +464,7 @@ class DashboardView(BaseView):
                 ft.PieChartSection(value=used, color=Theme.ACCENT, radius=20, title=""),
             ]
 
-            self.storage_chart.update()
+            self._safe_update(self.storage_chart)
 
             # Format values as strings for localization
             self.storage_text.value = LM.get(
@@ -553,6 +562,9 @@ class DashboardView(BaseView):
             total, _, free = shutil.disk_usage(".")
             free_pct = int((free / total) * 100) if total else 0
             sync_enabled = bool(state.config.get("auto_sync_enabled", False))
+            sync_running = bool(
+                getattr(state.sync_manager, "is_auto_sync_running", lambda: False)()
+            )
             ffmpeg_status = state.ffmpeg_available
             concurrency = str(state.config.get("max_concurrent_downloads", 3))
             cache_size = str(state.config.get("metadata_cache_size", 50))
@@ -570,11 +582,19 @@ class DashboardView(BaseView):
                 self._build_health_chip(
                     LM.get("sync", "Sync"),
                     (
-                        LM.get("enabled", "Enabled")
+                        LM.get("running", "Running")
+                        if sync_running
+                        else LM.get("enabled", "Enabled")
                         if sync_enabled
                         else LM.get("disabled", "Disabled")
                     ),
-                    Theme.Status.INFO if sync_enabled else Theme.Text.SECONDARY,
+                    (
+                        Theme.Status.SUCCESS
+                        if sync_running
+                        else Theme.Status.INFO
+                        if sync_enabled
+                        else Theme.Text.SECONDARY
+                    ),
                 ),
                 self._build_health_chip(
                     LM.get("concurrency", "Concurrency"),

@@ -15,3 +15,9 @@ def test_no_legacy_imports():
     """Verify that old import paths raise ImportError."""
     with pytest.raises(ImportError):
         import downloader.utils.constants
+
+
+def test_generic_downloader_has_no_legacy_function_wrapper():
+    import downloader.engines.generic as generic
+
+    assert not hasattr(generic, "download_generic")

@@ -1,65 +1,87 @@
-# Installation Guide
+# Installation
 
-## Prebuilt Releases
+## Recommended: Prebuilt Release
 
-Download binaries from:
+Download the latest release from:
 
-- <https://github.com/AmirrezaFarnamTaheri/YTDownloader/releases>
+<https://github.com/AmirrezaFarnamTaheri/YTDownloader/releases>
 
-## Windows (Installer / EXE)
+### Windows
 
-1. Download `StreamCatch-Windows-Installer.exe` (or `StreamCatch_Setup_vX.Y.Z.exe`).
-2. Run installer and follow prompts.
-3. Launch StreamCatch from Start Menu.
+1. Download `StreamCatch_Setup_vX.Y.Z.exe`.
+2. Run the installer.
+3. Launch StreamCatch from the Start Menu or the optional desktop shortcut.
 
-Standalone binary builds place `StreamCatch.exe` in `dist/`.
+The Windows installer installs one standalone executable:
 
-## Linux (Debian/Ubuntu)
+```text
+StreamCatch.exe
+```
 
-1. Download `StreamCatch-Linux-amd64.deb`.
-2. Install:
+The release build embeds app assets, icons, and locale files into the onefile
+Nuitka executable, so no separate `assets/` or `locales/` folders are required
+beside the installed EXE.
+
+### Linux
+
+1. Download the Linux release artifact.
+2. If using a Debian package, install with:
 
 ```bash
 sudo dpkg -i StreamCatch-Linux-amd64.deb
 sudo apt-get install -f
 ```
 
-3. Launch via app menu or `streamcatch` command.
+3. Launch from the app menu or the `streamcatch` command.
 
-## macOS
+### macOS
 
-1. Download `StreamCatch-macOS.dmg`.
-2. Open DMG and drag app into `Applications`.
-3. If needed, approve app under macOS Security settings.
+1. Download the DMG release artifact.
+2. Open the DMG and drag StreamCatch into `Applications`.
+3. If macOS blocks first launch, approve it in System Settings.
 
-## Android (APK)
+### Android
 
-1. Download `StreamCatch-Android.apk` from Releases.
-2. Enable trusted/unknown-source install on your device.
-3. Install APK and launch.
+1. Download `StreamCatch-Android.apk`.
+2. Allow installation from trusted downloaded files.
+3. Install and launch.
+
+## Optional System Dependency
+
+FFmpeg is strongly recommended for format conversion, muxing, audio extraction,
+thumbnail embedding, and other post-processing tasks. Some downloads still work
+without FFmpeg, but the best StreamCatch experience assumes it is installed.
+
+## Run From Source
+
+```bash
+git clone https://github.com/AmirrezaFarnamTaheri/YTDownloader.git
+cd YTDownloader
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+python main.py
+```
+
+On macOS/Linux:
+
+```bash
+source .venv/bin/activate
+```
 
 ## Build From Source
 
-### App Runtime
+Desktop onefile build:
 
 ```bash
-python3 -m pip install -r requirements.txt
-python3 main.py
+python scripts/build_installer.py
 ```
 
-### Desktop Native Build
+Windows installer generation requires Inno Setup. Without Inno Setup, the build
+still produces the standalone executable under `dist/`.
+
+Mobile build:
 
 ```bash
-python3 scripts/build_installer.py
+python scripts/build_mobile.py --target apk
 ```
-
-### Android APK Build
-
-```bash
-python3 scripts/build_mobile.py --target apk
-```
-
-## Notes
-
-- FFmpeg is recommended for full post-processing features.
-- Mobile builds require Flutter/Flet mobile toolchain availability.

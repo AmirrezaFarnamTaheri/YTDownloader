@@ -100,3 +100,44 @@ class TestSyncManager(unittest.TestCase):
         resolved = manager._resolve_history_db_path()
 
         self.assertEqual(resolved, os.path.expanduser("~/.streamcatch/history.db"))
+
+    def test_config_snapshot_strips_sensitive_values(self):
+        manager = SyncManager(self.mock_cloud, {
+            "theme": "dark",
+            "cookies": "secret-cookie",
+            "api_token": "secret-token",
+            "nested": {"password": "secret", "safe": "value"},
+        })
+
+        snapshot = manager._get_config_snapshot()
+
+        self.assertEqual(snapshot["theme"], "dark")
+        self.assertNotIn("cookies", snapshot)
+        self.assertNotIn("api_token", snapshot)
+        self.assertEqual(snapshot["nested"], {"safe": "value"})
+
+    def test_apply_config_snapshot_strips_sensitive_values_before_save(self):
+        config = MagicMock()
+        manager = SyncManager(self.mock_cloud, config)
+
+        manager._apply_config_snapshot(
+            {
+                "theme": "light",
+                "cookies": "secret-cookie",
+                "nested": {"refresh_token": "secret", "safe": "value"},
+            }
+        )
+
+        config.save_config.assert_called_once_with(
+            {"theme": "light", "nested": {"safe": "value"}}
+        )
+
+    def test_auto_sync_running_reflects_thread_state(self):
+        manager = SyncManager(self.mock_cloud, {"auto_sync_enabled": False})
+
+        self.assertFalse(manager.is_auto_sync_running())
+
+        manager._thread = MagicMock()
+        manager._thread.is_alive.return_value = True
+
+        self.assertTrue(manager.is_auto_sync_running())

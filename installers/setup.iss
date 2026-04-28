@@ -7,7 +7,7 @@
   #if EnvVersion != ""
     #define MyAppVersion EnvVersion
   #else
-    #define MyAppVersion "0.0.0"
+    #define MyAppVersion "2.0.0"
   #endif
 #endif
 #define MyAppPublisher "StreamCatch Team"
@@ -43,8 +43,6 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\dist\StreamCatch.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\locales\*"; DestDir: "{app}\locales"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

@@ -107,6 +107,20 @@ class SettingsView(BaseView):
             ),
         )
 
+        # Sync Section
+        self.auto_sync_switch = ft.Switch(
+            label=LM.get("auto_sync"),
+            value=self.config.get("auto_sync_enabled", False),
+            active_color=Theme.Primary.MAIN,
+        )
+
+        self.auto_sync_interval_input = ft.TextField(
+            label=LM.get("auto_sync_interval"),
+            value=str(self.config.get("auto_sync_interval", 3600.0)),
+            keyboard_type=ft.KeyboardType.NUMBER,
+            **Theme.get_input_decoration(prefix_icon=ft.icons.SYNC_ROUNDED),
+        )
+
         # Performance Section
         self.use_aria2c_switch = ft.Switch(
             label=LM.get("use_aria2c"),
@@ -204,6 +218,14 @@ class SettingsView(BaseView):
         self.content_column.controls.append(
             create_section(
                 LM.get("performance"), [self.use_aria2c_switch, self.gpu_accel_dd]
+            )
+        )
+
+        # Sync
+        self.content_column.controls.append(
+            create_section(
+                LM.get("sync_settings"),
+                [self.auto_sync_switch, self.auto_sync_interval_input],
             )
         )
 
@@ -331,7 +353,22 @@ class SettingsView(BaseView):
 
         language_before = self.config.get("language")
         clipboard_before = self.config.get("clipboard_monitor_enabled", False)
+        auto_sync_before = bool(self.config.get("auto_sync_enabled", False))
         language_after = self.language_dd.value
+
+        try:
+            auto_sync_interval = float(self.auto_sync_interval_input.value or 3600.0)
+            if auto_sync_interval <= 0:
+                raise ValueError
+        except Exception:  # pylint: disable=broad-exception-caught
+            if self.page:
+                self.page.open(
+                    ft.SnackBar(
+                        content=ft.Text(LM.get("invalid_auto_sync_interval")),
+                        bgcolor=Theme.Status.ERROR,
+                    )
+                )
+            return
 
         self.config["download_path"] = download_path_val
         self.config["proxy"] = proxy_val
@@ -349,7 +386,10 @@ class SettingsView(BaseView):
         self.config["language"] = language_after
         self.config["max_concurrent_downloads"] = max_concurrent
         clipboard_after = bool(self.clipboard_monitor_switch.value)
+        auto_sync_after = bool(self.auto_sync_switch.value)
         self.config["clipboard_monitor_enabled"] = clipboard_after
+        self.config["auto_sync_enabled"] = auto_sync_after
+        self.config["auto_sync_interval"] = auto_sync_interval
         ConfigManager.save_config(self.config)
         self.logger.info(
             "Settings saved (language=%s, max_concurrent=%s)",
@@ -388,6 +428,19 @@ class SettingsView(BaseView):
                     else "clipboard_monitor_disabled"
                 )
             )
+        try:
+            from app_state import state  # pylint: disable=import-outside-toplevel
+
+            if state.sync_manager:
+                state.sync_manager.auto_sync_interval = auto_sync_interval
+                if auto_sync_after and not auto_sync_before:
+                    state.sync_manager.start_auto_sync()
+                    messages.append(LM.get("auto_sync_started"))
+                elif not auto_sync_after and auto_sync_before:
+                    state.sync_manager.stop_auto_sync()
+                    messages.append(LM.get("auto_sync_stopped"))
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            self.logger.warning("Failed to apply auto-sync settings: %s", exc)
         if not concurrency_applied:
             messages.append(LM.get("concurrency_update_deferred"))
 

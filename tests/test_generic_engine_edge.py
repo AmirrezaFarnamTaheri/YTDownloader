@@ -150,6 +150,51 @@ class TestGenericDownloaderEdge(unittest.TestCase):
         if val is not None:
             self.assertEqual(val, 0)
 
+    @patch("downloader.engines.generic.validate_url")
+    @patch("downloader.engines.generic._SESSION.head")
+    def test_safe_redirects_revalidate_location(self, mock_head, mock_validate):
+        """Redirect targets are validated before a follow-up request is made."""
+        redirect_response = MagicMock()
+        redirect_response.status_code = 302
+        redirect_response.headers = {"Location": "http://127.0.0.1/private"}
+
+        mock_head.return_value = redirect_response
+        mock_validate.side_effect = lambda url, resolve_host=False: "127.0.0.1" not in url
+
+        with self.assertRaises(ValueError):
+            GenericDownloader._request_with_safe_redirects(
+                "head", "http://example.com/file", timeout=10
+            )
+
+        self.assertEqual(mock_head.call_count, 1)
+        redirect_response.close.assert_called_once()
+
+    @patch("downloader.engines.generic.validate_url", return_value=True)
+    @patch("downloader.engines.generic._SESSION.head")
+    def test_safe_redirects_resolves_relative_location(
+        self, mock_head, mock_validate
+    ):
+        redirect_response = MagicMock()
+        redirect_response.status_code = 302
+        redirect_response.headers = {"Location": "/next/file.mp4"}
+
+        final_response = MagicMock()
+        final_response.status_code = 200
+        final_response.headers = {}
+
+        mock_head.side_effect = [redirect_response, final_response]
+
+        response = GenericDownloader._request_with_safe_redirects(
+            "head", "http://example.com/start", timeout=10
+        )
+
+        self.assertIs(response, final_response)
+        self.assertEqual(
+            mock_head.call_args_list[1][0][0], "http://example.com/next/file.mp4"
+        )
+        redirect_response.close.assert_called_once()
+        self.assertEqual(mock_validate.call_count, 2)
+
     @patch("os.path.commonpath")
     def test_verify_path_security_different_drive(self, mock_commonpath):
         """Test security check with different drive error."""

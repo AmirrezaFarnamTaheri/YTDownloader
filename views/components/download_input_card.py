@@ -11,6 +11,7 @@ import flet as ft
 
 from localization_manager import LocalizationManager as LM
 from theme import Theme
+from ui_utils import normalize_download_target
 from views.components.panels.base_panel import BasePanel
 from views.components.panels.generic_panel import GenericPanel
 from views.components.panels.instagram_panel import InstagramPanel
@@ -37,8 +38,32 @@ class DownloadInputCard(ft.Container):
         self.state = app_state
         self.on_options_changed = on_options_changed
         self.current_panel: BasePanel | None = None
+        self._default_output_template = self._get_default_output_template()
 
         # --- Controls ---
+        self.profile_dd = ft.Dropdown(
+            label=LM.get("download_profile"),
+            width=220,
+            value="best",
+            options=[
+                ft.dropdown.Option("best", LM.get("profile_best")),
+                ft.dropdown.Option("fast_720p", LM.get("profile_fast_720p")),
+                ft.dropdown.Option("audio_mp3", LM.get("profile_audio_mp3")),
+                ft.dropdown.Option("archive", LM.get("profile_archive")),
+            ],
+            on_change=self._on_profile_change,
+            tooltip=LM.get("download_profile_tooltip"),
+            **Theme.get_input_decoration(
+                hint_text=LM.get("download_profile"), prefix_icon=ft.icons.TUNE_ROUNDED
+            ),
+        )
+
+        self.profile_hint = ft.Text(
+            LM.get("profile_best_hint"),
+            size=12,
+            color=Theme.TEXT_MUTED,
+        )
+
         # 1. URL Input
         self.url_input = ft.TextField(
             label=LM.get("video_url_label"),
@@ -113,7 +138,28 @@ class DownloadInputCard(ft.Container):
             ),
         )
 
+        self.output_template_input = ft.TextField(
+            label=LM.get("output_template"),
+            value=self._default_output_template,
+            expand=True,
+            tooltip=LM.get("output_template_tooltip"),
+            **Theme.get_input_decoration(
+                hint_text="%(title)s.%(ext)s",
+                prefix_icon=ft.icons.TEXT_FIELDS_ROUNDED,
+            ),
+        )
+
         self._build_ui()
+
+    def _get_default_output_template(self) -> str:
+        try:
+            config = getattr(self.state, "config", {})
+            value = config.get("output_template", "%(title)s.%(ext)s")
+            if isinstance(value, str) and value.strip():
+                return value
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+        return "%(title)s.%(ext)s"
 
     def _build_ui(self):
         # Input Area
@@ -124,7 +170,23 @@ class DownloadInputCard(ft.Container):
         )
 
         advanced_row = ft.Row(
-            [self.time_start, self.time_end, self.cookies_dd], spacing=10, wrap=True
+            [self.time_start, self.time_end, self.cookies_dd],
+            spacing=10,
+            wrap=True,
+        )
+
+        profile_row = ft.Row(
+            [
+                self.profile_dd,
+                ft.Container(
+                    content=self.profile_hint,
+                    padding=ft.padding.only(top=8),
+                    expand=True,
+                ),
+            ],
+            spacing=10,
+            wrap=True,
+            vertical_alignment=ft.CrossAxisAlignment.START,
         )
 
         # Advanced Options Section using ExpansionTile
@@ -133,7 +195,8 @@ class DownloadInputCard(ft.Container):
             controls=[
                 ft.Container(
                     content=ft.Column(
-                        [advanced_row, self.force_generic_cb], spacing=10
+                        [advanced_row, self.output_template_input, self.force_generic_cb],
+                        spacing=10,
                     ),
                     padding=10,
                 )
@@ -150,6 +213,7 @@ class DownloadInputCard(ft.Container):
         self.content = ft.Column(
             [
                 url_row,
+                profile_row,
                 ft.Divider(height=1, color=Theme.Divider.COLOR),
                 # Dynamic Options Panel
                 self.options_container,
@@ -168,21 +232,38 @@ class DownloadInputCard(ft.Container):
         if self.on_paste_callback:
             self.on_paste_callback(e)
 
+    def _on_profile_change(self, e):
+        # pylint: disable=unused-argument
+        profile = self.profile_dd.value or "best"
+        hints = {
+            "best": LM.get("profile_best_hint"),
+            "fast_720p": LM.get("profile_fast_720p_hint"),
+            "audio_mp3": LM.get("profile_audio_mp3_hint"),
+            "archive": LM.get("profile_archive_hint"),
+        }
+        self.profile_hint.value = hints.get(profile, hints["best"])
+
+        if self.current_panel and hasattr(self.current_panel, "apply_profile"):
+            self.current_panel.apply_profile(profile)
+        self.update()
+
     # pylint: disable=unused-argument
     def _on_fetch_click(self, e):
         url = self.url_input.value.strip() if self.url_input.value else ""
         if url:
-            # Natural Language / Search Detection
-            # If it doesn't start with http/https/rtmp/etc, treat as search
-            if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", url):
+            target = normalize_download_target(url)
+            if not target:
+                self.url_input.error_text = LM.get("error_invalid_url")
+                self.update()
+                return
+
+            if target != url and not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", url):
                 logger.info("Non-URL input detected, using ytsearch1 prefix: %s", url)
-                url = f"ytsearch1:{url}"
-                # Optionally update UI to show it's searching
 
             self.fetch_btn.disabled = True
             self.url_input.error_text = None
             self.update()
-            self.on_fetch(url)
+            self.on_fetch(target)
         else:
             self.url_input.error_text = LM.get("url_required")
             self.update()
@@ -216,6 +297,9 @@ class DownloadInputCard(ft.Container):
         self.time_start.value = ""
         self.time_end.disabled = True
         self.time_end.value = ""
+        self.output_template_input.value = self._get_default_output_template()
+        self.profile_dd.value = "best"
+        self.profile_hint.value = LM.get("profile_best_hint")
         self.update()
 
     def update_video_info(self, info: dict | None):
@@ -256,6 +340,9 @@ class DownloadInputCard(ft.Container):
             "end_time": self.time_end.value,
             "cookies_from_browser": cookies,
             "force_generic": self.force_generic_cb.value,
+            "download_profile": self.profile_dd.value or "best",
+            "output_template": self.output_template_input.value
+            or self._default_output_template,
         }
 
         if self.current_panel:

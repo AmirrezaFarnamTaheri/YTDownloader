@@ -17,7 +17,7 @@ from downloader.info import get_video_info
 from downloader.types import DownloadOptions, DownloadStatus
 from localization_manager import LocalizationManager as LM
 from queue_manager import CancelToken
-from ui_utils import get_default_download_path
+from ui_utils import get_default_download_path, run_on_ui_thread
 
 logger = logging.getLogger(__name__)
 
@@ -190,8 +190,23 @@ class DownloadJob:
         video_fmt = self.item.get("video_format", "best")
         if self.item.get("audio_only", False):
             video_fmt = "audio"
+        audio_fmt = self.item.get("audio_format")
 
-        tpl = app_state.state.config.get("output_template")
+        profile = self.item.get("download_profile")
+        if profile == "fast_720p":
+            video_fmt = "720p"
+        elif profile == "audio_mp3":
+            video_fmt = "audio"
+            audio_fmt = audio_fmt or "mp3"
+        elif profile == "archive":
+            self.item["playlist"] = True
+            self.item["sponsorblock"] = False
+            self.item["split_chapters"] = True
+
+        tpl = self.item.get("output_template") or app_state.state.config.get(
+            "output_template"
+        )
+        split_chapters = self.item.get("split_chapters", self.item.get("chapters"))
 
         return DownloadOptions(
             url=self.url,
@@ -203,14 +218,19 @@ class DownloadJob:
             cookies_from_browser=cookies,
             cancel_token=self.cancel_token,
             video_format=video_fmt,
-            audio_format=self.item.get("audio_format"),
+            audio_format=audio_fmt,
             start_time=self.item.get("start_time"),
             end_time=self.item.get("end_time"),
             force_generic=self.item.get("force_generic", False),
             output_template=tpl if tpl else "%(title)s.%(ext)s",
             sponsorblock=self.item.get("sponsorblock", False),
+            subtitle_lang=self.item.get("subtitle_lang"),
+            split_chapters=bool(split_chapters),
             use_aria2c=self.item.get("use_aria2c", False),
             gpu_accel=self.item.get("gpu_accel"),
+            download_profile=profile,
+            download_item=self.item,
+            filename=self.item.get("filename"),
         )
 
     def _progress_hook(self, d):
@@ -275,7 +295,7 @@ class DownloadJob:
                 )
             )
 
-        self.page.run_task(show)
+        run_on_ui_thread(self.page, show)
 
     def _notify_error(self):
         async def show():
@@ -286,7 +306,7 @@ class DownloadJob:
                 )
             )
 
-        self.page.run_task(show)
+        run_on_ui_thread(self.page, show)
 
 
 def process_queue(page: ft.Page | None) -> None:
@@ -301,54 +321,58 @@ def process_queue(page: ft.Page | None) -> None:
     if not qm:
         return
 
-    # Check active count
     active_count = qm.get_active_count()
     max_workers = _get_max_workers()
-
     if active_count >= max_workers:
         return
 
-    # Attempt to acquire semaphore non-blocking
-    # pylint: disable=consider-using-with
-    if not _SUBMISSION_THROTTLE.acquire(blocking=False):
-        return
+    available_slots = max_workers - active_count
+    claimed_markers: set[str | int] = set()
 
-    item = None
-    submitted = False
+    def _job_wrapper(it: dict, pg: ft.Page | None, sem: threading.Semaphore):
+        try:
+            job = DownloadJob(it, pg)
+            job.run()
+        finally:
+            sem.release()
 
-    # Capture the semaphore used for acquisition to release it correctly
-    # even if global changes later (though configure_concurrency logic tries to handle it).
-    throttle_ref = _SUBMISSION_THROTTLE
+    for _ in range(available_slots):
+        # pylint: disable=consider-using-with
+        if not _SUBMISSION_THROTTLE.acquire(blocking=False):
+            break
 
-    try:
-        item = qm.claim_next_downloadable()
-        if not item:
-            return
+        item = None
+        submitted = False
+        throttle_ref = _SUBMISSION_THROTTLE
 
-        logger.info("Submitting job for %s (ID: %s)", item.get("url"), item.get("id"))
+        try:
+            item = qm.claim_next_downloadable()
+            if not item:
+                break
 
-        executor = _get_executor()
+            marker: str | int = id(item)
+            if marker in claimed_markers:
+                logger.warning("Queue returned a duplicate claimed item: %s", marker)
+                break
+            claimed_markers.add(marker)
 
-        def _job_wrapper(it: dict, pg: ft.Page | None, sem: threading.Semaphore):
-            try:
-                job = DownloadJob(it, pg)
-                job.run()
-            finally:
-                sem.release()
+            logger.info(
+                "Submitting job for %s (ID: %s)", item.get("url"), item.get("id")
+            )
 
-        # Cast item to dict to satisfy mypy if needed, though TypedDict should be fine.
-        # But if submit expects dict[Any, Any], TypedDict might be strictly incompatible in some Mypy versions.
-        executor.submit(_job_wrapper, cast(dict, item), page, throttle_ref)
-        submitted = True
+            executor = _get_executor()
+            executor.submit(_job_wrapper, cast(dict, item), page, throttle_ref)
+            submitted = True
 
-    except Exception:
-        # pylint: disable=unsupported-membership-test, unsubscriptable-object
-        if item and "id" in item:
-            qm.update_item_status(item["id"], DownloadStatus.QUEUED)
-        raise
-    finally:
-        if not submitted:
-            throttle_ref.release()
+        except Exception:
+            # pylint: disable=unsupported-membership-test, unsubscriptable-object
+            if item and "id" in item:
+                qm.update_item_status(item["id"], DownloadStatus.QUEUED)
+            raise
+        finally:
+            if not submitted:
+                throttle_ref.release()
+                break
 
 
 def fetch_info_task(url: str, view_card: Any, page: Any) -> None:
@@ -381,7 +405,7 @@ def fetch_info_task(url: str, view_card: Any, page: Any) -> None:
                 view_card.set_fetch_disabled(False)
                 page.open(ft.SnackBar(content=ft.Text(LM.get("info_fetched_success"))))
 
-            page.run_task(update_ui)
+            run_on_ui_thread(page, update_ui)
 
     except Exception as e:
         error_message = str(e)
@@ -399,4 +423,4 @@ def fetch_info_task(url: str, view_card: Any, page: Any) -> None:
                     )
                 )
 
-            page.run_task(show_error)
+            run_on_ui_thread(page, show_error)

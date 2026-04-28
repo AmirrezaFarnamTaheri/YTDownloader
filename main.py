@@ -135,6 +135,8 @@ def main(pg: ft.Page) -> None:
         CONTROLLER.start_background_loop()
         if state.clipboard_monitor_active:
             CONTROLLER.start_clipboard_monitor()
+        if state.config.get("auto_sync_enabled", False) and state.sync_manager:
+            state.sync_manager.start_auto_sync()
 
         def cleanup_on_disconnect(e: Any) -> None:
             # pylint: disable=unused-argument
@@ -276,7 +278,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if os.environ.get("FLET_WEB"):
-        ft.app(target=main, view=ft.WEB_BROWSER, port=8550)
+        web_port = int(os.environ.get("FLET_SERVER_PORT", "8550"))
+        ft.app(target=main, view=ft.WEB_BROWSER, port=web_port)
     else:
         try:
             ft.app(target=main)

@@ -28,7 +28,8 @@ Fetches metadata without downloading media.
 
 ### `tasks.process_queue(page: ft.Page | None) -> None`
 
-Attempts to claim and submit a queue item to the executor respecting throttling and max concurrency.
+Attempts to claim and submit as many queued items as available concurrency allows,
+respecting throttling and max concurrency.
 
 ### `tasks.fetch_info_task(url: str, view_card: Any, page: Any) -> None`
 

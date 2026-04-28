@@ -103,6 +103,16 @@ class TestYouTubePanel:
         assert opts["sponsorblock"] is True
         assert opts["subtitle_lang"] == "en"
 
+    def test_archive_profile_updates_controls(self):
+        info = {"_type": "playlist", "title": "Test Playlist"}
+        panel = YouTubePanel(info, lambda: None)
+
+        panel.apply_profile("archive")
+
+        assert panel.playlist_cb.value is True
+        assert panel.chapters_cb.value is True
+        assert panel.sponsorblock_cb.value is False
+
     def test_build(self, panel):
         container = panel.build()
         assert isinstance(container, ft.Container)

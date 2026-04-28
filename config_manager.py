@@ -145,7 +145,8 @@ class ConfigManager:
 
         if "output_template" in config:
             val = config["output_template"]
-            if ".." in val.split(os.path.sep) or ".." in val.split("/"):
+            parts = Path(val).parts
+            if any(part in ("", ".", "..") for part in parts):
                 raise ValueError("output_template must not contain '..'")
             try:
                 if Path(val).is_absolute():
@@ -215,6 +216,10 @@ class ConfigManager:
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Failed to load config: %s", e)
                 return config
+
+        env_download_path = os.environ.get("STREAMCATCH_DOWNLOAD_PATH")
+        if env_download_path and not config.get("download_path"):
+            config["download_path"] = env_download_path
 
         return config
 

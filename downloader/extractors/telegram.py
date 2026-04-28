@@ -8,13 +8,13 @@ import logging
 import re
 from collections.abc import Callable
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup, Tag
 
 from downloader.constants import RESERVED_FILENAMES
-from ui_utils import validate_url
+from ui_utils import safe_request_with_redirects, validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,14 @@ class TelegramExtractor:
     @staticmethod
     def is_telegram_url(url: str) -> bool:
         """Check if URL is a supported Telegram link."""
-        return "t.me/" in url and validate_url(url)
+        if not validate_url(url):
+            return False
+        try:
+            parsed = urlparse(url)
+            host = (parsed.hostname or "").lower().strip(".")
+            return host in {"t.me", "www.t.me", "telegram.me", "www.telegram.me"}
+        except Exception:  # pylint: disable=broad-exception-caught
+            return False
 
     @staticmethod
     def get_metadata(url: str) -> dict[str, Any] | None:
@@ -43,8 +50,8 @@ class TelegramExtractor:
             }
 
             # Use stream=True to prevent loading large responses into memory
-            with requests.get(
-                url, headers=headers, timeout=10, stream=True
+            with safe_request_with_redirects(
+                "GET", url, headers=headers, timeout=10, stream=True
             ) as response:
                 response.raise_for_status()
 
@@ -98,7 +105,7 @@ class TelegramExtractor:
                 return None
 
             # Security: Validate the extracted URL to prevent SSRF via redirection
-            if not validate_url(video_url):
+            if not validate_url(video_url, resolve_host=True):
                 logger.warning(
                     "Extracted Telegram video URL failed validation: %s", video_url
                 )

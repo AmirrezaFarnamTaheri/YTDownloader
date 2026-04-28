@@ -127,11 +127,15 @@ class HistoryManager:
             logger.error("Failed to initialize/migrate history DB: %s", e)
 
     def _init_db(self):
-        """Instance level init (for backward compat if needed, or delegation)."""
+        """Instance-level database initialization."""
         HistoryManager.init_db()
 
     def add_entry(self, entry: dict[str, Any]) -> None:
         """Adds a new entry to the history."""
+        if not entry.get("url") or not entry.get("status"):
+            logger.warning("Ignoring incomplete history entry: %s", entry)
+            return
+
         try:
             with self._get_connection() as conn:
                 conn.execute(
@@ -344,8 +348,8 @@ class HistoryManager:
                 # We stored file_size as string "XX MB".
                 # For accurate stats we should store bytes in future.
                 # Here we just count entries for now.
-        except sqlite3.Error:
-            pass
+        except sqlite3.Error as e:
+            logger.warning("Failed to get aggregate history stats: %s", e)
         return stats
 
     def export_to_json(self, filepath: str):

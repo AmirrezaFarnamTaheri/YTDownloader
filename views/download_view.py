@@ -210,9 +210,9 @@ class DownloadView(BaseView):
         # pylint: disable=unused-argument
         data = self.input_card.get_options()
 
-        # Add output template from global config if not present (although input card doesn't handle template yet)
+        # Add output template from global config only when the per-item field is empty.
         template = self.state.config.get("output_template", "%(title)s.%(ext)s")
-        data["output_template"] = template
+        data["output_template"] = data.get("output_template") or template
 
         # Add defaults
         data.setdefault("video_format", "best")
@@ -220,6 +220,7 @@ class DownloadView(BaseView):
         data.setdefault("subtitle_lang", None)
         data.setdefault("playlist", False)
         data.setdefault("sponsorblock", False)
+        data.setdefault("split_chapters", data.get("chapters", False))
 
         # Add title from fetched info if available
         if self.video_info:

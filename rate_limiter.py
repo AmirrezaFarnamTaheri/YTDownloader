@@ -33,6 +33,11 @@ class RateLimiter:
             capacity: The maximum number of tokens the bucket can hold.
                       Default 5.0 means we can burst up to 5 actions instantly.
         """
+        if rate <= 0:
+            raise ValueError("rate must be positive")
+        if capacity <= 0:
+            raise ValueError("capacity must be positive")
+
         self._rate = rate
         self._capacity = capacity
         self._tokens = capacity
@@ -50,6 +55,9 @@ class RateLimiter:
         Returns:
             bool: True if allowed, False if rate limited.
         """
+        if cost <= 0:
+            raise ValueError("cost must be positive")
+
         with self._lock:
             now = time.time()
             # Calculate time passed since last check

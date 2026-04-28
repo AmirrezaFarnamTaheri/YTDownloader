@@ -1,85 +1,66 @@
 # Troubleshooting
 
-## Build Issues
+## App Does Not Start
 
-### `Nuitka not installed` / desktop build fails
-
-```bash
-python3 -m pip install -r requirements-dev.txt
-```
-
-Then rerun:
+Run from a terminal:
 
 ```bash
-python3 scripts/build_installer.py
+python main.py
 ```
 
-### `Flet CLI not found` during APK build
-
-Ensure mobile requirements are installed and `flet` is on PATH:
+Check the log file and crash output. If running from source, confirm
+dependencies are installed:
 
 ```bash
-python3 -m pip install -r requirements-mobile.txt
-python3 scripts/build_mobile.py --target apk
+python -m pip install -r requirements.txt
 ```
 
-## Runtime Issues
+## Metadata Fetch Fails
 
-### FFmpeg missing
+- Confirm the URL is public and reachable.
+- Try browser cookies for sites that require login.
+- Try adding the item to the queue anyway if the source supports direct
+  download through yt-dlp.
+- Update yt-dlp.
 
-Symptoms: merge/postprocess/subtitle embedding fails.
+```bash
+python -m pip install -U yt-dlp
+```
 
-- Windows: add `ffmpeg.exe` to PATH.
-- Linux: `sudo apt install ffmpeg`
-- macOS: `brew install ffmpeg`
+## Downloads Fail During Post-Processing
 
-### Metadata fetch fails
+Install FFmpeg and make sure it is on `PATH`.
 
-- Verify URL in browser first.
-- Try browser-cookie selection for restricted content.
-- Try `Force Generic` for direct-file links.
+```bash
+ffmpeg -version
+```
 
-### Download starts then errors
+## Windows Installer Is Missing
 
-- Check proxy/rate-limit settings.
-- Validate free disk space.
-- Confirm output path exists and is writable.
+`scripts/build_installer.py` always tries to build the standalone EXE. The Inno
+Setup installer is produced only when `iscc` is installed and discoverable.
 
-## Queue/UI Issues
+```bash
+python scripts/build_installer.py --dry-run --skip-installer
+```
 
-### Queue appears stuck
+## Build Fails Before Nuitka Starts
 
-- Check if items are `Paused` and press `Resume All`.
-- Check if items are `Scheduled` for a future time.
-- Review logs for throttling or network errors.
+The build script checks runtime dependencies for self-contained releases. Install
+requirements:
 
-### Blank/incorrect UI state
+```bash
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+```
 
-- Resize app window to force layout refresh.
-- Toggle theme mode once in Settings.
-- Restart app after changing language.
+## Tests Say Flet Is Mocked
 
-## Sync/Import Issues
+That means the local environment does not have real Flet installed. The test
+suite can still validate most logic, but a release pass should include a manual
+launch with real Flet installed.
 
-### Import rejected due invalid archive
+## Sync Export Contains No Cookies
 
-- Ensure zip contains `config.json` and optional `history.db`.
-- Avoid archives with nested/unsafe paths.
-
-### Cloud auth failures
-
-- Ensure Google credentials file exists at configured path.
-- In CI/headless, pre-provision credentials where interactive auth is impossible.
-
-## Logs
-
-- App logs: `ytdownloader.log`
-- Crash reports:
-  - Linux/macOS: `~/.streamcatch/crash.log`
-  - Windows: `%USERPROFILE%\.streamcatch\crash.log`
-
-When opening an issue, include:
-
-- OS + app version
-- Steps to reproduce
-- Relevant log excerpts
+That is expected. Sync/export strips cookies, tokens, passwords, and similar
+secrets before writing payloads.

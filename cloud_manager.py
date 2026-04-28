@@ -165,7 +165,10 @@ class CloudManager:
         try:
             # Automatic authentication
             logger.debug("Authenticating with Google Drive...")
-            gauth = _google_auth_cls()
+            if self.settings_path and os.path.exists(self.settings_path):
+                gauth = _google_auth_cls(settings_file=self.settings_path)
+            else:
+                gauth = _google_auth_cls()
 
             # Try to load saved credentials
             mycreds_path = os.path.expanduser("~/.streamcatch/mycreds.txt")

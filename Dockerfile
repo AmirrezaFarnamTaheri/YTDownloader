@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV FLET_WEB=1
 ENV FLET_SERVER_PORT=8550
+ENV STREAMCATCH_DOWNLOAD_PATH=/app/downloads
 
 # Set work directory
 WORKDIR /app
@@ -48,7 +49,7 @@ USER streamcatch
 EXPOSE 8550
 
 # Healthcheck
-HEALTHCHECK CMD curl -f http://localhost:8550/ || exit 1
+HEALTHCHECK CMD curl -f "http://localhost:${FLET_SERVER_PORT}/" || exit 1
 
 # Run the application
 CMD ["python", "main.py"]

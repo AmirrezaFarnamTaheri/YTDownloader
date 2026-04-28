@@ -85,6 +85,29 @@ class TestCloudManagerPatched(unittest.TestCase):
         mock_file.SetContentFile.assert_called_with("test.txt")
         mock_file.Upload.assert_called()
 
+    @patch("os.path.exists")
+    @patch("cloud_manager._google_auth_cls")
+    @patch("cloud_manager._google_drive_cls")
+    def test_google_auth_uses_configured_settings_file(
+        self, MockDrive, MockAuth, mock_exists
+    ):
+        def side_effect(path):
+            return (
+                "client_secrets.json" in str(path)
+                or "settings.yaml" in str(path)
+                or "mycreds.txt" in str(path)
+            )
+
+        mock_exists.side_effect = side_effect
+        mock_gauth = MockAuth.return_value
+        mock_gauth.credentials = MagicMock()
+        mock_gauth.access_token_expired = False
+
+        self.manager._get_google_drive_client()
+
+        MockAuth.assert_called_with(settings_file=self.manager.settings_path)
+        MockDrive.assert_called_once_with(mock_gauth)
+
     @unittest.skipUnless(PYDRIVE2_AVAILABLE, "PyDrive2 not installed")
     @patch("os.path.exists")
     @patch("cloud_manager._google_auth_cls")

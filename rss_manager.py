@@ -13,7 +13,7 @@ from xml.etree import ElementTree as ET
 import requests
 from dateutil import parser as date_parser
 
-from ui_utils import validate_url
+from ui_utils import safe_request_with_redirects, validate_url
 
 try:
     from defusedxml.ElementTree import fromstring as safe_fromstring
@@ -21,6 +21,7 @@ except ImportError:
     safe_fromstring = None  # type: ignore
 
 logger = logging.getLogger(__name__)
+MAX_FEED_BYTES = 5 * 1024 * 1024
 
 
 def safe_log_warning(msg, *args):
@@ -147,6 +148,10 @@ class RSSManager:
 
     def add_feed(self, url: str):
         """Add a new RSS feed."""
+        if not validate_url(url, resolve_host=True):
+            safe_log_warning("Rejected invalid RSS feed URL: %s", url)
+            return
+
         with self._lock:
             if not any(f["url"] == url for f in self.feeds):
                 self.feeds.append({"url": url, "name": url})
@@ -172,18 +177,29 @@ class RSSManager:
     ) -> list[dict[str, Any]]:
         """Fetch and parse a single RSS feed safely."""
         try:
-            if not validate_url(url):
+            if not validate_url(url, resolve_host=True):
                 safe_log_warning("Invalid RSS feed URL blocked: %s", url)
                 return []
 
             logger.debug("Fetching RSS feed: %s", url)
             # Strict timeout
-            response = requests.get(url, timeout=(5, 10))
+            response = safe_request_with_redirects("GET", url, timeout=(5, 10))
             response.raise_for_status()
+            content_length = response.headers.get("Content-Length")
+            if content_length:
+                try:
+                    if int(content_length) > MAX_FEED_BYTES:
+                        safe_log_warning("RSS feed too large: %s", url)
+                        return []
+                except ValueError:
+                    pass
 
             # Use apparent_encoding for robustness against misconfigured servers
             response.encoding = response.apparent_encoding
             content_text = response.text
+            if len(content_text.encode(response.encoding or "utf-8", "ignore")) > MAX_FEED_BYTES:
+                safe_log_warning("RSS feed content exceeded limit: %s", url)
+                return []
 
             # Check for empty or excessively small content
             if not content_text or len(content_text.strip()) < 10:
@@ -257,7 +273,12 @@ class RSSManager:
 
             link_href = link.attrib.get("href") if link is not None else None
 
-            if title is not None and title.text and link_href:
+            if (
+                title is not None
+                and title.text
+                and link_href
+                and validate_url(link_href)
+            ):
                 items.append(
                     {
                         "title": title.text,
@@ -291,7 +312,13 @@ class RSSManager:
             link = item.find("link")
             pub_date = item.find("pubDate")
 
-            if title is not None and title.text and link is not None and link.text:
+            if (
+                title is not None
+                and title.text
+                and link is not None
+                and link.text
+                and validate_url(link.text)
+            ):
                 items.append(
                     {
                         "title": title.text,
@@ -383,7 +410,7 @@ class RSSManager:
             # OPML structure: opml -> body -> outline (recursive)
             for outline in root.findall(".//outline"):
                 xml_url = outline.attrib.get("xmlUrl")
-                if xml_url:
+                if xml_url and validate_url(xml_url):
                     if not any(f["url"] == xml_url for f in self.feeds):
                         # Use title or text or url as name
                         name = (

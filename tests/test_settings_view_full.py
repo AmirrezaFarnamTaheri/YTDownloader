@@ -64,6 +64,32 @@ class TestSettingsViewFull:
                                 assert view.config["max_concurrent_downloads"] == 5
                                 assert view.config["download_path"] == "/tmp/downloads"
 
+    def test_save_starts_auto_sync_when_enabled(self, view):
+        view.page = MagicMock()
+        view.download_path_input.value = "/tmp/downloads"
+        view.max_concurrent_input.value = "3"
+        view.auto_sync_switch.value = True
+        view.auto_sync_interval_input.value = "120"
+
+        fake_state = MagicMock()
+        fake_state.sync_manager = MagicMock()
+
+        with (
+            patch("views.settings_view.ConfigManager.save_config"),
+            patch("tasks.configure_concurrency", return_value=True),
+            patch("views.settings_view.validate_download_path", return_value=True),
+            patch("views.settings_view.validate_proxy", return_value=True),
+            patch("views.settings_view.validate_rate_limit", return_value=True),
+            patch("views.settings_view.validate_output_template", return_value=True),
+            patch("app_state.state", fake_state),
+        ):
+            view.save_settings(None)
+
+        assert view.config["auto_sync_enabled"] is True
+        assert view.config["auto_sync_interval"] == 120.0
+        assert fake_state.sync_manager.auto_sync_interval == 120.0
+        fake_state.sync_manager.start_auto_sync.assert_called_once()
+
     def test_save_invalid_download_path(self, view):
         view.page = MagicMock()
         view.download_path_input.value = "/invalid/path"

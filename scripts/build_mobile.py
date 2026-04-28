@@ -71,6 +71,11 @@ def _parse_args() -> argparse.Namespace:
         help="Do not temporarily replace requirements.txt with mobile requirements.",
     )
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the resolved Flet command without running the build.",
+    )
+    parser.add_argument(
         "--requirements-file",
         default="requirements.txt",
         help="Main requirements file path (default: requirements.txt).",
@@ -121,10 +126,10 @@ def _find_flet_executable() -> str:
     raise FileNotFoundError("Flet CLI not found. Install with: pip install flet")
 
 
-def _run_build(root: Path, args: argparse.Namespace) -> None:
+def _build_command(args: argparse.Namespace, *, resolve_cli: bool = True) -> list[str]:
     build_version = _normalize_version(args.build_version)
     cmd = [
-        _find_flet_executable(),
+        _find_flet_executable() if resolve_cli else "flet",
         "build",
         args.target,
         "--build-version",
@@ -152,9 +157,18 @@ def _run_build(root: Path, args: argparse.Namespace) -> None:
     if args.verbose:
         cmd.append("-v")
 
+    return cmd
+
+
+def _run_build(root: Path, args: argparse.Namespace) -> None:
+    cmd = _build_command(args, resolve_cli=not args.dry_run)
     env = os.environ.copy()
     env.setdefault("PYTHONIOENCODING", "utf-8")
     env.setdefault("FLET_CLI_NO_RICH_OUTPUT", "1")
+
+    if args.dry_run:
+        print(f"Build command: {' '.join(cmd)}")
+        return
 
     subprocess.check_call(cmd, cwd=str(root), env=env)
 
@@ -232,10 +246,15 @@ def main() -> None:
     ):
         _run_build(root, args)
 
+    if args.dry_run:
+        print("Dry run complete.")
+        return
+
     artifacts = _find_build_artifacts(root, args.target)
     if not artifacts:
         raise FileNotFoundError(
-            f"No {args.target.upper()} artifacts were found under {root / 'build'} after build."
+            f"No {args.target.upper()} artifacts were found under "
+            f"{root / 'build'} after build."
         )
 
     print("Build artifacts:")

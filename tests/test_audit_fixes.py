@@ -10,8 +10,16 @@ from unittest.mock import MagicMock, patch
 
 from batch_importer import BatchImporter
 from download_scheduler import DownloadScheduler
+from downloader.extractors.telegram import TelegramExtractor
 from downloader.types import DownloadOptions
-from ui_utils import is_safe_path, validate_output_template, validate_proxy
+from ui_utils import (
+    is_safe_path,
+    normalize_download_target,
+    validate_download_target,
+    validate_output_template,
+    validate_proxy,
+    validate_url,
+)
 
 
 class TestAuditFixes(unittest.TestCase):
@@ -79,6 +87,25 @@ class TestAuditFixes(unittest.TestCase):
         opts.filename = ".."
         with self.assertRaises(ValueError):
             opts.validate()
+
+    def test_search_targets_are_supported_without_weakening_url_validation(self):
+        """Plain search queries normalize to yt-dlp search pseudo-URLs."""
+        self.assertEqual(
+            normalize_download_target("funny cat videos"),
+            "ytsearch1:funny cat videos",
+        )
+        self.assertTrue(validate_download_target("ytsearch3:lofi beats"))
+        self.assertFalse(validate_download_target("ftp://example.com/video"))
+
+    def test_validate_url_allows_long_public_tlds(self):
+        """Modern TLDs longer than six characters should not be rejected."""
+        self.assertTrue(validate_url("https://example.technology/watch"))
+
+    def test_telegram_detection_requires_telegram_hostname(self):
+        self.assertTrue(TelegramExtractor.is_telegram_url("https://t.me/channel/1"))
+        self.assertFalse(
+            TelegramExtractor.is_telegram_url("https://example.com/path/t.me/channel")
+        )
 
     @patch("batch_importer.is_safe_path")
     @patch("pathlib.Path.exists")

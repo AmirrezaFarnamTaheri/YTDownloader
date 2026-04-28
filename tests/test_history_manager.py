@@ -74,8 +74,6 @@ class TestHistoryManager(unittest.TestCase):
         self.assertEqual(len(self.manager.get_history()), 0)
 
     def test_add_entry_validation(self):
-        # This test was expecting ValueError but HistoryManager logs error and continues.
-        # But if we want to test validation, we should ensure it handles bad input gracefully.
-        # HistoryManager.add_entry expects a dict.
-        # Legacy test passed args.
-        pass
+        self.manager.add_entry({})
+
+        self.assertEqual(self.manager.get_history(), [])

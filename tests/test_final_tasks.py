@@ -165,11 +165,29 @@ def test_process_queue_submission(mock_state):
 
                 process_queue(None)
 
-                # Should claim item
-                mock_state.queue_manager.claim_next_downloadable.assert_called_once()
+                # Should claim at least one item. The queue processor may keep
+                # draining available concurrency until the queue reports no work.
+                assert mock_state.queue_manager.claim_next_downloadable.call_count >= 1
 
                 # Should submit to executor
                 mock_exec.return_value.submit.assert_called_once()
+
+
+def test_process_queue_drains_available_slots(mock_state):
+    mock_state.queue_manager.get_active_count.return_value = 0
+    mock_state.queue_manager.claim_next_downloadable.side_effect = [
+        {"id": "1", "url": "http://one.test"},
+        {"id": "2", "url": "http://two.test"},
+        None,
+    ]
+
+    with patch("tasks._get_max_workers", return_value=3):
+        with patch("tasks._SUBMISSION_THROTTLE") as mock_sem:
+            mock_sem.acquire.return_value = True
+            with patch("tasks._get_executor") as mock_exec:
+                process_queue(None)
+
+                assert mock_exec.return_value.submit.call_count == 2
 
 
 def test_fetch_info_task_success(mock_state):
@@ -230,6 +248,9 @@ def test_download_job_options(mock_state):
         "rate_limit": "1M",
         "video_format": "audio",
         "audio_only": True,
+        "output_template": "%(uploader)s - %(title)s.%(ext)s",
+        "subtitle_lang": "en",
+        "split_chapters": True,
     }
     mock_state.config.get.return_value = None
 
@@ -246,6 +267,29 @@ def test_download_job_options(mock_state):
         assert options.proxy == "http://proxy"
         assert options.rate_limit == "1M"
         assert options.video_format == "audio"
+        assert options.output_template == "%(uploader)s - %(title)s.%(ext)s"
+        assert options.subtitle_lang == "en"
+        assert options.split_chapters is True
+
+
+def test_download_job_audio_profile_maps_to_backend_options(mock_state):
+    item = {
+        "id": "123",
+        "url": "http://test.com",
+        "download_profile": "audio_mp3",
+    }
+    mock_state.config.get.return_value = None
+
+    with patch("tasks.download_video") as mock_dv:
+        mock_dv.return_value = {"status": "finished"}
+        job = DownloadJob(item, None)
+        job.run()
+
+        options = mock_dv.call_args.args[0]
+
+        assert options.video_format == "audio"
+        assert options.audio_format == "mp3"
+        assert options.download_profile == "audio_mp3"
 
 
 def test_progress_hook(mock_state):

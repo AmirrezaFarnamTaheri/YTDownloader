@@ -1,68 +1,95 @@
 # StreamCatch
 
-StreamCatch (formerly YTDownloader) is a production-focused media downloader built with [Flet](https://flet.dev) + [yt-dlp](https://github.com/yt-dlp/yt-dlp), with queue orchestration, scheduling, history, cloud sync, and multi-platform packaging.
+StreamCatch is a desktop-first media downloader built with Flet and yt-dlp. It
+combines a queue manager, metadata preview, download profiles, history, RSS
+feeds, scheduling, cloud sync, localization, and native packaging.
 
 ![StreamCatch Banner](assets/logo.svg)
 
-## Highlights
+## What It Does
 
-- Multi-source downloads: YouTube + thousands of yt-dlp sites, Telegram public links, and direct file fallback.
-- Advanced queue lifecycle: queued/scheduled/allocating/downloading/processing/completed/error/cancelled.
-- Desktop-first UX: dashboard, queue controls, history, RSS, settings, localization, and accessibility options.
-- Security-conscious defaults: URL/proxy validation, path safety checks, config atomic writes, zip-slip protection.
-- Packaging pipeline: desktop native builds (`.exe`, `.dmg`, `.deb`) and mobile Android build (`.apk`).
+- Downloads from YouTube and other yt-dlp-supported sites.
+- Handles Telegram public media links and direct file URLs.
+- Supports search input through yt-dlp search targets.
+- Provides queue controls for start, cancel, retry, reorder, pause/resume, and
+  concurrent processing.
+- Offers download profiles, output templates, subtitles, sponsorblock,
+  chapter-splitting options, and browser-cookie selection.
+- Tracks history, recent activity, sync status, and RSS feed items.
+- Builds as a onefile desktop executable, with a Windows installer that installs
+  only the compiled EXE.
 
-## Documentation
+## Install
 
-- Wiki Home: [wiki/Home.md](wiki/Home.md)
-- Installation: [wiki/Installation.md](wiki/Installation.md)
-- User Guide: [wiki/User-Guide.md](wiki/User-Guide.md)
-- Developer Guide: [wiki/Developer-Guide.md](wiki/Developer-Guide.md)
-- Architecture: [wiki/Architecture.md](wiki/Architecture.md)
-- API: [wiki/API.md](wiki/API.md)
-- Troubleshooting: [wiki/Troubleshooting.md](wiki/Troubleshooting.md)
+For normal use, download the latest release from:
 
-## Quick Start (Source)
+<https://github.com/AmirrezaFarnamTaheri/YTDownloader/releases>
+
+Windows users should prefer `StreamCatch_Setup_vX.Y.Z.exe`. The installer places
+one standalone `StreamCatch.exe` on the machine; bundled app assets and locale
+files are embedded during the release build.
+
+FFmpeg is recommended for best audio/video post-processing support.
+
+## Run From Source
 
 ```bash
 git clone https://github.com/AmirrezaFarnamTaheri/YTDownloader.git
 cd YTDownloader
-python3 -m pip install -r requirements.txt
-python3 main.py
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+python main.py
 ```
 
-## Build Outputs
+On macOS/Linux, activate the environment with `source .venv/bin/activate`.
 
-### Desktop Native (EXE/DMG/Linux Binary)
+## Build
+
+Desktop onefile binary:
 
 ```bash
-python3 scripts/build_installer.py
+python scripts/build_installer.py
 ```
 
-- Windows output: `dist/StreamCatch.exe` (+ Inno Setup installer if `iscc` is available)
-- Linux output: `dist/streamcatch` (CI also packages `.deb`)
-- macOS output: `dist/StreamCatch.app` (CI also packages `.dmg`)
-
-### Android APK
+Windows installer:
 
 ```bash
-python3 scripts/build_mobile.py --target apk
+python scripts/build_installer.py
 ```
 
-- APKs are discovered under `build/` and printed by the script after build.
-- For CI/release automation, see `.github/workflows/build-mobile-flet.yml`.
+The same command builds `dist/StreamCatch.exe`; if Inno Setup is available on
+Windows, it also produces `installers/output/StreamCatch_Setup_vX.Y.Z.exe`.
 
-## Validation Commands
+Android APK:
 
 ```bash
-python3 -m pytest -q -s
-mypy .
-ruff check . --exclude tests
+python scripts/build_mobile.py --target apk
 ```
 
-## Contributing
+## Verify
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+```bash
+python -m compileall .
+pytest -q
+git diff --check
+python scripts/build_installer.py --dry-run --skip-installer
+python scripts/build_mobile.py --target apk --dry-run
+python -m ruff check .
+python -m mypy .
+```
+
+Install developer tooling with `python -m pip install -r requirements-dev.txt`.
+
+## Documentation
+
+- [Installation](wiki/Installation.md)
+- [User Guide](wiki/User-Guide.md)
+- [Developer Guide](wiki/Developer-Guide.md)
+- [Architecture](wiki/Architecture.md)
+- [Features](wiki/Features.md)
+- [Troubleshooting](wiki/Troubleshooting.md)
+- [Project Health](PROJECT_HEALTH.md)
 
 ## License
 

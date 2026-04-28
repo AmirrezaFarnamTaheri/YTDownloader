@@ -6,18 +6,22 @@ Includes robust validation and secure operations.
 # pylint: disable=too-many-return-statements
 
 import ipaddress
+import asyncio
+import inspect
 import logging
 import os
 import platform
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import threading
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import flet as ft
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +57,57 @@ def format_file_size(size_bytes: float | str | int | None) -> str:
         return "N/A"
 
 
-def validate_url(url: str) -> bool:
+def _host_is_public(hostname: str, resolve_host: bool = False) -> bool:
+    """Return whether a hostname/IP avoids local and private address ranges."""
+    host = hostname.strip().strip(".").lower()
+    if not host:
+        return False
+
+    if host in ("localhost", "127.0.0.1", "::1"):
+        return False
+
+    def _ip_allowed(value: str) -> bool:
+        ip = ipaddress.ip_address(value)
+        return not (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_multicast
+            or ip.is_reserved
+            or ip.is_unspecified
+        )
+
+    try:
+        return _ip_allowed(host)
+    except ValueError:
+        if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", host):
+            return False
+
+    labels = host.split(".")
+    if len(host) > 253 or len(labels) < 2:
+        return False
+
+    label_re = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$", re.IGNORECASE)
+    if any(not label_re.match(label) for label in labels):
+        return False
+
+    if resolve_host:
+        try:
+            addr_infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+        except OSError:
+            return False
+        for info in addr_infos:
+            addr = info[4][0]
+            try:
+                if not _ip_allowed(addr):
+                    return False
+            except ValueError:
+                return False
+
+    return True
+
+
+def validate_url(url: str, *, resolve_host: bool = False) -> bool:
     """
     Validate if URL is a valid http/https URL.
     Also implements strict SSRF protection by blocking private, loopback, link-local,
@@ -66,48 +120,159 @@ def validate_url(url: str) -> bool:
     if len(url) < 8 or len(url) > 2048:
         return False
 
-    # Strict regex for http/https
-    # Checks for scheme, domain (at least one dot or localhost), and optional path
-    # Does not allow user/pass in URL for UI safety
-    regex = re.compile(
-        r"^(?:http|https)://"  # http:// or https://
-        # pylint: disable=line-too-long
-        r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|"  # domain...
-        r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
-        r"(?::\d+)?"  # optional port
-        r"(?:/?|[/?]\S+)$",
-        re.IGNORECASE,
-    )
-
-    if not regex.match(url):
+    if any(ch.isspace() or ord(ch) < 32 for ch in url):
         return False
 
-    # Additional SSRF protection: block localhost and private/reserved IPs
     try:
         parsed = urlparse(url)
+        if parsed.scheme.lower() not in ("http", "https"):
+            return False
+        if not parsed.netloc or not parsed.hostname:
+            return False
+        if parsed.username or parsed.password:
+            return False
+        # Accessing .port raises ValueError for invalid ports.
+        if parsed.port is not None and not 1 <= parsed.port <= 65535:
+            return False
+
         hostname = parsed.hostname
-        if hostname:
-            if hostname.lower() in ("localhost", "127.0.0.1", "::1"):
-                return False
-            try:
-                ip = ipaddress.ip_address(hostname)
-                if (
-                    ip.is_private
-                    or ip.is_loopback
-                    or ip.is_link_local
-                    or ip.is_multicast
-                    or ip.is_reserved
-                ):
-                    return False
-            except ValueError:
-                # Reject invalid numeric IPs like 999.999.999.999
-                if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname):
-                    return False
-                # Not an IP, hostname is fine
+        if not _host_is_public(hostname, resolve_host=resolve_host):
+            return False
     except Exception:  # pylint: disable=broad-exception-caught
         return False
 
     return True
+
+
+_YTSEARCH_RE = re.compile(r"^ytsearch(?P<count>\d{0,2}):(?P<query>.+)$", re.I)
+
+
+def validate_search_target(value: str) -> bool:
+    """Validate a yt-dlp search pseudo-URL such as ytsearch1:lofi beats."""
+    if not isinstance(value, str):
+        return False
+    value = value.strip()
+    match = _YTSEARCH_RE.match(value)
+    if not match:
+        return False
+
+    count_text = match.group("count")
+    if count_text:
+        count = int(count_text)
+        if count < 1 or count > 50:
+            return False
+
+    query = match.group("query").strip()
+    if not query or len(query) > 512:
+        return False
+    return not any(ord(ch) < 32 for ch in query)
+
+
+def normalize_download_target(value: str) -> str | None:
+    """
+    Normalize URL/search input for yt-dlp.
+
+    Real HTTP(S) URLs are returned as-is. Existing ytsearch pseudo-URLs are
+    preserved after validation. Plain text becomes a single-result yt-dlp search.
+    """
+    if not isinstance(value, str):
+        return None
+
+    target = value.strip()
+    if validate_url(target) or validate_search_target(target):
+        return target
+    if target.lower().startswith("ytsearch"):
+        return None
+
+    # Inputs that look like explicit URLs with unsupported schemes should fail
+    # instead of silently becoming search queries.
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", target):
+        return None
+
+    if not target or len(target) > 512:
+        return None
+    if any(ord(ch) < 32 for ch in target):
+        return None
+
+    return f"ytsearch1:{target}"
+
+
+def validate_download_target(value: str) -> bool:
+    """Validate user download input, allowing either safe URLs or yt-dlp search."""
+    return normalize_download_target(value) is not None
+
+
+def safe_request_with_redirects(
+    method: str,
+    url: str,
+    *,
+    max_redirects: int = 5,
+    **kwargs,
+) -> requests.Response:
+    """
+    Issue an HTTP request while validating every redirect target.
+
+    requests' built-in redirect handling resolves the next URL after the first
+    outbound request has already been made. This helper checks the initial
+    target and each Location header with DNS-aware URL validation before making
+    the next hop.
+    """
+    if max_redirects < 0:
+        raise ValueError("max_redirects must be non-negative")
+
+    current_url = url
+    for _ in range(max_redirects + 1):
+        if not validate_url(current_url, resolve_host=True):
+            raise ValueError(f"Unsafe URL blocked: {current_url}")
+
+        response = requests.request(
+            method,
+            current_url,
+            allow_redirects=False,
+            **kwargs,
+        )
+        if response.is_redirect or response.is_permanent_redirect:
+            location = response.headers.get("Location")
+            response.close()
+            if not location:
+                raise requests.TooManyRedirects("Redirect response missing Location")
+            current_url = urljoin(current_url, location)
+            continue
+        return response
+
+    raise requests.TooManyRedirects(f"Too many redirects for {url}")
+
+
+def run_on_ui_thread(page: ft.Page | None, callback, *args, **kwargs) -> None:
+    """
+    Schedule a sync or async callback through Flet's UI loop.
+
+    Flet 0.21 expects Page.run_task handlers to be async; this wrapper keeps
+    callers honest while still falling back cleanly in tests or older runtimes.
+    """
+    if page is None:
+        return
+
+    async def runner():
+        result = callback(*args, **kwargs)
+        if inspect.isawaitable(result):
+            await result
+
+    if hasattr(page, "run_task"):
+        scheduled = page.run_task(runner)
+        if inspect.iscoroutine(scheduled):
+            if inspect.getcoroutinestate(scheduled) == inspect.CORO_CLOSED:
+                return
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                asyncio.run(scheduled)
+            else:
+                scheduled.close()
+    else:
+        result = callback(*args, **kwargs)
+        if inspect.isawaitable(result):
+            logger.debug("Dropped async UI callback because page.run_task is missing")
 
 
 def validate_proxy(proxy: str) -> bool:

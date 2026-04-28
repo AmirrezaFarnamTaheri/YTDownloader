@@ -111,7 +111,8 @@ jobs:
       shell: powershell
       run: |
         $env:APP_VERSION = "${{ needs.version.outputs.version }}"
-        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installers/setup.iss
+        $installerVersion = python -c "from scripts.build_installer import _normalize_app_version; import os; print(_normalize_app_version(os.environ['APP_VERSION']))"
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$installerVersion" installers/setup.iss
 
     - name: Upload Windows Installer
       if: matrix.os == 'windows-latest'
@@ -134,7 +135,7 @@ jobs:
         DEB_VERSION="${APP_VERSION#v}"
         # Ensure version starts with a digit (Debian requirement)
         if ! [[ "$DEB_VERSION" =~ ^[0-9] ]]; then
-          DEB_VERSION="0.0.0-${DEB_VERSION}"
+          DEB_VERSION="0.0.1-${DEB_VERSION}"
         fi
         
         echo "Building .deb with version: $DEB_VERSION"

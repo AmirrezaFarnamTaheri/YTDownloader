@@ -25,7 +25,15 @@ from localization_manager import LocalizationManager as LM
 from rate_limiter import RateLimiter
 from tasks import fetch_info_task, process_queue
 from ui_manager import UIManager
-from ui_utils import get_default_download_path, open_folder, play_file, validate_url
+from ui_utils import (
+    get_default_download_path,
+    normalize_download_target,
+    open_folder,
+    play_file,
+    run_on_ui_thread,
+    validate_download_target,
+    validate_url,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -103,10 +111,7 @@ class AppController:
 
                 # Check scheduled items
                 if state.queue_manager.update_scheduled_items(datetime.now()) > 0:
-                    if hasattr(self.page, "run_task"):
-                        self.page.run_task(self.ui.update_queue_view)
-                    else:
-                        self.ui.update_queue_view()
+                    run_on_ui_thread(self.page, self.ui.update_queue_view)
 
                 # Process queue
                 process_queue(self.page)
@@ -121,28 +126,39 @@ class AppController:
     def on_fetch_info(self, url: str):
         """Callback to fetch video information."""
         logger.info("User requested video info fetch for: %s", url)
+        target = normalize_download_target(url)
         if not url:
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("url_required"))))
             return
-        if not validate_url(url):
+        if not target:
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("error_invalid_url"))))
             return
 
         if self.ui.download_view:
-            self.ui.download_view.fetch_btn.disabled = True
+            if hasattr(self.ui.download_view, "set_fetch_disabled"):
+                self.ui.download_view.set_fetch_disabled(True)
+            fetch_btn = getattr(self.ui.download_view, "fetch_btn", None)
+            if fetch_btn is not None:
+                fetch_btn.disabled = True
         self.page.update()
 
         logger.debug("Starting fetch_info_task thread...")
         threading.Thread(
             target=fetch_info_task,
-            args=(url, self.ui.download_view, self.page),
+            args=(target, self.ui.download_view, self.page),
             daemon=True,
         ).start()
 
     def on_add_to_queue(self, data: dict[str, Any]):
         """Callback to add an item to the download queue."""
-        logger.info("User requested add to queue: %s", data.get("url"))
-        if not validate_url(data.get("url", "")):
+        raw_url = data.get("url", "")
+        logger.info("User requested add to queue: %s", raw_url)
+        if not validate_download_target(raw_url):
+            self.page.open(ft.SnackBar(content=ft.Text(LM.get("error_invalid_url"))))
+            return
+
+        normalized_url = normalize_download_target(raw_url)
+        if not normalized_url:
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("error_invalid_url"))))
             return
 
@@ -165,16 +181,21 @@ class AppController:
                 )
             )
 
-        title = data["url"]
-        video_info = state.get_video_info(data["url"])
+        data = dict(data)
+        data["url"] = normalized_url
+
+        title = normalized_url
+        video_info = state.get_video_info(normalized_url) or state.get_video_info(
+            raw_url
+        )
         if video_info:
-            title = video_info.get("title", data["url"])
+            title = video_info.get("title", normalized_url)
         elif (
             state.video_info
             and self.ui.download_view
-            and data["url"] == self.ui.download_view.url_input.value
+            and raw_url == self.ui.download_view.input_card.url_input.value
         ):
-            title = state.video_info.get("title", data["url"])
+            title = state.video_info.get("title", normalized_url)
 
         download_path = get_default_download_path(state.config.get("download_path"))
         proxy = state.config.get("proxy") or None
@@ -193,12 +214,15 @@ class AppController:
             "sponsorblock": data.get("sponsorblock", False),
             "use_aria2c": state.config.get("use_aria2c", False),
             "gpu_accel": state.config.get("gpu_accel", "None"),
-            "output_template": data.get("output_template"),
+            "output_template": data.get("output_template")
+            or state.config.get("output_template"),
             "start_time": data.get("start_time"),
             "end_time": data.get("end_time"),
             "force_generic": data.get("force_generic", False),
             "cookies_from_browser": data.get("cookies_from_browser"),
-            "chapters": data.get("chapters", False),
+            "download_profile": data.get("download_profile"),
+            "chapters": data.get("chapters", data.get("split_chapters", False)),
+            "split_chapters": data.get("split_chapters", data.get("chapters", False)),
             "insta_type": data.get("insta_type"),
             "proxy": proxy,
             "rate_limit": rate_limit,

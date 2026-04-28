@@ -13,7 +13,7 @@ import flet as ft
 from localization_manager import LocalizationManager as LM
 from rss_manager import RSSManager
 from theme import Theme
-from ui_utils import validate_url
+from ui_utils import run_on_ui_thread, validate_url
 from views.base_view import BaseView
 
 logger = logging.getLogger(__name__)
@@ -22,9 +22,10 @@ logger = logging.getLogger(__name__)
 class RSSView(BaseView):
     """View for managing and viewing RSS feeds."""
 
-    def __init__(self, config):
+    def __init__(self, config, on_add_to_queue=None):
         super().__init__(LM.get("rss"), ft.icons.RSS_FEED_ROUNDED)
         self.config = config
+        self.on_add_to_queue = on_add_to_queue
         self.rss_manager = RSSManager(config)
         self.feed_list = ft.ListView(expand=True, spacing=10, padding=10)
         self.items_list = ft.ListView(expand=True, spacing=10, padding=10)
@@ -223,6 +224,28 @@ class RSSView(BaseView):
                                     ft.Row(
                                         [
                                             ft.ElevatedButton(
+                                                LM.get("add_to_queue"),
+                                                icon=ft.icons.ADD_ROUNDED,
+                                                style=ft.ButtonStyle(
+                                                    bgcolor=Theme.Status.SUCCESS,
+                                                    color=Theme.Text.PRIMARY,
+                                                ),
+                                                disabled=not bool(
+                                                    self.on_add_to_queue and link
+                                                ),
+                                                on_click=lambda e, url=link, title=title: (
+                                                    self.on_add_to_queue(
+                                                        {
+                                                            "url": url,
+                                                            "title": title,
+                                                            "video_format": "best",
+                                                        }
+                                                    )
+                                                    if self.on_add_to_queue and url
+                                                    else None
+                                                ),
+                                            ),
+                                            ft.ElevatedButton(
                                                 LM.get("open"),
                                                 icon=ft.icons.OPEN_IN_NEW,
                                                 style=ft.ButtonStyle(
@@ -247,8 +270,8 @@ class RSSView(BaseView):
             # Also refresh list names in case they updated
             self.load_feeds_list()
 
-        if self.page and hasattr(self.page, "run_task"):
-            self.page.run_task(apply_updates)
+        if self.page:
+            run_on_ui_thread(self.page, apply_updates)
         else:
             apply_updates()
 

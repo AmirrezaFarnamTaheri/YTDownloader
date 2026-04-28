@@ -29,6 +29,56 @@ class YTDLPWrapper:
         self.options = options.copy()
 
     @staticmethod
+    def _existing_file_candidate(info: dict[str, Any], prepared: str) -> str:
+        """Best-effort resolution of the final file after yt-dlp postprocessing."""
+        candidates: list[str] = []
+
+        for key in ("filepath", "_filename", "filename"):
+            value = info.get(key)
+            if isinstance(value, str):
+                candidates.append(value)
+
+        requested_downloads = info.get("requested_downloads")
+        if isinstance(requested_downloads, list):
+            for item in requested_downloads:
+                if isinstance(item, dict):
+                    for key in ("filepath", "_filename", "filename"):
+                        value = item.get(key)
+                        if isinstance(value, str):
+                            candidates.append(value)
+
+        candidates.append(prepared)
+        stem = Path(prepared).with_suffix("")
+        for suffix in (
+            ".mp4",
+            ".mkv",
+            ".webm",
+            ".m4a",
+            ".mp3",
+            ".opus",
+            ".flac",
+            ".wav",
+        ):
+            candidates.append(str(stem.with_suffix(suffix)))
+
+        for candidate in candidates:
+            if candidate and os.path.exists(candidate):
+                return candidate
+
+        parent = Path(prepared).parent
+        if parent.exists():
+            prefix = stem.name
+            matches = [
+                path
+                for path in parent.glob(f"{prefix}.*")
+                if path.is_file() and not path.name.endswith((".part", ".ytdl"))
+            ]
+            if matches:
+                return str(max(matches, key=lambda path: path.stat().st_mtime))
+
+        return prepared
+
+    @staticmethod
     def supports(url: str) -> bool:
         """
         Check if yt-dlp supports the URL by querying its extractors.
@@ -154,10 +204,12 @@ class YTDLPWrapper:
                     }
 
                 # Handle Single Video
-                filename = ydl.prepare_filename(info)
-
-                # Check if file actually exists (sometimes prepare_filename differs from actual output)
-                # But mostly it's correct.
+                prepared_filename = ydl.prepare_filename(info)
+                filename = self._existing_file_candidate(info, prepared_filename)
+                try:
+                    file_size = os.path.getsize(filename) if os.path.exists(filename) else None
+                except OSError:
+                    file_size = None
 
                 return {
                     "filename": os.path.basename(filename),
@@ -167,6 +219,8 @@ class YTDLPWrapper:
                     "thumbnail": info.get("thumbnail"),
                     "uploader": info.get("uploader"),
                     "type": "video",
+                    "size": file_size,
+                    "file_size": file_size,
                 }
 
         except Exception as e:

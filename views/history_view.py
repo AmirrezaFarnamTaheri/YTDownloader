@@ -142,12 +142,10 @@ class HistoryView(BaseView):
 
     # pylint: disable=unused-argument
     def _on_search_change(self, e):
-        # Optional: Debounce here if needed. For now, simple live search on enter or explicit.
-        # But user might expect live search.
-        # Let's stick to submit for performance or use a simple check.
+        # Keep search genuinely live; history queries are limited and indexed.
         val = self.search_field.value.strip()
-        if not val:
-            self.current_search = ""
+        if val != self.current_search:
+            self.current_search = val
             self.load(reset=True)
 
     # pylint: disable=unused-argument
@@ -196,7 +194,8 @@ class HistoryView(BaseView):
         ]
         dlg.actions_alignment = ft.MainAxisAlignment.END
 
-        self.page.open(dlg)
+        if self.page:
+            self.page.open(dlg)
 
     def open_folder_safe(self, path):
         """Safely opens the folder containing the downloaded file."""

@@ -187,13 +187,23 @@ def get_video_info(
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
                 return cast(dict[str, Any], ydl.extract_info(url, download=False))
 
+        executor = ThreadPoolExecutor(max_workers=1)
+        shutdown_done = False
         try:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(_fetch)
-                info_dict = future.result(timeout=INFO_EXTRACTION_TIMEOUT)
+            future = executor.submit(_fetch)
+            info_dict = future.result(timeout=INFO_EXTRACTION_TIMEOUT)
         except FuturesTimeoutError as exc:
+            future.cancel()
+            executor.shutdown(wait=False, cancel_futures=True)
+            shutdown_done = True
             logger.error("Info extraction timed out after %ds", INFO_EXTRACTION_TIMEOUT)
             raise TimeoutError("Info extraction timed out") from exc
+        else:
+            executor.shutdown(wait=True)
+            shutdown_done = True
+        finally:
+            if not shutdown_done:
+                executor.shutdown(wait=False, cancel_futures=True)
 
         # Check if yt-dlp fell back to generic and didn't find much
         if info_dict:

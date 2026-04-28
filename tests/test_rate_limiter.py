@@ -53,6 +53,16 @@ class TestRateLimiter(unittest.TestCase):
         time.sleep(0.3)
         self.assertTrue(limiter.check())
 
+    def test_rejects_invalid_parameters(self):
+        with self.assertRaises(ValueError):
+            RateLimiter(rate=0)
+        with self.assertRaises(ValueError):
+            RateLimiter(capacity=0)
+
+        limiter = RateLimiter()
+        with self.assertRaises(ValueError):
+            limiter.check(cost=0)
+
 
 if __name__ == "__main__":
     unittest.main()

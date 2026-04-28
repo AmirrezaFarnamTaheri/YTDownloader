@@ -87,3 +87,11 @@ class TestDownloadInputCardFeatures:
         assert card.time_end.tooltip is not None
         assert card.cookies_dd.tooltip is not None
         assert card.force_generic_cb.tooltip is not None
+
+    def test_profile_option_is_included(self):
+        card = DownloadInputCard(lambda x: None, lambda x: None, MagicMock())
+        card.profile_dd.value = "audio_mp3"
+
+        data = card.get_options()
+
+        assert data["download_profile"] == "audio_mp3"

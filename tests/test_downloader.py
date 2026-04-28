@@ -6,11 +6,13 @@ Covers video info fetching, download configuration, execution logic, and robustn
 """
 
 import unittest
+import tempfile
+import os
 from unittest.mock import ANY, MagicMock, patch
 
 import yt_dlp
 
-from downloader.core import download_video
+from downloader.core import _resolve_output_template, download_video
 from downloader.engines.ytdlp import YTDLPWrapper
 from downloader.info import get_video_info
 from downloader.types import DownloadOptions
@@ -148,6 +150,21 @@ class TestDownloaderOptions(unittest.TestCase):
         # yt-dlp expects a 2-tuple: (browser_name, profile_name)
         self.assertEqual(call_args.get("cookiesfrombrowser"), ("chrome", None))
 
+    @patch("downloader.core.TelegramExtractor.is_telegram_url")
+    @patch("downloader.core.YTDLPWrapper")
+    @patch("shutil.which", return_value="/usr/bin/ffmpeg")
+    @patch("downloader.core._check_disk_space", return_value=True)
+    def test_download_video_rate_limit_is_bytes_per_second(
+        self, mock_disk, mock_which, mock_wrapper_class, mock_is_telegram
+    ):
+        mock_is_telegram.return_value = False
+
+        options = DownloadOptions(url="http://yt.link", rate_limit="1.5M")
+        download_video(options)
+
+        call_args = mock_wrapper_class.call_args[0][0]
+        self.assertEqual(call_args.get("ratelimit"), int(1.5 * 1024 * 1024))
+
     def test_parse_time_logic(self):
         """Test time parsing via DownloadOptions.get_seconds method."""
         options = DownloadOptions(url="http://example.com")
@@ -168,6 +185,21 @@ class TestDownloaderOptions(unittest.TestCase):
         # Test invalid time raises ValueError
         with self.assertRaises(ValueError):
             options.get_seconds("invalid")
+
+    def test_output_template_allows_safe_subdirectories(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            resolved = _resolve_output_template(
+                tmpdir, "channel/%(title)s.%(ext)s"
+            )
+            self.assertTrue(
+                resolved.endswith("channel/%(title)s.%(ext)s")
+                or resolved.endswith("channel\\%(title)s.%(ext)s")
+            )
+
+    def test_output_template_rejects_escape_segments(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(ValueError):
+                _resolve_output_template(tmpdir, "../escape/%(title)s.%(ext)s")
 
 
 class TestDownloaderRobustness(unittest.TestCase):
@@ -378,3 +410,27 @@ class TestDownloaderExecution(unittest.TestCase):
             hook = opts["progress_hooks"][0]
             with self.assertRaises(InterruptedError):
                 hook({})
+
+    def test_ytdlp_existing_file_candidate_prefers_postprocessed_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prepared = f"{tmpdir}/Example.webm"
+            final_file = f"{tmpdir}/Example.mp4"
+            with open(final_file, "wb") as f:
+                f.write(b"video")
+
+            resolved = YTDLPWrapper._existing_file_candidate({}, prepared)
+
+            self.assertEqual(os.path.normpath(resolved), os.path.normpath(final_file))
+
+    def test_ytdlp_existing_file_candidate_uses_requested_downloads(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            final_file = f"{tmpdir}/from-requested.m4a"
+            with open(final_file, "wb") as f:
+                f.write(b"audio")
+
+            resolved = YTDLPWrapper._existing_file_candidate(
+                {"requested_downloads": [{"filepath": final_file}]},
+                f"{tmpdir}/prepared.webm",
+            )
+
+            self.assertEqual(resolved, final_file)

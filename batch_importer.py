@@ -11,7 +11,7 @@ from typing import Any
 import requests
 
 from downloader.types import DownloadStatus
-from ui_utils import is_safe_path
+from ui_utils import is_safe_path, safe_request_with_redirects, validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,18 @@ class BatchImporter:
         Verify if a URL is reachable using a HEAD request.
         """
         try:
-            response = self.session.head(url, timeout=timeout, allow_redirects=True)
+            if not validate_url(url, resolve_host=True):
+                return False
+            response = safe_request_with_redirects(
+                "HEAD",
+                url,
+                timeout=timeout,
+                headers=self.session.headers,
+            )
             return response.status_code < 400
         except requests.RequestException:
+            return False
+        except ValueError:
             return False
 
     def import_from_file(self, filepath: str) -> tuple[int, bool]:
@@ -81,10 +90,6 @@ class BatchImporter:
             if len(lines) > max_batch_size:
                 lines = lines[:max_batch_size]
                 was_truncated = True
-
-            # Pre-filter syntactically invalid URLs
-            # Avoid circular import at top level if ui_utils imports something else
-            from ui_utils import validate_url
 
             valid_syntax = []
             for url in lines:

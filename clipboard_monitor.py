@@ -12,7 +12,7 @@ import pyperclip
 
 from app_state import state
 from localization_manager import LocalizationManager as LM
-from ui_utils import validate_url
+from ui_utils import run_on_ui_thread, validate_url
 
 # Lock for clipboard state access
 _clipboard_state_lock = threading.Lock()
@@ -98,9 +98,19 @@ def _clipboard_loop(page, download_view):
                         # UI updates must be thread-safe - use page's event loop
                         def update_ui(url=detected_url):
                             try:
+                                url_input = getattr(download_view, "url_input", None)
+                                if url_input is None and hasattr(
+                                    download_view, "input_card"
+                                ):
+                                    url_input = getattr(
+                                        download_view.input_card, "url_input", None
+                                    )
+                                if url_input is None:
+                                    return
+
                                 # Check if field is empty and update it (thread-safe)
-                                if not download_view.url_input.value:
-                                    download_view.url_input.value = url
+                                if not url_input.value:
+                                    url_input.value = url
                                     page.open(
                                         ft.SnackBar(
                                             content=ft.Text(
@@ -117,7 +127,7 @@ def _clipboard_loop(page, download_view):
 
                         # Schedule UI update on page's thread
                         try:
-                            page.run_task(update_ui)
+                            run_on_ui_thread(page, update_ui)
                         except AttributeError:
                             # Fallback for older Flet versions without run_task
                             update_ui()

@@ -15,6 +15,21 @@ import zipfile
 
 logger = logging.getLogger(__name__)
 
+_SENSITIVE_CONFIG_KEYS = {
+    "cookies",
+    "cookie",
+    "cookies_file",
+    "cookiefile",
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "access_token",
+    "refresh_token",
+    "api_key",
+    "auth",
+}
+
 
 class SyncManager:
     """
@@ -45,6 +60,10 @@ class SyncManager:
         self._thread = threading.Thread(target=self._auto_sync_loop, daemon=True)
         self._thread.start()
         logger.info("Auto-sync thread started")
+
+    def is_auto_sync_running(self) -> bool:
+        """Return whether the auto-sync background worker is currently alive."""
+        return bool(self._thread and self._thread.is_alive())
 
     def stop_auto_sync(self):
         """Stops the auto-sync background thread."""
@@ -108,8 +127,11 @@ class SyncManager:
 
                 # 3. Upload Config
                 if config_file:
-                    self.cloud.upload_file(config_file)
-                    os.remove(config_file)
+                    try:
+                        self.cloud.upload_file(config_file)
+                    finally:
+                        if os.path.exists(config_file):
+                            os.remove(config_file)
 
                 logger.info("Sync UP completed successfully")
 
@@ -138,7 +160,7 @@ class SyncManager:
                     with open(local_config_path, encoding="utf-8") as f:
                         new_config = json.load(f)
 
-                    self._apply_config_snapshot(new_config)
+                    self._apply_config_snapshot(self._sanitize_config_snapshot(new_config))
 
                     os.remove(local_config_path)
                     logger.info("Config synced from cloud")
@@ -163,8 +185,17 @@ class SyncManager:
             self._lock.release()
 
     def _write_temp_json(self, data: dict, filename: str = "config.json") -> str:
-        path = os.path.join(tempfile.gettempdir(), filename)
-        with open(path, "w", encoding="utf-8") as f:
+        safe_name = os.path.basename(filename) or "config.json"
+        fd, path = tempfile.mkstemp(
+            prefix="streamcatch_sync_",
+            suffix=f"_{safe_name}",
+        )
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            logger.debug("Could not set secure permissions on temp sync file")
+
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             # Handle non-serializable objects (like Mocks in tests)
             def default_serializer(obj):
                 return str(obj)
@@ -172,20 +203,42 @@ class SyncManager:
             json.dump(data, f, indent=2, default=default_serializer)
         return path
 
+    @staticmethod
+    def _sanitize_config_snapshot(data: dict) -> dict:
+        """Remove secrets before syncing/exporting configuration snapshots."""
+        if not isinstance(data, dict):
+            return {}
+
+        sanitized = {}
+        for key, value in data.items():
+            key_text = str(key)
+            key_lower = key_text.lower()
+            if key_lower in _SENSITIVE_CONFIG_KEYS or any(
+                token in key_lower
+                for token in ("password", "passwd", "secret", "token", "api_key")
+            ):
+                continue
+            if isinstance(value, dict):
+                sanitized[key_text] = SyncManager._sanitize_config_snapshot(value)
+            else:
+                sanitized[key_text] = value
+        return sanitized
+
     def _get_config_snapshot(self) -> dict:
         """Return a JSON-serializable snapshot of the config."""
         if hasattr(self.config, "load_config"):
-            return self.config.load_config()
+            return self._sanitize_config_snapshot(self.config.load_config())
         if hasattr(self.config, "get_all"):
-            return self.config.get_all()
+            return self._sanitize_config_snapshot(self.config.get_all())
         if isinstance(self.config, dict):
-            return dict(self.config)
+            return self._sanitize_config_snapshot(dict(self.config))
         if hasattr(self.config, "items"):
-            return dict(self.config.items())
+            return self._sanitize_config_snapshot(dict(self.config.items()))
         return {}
 
     def _apply_config_snapshot(self, new_config: dict) -> None:
         """Apply a config snapshot to the active config container."""
+        new_config = self._sanitize_config_snapshot(new_config)
         if hasattr(self.config, "save_config"):
             self.config.save_config(new_config)
             return
@@ -378,7 +431,7 @@ class SyncManager:
 
                     if normalized == "config.json":
                         with zf.open("config.json") as f:
-                            data = json.load(f)
+                            data = self._sanitize_config_snapshot(json.load(f))
                             if hasattr(self.config, "save_config"):
                                 self.config.save_config(data)
                             elif hasattr(self.config, "set"):

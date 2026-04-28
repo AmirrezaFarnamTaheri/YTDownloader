@@ -89,6 +89,35 @@ class TestUIExtended(unittest.TestCase):
         self.assertEqual(len(view.items_list.controls), 2)
         view.rss_manager.get_all_items.assert_called()
 
+    def test_rss_view_add_item_to_queue_action(self):
+        on_add = MagicMock()
+        view = RSSView(self.mock_config, on_add_to_queue=on_add)
+        view.update = MagicMock()
+        view.rss_manager.get_all_items = MagicMock(
+            return_value=[
+                {
+                    "title": "Feed Video",
+                    "link": "https://example.com/video",
+                    "published": "2026-01-01",
+                    "feed_name": "Feed",
+                }
+            ]
+        )
+
+        view._fetch_feeds_task()
+        item_card = view.items_list.controls[0]
+        action_row = item_card.content.controls[2]
+        add_button = action_row.controls[0]
+        add_button.on_click(None)
+
+        on_add.assert_called_once_with(
+            {
+                "url": "https://example.com/video",
+                "title": "Feed Video",
+                "video_format": "best",
+            }
+        )
+
     def test_rss_view_add_remove(self):
         view = RSSView(self.mock_config)
         view.update = MagicMock()

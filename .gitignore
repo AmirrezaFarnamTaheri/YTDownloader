@@ -11,8 +11,13 @@ ytdownloader_installer.log
 venv/
 .coverage
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 htmlcov/
 flet_output.log
+build_logs/
+installers/output/
+*.exe
 
 # SQLite database files
 *.db
@@ -37,3 +42,4 @@ verification_*.png
 
 # Backup files
 backup.zip
+export.json

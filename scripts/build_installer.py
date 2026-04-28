@@ -1,7 +1,9 @@
 """Build installer script"""
 
+import argparse
 import importlib.util
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -10,6 +12,82 @@ from pathlib import Path
 # Avoid compiling yt-dlp's massive lazy extractor table, which can exhaust
 # the Windows C compiler heap when Nuitka converts it to C code.
 os.environ.setdefault("YTDLP_NO_LAZY_EXTRACTORS", "1")
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Build StreamCatch desktop bundle.")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the resolved Nuitka command without running the compiler.",
+    )
+    parser.add_argument(
+        "--skip-installer",
+        action="store_true",
+        help="Skip the Inno Setup installer step on Windows.",
+    )
+    return parser.parse_args()
+
+
+def _numeric_version_parts(raw: str | None) -> list[str]:
+    value = (raw or "2.0.0").strip()
+    value = value[1:] if value.startswith("v") else value
+    parts = re.findall(r"\d+", value)
+    return parts or ["2", "0", "0"]
+
+
+def _normalize_app_version(raw: str | None) -> str:
+    """Return a three-part numeric version suitable for app metadata."""
+    parts = _numeric_version_parts(raw)
+    while len(parts) < 3:
+        parts.append("0")
+    return ".".join(parts[:3])
+
+
+def _normalize_windows_file_version(raw: str | None) -> str:
+    """Return a four-part numeric version required by Windows version resources."""
+    parts = _numeric_version_parts(raw)
+    while len(parts) < 4:
+        parts.append("0")
+    return ".".join(parts[:4])
+
+
+def _find_built_binary(dist_dir: Path, output_name: str) -> Path | None:
+    """Find a Nuitka-emitted binary by exact name or common platform suffixes."""
+    direct = dist_dir / output_name
+    if direct.exists():
+        return direct
+
+    candidates = [p for p in dist_dir.rglob(output_name) if p.is_file()]
+    if candidates:
+        return max(candidates, key=lambda p: p.stat().st_mtime)
+
+    stem = Path(output_name).stem
+    suffix_candidates = [
+        p
+        for p in dist_dir.rglob(f"{stem}*")
+        if p.is_file() and p.suffix.lower() in {"", ".exe", ".bin"}
+    ]
+    return max(suffix_candidates, key=lambda p: p.stat().st_mtime, default=None)
+
+
+def _verify_build_output(dist_dir: Path, output_name: str, *, onefile: bool) -> Path:
+    """
+    Validate Nuitka output and mirror onefile binaries to dist root if needed.
+
+    Standalone builds may need sibling libraries in their .dist directory, so only
+    onefile outputs are copied to the root path expected by CI/installer steps.
+    """
+    found = _find_built_binary(dist_dir, output_name)
+    if not found:
+        raise FileNotFoundError(f"Expected build output not found: {output_name}")
+
+    expected = dist_dir / output_name
+    if onefile and found != expected:
+        shutil.copy2(found, expected)
+        found = expected
+
+    return found
 
 
 def ensure_macos_app_bundle(dist_dir: Path, app_name: str, binary_name: str) -> Path:
@@ -90,29 +168,32 @@ def _module_available(module_name: str) -> bool:
         return False
 
 
-def _append_optional_package_includes(cmd: list[str], package_names: list[str]) -> None:
-    """
-    Append Nuitka package includes only when modules are available.
-
-    This avoids hard build failures when Windows-local Python envs are
-    partially provisioned.
-    """
-    missing: list[str] = []
+def _append_runtime_package_includes(cmd: list[str], package_names: list[str]) -> None:
+    """Append deterministic Nuitka package includes for release builds."""
     for package_name in package_names:
-        if _module_available(package_name):
-            cmd.append(f"--include-package={package_name}")
-        else:
-            missing.append(package_name)
+        cmd.append(f"--include-package={package_name}")
 
-    if missing:
-        print(
-            "WARNING: Missing optional runtime packages for explicit Nuitka includes: "
-            + ", ".join(missing)
-        )
-        print(
-            "WARNING: Build continues, but install requirements for best runtime parity:"
-            " pip install -r requirements.txt"
-        )
+
+def _check_runtime_dependencies(package_names: dict[str, str]) -> None:
+    """Fail before compilation if a required runtime dependency is missing."""
+    missing = [
+        requirement
+        for module_name, requirement in package_names.items()
+        if not _module_available(module_name)
+    ]
+    if not missing:
+        return
+
+    print(
+        "ERROR: Missing runtime dependencies required for a self-contained build: "
+        + ", ".join(missing),
+        file=sys.stderr,
+    )
+    print(
+        "ERROR: Install them with: python -m pip install -r requirements.txt",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 def _check_native_compiler() -> None:
@@ -131,13 +212,14 @@ def _check_native_compiler() -> None:
     )
     if os.name != "nt":
         print(
-            "ERROR: Install build tools, e.g. on Debian/Ubuntu: sudo apt-get install build-essential",
+            "ERROR: Install build tools, e.g. on Debian/Ubuntu: "
+            "sudo apt-get install build-essential",
             file=sys.stderr,
         )
     sys.exit(1)
 
 
-def build_installer():
+def build_installer(*, dry_run: bool = False, skip_installer: bool = False):
     """
     Build a compiled StreamCatch binary and, on Windows with Inno Setup
     available, a full installer.
@@ -158,28 +240,48 @@ def build_installer():
     print(f"Root: {root}")
     print(f"Dist: {dist_dir}")
 
-    # Verify requirements
-    try:
-        # pylint: disable=import-outside-toplevel
-        # pylint: disable=unused-import
-        import nuitka  # noqa: F401 - import for availability check
-        from nuitka import Version
-
-        print(f"Nuitka version: {Version.getNuitkaVersion()}")
-    except ImportError:
-        print("ERROR: Nuitka not installed. Run: pip install nuitka")
-        sys.exit(1)
-    except AttributeError:
-        # pylint: disable=broad-exception-caught
-        # Fallback for some versions or if structure differs
+    if not dry_run:
+        # Verify requirements
         try:
-            subprocess.run([sys.executable, "-m", "nuitka", "--version"], check=True)
-        except Exception:
-            print(
-                "WARNING: Could not determine Nuitka version via module, but import succeeded."
-            )
+            # pylint: disable=import-outside-toplevel
+            # pylint: disable=unused-import
+            import nuitka  # noqa: F401 - import for availability check
+            from nuitka import Version
 
-    _check_native_compiler()
+            print(f"Nuitka version: {Version.getNuitkaVersion()}")
+        except ImportError:
+            print("ERROR: Nuitka not installed. Run: pip install nuitka")
+            sys.exit(1)
+        except AttributeError:
+            # pylint: disable=broad-exception-caught
+            # Fallback for some versions or if structure differs
+            try:
+                subprocess.run(
+                    [sys.executable, "-m", "nuitka", "--version"], check=True
+                )
+            except Exception:
+                print(
+                    "WARNING: Could not determine Nuitka version via module, "
+                    "but import succeeded."
+                )
+
+        _check_runtime_dependencies(
+            {
+                "flet": "flet",
+                "yt_dlp": "yt-dlp",
+                "requests": "requests",
+                "pypresence": "pypresence",
+                "pydrive2": "PyDrive2",
+                "bs4": "beautifulsoup4",
+                "defusedxml": "defusedxml",
+                "pyperclip": "pyperclip",
+                "dateutil": "python-dateutil",
+                "keyring": "keyring",
+            }
+        )
+        _check_native_compiler()
+    else:
+        print("Dry run: skipping Nuitka/compiler availability checks.")
 
     print("\nStep 2: Building with Nuitka...")
 
@@ -229,40 +331,46 @@ def build_installer():
     if os.name != "nt":
         cmd.append("--static-libpython=no")
 
-    # Optional explicit package inclusion can significantly increase compile time.
-    # Keep it opt-in for release builds that require strict bundling parity.
-    include_optional = (
-        os.environ.get("STREAMCATCH_INCLUDE_OPTIONAL_PACKAGES", "").strip() == "1"
+    # Explicitly include runtime packages by default so release binaries are
+    # self-contained. Set STREAMCATCH_INCLUDE_RUNTIME_PACKAGES=0 only for quick
+    # local compiler experiments.
+    include_runtime_packages = (
+        os.environ.get("STREAMCATCH_INCLUDE_RUNTIME_PACKAGES", "1").strip() != "0"
     )
-    if include_optional:
-        _append_optional_package_includes(
+    if include_runtime_packages:
+        _append_runtime_package_includes(
             cmd,
-            ["pypresence", "pydrive2", "defusedxml", "keyring", "certifi"],
+            [
+                "flet",
+                "yt_dlp",
+                "requests",
+                "pypresence",
+                "pydrive2",
+                "bs4",
+                "defusedxml",
+                "pyperclip",
+                "dateutil",
+                "keyring",
+                "certifi",
+            ],
         )
     else:
         print(
-            "INFO: Skipping explicit optional-package includes "
-            "(set STREAMCATCH_INCLUDE_OPTIONAL_PACKAGES=1 to enable)."
+            "INFO: Skipping explicit runtime-package includes "
+            "(STREAMCATCH_INCLUDE_RUNTIME_PACKAGES=0)."
         )
 
     # Windows specific flags
-    version_str = os.environ.get("APP_VERSION", "2.0.0").lstrip("v")
-
-    # Ensure version string is valid for Windows (X.X.X.X)
-    win_version = version_str
-    if win_version.count(".") < 3:
-        win_version += ".0" * (3 - win_version.count("."))
+    raw_version = os.environ.get("APP_VERSION", "2.0.0")
+    version_str = _normalize_app_version(raw_version)
+    win_version = _normalize_windows_file_version(raw_version)
 
     if os.name == "nt":
         icon_path = root / "assets" / "icon_windows_native.ico"
-        legacy_icon_path = root / "assets" / "icon.ico"
         fallback_icon_path = root / "assets" / "icon_windows.ico"
         if not icon_path.exists() and fallback_icon_path.exists():
             icon_path = fallback_icon_path
-        if not icon_path.exists() and legacy_icon_path.exists():
-            icon_path = legacy_icon_path
         if not icon_path.exists():
-            # Fallback: try to use logo.svg or skip icon
             print(f"WARNING: {icon_path} not found, building without icon")
         else:
             cmd.append(f"--windows-icon-from-ico={icon_path}")
@@ -279,12 +387,9 @@ def build_installer():
     elif sys.platform == "darwin":
         # MacOS specific flags
         icon_path = root / "assets" / "icon_macos_native.icns"
-        legacy_icon_path = root / "assets" / "icon.icns"
         fallback_icon_path = root / "assets" / "icon_macos.icns"
         if not icon_path.exists() and fallback_icon_path.exists():
             icon_path = fallback_icon_path
-        if not icon_path.exists() and legacy_icon_path.exists():
-            icon_path = legacy_icon_path
         cmd.extend(
             [
                 "--macos-create-app-bundle",
@@ -303,6 +408,10 @@ def build_installer():
     if os.name == "nt" and not onefile_enabled:
         print("INFO: STREAMCATCH_ONEFILE=0 -> building non-onefile standalone output.")
 
+    if dry_run:
+        print("Dry run complete.")
+        return
+
     try:
         subprocess.check_call(cmd)
         print("\n[OK] Build completed successfully\n")
@@ -312,12 +421,15 @@ def build_installer():
         )
         sys.exit(1)
 
+    built_binary = _verify_build_output(dist_dir, output_name, onefile=onefile_enabled)
+    print(f"Verified build output: {built_binary}")
+
     if sys.platform == "darwin":
         bundle_path = ensure_macos_app_bundle(dist_dir, "StreamCatch", output_name)
         print(f"macOS app bundle ready at: {bundle_path}\n")
 
     # 2. Optionally build Windows installer via Inno Setup
-    if os.name == "nt":
+    if os.name == "nt" and not skip_installer:
         iscc = _find_iscc()
         if iscc:
             print("Step 3: Building Windows installer...")
@@ -341,6 +453,8 @@ def build_installer():
                 "[WARNING] Inno Setup (iscc) not found. Skipping installer generation."
             )
             print("[INFO] Standalone executable is in dist/StreamCatch.exe\n")
+    elif os.name == "nt":
+        print("Windows installer step skipped by request.")
     else:
         print("Non-Windows platform: standalone binary built.")
         print(f"Output is in {dist_dir}/\n")
@@ -353,7 +467,7 @@ def build_installer():
 if __name__ == "__main__":
     # pylint: disable=broad-exception-caught
     try:
-        build_installer()
+        build_installer(**vars(_parse_args()))
     except KeyboardInterrupt:
         print("\n\nBuild cancelled by user")
         sys.exit(1)

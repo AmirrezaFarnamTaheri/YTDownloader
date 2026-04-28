@@ -8,8 +8,9 @@ from rss_manager import RSSManager
 
 class TestRSSManager(unittest.TestCase):
 
-    @patch("rss_manager.requests.get")
-    def test_parse_feed_success(self, mock_get):
+    @patch("rss_manager.validate_url", return_value=True)
+    @patch("rss_manager.safe_request_with_redirects")
+    def test_parse_feed_success(self, mock_request, _mock_validate):
         # Mock XML response. Note: Ensure namespaces are correct for ElementTree default parsing
         # The parser logic in RSSManager uses {http://www.w3.org/2005/Atom} tags
         xml_content = """<?xml version="1.0" encoding="UTF-8"?>
@@ -30,7 +31,8 @@ class TestRSSManager(unittest.TestCase):
         # Set apparent_encoding
         mock_response.apparent_encoding = "utf-8"
         mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
+        mock_response.headers = {}
+        mock_request.return_value = mock_response
 
         videos = RSSManager.parse_feed("http://fake.url")
         self.assertEqual(len(videos), 1)
@@ -38,11 +40,24 @@ class TestRSSManager(unittest.TestCase):
         self.assertEqual(videos[0]["video_id"], "VIDEO_ID")
         self.assertEqual(videos[0]["link"], "https://www.youtube.com/watch?v=VIDEO_ID")
 
-    @patch("rss_manager.requests.get")
-    def test_parse_feed_error(self, mock_get):
-        mock_get.side_effect = Exception("Network error")
+    @patch("rss_manager.validate_url", return_value=True)
+    @patch("rss_manager.safe_request_with_redirects")
+    def test_parse_feed_error(self, mock_request, _mock_validate):
+        mock_request.side_effect = Exception("Network error")
         videos = RSSManager.parse_feed("http://fake.url")
         self.assertEqual(videos, [])
+
+    @patch("rss_manager.validate_url", return_value=True)
+    @patch("rss_manager.safe_request_with_redirects")
+    def test_parse_feed_rejects_oversized_content_length(
+        self, mock_request, _mock_validate
+    ):
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Length": str(6 * 1024 * 1024)}
+        mock_response.raise_for_status.return_value = None
+        mock_request.return_value = mock_response
+
+        self.assertEqual(RSSManager.parse_feed("http://fake.url"), [])
 
     @patch("rss_manager.RSSManager.parse_feed")
     def test_get_latest_video(self, mock_parse):

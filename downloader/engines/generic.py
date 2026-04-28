@@ -161,6 +161,32 @@ class GenericDownloader:
         return headers
 
     @staticmethod
+    def _request_with_safe_redirects(method: str, url: str, **kwargs) -> requests.Response:
+        """Perform a request while validating each redirect target before use."""
+        current_url = url
+        max_redirects = 5
+
+        for _ in range(max_redirects + 1):
+            if not validate_url(current_url, resolve_host=True):
+                raise ValueError(f"Invalid or unsafe URL: {current_url}")
+
+            request_kwargs = dict(kwargs)
+            request_kwargs["allow_redirects"] = False
+            response = getattr(_SESSION, method)(current_url, **request_kwargs)
+            status = getattr(response, "status_code", 0)
+            if status not in {301, 302, 303, 307, 308}:
+                return response
+
+            location = response.headers.get("Location")
+            if not location:
+                return response
+
+            response.close()
+            current_url = urllib.parse.urljoin(current_url, location)
+
+        raise ValueError("Too many redirects")
+
+    @staticmethod
     def _verify_path_security(final_path: str, output_path: str) -> None:
         """Ensure final path is strictly within output path to prevent traversal."""
         final_abs = os.path.abspath(final_path)
@@ -187,7 +213,7 @@ class GenericDownloader:
         Downloads a file using requests with streaming.
         Supports resume and exponential backoff.
         """
-        if not validate_url(url):
+        if not validate_url(url, resolve_host=True):
             raise ValueError(f"Invalid or unsafe URL: {url}")
 
         output_path = os.path.abspath(output_path)
@@ -200,9 +226,13 @@ class GenericDownloader:
         # 1. HEAD Request
         try:
             GenericDownloader._check_cancel(cancel_token)
-            h = _SESSION.head(url, allow_redirects=True, timeout=10)
+            h = GenericDownloader._request_with_safe_redirects(
+                "head", url, timeout=10
+            )
             h.raise_for_status()
             final_url = h.url
+            if not validate_url(final_url, resolve_host=True):
+                raise ValueError(f"Redirected to an unsafe URL: {final_url}")
             try:
                 total_size = int(h.headers.get("content-length", 0))
             except (TypeError, ValueError):
@@ -264,8 +294,14 @@ class GenericDownloader:
                 )
 
                 logger.debug("Starting download (try %d)", retry_count + 1)
-                with _SESSION.get(
-                    final_url, stream=True, headers=headers, timeout=REQUEST_TIMEOUT
+                if not validate_url(final_url, resolve_host=True):
+                    raise ValueError(f"Unsafe download URL: {final_url}")
+                with GenericDownloader._request_with_safe_redirects(
+                    "get",
+                    final_url,
+                    stream=True,
+                    headers=headers,
+                    timeout=REQUEST_TIMEOUT,
                 ) as r:
                     r.raise_for_status()
 
@@ -366,18 +402,3 @@ class GenericDownloader:
         if last_error:
             raise last_error
         return {}
-
-
-# Legacy wrapper
-def download_generic(
-    url: str,
-    output_path: str,
-    filename: str | None = None,
-    progress_hook: Callable | None = None,
-    cancel_token: Any | None = None,
-    max_retries: int = 3,
-) -> Any:
-    """Legacy wrapper for GenericDownloader.download."""
-    return GenericDownloader.download(
-        url, output_path, progress_hook, cancel_token, max_retries, filename
-    )

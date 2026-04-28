@@ -1,61 +1,78 @@
 # User Guide
 
-## Main Views
+## Add a Download
 
-- **Dashboard**: health summary, recent history, and quick actions.
-- **Download**: URL entry, metadata fetch, format/options selection.
-- **Queue**: lifecycle management, pause/resume/cancel/retry, item actions.
-- **History**: persistent record with search/export/import utilities.
-- **RSS**: feed monitoring and enqueue integration.
-- **Settings**: theme, language, concurrency, network, paths, accessibility.
+1. Open **Download**.
+2. Paste a URL or search phrase.
+3. Pick a profile such as Best, Fast 720p, Audio MP3, or Archive.
+4. Adjust optional settings: format, subtitles, playlist handling, sponsorblock,
+   chapter splitting, cookies, schedule time, and output template.
+5. Fetch metadata if you want a preview.
+6. Add the item to the queue.
 
-## Standard Download Workflow
+Search phrases are sent through yt-dlp search support. Direct URLs are validated
+before they enter the queue.
 
-1. Paste URL in **Download** view.
-2. Click **Fetch Info**.
-3. Pick quality/options.
-4. Click **Add to Queue**.
-5. Track progress in **Queue**.
+## Queue
 
-## Batch Workflow
+The queue shows each item state:
 
-1. Prepare `.txt` file (one URL per line).
-2. Use **Batch Import** button.
-3. Review queued items.
-4. Use pause/resume/cancel controls as needed.
+- queued
+- scheduled
+- allocating
+- downloading
+- processing
+- completed
+- error
+- cancelled
 
-## Scheduled Downloads
+Use queue actions to cancel, retry, remove, reorder, pause, resume, open output
+folders, and inspect active progress. Concurrency is controlled by settings and
+the queue worker fills available slots as they open.
 
-1. Choose schedule time in Download view.
-2. Add item to queue.
-3. Item appears as scheduled until trigger time.
+## Profiles
 
-## Queue Controls
+Profiles apply practical defaults:
 
-Per-item actions:
+- Best: highest available quality.
+- Fast 720p: quicker video downloads.
+- Audio MP3: audio extraction workflow.
+- Archive: durable archival defaults.
 
-- cancel
-- retry
-- remove
-- play/open file
-- open containing folder
+You can still override profile-derived settings per item.
 
-Bulk actions:
+## History
 
-- clear completed
-- pause all queued
-- resume all paused
-- cancel all active
+History records completed and failed downloads. Use live search to filter by
+title, URL, or status. History can be cleared or exported from the app.
 
-## Settings Recommendations
+## RSS
 
-- Set a writable download path.
-- Keep `max_concurrent_downloads` realistic for your network/storage.
-- Enable high contrast mode for accessibility.
-- Configure proxy/rate-limit only when required.
+RSS feeds can be added from the RSS view. Feed items can be opened or added to
+the download queue.
 
-## Security Notes
+## Sync
 
-- Only use cookies from trusted local browser profiles.
-- Avoid arbitrary import archives from untrusted sources.
-- Keep the app updated for latest extractor/site compatibility.
+Sync can export/import app state and optionally use cloud storage. Sensitive
+fields such as cookies and tokens are stripped from sync payloads before export.
+
+## Settings
+
+Important settings include:
+
+- download folder;
+- concurrency;
+- rate limit;
+- output template;
+- theme and compact mode;
+- clipboard monitoring;
+- auto-sync;
+- browser-cookie source;
+- FFmpeg-related behavior.
+
+Some appearance changes may require restarting the app.
+
+## Packaging Note
+
+The Windows release installer installs a single standalone EXE. FFmpeg remains a
+recommended system dependency for full media post-processing support.

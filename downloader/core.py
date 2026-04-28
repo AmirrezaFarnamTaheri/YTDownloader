@@ -7,6 +7,7 @@ including format selection, cancellation, and progress reporting.
 
 import logging
 import os
+import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -20,6 +21,10 @@ from downloader.extractors.telegram import TelegramExtractor
 from downloader.types import DownloadOptions
 
 logger = logging.getLogger(__name__)
+
+_RATE_LIMIT_RE = re.compile(
+    r"^(?P<value>[1-9]\d*(?:\.\d+)?)(?P<unit>[KMGT]?)(?:/s)?$", re.IGNORECASE
+)
 
 
 def _sanitize_output_path(output_path: str) -> str:
@@ -63,6 +68,68 @@ def _check_disk_space(output_path: str, min_mb: int = 100) -> bool:
     except (OSError, ValueError) as e:
         logger.error("Failed to check disk space: %s", e)
         return True  # Assume ok if check fails
+
+
+def _resolve_output_template(output_path: str, output_template: str) -> str:
+    """Resolve a relative yt-dlp output template safely below output_path."""
+    try:
+        template_path = Path(output_template)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid output template: {exc}") from exc
+
+    if template_path.is_absolute():
+        raise ValueError("Output template must be a relative path")
+
+    if any(part in ("", ".", "..") for part in template_path.parts):
+        raise ValueError("Output template contains unsafe path segments")
+
+    output_root = Path(output_path).resolve()
+    resolved = (output_root / template_path).resolve()
+
+    try:
+        if os.path.commonpath([str(output_root), str(resolved)]) != str(output_root):
+            raise ValueError("Output template escapes output directory")
+    except ValueError as exc:
+        raise ValueError("Output template escapes output directory") from exc
+
+    parent = resolved.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    return str(resolved)
+
+
+def _parse_rate_limit(rate_limit: str | int | float | None) -> int | None:
+    """Convert human-readable rate limits (5M, 100K) to bytes/sec for yt-dlp."""
+    if rate_limit is None:
+        return None
+    if isinstance(rate_limit, int | float):
+        value = int(rate_limit)
+        if value <= 0:
+            raise ValueError("Rate limit must be positive")
+        return value
+    if not isinstance(rate_limit, str):
+        raise ValueError("Rate limit must be a string or number")
+
+    raw = rate_limit.strip()
+    if not raw:
+        return None
+
+    match = _RATE_LIMIT_RE.match(raw)
+    if not match:
+        raise ValueError(f"Invalid rate limit: {rate_limit}")
+
+    value = float(match.group("value"))
+    unit = match.group("unit").upper()
+    multiplier = {
+        "": 1,
+        "K": 1024,
+        "M": 1024**2,
+        "G": 1024**3,
+        "T": 1024**4,
+    }[unit]
+    parsed = int(value * multiplier)
+    if parsed <= 0:
+        raise ValueError("Rate limit must be positive")
+    return parsed
 
 
 def _configure_postprocessors(
@@ -169,7 +236,7 @@ def _configure_advanced_options(
     if options.proxy:
         ydl_opts["proxy"] = options.proxy
     if options.rate_limit:
-        ydl_opts["ratelimit"] = options.rate_limit
+        ydl_opts["ratelimit"] = _parse_rate_limit(options.rate_limit)
 
     # Subtitles
     if options.subtitle_lang:
@@ -236,25 +303,9 @@ def download_video(options: DownloadOptions) -> dict[str, Any]:
     logger.info("Initiating download_video for URL: %s", options.url)
 
     # 1. Validation
+    if not isinstance(options.url, str):
+        raise TypeError(f"Download URL must be a string, got {type(options.url)}")
     options.validate()
-
-    # Sanitize output_template to prevent path traversal
-    # It should not be absolute and should not contain '..' segments
-    if os.path.isabs(options.output_template):
-        raise ValueError("Output template must be a relative path")
-
-    # Disallow any directory separators to ensure it's just a filename template
-    if os.path.sep in options.output_template or (
-        os.path.altsep and os.path.altsep in options.output_template
-    ):
-        raise ValueError("Output template cannot contain path separators ('/' or '\\')")
-
-    # Check for '..' segments
-    normalized_path = os.path.normpath(options.output_template)
-    if ".." in normalized_path.split(os.path.sep):
-        raise ValueError(
-            "Output template must not contain parent directory references ('..')"
-        )
 
     # 2. Handle Output Path
     output_path = _sanitize_output_path(options.output_path)
@@ -290,7 +341,7 @@ def download_video(options: DownloadOptions) -> dict[str, Any]:
         )
 
     # 4. Configure yt-dlp options
-    outtmpl_path = str(Path(output_path) / options.output_template)
+    outtmpl_path = _resolve_output_template(output_path, options.output_template)
     ydl_opts: dict[str, Any] = {
         "outtmpl": outtmpl_path,
         "quiet": True,
