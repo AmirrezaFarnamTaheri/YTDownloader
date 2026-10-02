@@ -107,6 +107,15 @@ jobs:
           echo '```'
         } >> "$GITHUB_STEP_SUMMARY"
 
+        if [ "$status" -ne 0 ]; then
+          # Also surface the failing tests as an annotation: annotations are
+          # readable through the checks API, the job summary is not.
+          headline=$(grep -E '^=+ .*(passed|failed|error)' test-results.log | tail -n 1)
+          failures=$(grep -E '^(FAILED|ERROR)' test-results.log | head -n 20)
+          message=$(printf '%s\n%s\n' "$headline" "$failures" | sed -e 's/%/%25/g' -e 's/\r//g' | awk 'BEGIN {ORS="%0A"} {print}')
+          echo "::error title=pytest ${{ matrix.os }} py${{ matrix.python-version }}::${message}"
+        fi
+
         exit $status
 
     - name: Upload coverage report
