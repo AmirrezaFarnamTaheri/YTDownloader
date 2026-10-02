@@ -7,6 +7,7 @@ dist/
 !streamcatch.spec
 !mobile/buildozer.spec
 ytdownloader.log
+ytdownloader.log.*
 ytdownloader_installer.log
 venv/
 .venv/
