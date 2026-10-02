@@ -463,11 +463,41 @@ _DENIED_SYSTEM_DIRS: tuple[str, ...] = (
     "/lib",
     "/lib64",
     "/root",
+    # macOS exposes the same locations under /private (/etc is a symlink to
+    # private/etc), so a resolved path never matches the plain entries above.
+    "/private/etc",
+    "/private/var/audit",
+    "/private/var/db",
+    "/private/var/log",
+    "/private/var/root",
+    "/private/var/spool",
     "c:\\windows",
     "c:\\program files",
     "c:\\program files (x86)",
     "c:\\programdata",
 )
+
+#: Temporary locations that stay importable even though some sit under a denied
+#: prefix (``/var/tmp``) or are reached through a symlinked parent
+#: (``/private/var/folders`` on macOS). Matched against the *resolved* path, so a
+#: symlink pointing out of a temp directory is still denied.
+_ALLOWED_TEMP_DIRS: tuple[str, ...] = (
+    "/tmp",
+    "/var/tmp",
+    "/var/folders",
+    "/private/tmp",
+    "/private/var/tmp",
+    "/private/var/folders",
+)
+
+
+def _path_matches_prefix(normalized: str, prefixes: tuple[str, ...]) -> bool:
+    """True when ``normalized`` is one of ``prefixes`` or lives inside it."""
+    return any(
+        normalized == prefix.lower().replace("\\", "/")
+        or normalized.startswith(prefix.lower().replace("\\", "/") + "/")
+        for prefix in prefixes
+    )
 
 
 def is_safe_path(filepath: str) -> bool:
@@ -477,6 +507,11 @@ def is_safe_path(filepath: str) -> bool:
     Rejects well-known system locations (``/etc``, ``/proc``, ``C:\\Windows``,
     …) while allowing user-chosen locations such as the home directory,
     temporary directories, removable media, and secondary drives.
+
+    Both the resolved path and the logical path the user typed are checked.
+    Resolution alone is not enough on macOS, where ``/etc/passwd`` resolves to
+    ``/private/etc/passwd``; the logical form keeps such paths denied, while the
+    resolved form keeps a symlink that escapes a temporary directory out.
     """
     try:
         if not isinstance(filepath, str) or not filepath.strip():
@@ -484,13 +519,20 @@ def is_safe_path(filepath: str) -> bool:
         if "\x00" in filepath:
             return False
 
-        path = Path(filepath).resolve()
-        normalized = str(path).lower().replace("\\", "/")
+        logical = (
+            os.path.normpath(os.path.expanduser(filepath)).lower().replace("\\", "/")
+        )
+        resolved = str(Path(filepath).resolve()).lower().replace("\\", "/")
 
-        for denied in _DENIED_SYSTEM_DIRS:
-            prefix = denied.lower().replace("\\", "/")
-            if normalized == prefix or normalized.startswith(prefix + "/"):
-                return False
+        # Temp directories are legitimate import sources even when they live
+        # under a denied prefix, but only when the file really is in temp.
+        if _path_matches_prefix(resolved, _ALLOWED_TEMP_DIRS):
+            return True
+
+        if _path_matches_prefix(resolved, _DENIED_SYSTEM_DIRS):
+            return False
+        if _path_matches_prefix(logical, _DENIED_SYSTEM_DIRS):
+            return False
 
         # Existence/permission checks belong to the caller; this is a policy
         # check on the path itself.

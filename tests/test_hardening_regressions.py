@@ -594,6 +594,74 @@ class TestImportPathPolicy:
         assert is_safe_path("   ") is False
         assert is_safe_path("bad\x00name") is False
 
+    def test_macos_symlinked_system_dirs_stay_denied(self, monkeypatch):
+        """macOS reaches /etc, /var and /tmp through /private symlinks.
+
+        Resolving the path alone turned ``/etc/passwd`` into
+        ``/private/etc/passwd``, which matched no entry on the denylist, so the
+        guard allowed reading system files on macOS only.  The macOS layout is
+        simulated by rewriting ``realpath`` the way the OS does.
+        """
+        import posixpath
+
+        from ui_utils import is_safe_path
+
+        mapping = {
+            "/etc": "/private/etc",
+            "/var": "/private/var",
+            "/tmp": "/private/tmp",
+        }
+        real_realpath = posixpath.realpath
+
+        def mac_realpath(path, *args, **kwargs):
+            text = str(path)
+            if not text.startswith("/private"):
+                for logical, physical in mapping.items():
+                    if text == logical:
+                        text = physical
+                        break
+                    if text.startswith(logical + "/"):
+                        text = physical + text[len(logical) :]
+                        break
+            return real_realpath(text, *args, **kwargs)
+
+        monkeypatch.setattr(posixpath, "realpath", mac_realpath)
+
+        for denied in (
+            "/etc/passwd",
+            "/private/etc/passwd",
+            "/var/log/syslog",
+            "/private/var/log/syslog",
+            "/private/var/db/anything.db",
+        ):
+            assert is_safe_path(denied) is False, denied
+
+        # macOS keeps the per-user temporary directory under /private/var/folders
+        # and users can legitimately import link lists from there.
+        for allowed in (
+            "/private/var/folders/ab/T/streamcatch/links.txt",
+            "/var/folders/ab/T/streamcatch/links.txt",
+            "/tmp/links.txt",
+            "/private/tmp/links.txt",
+            "/private/var/tmp/links.txt",
+        ):
+            assert is_safe_path(allowed) is True, allowed
+
+    def test_symlink_out_of_a_temp_dir_is_denied(self, tmp_path):
+        """A temp directory is not a loophole to reach a system file."""
+        from ui_utils import is_safe_path
+
+        link = tmp_path / "shortcut"
+        try:
+            link.symlink_to("/etc")
+        except (
+            OSError,
+            NotImplementedError,
+        ):  # pragma: no cover - Windows w/o privilege
+            pytest.skip("symlinks are unavailable")
+
+        assert is_safe_path(str(link / "passwd")) is False
+
 
 class TestHttpTimeouts:
     def test_safe_request_applies_default_timeout(self):

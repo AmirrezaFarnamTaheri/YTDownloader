@@ -168,7 +168,7 @@ class QueueView(BaseView):
 
     # --- Filtering -----------------------------------------------------
 
-    def _on_filter_change(self, e):
+    def _on_filter_change(self, _e):  # pylint: disable=unused-argument
         """Apply the selected status filter."""
         self._status_filter = self.filter_dd.value or "all"
         self.selected_index = 0
