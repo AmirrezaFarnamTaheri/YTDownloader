@@ -637,8 +637,8 @@ and web mode serves `GET / → 200`.
 - **Recommendation.** Guard platform facts with `os.name == "posix"`, set the
   variable the platform actually reads, and mark a simulation of another
   operating system's layout as POSIX-only.
-- **Validation.** `pytest -q` locally (515 passed) plus the Windows, macOS and
-  Ubuntu jobs on the following CI run.
+- **Validation.** `pytest -q` locally (515 passed), and the Windows, macOS and
+  Ubuntu jobs of run `37054980361`, which are all green.
 - **Residual risk.** The POSIX-only branches are not executed on Windows, so a
   future change to the permission handling would need the Linux/macOS legs to
   catch it.
@@ -673,6 +673,10 @@ python scripts/build_installer.py --dry-run --skip-installer   resolved commands
 python scripts/build_mobile.py --target apk --dry-run          resolved commands printed
 FLET_WEB=1 FLET_SERVER_PORT=8550 python main.py                serves GET / -> 200
 ```
+
+CI verification: GitHub Actions run `37054980361` (head `75967f0`) — all eleven
+workflow jobs green: Run Tests on ubuntu, macOS and Windows at 3.10/3.11/3.12,
+Lint & Format Check, and Security Scan (CodeRabbit also reported pass).
 
 Regression discipline: the detached-control, repaint-gating, keyboard-gate,
 localization, and size-aggregation tests were each run against the pre-change
