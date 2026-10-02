@@ -27,7 +27,7 @@ Baseline (before changes): 320 tests, 1 pre-existing failure
 (`tests/test_youtube_panel.py::test_archive_profile_updates_controls`),
 75% statement coverage.
 
-Final state (T1): **512 tests pass**, **77% statement coverage**, `black`,
+Final state (T1): **515 tests pass**, **78% statement coverage**, `black`,
 `isort`, `ruff`, `mypy`, and `pylint` (10.00/10) clean, packaging dry-runs pass,
 and web mode serves `GET / → 200`.
 
@@ -452,6 +452,131 @@ and web mode serves `GET / → 200`.
 - **Residual risk.** The blob remains in the branch history; removing it would
   require rewriting published history.
 
+### F-18 — Test runs wrote to the developer's real user data
+
+- **Description.** `ConfigManager.CONFIG_FILE` and `HistoryManager.DB_FILE` were
+  hard-coded under `$HOME/.streamcatch`. Any test that constructed a real
+  `HistoryManager` or saved configuration mutated the developer's actual
+  history database, configuration, and log file.
+- **Evidence anchor.** T1 — counted before/after a full suite run:
+  `history.db` **29 → 33 rows** per run, the 1.9 MB `app.log` grew on every run,
+  and `config.json` was rewritten (all three mtimes updated by the run).
+- **Root cause.** The data directory was a constant, so tests had no way to
+  redirect it; individual tests could only opt out one instance at a time.
+- **Impact.** Running tests contaminates real user state; a test calling
+  `clear_history()` would **delete the developer's history**, and a config test
+  could overwrite real settings. It also hid the `clear_history` risk from
+  review because the damage happens outside the test assertion.
+- **Category.** Incremental (correctness/test isolation). **Peer reference.**
+  `HistoryManager._test_db_file` already existed as a per-instance escape hatch,
+  which is exactly the fragile pattern that let this persist.
+- **Severity.** Medium-High. **Confidence.** High (measured, reproducible).
+  **Effort.** ~1.5 h. **ROI.** High.
+- **Recommendation.** One canonical `app_paths.data_dir()`/`data_file()` helper
+  driven by `STREAMCATCH_DATA_DIR`, used by config, history, the logger, and the
+  sync fallback; `tests/conftest.py` points it at a temporary folder before any
+  application import.
+- **Validation.** `TestAppDataDirectory` (env override, blank fallback, tilde
+  expansion, all three files inside the data dir) plus a session guard test that
+  fails if the suite is ever pointed at the real profile; before/after row counts
+  and file sizes unchanged across a full run.
+- **Residual risk.** Modules resolve their path at import, so the variable must
+  be set before startup; changing it at runtime does not move existing files
+  (documented in `app_paths` and `wiki/API.md`).
+
+### F-19 — Invented Flet icon name would fail at render time
+
+- **Description.** A new import button referenced
+  `ft.icons.DOWNLOAD_FILE_ROUNDED`, which does not exist in Flet 0.21.2 (the
+  correct name is `FILE_DOWNLOAD_ROUNDED`).
+- **Evidence anchor.** T1 — `AttributeError: module 'flet_core.icons' has no
+  attribute 'DOWNLOAD_FILE_ROUNDED'` from the real-Flet tests; a scan of all 74
+  distinct `ft.icons.*`/`ft.colors.*` references in the repository found this as
+  the only invalid name.
+- **Root cause.** Every mock-based test accepts any attribute
+  (`ft.icons.<anything>` returns a `MagicMock`), so invalid enum names pass
+  every mocked test and only fail in the running app.
+- **Impact.** The History view would raise while building its header, breaking
+  the whole screen — and the class of bug is invisible to the default test mode.
+- **Category.** Incremental. **Peer reference.** `tests/test_startup_smoke.py`
+  already runs against real Flet, which is why it caught this immediately.
+- **Severity.** Medium. **Confidence.** High. **Effort.** ~1 h. **ROI.** High.
+- **Recommendation.** Use `FILE_DOWNLOAD_ROUNDED`, and keep a permanent scan
+  that validates every literal `ft.icons.*`/`ft.colors.*` reference against the
+  installed Flet.
+- **Validation.** `tests/test_startup_smoke.py::test_icon_and_colour_names_exist_in_real_flet`
+  (fails on an unknown name, and on a scan that stops finding references).
+- **Residual risk.** The scan only covers literal attribute access; names built
+  dynamically (for example `getattr(ft.icons, name)`) are not checked.
+
+### F-20 — Path policy was bypassable on macOS through `/private` symlinks
+
+- **Description.** `is_safe_path` compared only the *resolved* path against the
+  denylist. On macOS `/etc`, `/var` and `/tmp` are symlinks into `/private`, so
+  `/etc/passwd` resolved to `/private/etc/passwd`, matched no denylist entry, and
+  the guard returned `True`.
+- **Evidence anchor.** T1 — reproduced locally by simulating the macOS layout
+  (`/etc` → `/private/etc`, `/var` → `/private/var`, `/tmp` → `/private/tmp`)
+  through `os.path.realpath`: the previous implementation returned `True` for
+  `/etc/passwd` and `/var/log/syslog`. Confirmed in CI: the three `macos-latest`
+  jobs failed at run `37047401385` and pass at run `37050576449` after the fix.
+- **Root cause.** Denying by resolved prefix is unsound when the platform itself
+  redirects those prefixes; the logical path the user typed was never checked,
+  and no `/private/...` location was listed.
+- **Impact.** (a) On macOS the guard — used for history export destinations,
+  batch-import sources and `open_folder`/`play_file` canonicalisation — accepted
+  system files, so the protection was absent exactly where it was advertised;
+  (b) all three macOS CI jobs failed (exit 1 in the coverage step) because the
+  pre-existing `tests/test_audit_fixes.py::test_is_safe_path` asserts
+  `/etc/passwd` is denied.
+- **Category.** Incremental. **Peer reference.** The Linux and Windows jobs
+  passed, which is why this stayed invisible: the defect is macOS-only.
+- **Severity.** Medium-high on macOS, none elsewhere. **Confidence.** High.
+  **Effort.** ~1 h. **ROI.** High.
+- **Recommendation.** Check both the resolved and the logical path, list the
+  `/private/...` system locations explicitly, and keep the temporary directories
+  (`/tmp`, `/var/tmp`, `/var/folders`) allowed by *resolved* path so a symlink
+  pointing out of temp is still denied.
+- **Validation.** `tests/test_hardening_regressions.py::TestImportPathPolicy::test_macos_symlinked_system_dirs_stay_denied`
+  and `::test_symlink_out_of_a_temp_dir_is_denied`. The first fails against the
+  pre-fix implementation (`AssertionError: /etc/passwd`, `assert True is False`)
+  and passes after it.
+- **Residual risk.** The macOS layout is simulated, not executed, on Linux CI;
+  the three `macos-latest` jobs are the executable check. Locations not on the
+  denylist (for example `/Library`) remain allowed.
+
+### F-21 — A test entered the modal Windows crash dialog and hung every Windows job
+
+- **Description.** The crash-handler redaction test called
+  `main.global_crash_handler` for real. On Windows the handler finishes by
+  showing `ctypes.windll.user32.MessageBoxW(...)`, a modal dialog that returns
+  only after someone dismisses it. On a headless runner nobody can, so the test
+  process blocked and the job never ended.
+- **Evidence anchor.** T1 — CI timing: the `windows-latest` test step ran
+  18 min 39 s at run `37047401385` and was still inside it when the run was
+  cancelled; at run `37050576449` it was still running after 10 min, while
+  ubuntu and macOS completed the same step in about one minute. Windows was
+  green before this branch (run `21796054184`: ~2 min per job). T1 code trace:
+  `main.py` calls the dialog under `if os.name == "nt"`, and no other new test
+  enters a platform-gated blocking call.
+- **Root cause.** The test drove the whole handler without intercepting the
+  platform-specific dialog. The pre-existing
+  `tests/test_main_comprehensive.py::test_global_crash_handler` avoids exactly
+  this by patching `main.os.name` to `"posix"` before calling the handler.
+- **Impact.** All three Windows jobs never finish, so the pull request can never
+  go green and Windows regressions stay invisible.
+- **Category.** Incremental (test reliability). **Peer reference.** The
+  pre-existing crash-handler test patches `os.name` for this reason.
+- **Severity.** High for CI. **Confidence.** High for the mechanism; the CI run
+  on the fix is the confirmation. **Effort.** ~30 min. **ROI.** High.
+- **Recommendation.** Intercept the dialog with a stub fixture instead of
+  entering it, and force `os.name = "nt"` in one test so the Windows branch is
+  exercised on every platform.
+- **Validation.** `tests/test_hardening_regressions.py::TestCrashHandlerRedaction::test_windows_crash_dialog_is_reached_through_an_injectable_stub`
+  (the forced Windows branch reaches the dialog through the stub) plus the
+  `windows-latest` jobs themselves.
+- **Residual risk.** A real crash in an unattended Windows session still blocks
+  on the dialog. That is the intended desktop behaviour and was left unchanged.
 ## 2. User-facing improvements
 
 | Improvement | Anchor | Evidence |
@@ -472,13 +597,13 @@ and web mode serves `GET / → 200`.
 ## 3. Verification performed
 
 ```
-pytest -q                                  512 passed
+pytest -q                                  515 passed
 pytest -q --cov=. --cov-report=term-missing 78% statements (floor 60%)
-black --check .                            clean (104 files)
+black --check .                            clean (105 files)
 isort --check-only .                       clean
 ruff check . --exclude tests               All checks passed
 mypy --config-file mypy.ini .              no issues in 34 source files
-pylint <non-test sources>                  10.00/10
+pylint <non-test sources>                  10.00/10, exit 0
 python scripts/build_installer.py --dry-run --skip-installer   resolved commands printed
 python scripts/build_mobile.py --target apk --dry-run          resolved commands printed
 FLET_WEB=1 FLET_SERVER_PORT=8550 python main.py                serves GET / -> 200
@@ -566,60 +691,3 @@ Deferred deliberately, with the reason:
   unchanged in contract (docs updated to match the code).
 - Desktop-first behaviour is preserved; the tool remains a Flet + yt-dlp desktop
   downloader, and no subsystem was deleted.
-### F-18 — Test runs wrote to the developer's real user data
-
-- **Description.** `ConfigManager.CONFIG_FILE` and `HistoryManager.DB_FILE` were
-  hard-coded under `$HOME/.streamcatch`. Any test that constructed a real
-  `HistoryManager` or saved configuration mutated the developer's actual
-  history database, configuration, and log file.
-- **Evidence anchor.** T1 — counted before/after a full suite run:
-  `history.db` **29 → 33 rows** per run, the 1.9 MB `app.log` grew on every run,
-  and `config.json` was rewritten (all three mtimes updated by the run).
-- **Root cause.** The data directory was a constant, so tests had no way to
-  redirect it; individual tests could only opt out one instance at a time.
-- **Impact.** Running tests contaminates real user state; a test calling
-  `clear_history()` would **delete the developer's history**, and a config test
-  could overwrite real settings. It also hid the `clear_history` risk from
-  review because the damage happens outside the test assertion.
-- **Category.** Incremental (correctness/test isolation). **Peer reference.**
-  `HistoryManager._test_db_file` already existed as a per-instance escape hatch,
-  which is exactly the fragile pattern that let this persist.
-- **Severity.** Medium-High. **Confidence.** High (measured, reproducible).
-  **Effort.** ~1.5 h. **ROI.** High.
-- **Recommendation.** One canonical `app_paths.data_dir()`/`data_file()` helper
-  driven by `STREAMCATCH_DATA_DIR`, used by config, history, the logger, and the
-  sync fallback; `tests/conftest.py` points it at a temporary folder before any
-  application import.
-- **Validation.** `TestAppDataDirectory` (env override, blank fallback, tilde
-  expansion, all three files inside the data dir) plus a session guard test that
-  fails if the suite is ever pointed at the real profile; before/after row counts
-  and file sizes unchanged across a full run.
-- **Residual risk.** Modules resolve their path at import, so the variable must
-  be set before startup; changing it at runtime does not move existing files
-  (documented in `app_paths` and `wiki/API.md`).
-
-### F-19 — Invented Flet icon name would fail at render time
-
-- **Description.** A new import button referenced
-  `ft.icons.DOWNLOAD_FILE_ROUNDED`, which does not exist in Flet 0.21.2 (the
-  correct name is `FILE_DOWNLOAD_ROUNDED`).
-- **Evidence anchor.** T1 — `AttributeError: module 'flet_core.icons' has no
-  attribute 'DOWNLOAD_FILE_ROUNDED'` from the real-Flet tests; a scan of all 74
-  distinct `ft.icons.*`/`ft.colors.*` references in the repository found this as
-  the only invalid name.
-- **Root cause.** Every mock-based test accepts any attribute
-  (`ft.icons.<anything>` returns a `MagicMock`), so invalid enum names pass
-  every mocked test and only fail in the running app.
-- **Impact.** The History view would raise while building its header, breaking
-  the whole screen — and the class of bug is invisible to the default test mode.
-- **Category.** Incremental. **Peer reference.** `tests/test_startup_smoke.py`
-  already runs against real Flet, which is why it caught this immediately.
-- **Severity.** Medium. **Confidence.** High. **Effort.** ~1 h. **ROI.** High.
-- **Recommendation.** Use `FILE_DOWNLOAD_ROUNDED`, and keep a permanent scan
-  that validates every literal `ft.icons.*`/`ft.colors.*` reference against the
-  installed Flet.
-- **Validation.** `tests/test_startup_smoke.py::test_icon_and_colour_names_exist_in_real_flet`
-  (fails on an unknown name, and on a scan that stops finding references).
-- **Residual risk.** The scan only covers literal attribute access; names built
-  dynamically (for example `getattr(ft.icons, name)`) are not checked.
-

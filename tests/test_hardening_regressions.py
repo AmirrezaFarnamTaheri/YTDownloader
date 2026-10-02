@@ -1156,7 +1156,28 @@ class TestHistorySummaryLine:
 
 
 class TestCrashHandlerRedaction:
-    def test_secret_locals_are_redacted_and_log_is_private(self, tmp_path, monkeypatch):
+    @pytest.fixture
+    def stub_crash_dialog(self, monkeypatch):
+        """Keep the Windows crash dialog out of the test process.
+
+        ``global_crash_handler`` calls ``ctypes.windll.user32.MessageBoxW`` when
+        ``os.name == "nt"``.  That dialog is modal: it returns only after someone
+        clicks it, so a headless Windows runner blocks forever.  Patching only
+        ``windll`` on the real module keeps every other ``ctypes`` import working.
+        """
+        import ctypes
+        import types
+
+        dialog = MagicMock()
+        fake_windll = types.SimpleNamespace(
+            user32=types.SimpleNamespace(MessageBoxW=dialog)
+        )
+        monkeypatch.setattr(ctypes, "windll", fake_windll, raising=False)
+        return dialog
+
+    def test_secret_locals_are_redacted_and_log_is_private(
+        self, tmp_path, monkeypatch, stub_crash_dialog
+    ):
         import sys as _sys
         from pathlib import Path
 
@@ -1187,6 +1208,34 @@ class TestCrashHandlerRedaction:
         # Crash logs can contain call arguments, so they must not be world-readable.
         mode = crash_log.stat().st_mode & 0o777
         assert mode & 0o077 == 0, f"crash log is too permissive: {oct(mode)}"
+
+    def test_windows_crash_dialog_is_reached_through_an_injectable_stub(
+        self, tmp_path, monkeypatch, stub_crash_dialog
+    ):
+        """Pin the Windows-only branch that used to hang the Windows test jobs.
+
+        Forcing ``os.name`` to ``"nt"`` on any platform must reach the dialog
+        through the stub instead of a real modal ``MessageBoxW``; the previous
+        test suite called it for real and the Windows jobs never finished.
+        """
+        import sys as _sys
+        from pathlib import Path
+
+        import main as main_module
+
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+        monkeypatch.setattr(main_module.os, "name", "nt")
+
+        with pytest.raises(SystemExit):
+            try:
+                raise ValueError("boom")
+            except ValueError:
+                main_module.global_crash_handler(*_sys.exc_info())
+
+        assert stub_crash_dialog.call_count == 1
+        args = stub_crash_dialog.call_args.args
+        assert args[2] == "StreamCatch Crashed"
+        assert "Critical Error" in args[1]
 
 
 class TestQueueKeyboardSelectionSafety:
