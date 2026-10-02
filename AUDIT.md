@@ -599,12 +599,49 @@ and web mode serves `GET / → 200`.
   workflow already generated the summary; only the failure path was missing.
 - **Severity.** Medium (diagnosability, not product behaviour).
   **Confidence.** High. **Effort.** ~15 min. **ROI.** High.
-- **Recommendation.** Publish the summary before re-raising pytest's status, as
-  the step now does.
+- **Recommendation.** Publish the summary before re-raising pytest's status, and
+  emit the failing test names as a check annotation as well, since annotations
+  are reachable through the checks API while the job summary is not. The step
+  now does both.
 - **Validation.** `bash` reproduction of the snippet: `false | tee log` under
   `set +e` yields `PIPESTATUS[0] == 1` and the summary is written first.
 - **Residual risk.** The summary shows the last 60 log lines; the complete log
   still needs the raw job output.
+### F-23 — Three new tests encoded POSIX-only assumptions and failed on Windows
+
+- **Description.** Once the Windows jobs stopped hanging (F-21) they failed on
+  assumptions that only hold on POSIX:
+  1. the crash-log test asserted POSIX permission bits
+     (`st_mode & 0o077 == 0`), but on Windows `st_mode` is `0o666` for a
+     writable file, so the assertion can never pass;
+  2. `test_tilde_is_expanded` set only `$HOME`, while Windows expands `~`
+     through `%USERPROFILE%`;
+  3. the macOS symlink simulation asserted that `/var/folders/...` (the macOS
+     per-user temporary directory) is allowed; Windows resolves paths with
+     `ntpath`, where the logical form matches the `/var` rule instead.
+- **Evidence anchor.** T1 — the failing Windows jobs' own output, published as a
+  check annotation once F-22 was fixed:
+  `1 failed, 514 passed … FAILED tests/test_hardening_regressions.py::TestImportPathPolicy::test_macos_symlinked_system_dirs_stay_denied - AssertionError: /var/folders/ab/T/streamcatch/links.txt`.
+  Items 1 and 2 were found by inspecting the new tests for platform-specific
+  assumptions, and the same run shows only item 3 remaining — i.e. they are
+  fixed by the changes here.
+- **Root cause.** The suite was developed and validated on Linux; the Windows
+  jobs had never completed on this branch (F-21), so no Windows feedback existed
+  before this pass.
+- **Impact.** The Windows matrix could not go green, hiding any real Windows
+  regression behind known failures.
+- **Category.** Incremental (test portability). **Peer reference.** No
+  pre-existing test asserted permission bits or relied on `$HOME`.
+- **Severity.** Medium. **Confidence.** High. **Effort.** ~30 min. **ROI.**
+  Medium-high.
+- **Recommendation.** Guard platform facts with `os.name == "posix"`, set the
+  variable the platform actually reads, and mark a simulation of another
+  operating system's layout as POSIX-only.
+- **Validation.** `pytest -q` locally (515 passed) plus the Windows, macOS and
+  Ubuntu jobs on the following CI run.
+- **Residual risk.** The POSIX-only branches are not executed on Windows, so a
+  future change to the permission handling would need the Linux/macOS legs to
+  catch it.
 ## 2. User-facing improvements
 
 | Improvement | Anchor | Evidence |

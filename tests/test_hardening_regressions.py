@@ -595,13 +595,19 @@ class TestImportPathPolicy:
         assert is_safe_path("   ") is False
         assert is_safe_path("bad\x00name") is False
 
+    @pytest.mark.skipif(
+        os.name != "posix",
+        reason="simulates the macOS symlink layout, which only POSIX resolves",
+    )
     def test_macos_symlinked_system_dirs_stay_denied(self, monkeypatch):
         """macOS reaches /etc, /var and /tmp through /private symlinks.
 
         Resolving the path alone turned ``/etc/passwd`` into
         ``/private/etc/passwd``, which matched no entry on the denylist, so the
         guard allowed reading system files on macOS only.  The macOS layout is
-        simulated by rewriting ``realpath`` the way the OS does.
+        simulated by rewriting ``realpath`` the way the OS does; Windows uses
+        ``ntpath`` and keeps drive-relative paths, so the simulation only means
+        something on POSIX (the plain policy checks run everywhere).
         """
         import posixpath
 
