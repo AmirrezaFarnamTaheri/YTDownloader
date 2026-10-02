@@ -553,12 +553,14 @@ and web mode serves `GET / → 200`.
   only after someone dismisses it. On a headless runner nobody can, so the test
   process blocked and the job never ended.
 - **Evidence anchor.** T1 — CI timing: the `windows-latest` test step ran
-  18 min 39 s at run `37047401385` and was still inside it when the run was
-  cancelled; at run `37050576449` it was still running after 10 min, while
+  18 min 39 s at run `37047401385` and was still inside it when the job was
+  killed by its own `timeout-minutes: 20`, which is why the job concluded
+  `cancelled`; at run `37050576449` it was still running after 10 min, while
   ubuntu and macOS completed the same step in about one minute. Windows was
   green before this branch (run `21796054184`: ~2 min per job). T1 code trace:
   `main.py` calls the dialog under `if os.name == "nt"`, and no other new test
-  enters a platform-gated blocking call.
+  enters a platform-gated blocking call. **Confirmed:** at run `37052181794`
+  (head `5774ac9`) the Windows jobs finish again, in about two minutes each.
 - **Root cause.** The test drove the whole handler without intercepting the
   platform-specific dialog. The pre-existing
   `tests/test_main_comprehensive.py::test_global_crash_handler` avoids exactly
@@ -567,8 +569,8 @@ and web mode serves `GET / → 200`.
   go green and Windows regressions stay invisible.
 - **Category.** Incremental (test reliability). **Peer reference.** The
   pre-existing crash-handler test patches `os.name` for this reason.
-- **Severity.** High for CI. **Confidence.** High for the mechanism; the CI run
-  on the fix is the confirmation. **Effort.** ~30 min. **ROI.** High.
+- **Severity.** High for CI. **Confidence.** High (mechanism and fix confirmed
+  by the Windows jobs completing again). **Effort.** ~30 min. **ROI.** High.
 - **Recommendation.** Intercept the dialog with a stub fixture instead of
   entering it, and force `os.name = "nt"` in one test so the Windows branch is
   exercised on every platform.
@@ -577,6 +579,32 @@ and web mode serves `GET / → 200`.
   `windows-latest` jobs themselves.
 - **Residual risk.** A real crash in an unattended Windows session still blocks
   on the dialog. That is the intended desktop behaviour and was left unchanged.
+
+### F-22 — CI published no failure summary, so failing jobs were unreadable
+
+- **Description.** The test step wrote a tail of the pytest log to
+  `$GITHUB_STEP_SUMMARY`, but the code ran *after* the pytest pipeline, so the
+  shell's `-e` aborted the step as soon as pytest exited non-zero. Every failing
+  job therefore showed an empty summary and no test names.
+- **Evidence anchor.** T1 — the step's own shell semantics (`bash -eo pipefail`
+  as used by `shell: bash`) plus the empty summary on every failing job
+  (`gh api .../check-runs/<id>/annotations` returned only "exit code 1").
+  Verified fixed by capturing `PIPESTATUS[0]`.
+- **Root cause.** The summary was written unconditionally after a command that
+  can fail, without disabling `errexit` or guarding the exit status.
+- **Impact.** A red matrix could not be diagnosed from the repository UI or the
+  API without downloading the raw log — which is exactly what the audit hit
+  when the Windows jobs hung.
+- **Category.** Incremental (developer experience). **Peer reference.** The
+  workflow already generated the summary; only the failure path was missing.
+- **Severity.** Medium (diagnosability, not product behaviour).
+  **Confidence.** High. **Effort.** ~15 min. **ROI.** High.
+- **Recommendation.** Publish the summary before re-raising pytest's status, as
+  the step now does.
+- **Validation.** `bash` reproduction of the snippet: `false | tee log` under
+  `set +e` yields `PIPESTATUS[0] == 1` and the summary is written first.
+- **Residual risk.** The summary shows the last 60 log lines; the complete log
+  still needs the raw job output.
 ## 2. User-facing improvements
 
 | Improvement | Anchor | Evidence |

@@ -7,6 +7,7 @@ against the corrected behaviour. Grouped by subsystem for easy triage.
 
 import csv
 import json
+import os
 import threading
 import time
 from pathlib import Path
@@ -1205,9 +1206,11 @@ class TestCrashHandlerRedaction:
         assert "***REDACTED***" in content
         assert "ValueError" in content and "boom" in content
 
-        # Crash logs can contain call arguments, so they must not be world-readable.
-        mode = crash_log.stat().st_mode & 0o777
-        assert mode & 0o077 == 0, f"crash log is too permissive: {oct(mode)}"
+        # Crash logs can contain call arguments, so they must not be
+        # world-readable.  Windows has no POSIX permission bits to assert.
+        if os.name == "posix":
+            mode = crash_log.stat().st_mode & 0o777
+            assert mode & 0o077 == 0, f"crash log is too permissive: {oct(mode)}"
 
     def test_windows_crash_dialog_is_reached_through_an_injectable_stub(
         self, tmp_path, monkeypatch, stub_crash_dialog
@@ -1613,8 +1616,10 @@ class TestAppDataDirectory:
     def test_tilde_is_expanded(self, monkeypatch, tmp_path):
         from app_paths import DATA_DIR_ENV, data_dir
 
-        # Tilde expansion consults $HOME (os.path.expanduser), not Path.home().
+        # Tilde expansion consults the platform's home variable, not Path.home():
+        # $HOME on POSIX, %USERPROFILE% on Windows.
         monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
         monkeypatch.setenv(DATA_DIR_ENV, "~/custom-streamcatch")
 
         assert data_dir() == tmp_path / "custom-streamcatch"
