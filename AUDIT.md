@@ -1,7 +1,7 @@
 # StreamCatch Audit and Redesign — Working Notes
 
-Revision audited: `c412190` (`main`) → branch `arena/01a0fd65-ytdownloader`,
-commits `eeb1ade`, `69d5245`, `eeafb16`.
+Revision audited: `c412190` (`main`) → branch `arena/01a0fd65-ytdownloader`
+(the branch contains the complete change set described here).
 
 Scope: backend architecture and downloader package, UI/UX and view layer, state
 management, data flows, configuration, packaging, documentation, tests,
@@ -484,8 +484,8 @@ Reviewed end to end (T1/T2): `main.py`, `app_controller.py`, `app_state.py`,
 `docker-compose.yml`, `.github/workflows/*`, `requirements*.txt`, `pyproject.toml`,
 `mypy.ini`, `installers/setup.iss`, `README.md`, `PROJECT_HEALTH.md`, `wiki/*`.
 
-Coverage of the corpus: 22 of 22 top-level modules, 4 of 4 downloader modules,
-12 of 12 view modules, 7 of 7 workflows. Files not reviewed line by line:
+Coverage of the corpus: 22 of 22 top-level modules, 5 of 5 downloader modules,
+16 of 16 view/component/panel modules, 5 of 5 CI workflows. Files not reviewed line by line:
 `assets/*` (static images/icon), `CODE_OF_CONDUCT.md`, `LICENSE`,
 `ytdownloader.log.1` (generated), `installers/setup.iss` (reviewed only for the
 packaging claims it must support). No file in the repository was skipped without a
