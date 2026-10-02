@@ -14,7 +14,8 @@ def test_constants_availability():
 def test_no_legacy_imports():
     """Verify that old import paths raise ImportError."""
     with pytest.raises(ImportError):
-        import downloader.utils.constants
+        # The legacy module path must not resolve; the import is intentional.
+        from downloader.utils.constants import RESERVED_FILENAMES  # noqa: F401
 
 
 def test_generic_downloader_has_no_legacy_function_wrapper():

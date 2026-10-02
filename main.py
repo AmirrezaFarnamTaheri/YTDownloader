@@ -58,18 +58,24 @@ def main(pg: ft.Page) -> None:
         # Ensure state.config is loaded by accessing state
         LM.load_language(state.config.get("language", "en"))
 
-        PAGE.title = LM.get("app_title", "StreamCatch - Ultimate Downloader")
+        PAGE.title = LM.get("app_title", default="StreamCatch - Ultimate Downloader")
 
         # 2. Load Theme Mode from Config
         theme_mode_str = str(state.config.get("theme_mode", "dark")).lower()
         if theme_mode_str == "light":
             PAGE.theme_mode = ft.ThemeMode.LIGHT
+            Theme.apply_theme_mode("light")
         elif theme_mode_str == "system":
             PAGE.theme_mode = ft.ThemeMode.SYSTEM
+            # Flet resolves "system" to OS preference; we default to dark here
+            # because we cannot probe the OS from pure Python reliably.
+            Theme.apply_theme_mode("dark")
         elif theme_mode_str in {"high contrast", "high_contrast", "high-contrast"}:
-            PAGE.theme_mode = ft.ThemeMode.SYSTEM
+            PAGE.theme_mode = ft.ThemeMode.DARK
+            Theme.apply_theme_mode("high_contrast")
         else:
             PAGE.theme_mode = ft.ThemeMode.DARK
+            Theme.apply_theme_mode("dark")
 
         PAGE.padding = 0
         PAGE.window_min_width = 1100
@@ -279,7 +285,13 @@ if __name__ == "__main__":
 
     if os.environ.get("FLET_WEB"):
         web_port = int(os.environ.get("FLET_SERVER_PORT", "8550"))
-        ft.app(target=main, view=ft.WEB_BROWSER, port=web_port)
+        # Bind to all interfaces by default: the web mode exists for container
+        # and remote use, where a 127.0.0.1 bind is unreachable through the
+        # published port. Override with FLET_SERVER_HOST=127.0.0.1 to keep it
+        # local-only.
+        web_host = os.environ.get("FLET_SERVER_HOST", "0.0.0.0")
+        logger.info("Starting web server on %s:%s", web_host, web_port)
+        ft.app(target=main, view=ft.WEB_BROWSER, host=web_host, port=web_port)
     else:
         try:
             ft.app(target=main)

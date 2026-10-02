@@ -7,6 +7,7 @@ import logging
 import os
 import pathlib
 import shutil
+import sqlite3
 import tempfile
 import threading
 import zipfile
@@ -14,6 +15,9 @@ import zipfile
 # from ui_utils import is_safe_path  # Unused import
 
 logger = logging.getLogger(__name__)
+
+# Every SQLite database file starts with this 16-byte magic string.
+_SQLITE_MAGIC = b"SQLite format 3\x00"
 
 _SENSITIVE_CONFIG_KEYS = {
     "cookies",
@@ -160,7 +164,9 @@ class SyncManager:
                     with open(local_config_path, encoding="utf-8") as f:
                         new_config = json.load(f)
 
-                    self._apply_config_snapshot(self._sanitize_config_snapshot(new_config))
+                    self._apply_config_snapshot(
+                        self._sanitize_config_snapshot(new_config)
+                    )
 
                     os.remove(local_config_path)
                     logger.info("Config synced from cloud")
@@ -173,8 +179,12 @@ class SyncManager:
                         tempfile.gettempdir(), "history_downloaded.db"
                     )
                     if self.cloud.download_file("history.db", local_history_path):
-                        self._replace_history_db(local_history_path)
-                        logger.info("History synced from cloud")
+                        if self._replace_history_db(local_history_path):
+                            logger.info("History synced from cloud")
+                        else:
+                            logger.error(
+                                "Remote history DB was invalid; local history kept"
+                            )
                     else:
                         logger.warning("No remote history DB found")
 
@@ -288,19 +298,78 @@ class SyncManager:
                 return resolved
         return fallback
 
-    def _replace_history_db(self, source_path: str) -> None:
-        """Replace the local history DB with a downloaded file."""
+    @staticmethod
+    def _is_valid_history_db(path: str) -> bool:
+        """Return True when ``path`` is a readable SQLite database.
+
+        Sync replaces the user's local history wholesale, so the payload must be
+        validated first: a corrupt, truncated, or unrelated file would otherwise
+        destroy local history and leave every later query failing with
+        "file is not a database".
+        """
+        try:
+            with open(path, "rb") as handle:
+                header = handle.read(16)
+            if header != _SQLITE_MAGIC:
+                logger.error(
+                    "Rejected history sync payload: not a SQLite database (%s)", path
+                )
+                return False
+
+            # Integrity check catches truncated/corrupt payloads that still
+            # carry a valid magic header.
+            with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as conn:
+                result = conn.execute("PRAGMA integrity_check").fetchone()
+                if not result or result[0] != "ok":
+                    logger.error(
+                        "Rejected history sync payload: integrity check failed (%s)",
+                        result,
+                    )
+                    return False
+            return True
+        except (OSError, sqlite3.Error) as exc:
+            logger.error("Rejected history sync payload: %s", exc)
+            return False
+
+    @staticmethod
+    def _backup_existing_db(target_db_path: str) -> None:
+        """Best-effort backup of the current history DB before replacement."""
+        if not os.path.exists(target_db_path):
+            return
+        backup_path = f"{target_db_path}.bak"
+        try:
+            shutil.copy2(target_db_path, backup_path)
+            logger.info("Backed up existing history DB to %s", backup_path)
+        except OSError as exc:
+            logger.warning("Could not back up existing history DB: %s", exc)
+
+    def _replace_history_db(self, source_path: str) -> bool:
+        """Replace the local history DB with a downloaded file.
+
+        Returns:
+            True when the database was replaced, False when the payload was
+            rejected and the existing database was left untouched.
+        """
         target_db_path = self._resolve_history_db_path()
         parent = os.path.dirname(target_db_path)
         if parent and not os.path.exists(parent):
             os.makedirs(parent, exist_ok=True)
 
+        if not self._is_valid_history_db(source_path):
+            # Keep the payload for forensics but never let it overwrite live data.
+            return False
+
+        self._backup_existing_db(target_db_path)
+
+        replaced = False
         try:
             os.replace(source_path, target_db_path)
+            replaced = True
         except OSError as e:
             logger.warning("Failed to replace history DB: %s", e)
             try:
                 shutil.copy2(source_path, target_db_path)
+                replaced = True
             except Exception as copy_exc:  # pylint: disable=broad-exception-caught
                 logger.error("Failed to copy history DB: %s", copy_exc)
         finally:
@@ -313,6 +382,7 @@ class SyncManager:
                         source_path,
                         exc,
                     )
+        return replaced
 
     def export_data(self, export_path: str):
         """Exports all app data to a zip file."""
@@ -378,6 +448,14 @@ class SyncManager:
             with open(temp_db, "wb") as f_out:
                 with zf.open("history.db") as f_in:
                     shutil.copyfileobj(f_in, f_out)
+
+            # Validate before touching live data: an import archive may contain
+            # a truncated or unrelated file under the history.db name.
+            if not self._is_valid_history_db(temp_db):
+                logger.error("Import archive contains an invalid history DB; skipping")
+                return
+
+            self._backup_existing_db(target_db_path)
 
             # Atomic replacement (try)
             if os.path.exists(target_db_path):

@@ -116,15 +116,29 @@ class RSSManager:
 
     @staticmethod
     def _normalize_feeds(feeds: list[Any]) -> list[dict[str, str]]:
-        """Normalize feed entries into dicts with url/name."""
-        normalized = []
-        for f in feeds:
-            if isinstance(f, str):
-                normalized.append({"url": f, "name": f})
-            elif isinstance(f, dict) and f.get("url"):
-                url = str(f["url"])
-                name = str(f.get("name", url))
-                normalized.append({"url": url, "name": name})
+        """Normalize feed entries into dicts with url/name.
+
+        Whitespace-only or otherwise empty URLs are dropped: they would only
+        produce failed fetches and clutter the feed list.
+        """
+        normalized: list[dict[str, str]] = []
+        seen: set[str] = set()
+
+        def _add(raw_url: Any, raw_name: Any = None) -> None:
+            if not isinstance(raw_url, str):
+                return
+            url = raw_url.strip()
+            if not url or url in seen:
+                return
+            seen.add(url)
+            name = raw_name if isinstance(raw_name, str) and raw_name.strip() else url
+            normalized.append({"url": url, "name": name.strip()})
+
+        for feed in feeds:
+            if isinstance(feed, str):
+                _add(feed)
+            elif isinstance(feed, dict) and feed.get("url"):
+                _add(feed.get("url"), feed.get("name"))
         return normalized
 
     def _save_feeds(self):
@@ -146,17 +160,25 @@ class RSSManager:
         with self._lock:
             return list(self.feeds)
 
-    def add_feed(self, url: str):
-        """Add a new RSS feed."""
-        if not validate_url(url, resolve_host=True):
+    def add_feed(self, url: str) -> bool:
+        """Add a new RSS feed.
+
+        Returns:
+            True when the feed was added, False when it was rejected or already
+            present.
+        """
+        candidate = url.strip() if isinstance(url, str) else ""
+        if not candidate or not validate_url(candidate, resolve_host=True):
             safe_log_warning("Rejected invalid RSS feed URL: %s", url)
-            return
+            return False
 
         with self._lock:
-            if not any(f["url"] == url for f in self.feeds):
-                self.feeds.append({"url": url, "name": url})
-                self._save_feeds()
-                logger.info("Added RSS feed: %s", url)
+            if any(f["url"] == candidate for f in self.feeds):
+                return False
+            self.feeds.append({"url": candidate, "name": candidate})
+            self._save_feeds()
+            logger.info("Added RSS feed: %s", candidate)
+            return True
 
     def remove_feed(self, url: str):
         """Remove an RSS feed."""
@@ -197,7 +219,10 @@ class RSSManager:
             # Use apparent_encoding for robustness against misconfigured servers
             response.encoding = response.apparent_encoding
             content_text = response.text
-            if len(content_text.encode(response.encoding or "utf-8", "ignore")) > MAX_FEED_BYTES:
+            if (
+                len(content_text.encode(response.encoding or "utf-8", "ignore"))
+                > MAX_FEED_BYTES
+            ):
                 safe_log_warning("RSS feed content exceeded limit: %s", url)
                 return []
 

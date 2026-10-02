@@ -37,7 +37,27 @@ Background metadata fetch operation with UI callback dispatch.
 
 ### `tasks.configure_concurrency(max_workers: int) -> bool`
 
-Reconfigures submission semaphore + executor lifecycle.
+Swaps the submission semaphore that gates download concurrency. The worker pool
+is a single long-lived `ThreadPoolExecutor`, so this call never shuts down or
+orphans in-flight downloads. Returns `False` for non-positive values.
+
+## State and UI APIs
+
+### `theme.Theme.apply_theme_mode(mode: str) -> None`
+
+Switches the active palette (`dark`, `light`, `high_contrast`). Re-binds both
+the `Theme.*` class attributes and the legacy nested proxies.
+
+### `ui_manager.UIManager.refresh_theme() -> None`
+
+Rebuilds the view tree with the current palette and re-mounts it on the page.
+Required after a runtime theme change because Flet controls capture colours at
+construction time.
+
+### `queue_manager.QueueManager.update_item_status(item_id, status, updates=None) -> None`
+
+O(1) status/progress update backed by an internal id index. Safe to call from
+worker threads at high frequency.
 
 ## Queue APIs (`QueueManager`)
 

@@ -5,9 +5,9 @@ Includes robust validation and secure operations.
 
 # pylint: disable=too-many-return-statements
 
-import ipaddress
 import asyncio
 import inspect
+import ipaddress
 import logging
 import os
 import platform
@@ -26,6 +26,11 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+# (connect timeout, read timeout) applied to every outbound HTTP request
+# that does not supply its own.
+DEFAULT_HTTP_TIMEOUT = (10, 30)
+
+
 # pylint: disable=too-few-public-methods
 class UIConstants:
     """Class to hold UI-related constants."""
@@ -38,6 +43,28 @@ class UIConstants:
     DEFAULT_PADDING = 10
     BUTTON_PADDING = 8
     ENTRY_PADDING = 5
+
+
+def safe_update(control: ft.Control) -> bool:
+    """Push ``control`` to the client only when it is currently mounted.
+
+    Flet's ``Control.update()`` raises ``AssertionError: Control must be added
+    to the page first`` for controls that are not part of a page. Views are
+    rebuilt and refreshed from background timers while the user may have
+    navigated elsewhere, so a refresh can legitimately target a detached
+    control; such updates must be skipped instead of aborting the refresh.
+
+    Returns ``True`` when an update command was issued.
+    """
+    try:
+        if control.page:
+            control.update()
+            return True
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.debug(
+            "Skipped update for detached control %s: %s", type(control).__name__, exc
+        )
+    return False
 
 
 def format_file_size(size_bytes: float | str | int | None) -> str:
@@ -57,8 +84,25 @@ def format_file_size(size_bytes: float | str | int | None) -> str:
         return "N/A"
 
 
+def _ip_is_safe(value: str) -> bool:
+    """Return True when the IP literal is safe to connect to from a desktop app.
+
+    Blocks loopback, link-local, multicast, unspecified, reserved, and
+    private/RFC1918/ULA addresses to protect against SSRF-style abuse.
+    """
+    ip = ipaddress.ip_address(value)
+    return not (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
 def _host_is_public(hostname: str, resolve_host: bool = False) -> bool:
-    """Return whether a hostname/IP avoids local and private address ranges."""
+    """Return whether a hostname/IP is a public (non-local, non-private) address."""
     host = hostname.strip().strip(".").lower()
     if not host:
         return False
@@ -66,19 +110,8 @@ def _host_is_public(hostname: str, resolve_host: bool = False) -> bool:
     if host in ("localhost", "127.0.0.1", "::1"):
         return False
 
-    def _ip_allowed(value: str) -> bool:
-        ip = ipaddress.ip_address(value)
-        return not (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_multicast
-            or ip.is_reserved
-            or ip.is_unspecified
-        )
-
     try:
-        return _ip_allowed(host)
+        return _ip_is_safe(host)
     except ValueError:
         if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", host):
             return False
@@ -96,10 +129,12 @@ def _host_is_public(hostname: str, resolve_host: bool = False) -> bool:
             addr_infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
         except OSError:
             return False
+        if not addr_infos:
+            return False
         for info in addr_infos:
-            addr = info[4][0]
+            addr = str(info[4][0])
             try:
-                if not _ip_allowed(addr):
+                if not _ip_is_safe(addr):
                     return False
             except ValueError:
                 return False
@@ -220,6 +255,9 @@ def safe_request_with_redirects(
     if max_redirects < 0:
         raise ValueError("max_redirects must be non-negative")
 
+    # Never allow an unbounded wait: a hung remote must not hang the app.
+    timeout = kwargs.pop("timeout", DEFAULT_HTTP_TIMEOUT)
+
     current_url = url
     for _ in range(max_redirects + 1):
         if not validate_url(current_url, resolve_host=True):
@@ -229,6 +267,7 @@ def safe_request_with_redirects(
             method,
             current_url,
             allow_redirects=False,
+            timeout=timeout,
             **kwargs,
         )
         if response.is_redirect or response.is_permanent_redirect:
@@ -304,11 +343,9 @@ def validate_proxy(proxy: str) -> bool:
         if not hostname:
             return False
 
-        # Block localhost
+        # Block loopback and private/reserved IPs to prevent SSRF
         if hostname in ("localhost", "127.0.0.1", "::1"):
             return False
-
-        # Block private/reserved IPs
         try:
             ip = ipaddress.ip_address(hostname)
             if (
@@ -323,9 +360,6 @@ def validate_proxy(proxy: str) -> bool:
             # Reject invalid numeric IPs like 999.999.999.999
             if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname):
                 return False
-            # Not an IP address, domain name is fine (unless it resolves to private,
-            # but that's handled at connection time usually,
-            # though here we just check format and obvious bad actors)
 
         # Port validation
         if parsed.port is not None:
@@ -411,15 +445,56 @@ def validate_download_path(path_str: str | None) -> bool:
         return False
 
 
+# Directories that must never be used as the source of a user-initiated
+# import. This is a denylist rather than a home-only allowlist because users
+# legitimately keep link lists on removable media, in /tmp, or on secondary
+# drives; blocking those was a usability defect with no security benefit
+# (the path always comes from a native file picker).
+_DENIED_SYSTEM_DIRS: tuple[str, ...] = (
+    "/etc",
+    "/bin",
+    "/sbin",
+    "/usr",
+    "/var",
+    "/proc",
+    "/sys",
+    "/dev",
+    "/boot",
+    "/lib",
+    "/lib64",
+    "/root",
+    "c:\\windows",
+    "c:\\program files",
+    "c:\\program files (x86)",
+    "c:\\programdata",
+)
+
+
 def is_safe_path(filepath: str) -> bool:
     """
-    Check if the filepath is within the user's home directory.
-    Prevents access to sensitive system files.
+    Check whether a user-chosen file path is safe to read.
+
+    Rejects well-known system locations (``/etc``, ``/proc``, ``C:\\Windows``,
+    …) while allowing user-chosen locations such as the home directory,
+    temporary directories, removable media, and secondary drives.
     """
     try:
+        if not isinstance(filepath, str) or not filepath.strip():
+            return False
+        if "\x00" in filepath:
+            return False
+
         path = Path(filepath).resolve()
-        home = Path.home().resolve()
-        return path.is_relative_to(home)
+        normalized = str(path).lower().replace("\\", "/")
+
+        for denied in _DENIED_SYSTEM_DIRS:
+            prefix = denied.lower().replace("\\", "/")
+            if normalized == prefix or normalized.startswith(prefix + "/"):
+                return False
+
+        # Existence/permission checks belong to the caller; this is a policy
+        # check on the path itself.
+        return True
     except Exception:  # pylint: disable=broad-exception-caught
         return False
 

@@ -102,12 +102,15 @@ class TestSyncManager(unittest.TestCase):
         self.assertEqual(resolved, os.path.expanduser("~/.streamcatch/history.db"))
 
     def test_config_snapshot_strips_sensitive_values(self):
-        manager = SyncManager(self.mock_cloud, {
-            "theme": "dark",
-            "cookies": "secret-cookie",
-            "api_token": "secret-token",
-            "nested": {"password": "secret", "safe": "value"},
-        })
+        manager = SyncManager(
+            self.mock_cloud,
+            {
+                "theme": "dark",
+                "cookies": "secret-cookie",
+                "api_token": "secret-token",
+                "nested": {"password": "secret", "safe": "value"},
+            },
+        )
 
         snapshot = manager._get_config_snapshot()
 

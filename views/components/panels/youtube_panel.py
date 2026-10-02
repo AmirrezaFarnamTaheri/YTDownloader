@@ -9,6 +9,7 @@ import flet as ft
 
 from localization_manager import LocalizationManager as LM
 from theme import Theme
+from ui_utils import safe_update
 from views.components.panels.base_panel import BasePanel
 
 
@@ -164,7 +165,9 @@ class YouTubePanel(BasePanel):
     def apply_profile(self, profile: str) -> None:
         """Apply a high-level download profile to detailed YouTube controls."""
         if profile == "fast_720p":
-            available = {getattr(opt, "key", None) for opt in self.video_format_dd.options}
+            available = {
+                getattr(opt, "key", None) for opt in self.video_format_dd.options
+            }
             self.video_format_dd.value = "720p" if "720p" in available else "best"
         elif profile == "audio_mp3":
             self.video_format_dd.value = "audio"
@@ -183,7 +186,9 @@ class YouTubePanel(BasePanel):
             self.video_format_dd.value = "best"
 
         self.on_option_change()
-        self.update()
+        # The panel may be built (and have options applied) before it is
+        # mounted on a page, so only repaint when a page is attached.
+        safe_update(self)
 
     def get_options(self) -> dict[str, Any]:
         return {

@@ -1,13 +1,14 @@
 """History View"""
 
 import logging
+import threading
 
 import flet as ft
 
 from history_manager import HistoryManager
 from localization_manager import LocalizationManager as LM
 from theme import Theme
-from ui_utils import open_folder
+from ui_utils import format_file_size, open_folder
 from views.base_view import BaseView
 from views.components.history_item import HistoryItemControl
 
@@ -24,6 +25,10 @@ class HistoryView(BaseView):
         self.offset = 0
         self.limit = 50
         self.current_search = ""
+        # Debounce timer for live search: without it every keystroke issues a
+        # LIKE '%…%' query that cannot use an index.
+        self._search_timer: threading.Timer | None = None
+        self._search_debounce_seconds = 0.35
 
         # Search Bar
         self.search_field = ft.TextField(
@@ -31,7 +36,7 @@ class HistoryView(BaseView):
             on_submit=self._on_search_submit,
             on_change=self._on_search_change,  # Live search
             **Theme.get_input_decoration(
-                hint_text=LM.get("search_history", "Search history..."),
+                hint_text=LM.get("search_history", default="Search history..."),
                 prefix_icon=ft.icons.SEARCH_ROUNDED,
             ),
         )
@@ -47,9 +52,12 @@ class HistoryView(BaseView):
             ),
         )
 
+        # Cumulative totals (count + on-disk size) for the whole history
+        self.summary_text = ft.Text("", size=12, color=Theme.Text.SECONDARY)
+
         # Load More Button
         self.load_more_btn = ft.ElevatedButton(
-            LM.get("load_more", "Load More"),
+            LM.get("load_more", default="Load More"),
             on_click=self._load_more,
             visible=False,
         )
@@ -65,13 +73,38 @@ class HistoryView(BaseView):
         )
 
         self.add_control(ft.Container(content=header, padding=10))
+        self.add_control(
+            ft.Container(content=self.summary_text, padding=ft.padding.only(left=10))
+        )
         self.add_control(self.history_list)
         self.add_control(
             ft.Container(content=self.load_more_btn, alignment=ft.alignment.center)
         )
 
+    def _update_summary(self) -> None:
+        """Refresh the cumulative count/size line above the history list."""
+        try:
+            # pylint: disable=import-outside-toplevel
+            from app_state import state
+
+            hm = getattr(state, "history_manager", None) or HistoryManager()
+            stats = hm.get_stats() or {}
+            total = int(stats.get("total_downloads") or 0)
+            size_mb = float(stats.get("total_size_mb") or 0)
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            logger.debug("History summary unavailable: %s", ex)
+            return
+
+        if not total:
+            self.summary_text.value = ""
+            return
+        self.summary_text.value = LM.get(
+            "history_summary", default="{0} downloads | {1}"
+        ).format(total, format_file_size(size_mb * 1024 * 1024))
+
     def load(self, reset=True):
         """Loads history items from the database."""
+        self._update_summary()
         if reset:
             self.offset = 0
             self.history_list.controls.clear()
@@ -137,16 +170,46 @@ class HistoryView(BaseView):
 
     # pylint: disable=unused-argument
     def _on_search_submit(self, e):
+        self._cancel_search_timer()
         self.current_search = self.search_field.value.strip()
         self.load(reset=True)
 
     # pylint: disable=unused-argument
     def _on_search_change(self, e):
-        # Keep search genuinely live; history queries are limited and indexed.
-        val = self.search_field.value.strip()
-        if val != self.current_search:
-            self.current_search = val
+        """Live search with a short debounce so typing doesn't hammer SQLite."""
+        self._cancel_search_timer()
+        timer = threading.Timer(
+            self._search_debounce_seconds, self._apply_search_from_timer
+        )
+        timer.daemon = True
+        self._search_timer = timer
+        timer.start()
+
+    def _cancel_search_timer(self) -> None:
+        """Cancel a pending debounced search, if any."""
+        timer = self._search_timer
+        if timer is not None:
+            timer.cancel()
+            self._search_timer = None
+
+    def _apply_search_from_timer(self) -> None:
+        """Run the debounced query (called from the timer thread)."""
+        self._search_timer = None
+        value = self.search_field.value
+        value = value.strip() if isinstance(value, str) else ""
+        if value == self.current_search:
+            return
+        self.current_search = value
+
+        # UI mutations must be marshalled back to Flet's event loop when the
+        # view is attached; otherwise (unit tests, headless use) run inline.
+        if self.page is None:
             self.load(reset=True)
+            return
+
+        from ui_utils import run_on_ui_thread
+
+        run_on_ui_thread(self.page, lambda: self.load(reset=True))
 
     # pylint: disable=unused-argument
     def _load_more(self, e):
@@ -216,7 +279,9 @@ class HistoryView(BaseView):
             try:
                 self.page.set_clipboard(url)
                 self.page.open(
-                    ft.SnackBar(content=ft.Text(LM.get("url_copied", "URL copied")))
+                    ft.SnackBar(
+                        content=ft.Text(LM.get("url_copied", default="URL copied"))
+                    )
                 )
             except Exception as ex:  # pylint: disable=broad-exception-caught
                 logger.error("Failed to copy URL: %s", ex)
@@ -236,7 +301,9 @@ class HistoryView(BaseView):
                 if self.page:
                     self.page.open(
                         ft.SnackBar(
-                            content=ft.Text(LM.get("item_deleted", "Item deleted"))
+                            content=ft.Text(
+                                LM.get("item_deleted", default="Item deleted")
+                            )
                         )
                     )
         except Exception as ex:  # pylint: disable=broad-exception-caught

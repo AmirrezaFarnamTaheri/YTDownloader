@@ -12,6 +12,35 @@ from typing import Any, Literal, TypedDict
 from urllib.parse import urlparse
 
 
+def _validate_proxy_host(hostname: str) -> None:
+    """Reject loopback/private/reserved proxy hosts and malformed numeric IPs.
+
+    Raises:
+        ValueError: when the host is unsafe or malformed.
+    """
+    if len(hostname) > 253:
+        raise ValueError("Invalid proxy hostname")
+
+    try:
+        ip = ipaddress.ip_address(hostname)
+    except ValueError as exc:
+        # Not an IP literal: reject malformed dotted-quad strings, accept DNS names
+        if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname):
+            raise ValueError("Invalid proxy host IP") from exc
+        return
+
+    unsafe_flags = (
+        ip.is_multicast,
+        ip.is_unspecified,
+        ip.is_reserved,
+        ip.is_loopback,
+        ip.is_link_local,
+        ip.is_private,
+    )
+    if any(unsafe_flags):
+        raise ValueError("Proxy must use a public host (no localhost/private/loopback)")
+
+
 class DownloadStatus(str, Enum):
     """Enumeration of possible download statuses."""
 
@@ -66,7 +95,7 @@ class DownloadOptions:
         self._validate_filename()
 
     def _validate_proxy(self):
-        """Validate proxy settings."""
+        """Validate proxy settings (scheme, host shape, port)."""
         if self.proxy:
             try:
                 parsed = urlparse(self.proxy)
@@ -76,31 +105,33 @@ class DownloadOptions:
                     )
 
                 hostname = parsed.hostname
-                if hostname:
-                    if hostname in ("localhost", "127.0.0.1", "::1"):
-                        raise ValueError("Local proxies are not allowed")
-                    try:
-                        ip = ipaddress.ip_address(hostname)
-                        if ip.is_private or ip.is_loopback:
-                            raise ValueError("Private IP proxies are not allowed")
-                    except ValueError:
-                        # Simple regex check for IP-like strings that failed ip_address check
-                        # This prevents "1.2.3.999" from bypassing if it wasn't caught above
-                        if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", hostname):
-                            raise ValueError("Invalid proxy host IP") from None
+                if not hostname:
+                    raise ValueError("Proxy must include a hostname")
+
+                _validate_proxy_host(hostname)
+
+                if parsed.port is not None and not 1 <= parsed.port <= 65535:
+                    raise ValueError("Proxy port must be in range 1-65535")
             except ValueError as e:
                 raise ValueError(str(e)) from e
             except Exception as e:
                 raise ValueError(f"Invalid proxy configuration: {e}") from e
 
     def _validate_time(self):
-        """Validate time range settings."""
+        """Validate time range settings.
+
+        - Both empty: OK (no section trimming).
+        - Only start_time: download from start_time to end-of-video.
+        - Only end_time: download from beginning to end_time.
+        - Both: require start < end.
+        """
         start_sec = self.get_seconds(self.start_time)
         end_sec = self.get_seconds(self.end_time)
 
         if start_sec < 0 or end_sec < 0:
             raise ValueError("Time values must be non-negative")
 
+        # Only enforce ordering when both are explicitly provided
         if self.start_time and self.end_time and start_sec >= end_sec:
             raise ValueError("Start time must be before end time")
 

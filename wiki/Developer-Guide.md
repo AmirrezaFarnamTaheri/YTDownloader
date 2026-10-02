@@ -26,11 +26,14 @@ On macOS/Linux, use `source .venv/bin/activate`.
 python main.py
 ```
 
-For web-server mode:
+For web-server mode (the process serves the UI over HTTP):
 
 ```bash
-FLET_SERVER_PORT=8550 python main.py --web
+FLET_WEB=1 FLET_SERVER_PORT=8550 python main.py
 ```
+
+Web mode binds to `0.0.0.0` by default so container-published ports work.
+Set `FLET_SERVER_HOST=127.0.0.1` to restrict it to the local machine.
 
 ## Verification
 

@@ -15,16 +15,39 @@ StreamCatch is organized around a small number of responsibilities.
 Flet UI work that originates outside the UI thread should use
 `ui_utils.run_on_ui_thread()`.
 
+### Theming
+
+`theme.py` holds two palettes and exposes the active one through `Theme.*`
+class attributes plus the legacy nested proxies (`Theme.Text.PRIMARY`,
+`Theme.Primary.MAIN`, …). `Theme.apply_theme_mode()` swaps the active palette.
+
+Because Flet controls capture colour values when they are constructed, a theme
+change cannot be applied by calling `update()` on existing controls. The
+Settings view therefore calls back into `UIManager.refresh_theme()`, which
+rebuilds the view tree with the remembered callbacks and re-mounts the new
+layout on the page. That also means any new view must be built from `Theme.*`
+values rather than hard-coded colours.
+
 ## Application State
 
 - `app_state.py` owns shared managers and app-level state.
 - `app_controller.py` handles UI actions and dispatches queue/download work.
+  Its background loop also repaints the queue view while downloads are active
+  so progress bars track real progress instead of refreshing only on events.
 - `queue_manager.py` owns queue item lifecycle, cancellation tokens, ordering,
-  and listener notifications.
+  and listener notifications. It keeps an auxiliary `id -> item` index next to
+  the ordered list so the high-frequency progress updates from active
+  downloads are O(1) instead of scanning the whole queue. The index is
+  self-healing: a lookup that misses falls back to a linear scan and repairs
+  itself.
 - `tasks.py` runs background download jobs and queue processing.
 
 Queue processing drains available concurrency slots each wake cycle so pending
-items do not ramp up one at a time unnecessarily.
+items do not ramp up one at a time unnecessarily. Concurrency is enforced by a
+semaphore that can be swapped at runtime from Settings; the worker pool itself
+is a single long-lived `ThreadPoolExecutor`, so changing the setting never
+orphans in-flight jobs or leaks threads. Each submitted job holds a reference to
+the semaphore that admitted it and releases exactly that one on completion.
 
 ## Downloader Layer
 

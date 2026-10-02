@@ -161,7 +161,9 @@ class GenericDownloader:
         return headers
 
     @staticmethod
-    def _request_with_safe_redirects(method: str, url: str, **kwargs) -> requests.Response:
+    def _request_with_safe_redirects(
+        method: str, url: str, **kwargs
+    ) -> requests.Response:
         """Perform a request while validating each redirect target before use."""
         current_url = url
         max_redirects = 5
@@ -226,9 +228,7 @@ class GenericDownloader:
         # 1. HEAD Request
         try:
             GenericDownloader._check_cancel(cancel_token)
-            h = GenericDownloader._request_with_safe_redirects(
-                "head", url, timeout=10
-            )
+            h = GenericDownloader._request_with_safe_redirects("head", url, timeout=10)
             h.raise_for_status()
             final_url = h.url
             if not validate_url(final_url, resolve_host=True):
@@ -260,7 +260,7 @@ class GenericDownloader:
         mode = "wb"
         if os.path.exists(final_path):
             existing = os.path.getsize(final_path)
-            if total_size > 0 and existing == total_size:
+            if total_size and existing == total_size:
                 logger.info("File already downloaded: %s", final_path)
                 if progress_hook:
                     progress_hook(

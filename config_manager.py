@@ -20,8 +20,11 @@ try:
 
     KEYRING_AVAILABLE = True
 except Exception:  # pylint: disable=broad-exception-caught
-    keyring = None  # type: ignore[assignment]
-    PasswordDeleteError = Exception  # type: ignore[assignment,misc]
+    keyring = None  # type: ignore[assignment]  # pylint: disable=invalid-name
+
+    class PasswordDeleteError(Exception):  # type: ignore[no-redef]
+        """Placeholder so `except PasswordDeleteError` stays valid without keyring."""
+
     KEYRING_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -275,25 +278,19 @@ class ConfigManager:
             # Security: Set restrictive permissions
             os.chmod(temp_path, 0o600)
 
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(save_data, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+
+            # Atomic replace
+            os.replace(temp_path, str(config_path))
+            # Ensure secure permissions on final file
             try:
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    json.dump(save_data, f, indent=2)
-                    f.flush()
-                    os.fsync(f.fileno())
-
-                # Atomic replace
-                os.replace(temp_path, str(config_path))
-                # Ensure secure permissions on final file
-                try:
-                    os.chmod(str(config_path), 0o600)
-                except OSError:
-                    logger.warning("Could not set secure permissions on config file")
-                logger.info("Configuration saved.")
-
-            # pylint: disable=try-except-raise
-            except Exception:
-                # Re-raise to be handled by outer block or just bubble up
-                raise
+                os.chmod(str(config_path), 0o600)
+            except OSError:
+                logger.warning("Could not set secure permissions on config file")
+            logger.info("Configuration saved.")
 
         except Exception as e:
             logger.error("Failed to save config: %s", e)

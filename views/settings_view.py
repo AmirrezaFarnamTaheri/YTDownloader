@@ -29,12 +29,14 @@ class SettingsView(BaseView):
         config,
         on_toggle_clipboard: Callable[..., None] | None = None,
         on_compact_mode_change=None,
+        on_theme_change: Callable[[], None] | None = None,
     ):
         super().__init__(LM.get("settings"), ft.icons.SETTINGS_ROUNDED)
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.on_toggle_clipboard = on_toggle_clipboard
         self.on_compact_mode_change = on_compact_mode_change
+        self.on_theme_change = on_theme_change
         stored_theme_mode = str(self.config.get("theme_mode", "System"))
         if self.config.get("high_contrast", False) or stored_theme_mode.lower() in {
             "high contrast",
@@ -168,7 +170,7 @@ class SettingsView(BaseView):
             bgcolor=Theme.Primary.MAIN,
             color=Theme.Text.PRIMARY,
             style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=8)),
-            tooltip=LM.get("save_settings_tooltip", "Save all changes"),
+            tooltip=LM.get("save_settings_tooltip", default="Save all changes"),
         )
 
         # Layout Construction
@@ -260,10 +262,14 @@ class SettingsView(BaseView):
         is_high_contrast = mode == "High Contrast"
         if self.page:
             if is_high_contrast:
+                Theme.apply_theme_mode("high_contrast")
                 self.page.theme = Theme.get_high_contrast_theme()
-                self.page.theme_mode = ft.ThemeMode.SYSTEM
+                self.page.theme_mode = ft.ThemeMode.DARK
+                self.page.bgcolor = ft.colors.BLACK
             else:
+                Theme.apply_theme_mode(mode)
                 self.page.theme = Theme.get_theme()
+                self.page.bgcolor = Theme.BG_DARK
                 if mode == "Dark":
                     self.page.theme_mode = ft.ThemeMode.DARK
                 elif mode == "Light":
@@ -279,6 +285,15 @@ class SettingsView(BaseView):
                 ConfigManager.save_config(self.config)
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 self.logger.error("Failed to persist theme settings: %s", exc)
+
+            # Controls capture palette colors at construction time, so the
+            # already-built views must be recreated to pick up the new palette.
+            if self.on_theme_change:
+                try:
+                    self.on_theme_change()
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    self.logger.error("Failed to rebuild views for new theme: %s", exc)
+
             self.page.update()
 
     def _on_compact_mode_change(self, e):

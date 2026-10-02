@@ -10,7 +10,6 @@ from collections.abc import Callable
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
-import requests
 from bs4 import BeautifulSoup, Tag
 
 from downloader.constants import RESERVED_FILENAMES

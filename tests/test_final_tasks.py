@@ -1,11 +1,8 @@
-import threading
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-import app_state
 from tasks import (
-    _SUBMISSION_THROTTLE,
     DownloadJob,
     DownloadStatus,
     fetch_info_task,

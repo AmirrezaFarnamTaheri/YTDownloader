@@ -53,7 +53,10 @@ class AppController:
         self._clipboard_monitor_started = False
 
         # Delegates
-        self.rate_limiter = RateLimiter(0.5)
+        # Rate limiter for "add to queue" actions: 4 actions/sec, burst up to 10.
+        # Generous enough not to frustrate batch/paste workflows but still
+        # protects against accidental double-clicks and runaway automation.
+        self.rate_limiter = RateLimiter(rate=4.0, capacity=10.0)
         self.batch_importer = BatchImporter(state.queue_manager, state.config)
         self.scheduler = DownloadScheduler()
 
@@ -98,13 +101,17 @@ class AppController:
     def _background_loop(self):
         """
         Background loop for queue processing.
-        Waits for signals from QueueManager instead of busy-waiting.
+        Waits for signals from QueueManager and periodically refreshes the UI
+        so progress bars and status badges track download progress smoothly.
         """
         logger.info("Background loop started.")
+        ui_refresh_interval = 0.5  # seconds between queue-view repaints
+        last_ui_refresh = 0.0
+
         while not state.shutdown_flag.is_set():
             try:
-                # Wait for work or timeout (to check shutdown flag)
-                state.queue_manager.wait_for_items(timeout=2.0)
+                # Wait briefly for work; timeout controls UI-refresh cadence.
+                state.queue_manager.wait_for_items(timeout=ui_refresh_interval)
 
                 if state.shutdown_flag.is_set():
                     break
@@ -112,9 +119,18 @@ class AppController:
                 # Check scheduled items
                 if state.queue_manager.update_scheduled_items(datetime.now()) > 0:
                     run_on_ui_thread(self.page, self.ui.update_queue_view)
+                    last_ui_refresh = time.time()
 
-                # Process queue
+                # Submit newly-ready items
                 process_queue(self.page)
+
+                # Periodically refresh queue-view so progress bars stay live
+                now = time.time()
+                if state.queue_manager.any_downloading() or (
+                    now - last_ui_refresh >= ui_refresh_interval
+                ):
+                    run_on_ui_thread(self.page, self.ui.update_queue_view)
+                    last_ui_refresh = now
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.error("Error in background_loop: %s", e, exc_info=True)
@@ -126,11 +142,20 @@ class AppController:
     def on_fetch_info(self, url: str):
         """Callback to fetch video information."""
         logger.info("User requested video info fetch for: %s", url)
-        target = normalize_download_target(url)
         if not url:
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("url_required"))))
             return
+
+        target = normalize_download_target(url)
         if not target:
+            self.page.open(ft.SnackBar(content=ft.Text(LM.get("error_invalid_url"))))
+            return
+
+        # Defence in depth: direct URLs must pass the SSRF-aware validator
+        # before they ever reach the network layer. Search pseudo-URLs
+        # (ytsearchN:query) are validated by normalize_download_target.
+        if target == url and not validate_url(target):
+            logger.warning("Rejected unsafe fetch target: %s", url)
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("error_invalid_url"))))
             return
 

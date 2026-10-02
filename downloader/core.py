@@ -102,10 +102,10 @@ def _parse_rate_limit(rate_limit: str | int | float | None) -> int | None:
     if rate_limit is None:
         return None
     if isinstance(rate_limit, int | float):
-        value = int(rate_limit)
-        if value <= 0:
+        numeric_value = int(rate_limit)
+        if numeric_value <= 0:
             raise ValueError("Rate limit must be positive")
-        return value
+        return numeric_value
     if not isinstance(rate_limit, str):
         raise ValueError("Rate limit must be a string or number")
 
@@ -352,7 +352,10 @@ def download_video(options: DownloadOptions) -> dict[str, Any]:
             if hasattr(options, "no_check_certificate")
             else False
         ),
-        "ignoreerrors": True,
+        # Tolerate partial failures only for playlists. For a single item,
+        # swallowing the error would replace the real yt-dlp message (e.g.
+        # "Video unavailable") with a generic one.
+        "ignoreerrors": bool(options.playlist),
         "noplaylist": not options.playlist,
         "format": "bestvideo+bestaudio/best",
         "merge_output_format": "mp4",

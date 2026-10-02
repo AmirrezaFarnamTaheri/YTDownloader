@@ -14,6 +14,7 @@ import flet as ft
 from localization_manager import LocalizationManager as LM
 from queue_manager import QueueManager
 from theme import Theme
+from ui_utils import safe_update
 from views.base_view import BaseView
 from views.components.download_item import DownloadItemControl
 
@@ -62,7 +63,7 @@ class QueueView(BaseView):
 
         # Bulk action buttons
         self.cancel_all_btn = ft.OutlinedButton(
-            LM.get("cancel_all", "Cancel All"),
+            LM.get("cancel_all", default="Cancel All"),
             icon=ft.icons.CANCEL,
             on_click=self._on_cancel_all,
             style=ft.ButtonStyle(
@@ -72,7 +73,7 @@ class QueueView(BaseView):
         )
 
         self.pause_all_btn = ft.OutlinedButton(
-            LM.get("pause_all", "Pause All"),
+            LM.get("pause_all", default="Pause All"),
             icon=ft.icons.PAUSE_CIRCLE_OUTLINE_ROUNDED,
             on_click=self._on_pause_all,
             style=ft.ButtonStyle(
@@ -82,7 +83,7 @@ class QueueView(BaseView):
         )
 
         self.resume_all_btn = ft.OutlinedButton(
-            LM.get("resume_all", "Resume All"),
+            LM.get("resume_all", default="Resume All"),
             icon=ft.icons.PLAY_CIRCLE_OUTLINE_ROUNDED,
             on_click=self._on_resume_all,
             style=ft.ButtonStyle(
@@ -92,7 +93,7 @@ class QueueView(BaseView):
         )
 
         self.clear_completed_btn = ft.OutlinedButton(
-            LM.get("clear_completed", "Clear Completed"),
+            LM.get("clear_completed", default="Clear Completed"),
             icon=ft.icons.DELETE_SWEEP_ROUNDED,
             on_click=self._on_clear_completed,
             style=ft.ButtonStyle(
@@ -115,6 +116,41 @@ class QueueView(BaseView):
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
+        # --- Filter / search controls -------------------------------------
+        # Large queues are unusable without a way to narrow them down.
+        self.filter_dd = ft.Dropdown(
+            value="all",
+            width=180,
+            options=[
+                ft.dropdown.Option("all", LM.get("filter_all", default="All items")),
+                ft.dropdown.Option("active", LM.get("filter_active", default="Active")),
+                ft.dropdown.Option("queued", LM.get("filter_queued", default="Queued")),
+                ft.dropdown.Option(
+                    "completed", LM.get("filter_completed", default="Completed")
+                ),
+                ft.dropdown.Option("failed", LM.get("filter_failed", default="Failed")),
+            ],
+            on_change=self._on_filter_change,
+            tooltip=LM.get("filter_tooltip", default="Show only matching items"),
+            **Theme.get_input_decoration(prefix_icon=ft.icons.FILTER_ALT_ROUNDED),
+        )
+
+        self.queue_search = ft.TextField(
+            expand=True,
+            on_change=self._on_queue_search_change,
+            tooltip=LM.get("search_placeholder", default="Search..."),
+            **Theme.get_input_decoration(
+                hint_text=LM.get("search_placeholder", default="Search..."),
+                prefix_icon=ft.icons.SEARCH_ROUNDED,
+            ),
+        )
+
+        self.filter_row = ft.Row(
+            [self.queue_search, self.filter_dd],
+            spacing=10,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
         self.list_view = ft.ListView(
             expand=True,
             spacing=10,
@@ -124,26 +160,71 @@ class QueueView(BaseView):
 
         # Build the content layout - header above the list view
         self.selected_index = 0
+        self._status_filter = "all"
+        self._search_filter = ""
         self.content_col.controls.append(self.header_row)
+        self.content_col.controls.append(self.filter_row)
         self.content_col.controls.append(self.list_view)
+
+    # --- Filtering -----------------------------------------------------
+
+    def _on_filter_change(self, e):
+        """Apply the selected status filter."""
+        self._status_filter = self.filter_dd.value or "all"
+        self.selected_index = 0
+        self.rebuild()
+
+    def _on_queue_search_change(self, e):  # pylint: disable=unused-argument
+        """Apply the free-text filter (title/URL)."""
+        value = self.queue_search.value
+        new_value = value.strip().lower() if isinstance(value, str) else ""
+        if new_value != self._search_filter:
+            self._search_filter = new_value
+            self.selected_index = 0
+            self.rebuild()
+
+    def _apply_filters(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Return the subset of ``items`` that matches the active filters."""
+        status_filter = self._status_filter
+        search = self._search_filter
+
+        status_groups: dict[str, tuple[str, ...]] = {
+            "active": ("Downloading", "Allocating", "Processing"),
+            "queued": ("Queued", "Paused", "Scheduled"),
+            "completed": ("Completed",),
+            "failed": ("Error", "Cancelled"),
+        }
+
+        allowed = status_groups.get(status_filter)
+        result = []
+        for item in items:
+            if allowed is not None and item.get("status") not in allowed:
+                continue
+            if search:
+                haystack = f"{item.get('title', '')}\n{item.get('url', '')}".lower()
+                if search not in haystack:
+                    continue
+            result.append(item)
+        return result
+
+    def _active_filter_description(self) -> str:
+        """Human-readable description of the applied filters (for empty state)."""
+        parts = []
+        if self._status_filter != "all":
+            parts.append(self._status_filter)
+        if self._search_filter:
+            parts.append(f"'{self._search_filter}'")
+        return " / ".join(parts)
 
     def _safe_update(self, control: ft.Control | None = None) -> None:
         """Update control only when mounted; skip detached-control update errors."""
-        target: ft.Control = control or self
-        try:
-            target.update()
-        except Exception as ex:  # pylint: disable=broad-exception-caught
-            if "Control must be added to the page first" in str(ex):
-                logger.debug(
-                    "Skipping update for detached control: %s", target.__class__.__name__
-                )
-                return
-            raise
+        safe_update(control or self)
 
     def rebuild(self):
         """Updates the list of items using diff logic to minimize redraws."""
-        items = self.queue_manager.get_all()
-        self._update_stats(items)
+        all_items = self.queue_manager.get_all()
+        self._update_stats(all_items)
+        items = self._apply_filters(all_items)
 
         # Handle Empty State
         if not items:
@@ -151,6 +232,15 @@ class QueueView(BaseView):
                 self.list_view.controls[0], DownloadItemControl
             ):
                 self.list_view.controls.clear()
+                if all_items:
+                    # Queue has content but the filter hides everything
+                    description = self._active_filter_description()
+                    message = LM.get("no_results", default="No results found")
+                    if description:
+                        message = f"{message} ({description})"
+                else:
+                    message = LM.get("no_items_found")
+
                 self.list_view.controls.append(
                     ft.Container(
                         content=ft.Column(
@@ -159,7 +249,7 @@ class QueueView(BaseView):
                                     ft.icons.QUEUE, size=64, color=Theme.TEXT_MUTED
                                 ),
                                 ft.Text(
-                                    LM.get("no_items_found"),
+                                    message,
                                     color=Theme.Text.SECONDARY,
                                 ),
                             ],
@@ -170,6 +260,7 @@ class QueueView(BaseView):
                         expand=True,
                     )
                 )
+                # Bulk-action availability follows the full queue, not the view
                 self.cancel_all_btn.disabled = True
                 self.clear_completed_btn.disabled = True
                 self.pause_all_btn.disabled = True
@@ -212,15 +303,17 @@ class QueueView(BaseView):
                 )
                 new_controls_list.append(control)
 
-        # Bulk Actions State
+        # Bulk Actions State — always derived from the full queue so an active
+        # filter never hides the fact that bulk actions are still available.
         has_active = any(
             item.get("status") in ("Downloading", "Queued", "Processing", "Allocating")
-            for item in items
+            for item in all_items
         )
-        has_queued = any(item.get("status") == "Queued" for item in items)
-        has_paused = any(item.get("status") == "Paused" for item in items)
+        has_queued = any(item.get("status") == "Queued" for item in all_items)
+        has_paused = any(item.get("status") == "Paused" for item in all_items)
         has_completed = any(
-            item.get("status") in ("Completed", "Error", "Cancelled") for item in items
+            item.get("status") in ("Completed", "Error", "Cancelled")
+            for item in all_items
         )
         self.cancel_all_btn.disabled = not has_active
         self.pause_all_btn.disabled = not has_queued
@@ -251,7 +344,7 @@ class QueueView(BaseView):
     def _update_stats(self, items):
         """Update queue statistics display."""
         if not items:
-            self.stats_text.value = LM.get("queue_empty", "Queue is empty")
+            self.stats_text.value = LM.get("queue_empty", default="Queue is empty")
             return
 
         total = len(items)
@@ -263,19 +356,23 @@ class QueueView(BaseView):
         parts = []
         if downloading > 0:
             parts.append(
-                LM.get("stats_downloading", "{0} downloading").format(downloading)
+                LM.get("stats_downloading", default="{0} downloading").format(
+                    downloading
+                )
             )
         if queued > 0:
-            parts.append(LM.get("stats_queued", "{0} queued").format(queued))
+            parts.append(LM.get("stats_queued", default="{0} queued").format(queued))
         if completed > 0:
-            parts.append(LM.get("stats_completed", "{0} completed").format(completed))
+            parts.append(
+                LM.get("stats_completed", default="{0} completed").format(completed)
+            )
         if failed > 0:
-            parts.append(LM.get("stats_failed", "{0} failed").format(failed))
+            parts.append(LM.get("stats_failed", default="{0} failed").format(failed))
 
         self.stats_text.value = (
-            f"{total} {LM.get('items', 'items')} | " + ", ".join(parts)
+            f"{total} {LM.get('items', default='items')} | " + ", ".join(parts)
             if parts
-            else f"{total} {LM.get('items', 'items')}"
+            else f"{total} {LM.get('items', default='items')}"
         )
 
     # pylint: disable=unused-argument
@@ -289,7 +386,10 @@ class QueueView(BaseView):
                 self.page.open(
                     ft.SnackBar(
                         content=ft.Text(
-                            LM.get("all_downloads_cancelled", "All downloads cancelled")
+                            LM.get(
+                                "all_downloads_cancelled",
+                                default="All downloads cancelled",
+                            )
                         )
                     )
                 )
@@ -306,7 +406,9 @@ class QueueView(BaseView):
                 self.page.open(
                     ft.SnackBar(
                         content=ft.Text(
-                            LM.get("paused_items", "Paused {0} items").format(paused)
+                            LM.get("paused_items", default="Paused {0} items").format(
+                                paused
+                            )
                         )
                     )
                 )
@@ -323,7 +425,9 @@ class QueueView(BaseView):
                 self.page.open(
                     ft.SnackBar(
                         content=ft.Text(
-                            LM.get("resumed_items", "Resumed {0} items").format(resumed)
+                            LM.get("resumed_items", default="Resumed {0} items").format(
+                                resumed
+                            )
                         )
                     )
                 )
@@ -349,7 +453,7 @@ class QueueView(BaseView):
                 self.page.open(
                     ft.SnackBar(
                         content=ft.Text(
-                            LM.get("cleared_items", "Cleared {0} items").format(
+                            LM.get("cleared_items", default="Cleared {0} items").format(
                                 removed_count
                             )
                         )

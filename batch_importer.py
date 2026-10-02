@@ -75,12 +75,44 @@ class BatchImporter:
                     f"Security violation: Access to {filepath} is restricted"
                 )
 
-            if path.suffix.lower() != ".txt":
-                logger.error("Only .txt files are supported.")
+            # Bound the amount of data read from disk: a malformed or hostile
+            # 4 GB "links" file must not exhaust process memory.
+            max_file_bytes = 5 * 1024 * 1024  # 5 MB
+            try:
+                file_size = int(path.stat().st_size)
+            except (OSError, TypeError, ValueError) as exc:
+                logger.error("Unable to determine size of %s: %s", filepath, exc)
+                return 0, False
+            if file_size > max_file_bytes:
+                logger.error(
+                    "Batch file too large (%d bytes > %d bytes): %s",
+                    file_size,
+                    max_file_bytes,
+                    filepath,
+                )
                 return 0, False
 
-            with open(path, encoding="utf-8") as f:
-                lines = [line.strip() for line in f if line.strip()]
+            suffix = path.suffix.lower()
+            if suffix == ".csv":
+                import csv as _csv
+
+                with open(path, encoding="utf-8", newline="") as f:
+                    reader = _csv.reader(f)
+                    raw_lines = []
+                    for row in reader:
+                        # Accept first non-empty cell of each row as a URL
+                        for cell in row:
+                            cell = cell.strip() if cell else ""
+                            if cell:
+                                raw_lines.append(cell)
+                                break
+                lines = [line for line in raw_lines if line]
+            elif suffix == ".txt":
+                with open(path, encoding="utf-8") as f:
+                    lines = [line.strip() for line in f if line.strip()]
+            else:
+                logger.error("Only .txt and .csv files are supported.")
+                return 0, False
 
             if not lines:
                 return 0, False

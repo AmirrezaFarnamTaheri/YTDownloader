@@ -9,7 +9,7 @@ Simulates adding to queue -> processing -> downloading -> history.
 import threading
 import time
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import tasks  # Import module to ensure dynamic lookup
 from app_state import state

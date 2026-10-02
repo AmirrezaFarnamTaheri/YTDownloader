@@ -26,9 +26,12 @@ def test_dashboard_sync_health_shows_running_when_worker_alive():
     fake_state.ffmpeg_available = True
     fake_state.sync_manager.is_auto_sync_running.return_value = True
 
-    with patch("app_state.state", fake_state), patch(
-        "views.dashboard_view.shutil.disk_usage",
-        return_value=(100, 70, 30),
+    with (
+        patch("app_state.state", fake_state),
+        patch(
+            "views.dashboard_view.shutil.disk_usage",
+            return_value=(100, 70, 30),
+        ),
     ):
         view._refresh_health()
 
@@ -53,9 +56,12 @@ def test_dashboard_sync_health_distinguishes_enabled_from_running():
     fake_state.ffmpeg_available = False
     fake_state.sync_manager.is_auto_sync_running.return_value = False
 
-    with patch("app_state.state", fake_state), patch(
-        "views.dashboard_view.shutil.disk_usage",
-        return_value=(100, 90, 10),
+    with (
+        patch("app_state.state", fake_state),
+        patch(
+            "views.dashboard_view.shutil.disk_usage",
+            return_value=(100, 90, 10),
+        ),
     ):
         view._refresh_health()
 

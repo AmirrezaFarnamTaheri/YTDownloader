@@ -7,7 +7,9 @@ import csv
 import json
 import logging
 import os
+import re
 import sqlite3
+import threading
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -22,9 +24,13 @@ class HistoryManager:
     DB_FILE = os.path.expanduser("~/.streamcatch/history.db")
     MAX_DB_RETRIES = 3
 
+    _db_initialized: bool = False
+    _db_init_lock = threading.Lock()
+
     def __init__(self):
         self._ensure_db_dir()
-        self._init_db()
+        # Ensure schema exists once across all instances/threads
+        HistoryManager._ensure_schema(self._resolve_db_file())
 
     def _ensure_db_dir(self):
         directory = os.path.dirname(self.DB_FILE)
@@ -50,9 +56,25 @@ class HistoryManager:
         return conn
 
     @classmethod
+    def _ensure_schema(cls, db_file: str):
+        """Idempotent one-time schema initialization guarded by a process lock."""
+        # Instance attribute shortcut for backward compatibility
+        with cls._db_init_lock:
+            if cls._db_initialized and db_file == cls.DB_FILE:
+                return
+            cls._create_schema(db_file)
+            if db_file == cls.DB_FILE:
+                cls._db_initialized = True
+
+    @classmethod
     def init_db(cls):
-        """Initializes the database table and handles migrations."""
+        """Initializes the database table and handles migrations (idempotent)."""
         db_file = getattr(cls, "_test_db_file", cls.DB_FILE)
+        cls._ensure_schema(db_file)
+
+    @staticmethod
+    def _create_schema(db_file: str):
+        """Create/migrate the history schema in the given db file."""
 
         try:
             directory = os.path.dirname(db_file)
@@ -125,10 +147,6 @@ class HistoryManager:
             logger.error("Failed to create history DB directory: %s", e)
         except sqlite3.Error as e:
             logger.error("Failed to initialize/migrate history DB: %s", e)
-
-    def _init_db(self):
-        """Instance-level database initialization."""
-        HistoryManager.init_db()
 
     def add_entry(self, entry: dict[str, Any]) -> None:
         """Adds a new entry to the history."""
@@ -335,19 +353,56 @@ class HistoryManager:
 
         return activity
 
+    #: ``file_size`` has been stored in two shapes over the project's life:
+    #: raw byte counts (yt-dlp reports) and pre-formatted strings such as
+    #: ``"12.50 MB"`` (``format_file_size``). Both are understood here.
+    _SIZE_UNITS = {
+        "B": 1,
+        "KB": 1024,
+        "MB": 1024**2,
+        "GB": 1024**3,
+        "TB": 1024**4,
+        "PB": 1024**5,
+    }
+
+    @classmethod
+    def _parse_size_bytes(cls, value: Any) -> int:
+        """Return the byte count encoded in a stored ``file_size`` value.
+
+        Unknown or unparsable values yield ``0`` so that aggregates stay
+        usable instead of failing on a single malformed row.
+        """
+        if value is None:
+            return 0
+        if isinstance(value, bool):
+            return 0
+        if isinstance(value, (int, float)):
+            return max(0, int(value))
+
+        text = str(value).strip().upper()
+        if not text or text in {"N/A", "NONE", "UNKNOWN"}:
+            return 0
+
+        match = re.fullmatch(r"([0-9]*\.?[0-9]+)\s*([KMGTP]?I?B)?", text)
+        if not match:
+            return 0
+        number = float(match.group(1))
+        unit = (match.group(2) or "B").replace("I", "")  # KiB -> KB, MiB -> MB, ...
+        return int(number * cls._SIZE_UNITS.get(unit, 1))
+
     def get_stats(self) -> dict:
-        """Returns overall stats."""
-        stats = {"total_downloads": 0, "total_size_mb": 0}
+        """Returns overall stats: entry count and cumulative size in MB."""
+        stats: dict[str, Any] = {"total_downloads": 0, "total_size_mb": 0}
         try:
             with self._get_connection() as conn:
-                # Total count
                 cursor = conn.execute("SELECT COUNT(*) FROM history")
-                stats["total_downloads"] = cursor.fetchone()[0]
+                stats["total_downloads"] = int(cursor.fetchone()[0])
 
-                # Total size (approx, parsing strings might be hard if format varies)
-                # We stored file_size as string "XX MB".
-                # For accurate stats we should store bytes in future.
-                # Here we just count entries for now.
+                cursor = conn.execute("SELECT file_size FROM history")
+                total_bytes = sum(
+                    self._parse_size_bytes(row[0]) for row in cursor.fetchall()
+                )
+                stats["total_size_mb"] = round(total_bytes / (1024**2), 2)
         except sqlite3.Error as e:
             logger.warning("Failed to get aggregate history stats: %s", e)
         return stats

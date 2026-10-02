@@ -23,10 +23,13 @@ logger = logging.getLogger(__name__)
 
 # Constants
 DEFAULT_MAX_WORKERS = 3
-_SUBMISSION_THROTTLE = threading.Semaphore(
-    DEFAULT_MAX_WORKERS
-)  # Control task submission rate to executor
-_ACTIVE_COUNT_LOCK = threading.Lock()
+# A generous upper bound for the long-lived thread pool; actual concurrency is
+# enforced by _SUBMISSION_THROTTLE so we never need to recreate the executor.
+_EXECUTOR_MAX_WORKERS = 16
+# Controls how many downloads may be in flight concurrently. Recreated on
+# settings changes without leaking or orphaning in-flight tasks.
+_SUBMISSION_THROTTLE = threading.Semaphore(DEFAULT_MAX_WORKERS)
+_throttle_lock = threading.Lock()
 
 _executor_lock = threading.Lock()
 _executor: ThreadPoolExecutor | None = None  # pylint: disable=invalid-name
@@ -42,19 +45,28 @@ def _get_max_workers() -> int:
         return DEFAULT_MAX_WORKERS
 
 
+def _get_semaphore() -> threading.Semaphore:
+    """Return the current semaphore (safe across reconfigurations)."""
+    with _throttle_lock:
+        return _SUBMISSION_THROTTLE
+
+
 def _get_executor() -> ThreadPoolExecutor:
-    """Lazy initializer for executor to pick up config changes."""
+    """Lazy initializer for a single long-lived executor."""
     global _executor
     with _executor_lock:
         if _executor is None:
-            _executor = ThreadPoolExecutor(max_workers=_get_max_workers())
+            _executor = ThreadPoolExecutor(
+                max_workers=_EXECUTOR_MAX_WORKERS,
+                thread_name_prefix="StreamCatchDL",
+            )
         return _executor
 
 
 def configure_concurrency(max_workers: int) -> bool:
     """
-    Updates the concurrency settings (max workers).
-    Re-initializes the semaphore and executor.
+    Updates the concurrency settings (max workers) without tearing down
+    the executor or orphaning in-flight tasks.
 
     Args:
         max_workers: New maximum number of concurrent downloads.
@@ -62,7 +74,7 @@ def configure_concurrency(max_workers: int) -> bool:
     Returns:
         True if updated successfully, False otherwise.
     """
-    global _SUBMISSION_THROTTLE, _executor
+    global _SUBMISSION_THROTTLE
 
     if max_workers < 1:
         return False
@@ -70,24 +82,13 @@ def configure_concurrency(max_workers: int) -> bool:
     logger.info("Updating concurrency to %d workers", max_workers)
 
     try:
-        # Update semaphore (re-create)
-        # Note: This resets the semaphore. If items are currently running,
-        # this might allow extra items temporarily until they finish.
-        # Ideally we'd resize, but Semaphore doesn't support resizing.
-        # This is acceptable for a settings change.
-        _SUBMISSION_THROTTLE = threading.Semaphore(max_workers)
-
-        # Update Executor
-        with _executor_lock:
-            if _executor:
-                # We don't want to kill running tasks, just prevent new ones on old executor?
-                # ThreadPoolExecutor doesn't support dynamic resizing well in older python versions.
-                # But we can just leave the old one to die (shutdown(wait=False)) and create new?
-                # Actually, shutdown(wait=False) might kill pending? No, it stops accepting new.
-                # But we manage submission via process_queue anyway.
-                _executor.shutdown(wait=False)
-                _executor = None
-
+        # Atomically swap the semaphore. Running jobs hold a reference to the
+        # OLD semaphore (captured in their closure) and will correctly release
+        # it on completion; new submissions use the new one. Because the
+        # executor is persistent we never leak threads or abandon futures.
+        new_sem = threading.Semaphore(max_workers)
+        with _throttle_lock:
+            _SUBMISSION_THROTTLE = new_sem
         return True
     except Exception as e:
         logger.error("Failed to configure concurrency: %s", e)
@@ -321,58 +322,65 @@ def process_queue(page: ft.Page | None) -> None:
     if not qm:
         return
 
-    active_count = qm.get_active_count()
+    sem = _get_semaphore()
     max_workers = _get_max_workers()
+    active_count = qm.get_active_count()
     if active_count >= max_workers:
         return
 
     available_slots = max_workers - active_count
     claimed_markers: set[str | int] = set()
 
-    def _job_wrapper(it: dict, pg: ft.Page | None, sem: threading.Semaphore):
+    def _job_wrapper(it: dict, pg: ft.Page | None, job_sem: threading.Semaphore):
         try:
             job = DownloadJob(it, pg)
             job.run()
         finally:
-            sem.release()
+            job_sem.release()
 
     for _ in range(available_slots):
         # pylint: disable=consider-using-with
-        if not _SUBMISSION_THROTTLE.acquire(blocking=False):
+        if not sem.acquire(blocking=False):
             break
 
-        item = None
+        claimed_id: str | None = None
         submitted = False
-        throttle_ref = _SUBMISSION_THROTTLE
 
         try:
-            item = qm.claim_next_downloadable()
-            if not item:
-                break
-
-            marker: str | int = id(item)
-            if marker in claimed_markers:
-                logger.warning("Queue returned a duplicate claimed item: %s", marker)
-                break
-            claimed_markers.add(marker)
-
-            logger.info(
-                "Submitting job for %s (ID: %s)", item.get("url"), item.get("id")
-            )
-
-            executor = _get_executor()
-            executor.submit(_job_wrapper, cast(dict, item), page, throttle_ref)
-            submitted = True
-
+            candidate = qm.claim_next_downloadable()
+            if candidate is not None:
+                marker: str | int = id(candidate)
+                if marker in claimed_markers:
+                    # Defensive guard: the queue handed back the same object twice.
+                    logger.warning(
+                        "Queue returned a duplicate claimed item: %s", marker
+                    )
+                else:
+                    claimed_markers.add(marker)
+                    raw_id = candidate.get("id")
+                    claimed_id = str(raw_id) if raw_id else None
+                    logger.info(
+                        "Submitting job for %s (ID: %s)",
+                        candidate.get("url"),
+                        raw_id,
+                    )
+                    executor = _get_executor()
+                    executor.submit(_job_wrapper, cast(dict, candidate), page, sem)
+                    submitted = True
         except Exception:
-            # pylint: disable=unsupported-membership-test, unsubscriptable-object
-            if item and "id" in item:
-                qm.update_item_status(item["id"], DownloadStatus.QUEUED)
+            # Return the claimed item to the queue so it can be retried.
+            if claimed_id:
+                qm.update_item_status(claimed_id, DownloadStatus.QUEUED)
             raise
         finally:
+            # Never leak a semaphore slot, and never swallow exceptions with a
+            # `break` inside `finally` (see flake8-bugbear B012).
             if not submitted:
-                throttle_ref.release()
-                break
+                sem.release()
+
+        if not submitted:
+            # Nothing claimable left (or duplicate detected) — stop scanning.
+            break
 
 
 def fetch_info_task(url: str, view_card: Any, page: Any) -> None:
