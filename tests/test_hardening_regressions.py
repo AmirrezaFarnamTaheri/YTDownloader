@@ -1080,3 +1080,96 @@ class TestHistorySummaryLine:
         view._update_summary()  # must not raise
 
         assert view.summary_text.value == ""
+
+
+# ---------------------------------------------------------------------------
+# Crash handler: secrets must not be written to the crash log
+# ---------------------------------------------------------------------------
+
+
+class TestCrashHandlerRedaction:
+    def test_secret_locals_are_redacted_and_log_is_private(self, tmp_path, monkeypatch):
+        import sys as _sys
+        from pathlib import Path
+
+        import main as main_module
+
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+
+        def trigger_failure():
+            api_key = "top" + "-secret-value"  # value is not literal in the source
+            password = "hunter2" + "!"
+            raise ValueError("boom")
+
+        with pytest.raises(SystemExit):
+            try:
+                trigger_failure()
+            except ValueError:
+                main_module.global_crash_handler(*_sys.exc_info())
+
+        crash_log = tmp_path / ".streamcatch" / "crash.log"
+        assert crash_log.exists()
+        content = crash_log.read_text(encoding="utf-8")
+
+        assert "top-secret-value" not in content
+        assert "hunter2!" not in content
+        assert "***REDACTED***" in content
+        assert "ValueError" in content and "boom" in content
+
+        # Crash logs can contain call arguments, so they must not be world-readable.
+        mode = crash_log.stat().st_mode & 0o777
+        assert mode & 0o077 == 0, f"crash log is too permissive: {oct(mode)}"
+
+
+class TestQueueKeyboardSelectionSafety:
+    """J/K/Delete shortcuts must be harmless while the queue is not displayed."""
+
+    def _view_with_items(self, count=3):
+        from queue_manager import QueueManager
+        from views.queue_view import QueueView
+
+        manager = QueueManager()
+        for i in range(count):
+            manager.add_item(
+                _make_download_item(id=f"k{i}", title=f"item {i}", progress=0.0)
+            )
+        view = QueueView(
+            manager,
+            on_cancel=MagicMock(),
+            on_remove=MagicMock(),
+            on_reorder=MagicMock(),
+            on_play=MagicMock(),
+            on_open_folder=MagicMock(),
+        )
+        view.page = MagicMock()
+        view.rebuild()
+        return view
+
+    def test_select_item_on_detached_view_does_not_raise(self):
+        view = self._view_with_items()
+        # Simulate the user navigating away: the view (and every control in it)
+        # is no longer attached to the page.
+        view.page = None
+        for control in view.list_view.controls:
+            control.page = None
+
+        view.select_item(2)
+
+        assert view.selected_index == 2
+        selected = view.list_view.controls[2]
+        assert selected.border is not None
+        assert selected.shadow is not None
+
+    def test_select_item_clamps_and_restores_previous_highlight(self):
+        view = self._view_with_items()
+        for control in view.list_view.controls:
+            control.page = MagicMock()
+
+        view.select_item(1)
+        first = view.list_view.controls[0]
+        assert first.border is None  # previous highlight cleared
+        assert view.list_view.controls[1].border is not None
+
+        view.select_item(0)
+        assert view.list_view.controls[1].border is None
+        assert view.list_view.controls[0].border is not None

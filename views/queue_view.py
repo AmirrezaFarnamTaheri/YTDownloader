@@ -481,7 +481,7 @@ class QueueView(BaseView):
                     blur_radius=10,
                     color=ft.colors.with_opacity(0.1, ft.colors.BLACK),
                 )
-                ctrl.update()
+                safe_update(ctrl)
 
         # Highlight selected
         selected = self.list_view.controls[index]
@@ -491,9 +491,11 @@ class QueueView(BaseView):
                 blur_radius=15,
                 color=ft.colors.with_opacity(0.4, Theme.Primary.MAIN),
             )
-            selected.update()
-            # Scroll to (Simple approximation)
-            self.list_view.scroll_to(offset=index * 100, duration=300)
+            safe_update(selected)
+            # Scroll to (Simple approximation). scroll_to() issues an update on
+            # the list itself, which requires the view to be mounted.
+            if self.list_view.page is not None:
+                self.list_view.scroll_to(offset=index * 100, duration=300)
 
     def get_selected_item(self):
         """Return the currently selected item data."""

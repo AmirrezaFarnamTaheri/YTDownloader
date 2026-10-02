@@ -31,6 +31,23 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _keyboard_handlers(page: ft.Page):
+    """Return the callbacks Flet registered for keyboard events.
+
+    ``page.on_keyboard_event`` is an ``EventHandler`` wrapper with no public
+    accessor, so the name-mangled dict is the only way to drive the handler
+    exactly as Flet would.
+    """
+    return list(
+        page.on_keyboard_event._EventHandler__handlers
+    )  # pylint: disable=protected-access
+
+
+def _key_event(key: str) -> ft.KeyboardEvent:
+    """Build a KeyboardEvent with the modifiers Flet 0.21 requires."""
+    return ft.KeyboardEvent(key=key, shift=False, ctrl=False, alt=False, meta=False)
+
+
 class _FakePubSubHub:
     def subscribe(self, *args, **kwargs):
         return 0
@@ -159,5 +176,58 @@ def test_theme_refresh_survives_a_real_page(clean_main_globals):
         assert len(page.controls) == 1
         assert page.controls[0] is ui.app_layout
     finally:
+        state.shutdown_flag.set()
+        loop.close()
+
+
+def test_queue_keyboard_shortcuts_ignore_hidden_queue(clean_main_globals):
+    """J/K/Delete must not act on the queue while another view is displayed.
+
+    The handler used to mutate queue selection and repaint queue controls that
+    were not attached to the page, which raised inside the event handler.
+    """
+    app_main, state = clean_main_globals
+    state.shutdown_flag.clear()
+
+    loop = asyncio.new_event_loop()
+    page = ft.Page(conn=_FakeConn(), session_id="smoke-keys", loop=loop)
+
+    # Two rows, so "select next" would actually move the cursor if the hidden
+    # view were still wired to the shortcut.
+    items = [
+        {
+            "id": f"smoke-keyboard-item-{i}",
+            "url": f"https://example.com/video{i}.mp4",
+            "title": f"smoke {i}",
+            "status": "Completed",  # never claimable, so no worker touches it
+            "progress": 1.0,
+        }
+        for i in range(2)
+    ]
+
+    try:
+        app_main.main(page)
+        ui = app_main.UI
+        handlers = _keyboard_handlers(page)
+        assert handlers, "main() did not register a keyboard handler"
+        handler = handlers[0]
+
+        # Dashboard is the initial view, so the queue is detached ...
+        assert ui.current_view_index == 0
+        assert ui.queue_view.page is None
+
+        # ... but it still holds selectable rows.
+        for entry in items:
+            state.queue_manager.add_item(dict(entry))
+        ui.queue_view.rebuild()
+        assert ui.queue_view.list_view.controls
+        ui.queue_view.selected_index = 0
+
+        handler(_key_event("J"))
+
+        assert ui.queue_view.selected_index == 0, "shortcut acted on a hidden view"
+    finally:
+        for entry in items:
+            state.queue_manager.remove_item(dict(entry))
         state.shutdown_flag.set()
         loop.close()

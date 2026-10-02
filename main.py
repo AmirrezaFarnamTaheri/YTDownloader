@@ -94,6 +94,12 @@ def main(pg: ft.Page) -> None:
             if not UI or not UI.queue_view:
                 return
 
+            # Queue shortcuts only apply while the queue view is on screen.
+            # Acting on a hidden view mutated invisible selection and repainted
+            # controls that are not attached to the page (Flet raises for that).
+            if UI.queue_view.page is None:
+                return
+
             # J / K Navigation
             if e.key == "J":  # Next
                 idx = UI.queue_view.selected_index + 1
