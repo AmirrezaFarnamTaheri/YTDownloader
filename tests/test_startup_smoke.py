@@ -231,3 +231,63 @@ def test_queue_keyboard_shortcuts_ignore_hidden_queue(clean_main_globals):
             state.queue_manager.remove_item(dict(entry))
         state.shutdown_flag.set()
         loop.close()
+
+
+def test_queue_refresh_before_the_queue_is_ever_shown_is_silent(
+    clean_main_globals, monkeypatch
+):
+    """Startup repaints must not touch a queue view that was never mounted.
+
+    The background loop starts with the application and calls
+    ``UIManager.update_queue_view()`` on a timer, while the initial view is the
+    Dashboard. Reproduces the production wiring: with the pre-fix unconditional
+    ``Control.update()`` this raised
+    ``AssertionError: Control must be added to the page first`` on a fresh
+    launch, before the user ever opened the Queue.
+    """
+    import uuid
+
+    def _assign(added_controls):
+        for control in added_controls:
+            control._Control__uid = f"id-{uuid.uuid4().hex}"
+
+    monkeypatch.setattr(
+        ft.Page,
+        "_Page__update_control_ids",
+        lambda self, added, results: _assign(added),
+    )
+
+    app_main, state = clean_main_globals
+    state.shutdown_flag.clear()
+
+    loop = asyncio.new_event_loop()
+    conn = _FakeConn()
+    page = ft.Page(conn=conn, session_id="smoke-refresh", loop=loop)
+
+    try:
+        app_main.main(page)
+        ui = app_main.UI
+
+        # The dashboard is displayed; the queue has never been mounted.
+        assert ui.current_view_index == 0
+        assert ui.queue_view.page is None
+
+        state.queue_manager.add_item(
+            {
+                "id": "smoke-refresh-item",
+                "url": "https://example.com/video.mp4",
+                "title": "refresh",
+                "status": "Completed",
+                "progress": 1.0,
+            }
+        )
+
+        before = len(conn.commands)
+        ui.update_queue_view()  # must not raise
+        assert ui.queue_view.list_view.controls, "the row was not built"
+        # Nothing was pushed for the invisible view.
+        assert len(conn.commands) == before
+    finally:
+        state.queue_manager.remove_item({"id": "smoke-refresh-item"})
+        state.shutdown_flag.set()
+        loop.close()

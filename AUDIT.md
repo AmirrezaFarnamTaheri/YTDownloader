@@ -27,7 +27,7 @@ Baseline (before changes): 320 tests, 1 pre-existing failure
 (`tests/test_youtube_panel.py::test_archive_profile_updates_controls`),
 75% statement coverage.
 
-Final state (T1): **479 tests pass**, **77% statement coverage**, `black`,
+Final state (T1): **484 tests pass**, **77% statement coverage**, `black`,
 `isort`, `ruff`, `mypy`, and `pylint` (10.00/10) clean, packaging dry-runs pass,
 and web mode serves `GET / → 200`.
 
@@ -62,33 +62,49 @@ and web mode serves `GET / → 200`.
   history DB (e.g. another application's DB) passes the header/integrity checks;
   the schema check on replace is limited to the migration path.
 
-### F-02 — Timer-driven queue refresh crashed on detached controls
+### F-02 — Timer-driven queue refresh crashed before the queue was ever shown
 
 - **Description.** `AppController._background_loop` repaints the queue view on a
-  timer even while another view is shown. Item controls called
-  `Control.update()` unconditionally, which asserts
+  timer from startup, while the initial view is the Dashboard. Controls that had
+  never been mounted called `Control.update()` unconditionally, which asserts
   `Control must be added to the page first`.
-- **Evidence anchor.** T1 — `AssertionError` from
-  `flet_core/control.py:286` via
-  `DownloadItemControl.update_state → _update_progress_internal`; reproduced by
-  unit tests in `tests/test_hardening_regressions.py::TestDownloadItemDetachedSafety`
-  (failed before the fix, pass after).
-- **Root cause.** Flet controls only accept updates once mounted; the refresh
-  path assumed the queue was the visible view.
-- **Impact.** A background exception per refresh cycle, aborting the whole queue
-  repaint and surfacing error dialogs/log spam; progress bars freeze.
+- **Evidence anchor.** T1 — reproduced against the real `main.main()` wiring and
+  a real `flet.Page`: with the pre-fix unconditional update,
+  `UIManager.update_queue_view()` raises in `app_layout._safe_update →
+  Control.update` (`flet_core/control.py:286`); with `safe_update()` it returns
+  silently and emits no commands. The scenario is permanent in
+  `tests/test_startup_smoke.py::test_queue_refresh_before_the_queue_is_ever_shown_is_silent`
+  (fails on the pre-fix behaviour, passes after), and the unit-level contract is
+  in `tests/test_hardening_regressions.py::TestDownloadItemDetachedSafety`.
+- **Mechanism, measured.** Two cases must be distinguished, and only the first
+  raises: (a) *never mounted* — `control.page is None`, `update()` asserts;
+  (b) *mounted, then navigated away* — Flet 0.21 keeps a **stale `page`
+  reference** on the detached subtree, so `update()` does **not** raise, it just
+  sends commands for controls the client no longer displays. The guard therefore
+  fixes case (a) outright and leaves case (b) costing nothing in practice
+  because F-11's render-signature gating means unchanged rows issue no update at
+  all; only rows whose values actually changed are pushed while hidden.
+  (An earlier draft of this note implied case (b) also raised; that was wrong.)
+- **Root cause.** The refresh path assumed the queue was the visible view, and
+  Flet's contract is that updates are only valid for mounted controls.
+- **Impact.** On a fresh launch, an exception per background tick (twice per
+  second) before the user ever opens the Queue, aborting the whole repaint and
+  filling the log/crash reporting.
 - **Category.** Incremental. **Peer reference.** `youtube_panel.apply_profile`
   already needed the same guard (it was the one pre-existing test failure).
-- **Severity.** High. **Confidence.** High. **Effort.** ~2 h. **ROI.** High.
+- **Severity.** High. **Confidence.** High (reproduced end to end). **Effort.**
+  ~2 h. **ROI.** High.
 - **Recommendation.** One canonical `ui_utils.safe_update(control)` helper that
   checks `control.page` before updating, used by the download item, queue view,
   preview card, input card, and YouTube panel.
-- **Validation.** `TestDownloadItemDetachedSafety`,
+- **Validation.** The real-page smoke test above, `TestDownloadItemDetachedSafety`,
   `TestQueueViewRefreshWithDetachedView`,
   `TestSafeUpdateHelper::test_preview_card_update_info_works_detached` (the
   previously unexercised `update_info({})` path).
 - **Residual risk.** `safe_update` swallows *all* exceptions raised by `update()`,
-  including transport failures; they are logged at debug level only.
+  including transport failures; they are logged at debug level only. Case (b)
+  remains: while the queue is hidden but previously mounted, changed rows still
+  push commands that the client ignores.
 
 ### F-03 — Queue keyboard shortcuts acted on a hidden view and crashed
 
