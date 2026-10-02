@@ -532,9 +532,11 @@ Deferred deliberately, with the reason:
    `language_name_*` (verification: literal scan over non-test sources; the four
    history keys that were on this list are now used by the delivered
    export/import feature). They cost nothing and hint at unfinished work:
-   settings export/import and multi-select delete have no implementation at all,
-   and the language names are hard-coded in the settings dropdown. Adding UI for
-   them is a product decision, not a bug fix.
+   settings export/import and multi-select delete have no implementation at all.
+   The `language_name_*` keys are unused because the language dropdown shows
+   endonyms ("English", "Español", "فارسی") on purpose — that is the better UX
+   and should stay even if the keys are eventually dropped. Adding UI for the
+   remaining keys is a product decision, not a bug fix.
 3. **Redundant `if tb:` inside `if stack:` in `global_crash_handler`** —
    `traceback.extract_tb(None)` yields an empty list, so the outer guard already
    implies `tb` is set. Harmless; left untouched to avoid churn in the crash path.

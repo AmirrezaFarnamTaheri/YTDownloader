@@ -63,13 +63,23 @@ implemented differently per view.
 
 ## Data and Persistence
 
+- `app_paths.py` resolves the per-user data directory (`~/.streamcatch` by
+  default, relocatable with `STREAMCATCH_DATA_DIR`). The configuration, the
+  history database, and the log file all live there; the test suite points the
+  variable at a temporary folder so tests never touch real user data.
 - `config_manager.py` handles config validation and atomic writes.
-- `history_manager.py` stores history in SQLite.
+- `history_manager.py` stores history in SQLite. `export_to_json` /
+  `import_from_json_file` back the History view's Export/Import buttons;
+  imports skip entries already present and keep original download timestamps.
 - `rss_manager.py` stores feed configuration and parses feeds safely.
 - `sync_manager.py` exports/imports sanitized state and runs auto-sync.
 - `cloud_manager.py` handles cloud provider integration.
 
 Generated runtime files are ignored and should not be committed.
+
+Controls that are refreshed from timers (queue rows, the queue view) must repaint
+through `ui_utils.safe_update()`, which skips controls that are not attached to a
+page; a plain `Control.update()` raises for a view that was never mounted.
 
 ## Build and Release
 
