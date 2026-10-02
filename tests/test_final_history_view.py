@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import app_state
 from views.history_view import HistoryView
 
 

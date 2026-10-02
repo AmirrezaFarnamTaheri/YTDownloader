@@ -68,6 +68,13 @@ class TestQueueViewCoverage(unittest.TestCase):
         self.view.list_view.controls = [ctrl1, ctrl2]
         self.view.list_view.scroll_to = MagicMock()
 
+        # scroll_to() issues an update on the list, so it only runs while the
+        # list is mounted.
+        self.view.list_view.page = None
+        self.view.select_item(1)
+        self.view.list_view.scroll_to.assert_not_called()
+
+        self.view.list_view.page = MagicMock()
         self.view.select_item(1)
 
         self.assertEqual(self.view.selected_index, 1)

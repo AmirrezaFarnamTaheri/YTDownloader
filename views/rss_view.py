@@ -62,7 +62,9 @@ class RSSView(BaseView):
                                         ),
                                         ft.IconButton(
                                             icon=ft.icons.REFRESH_ROUNDED,
-                                            tooltip=LM.get("refresh_feeds", "Refresh"),
+                                            tooltip=LM.get(
+                                                "refresh_feeds", default="Refresh"
+                                            ),
                                             icon_color=Theme.Text.SECONDARY,
                                             on_click=self.refresh_feeds,
                                         ),
@@ -141,7 +143,9 @@ class RSSView(BaseView):
                                 ),
                                 ft.IconButton(
                                     icon=ft.icons.DELETE_OUTLINE,
-                                    tooltip=LM.get("remove_feed", "Remove Feed"),
+                                    tooltip=LM.get(
+                                        "remove_feed", default="Remove Feed"
+                                    ),
                                     icon_color=Theme.Status.ERROR,
                                     on_click=lambda e, f=feed: self.remove_rss(f),
                                 ),
@@ -155,7 +159,7 @@ class RSSView(BaseView):
     # pylint: disable=unused-argument
     def add_rss(self, e):
         """Add a new RSS feed."""
-        new_url = self.rss_input.value
+        new_url = (self.rss_input.value or "").strip()
         if not new_url:
             return
 
@@ -166,10 +170,15 @@ class RSSView(BaseView):
             self.rss_input.update()
             return
 
-        self.rss_manager.add_feed(new_url)
+        added = self.rss_manager.add_feed(new_url)
         self.load_feeds_list()
         self.rss_input.value = ""
         self.rss_input.error_text = None
+        if self.page:
+            key = "rss_feed_added" if added else "rss_feed_exists"
+            self.page.open(
+                ft.SnackBar(content=ft.Text(LM.get(key, default=LM.get("add_feed"))))
+            )
         self.update()
 
     def remove_rss(self, feed):

@@ -72,16 +72,20 @@ class LocalizationManager:
                 cls._fallback_strings = cls._load_file(fallback_path)
 
     @classmethod
-    def get(cls, key: str, *args) -> str:
+    def get(cls, key: str, *args, default: str | None = None) -> str:
         """
         Get a localized string.
-        Supports string formatting if args are provided.
+
+        Positional extra arguments are used to format the localized template
+        (``LM.get("stats_queued", 3)``). ``default`` is the text returned when
+        the key is missing everywhere; passing a fallback positionally is a
+        mistake because it would be interpolated into the template instead.
         """
         val = cls._strings.get(key)
         if val is None and cls._fallback_strings:
             val = cls._fallback_strings.get(key)
         if val is None:
-            val = key
+            val = default if default is not None else key
 
         # Log warning for missing keys in development
         if val == key and key not in ("", None):

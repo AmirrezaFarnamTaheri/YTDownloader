@@ -1,6 +1,9 @@
 """
 Application theme definitions and constants.
-Refined Soulful Palette V4 (Polished Typography & Spacing).
+
+Provides a dual (dark / light) palette and a small runtime helper so the UI
+can respect the user's theme-mode selection without sprinkling conditional
+branches throughout the codebase.
 """
 
 from typing import Any
@@ -8,106 +11,223 @@ from typing import Any
 import flet as ft
 
 
-class Theme:
-    """
-    Main theme class containing color definitions, typography, and theme generation logic.
-    Soulful Palette V4 (Refined, Higher Contrast, Modern).
-    """
+class _DarkPalette:
+    """Dark-mode palette."""
 
-    # --- Colors ---
-    # Primary: clean teal for emphasis and action elements
-    PRIMARY = "#14B8A6"  # Teal 500
-    PRIMARY_DARK = "#0F766E"  # Teal 700
+    PRIMARY = "#14B8A6"
+    PRIMARY_DARK = "#0F766E"
+    ACCENT = "#F97316"
+    ACCENT_SECONDARY = "#84CC16"
 
-    # Accent colors for callouts and stat contrast
-    ACCENT = "#F97316"  # Orange 500
-    ACCENT_SECONDARY = "#84CC16"  # Lime 500
-
-    # Backgrounds: layered deep navy surfaces
-    BG_DARK = "#0B1220"
+    BG = "#0B1220"
     BG_CARD = "#111C2E"
     BG_HOVER = "#1E2A40"
     BG_INPUT = "#08101D"
     BG_SURFACE_VARIANT = "#152238"
-    BG_LIGHT = "#0E172A"
+    BG_NAV = "#0E172A"
 
-    # Text
     TEXT_PRIMARY = "#F1F5F9"
     TEXT_SECONDARY = "#CBD5E1"
     TEXT_MUTED = "#94A3B8"
 
-    # Status
     SUCCESS = "#22C55E"
     WARNING = "#F59E0B"
     ERROR = "#EF4444"
     INFO = "#38BDF8"
 
-    # Borders & Dividers
     BORDER = "#334155"
-    DIVIDER = "#334155"  # Alias for Divider color
+    DIVIDER = "#334155"
+    SHADOW = ft.colors.with_opacity(0.25, ft.colors.BLACK)
 
-    # --- Typography Constants ---
+
+class _LightPalette:
+    """Light-mode palette."""
+
+    PRIMARY = "#0D9488"
+    PRIMARY_DARK = "#0F766E"
+    ACCENT = "#EA580C"
+    ACCENT_SECONDARY = "#65A30D"
+
+    BG = "#F8FAFC"
+    BG_CARD = "#FFFFFF"
+    BG_HOVER = "#F1F5F9"
+    BG_INPUT = "#F1F5F9"
+    BG_SURFACE_VARIANT = "#E2E8F0"
+    BG_NAV = "#FFFFFF"
+
+    TEXT_PRIMARY = "#0F172A"
+    TEXT_SECONDARY = "#334155"
+    TEXT_MUTED = "#64748B"
+
+    SUCCESS = "#16A34A"
+    WARNING = "#D97706"
+    ERROR = "#DC2626"
+    INFO = "#0284C7"
+
+    BORDER = "#CBD5E1"
+    DIVIDER = "#E2E8F0"
+    SHADOW = ft.colors.with_opacity(0.08, ft.colors.BLACK)
+
+
+class Theme:
+    """
+    Main theme class with dynamic dark/light resolution.
+
+    Access active colors through ``Theme.<name>`` class attributes — they are
+    swapped at runtime by :func:`apply_theme_mode` when the user changes the
+    theme setting.  Import sites that were written against the old dark-only
+    constants continue to work unchanged.
+    """
+
+    # --- Active palette (defaults to dark; updated via apply_theme_mode) ---
+    PRIMARY: str = _DarkPalette.PRIMARY
+    PRIMARY_DARK: str = _DarkPalette.PRIMARY_DARK
+    ACCENT: str = _DarkPalette.ACCENT
+    ACCENT_SECONDARY: str = _DarkPalette.ACCENT_SECONDARY
+
+    BG_DARK: str = _DarkPalette.BG
+    BG_CARD: str = _DarkPalette.BG_CARD
+    BG_HOVER: str = _DarkPalette.BG_HOVER
+    BG_INPUT: str = _DarkPalette.BG_INPUT
+    BG_SURFACE_VARIANT: str = _DarkPalette.BG_SURFACE_VARIANT
+    BG_LIGHT: str = _DarkPalette.BG_NAV
+
+    TEXT_PRIMARY: str = _DarkPalette.TEXT_PRIMARY
+    TEXT_SECONDARY: str = _DarkPalette.TEXT_SECONDARY
+    TEXT_MUTED: str = _DarkPalette.TEXT_MUTED
+
+    SUCCESS: str = _DarkPalette.SUCCESS
+    WARNING: str = _DarkPalette.WARNING
+    ERROR: str = _DarkPalette.ERROR
+    INFO: str = _DarkPalette.INFO
+
+    BORDER: str = _DarkPalette.BORDER
+    DIVIDER: str = _DarkPalette.DIVIDER
+
+    is_dark: bool = True
+
+    # --- Typography ---
     FONT_FAMILY = "Poppins, Nunito Sans, Segoe UI, sans-serif"
     FONT_SIZE_BODY = 14
     FONT_SIZE_TITLE = 20
     FONT_SIZE_HEADER = 24
     FONT_SIZE_SMALL = 12
 
-    # --- Spacing Constants ---
+    # --- Spacing ---
     PADDING_SMALL = 10
     PADDING_MEDIUM = 20
     PADDING_LARGE = 30
     BORDER_RADIUS = 12
 
-    # --- Subclasses for Usage ---
-    # pylint: disable=too-few-public-methods
-    class Surface:
-        """Surface color definitions."""
+    # --- Nested class proxies (kept for backward compatibility) ---
+    # These are re-bound in apply_theme_mode.
+    class Surface:  # type: ignore[no-redef]
+        """Surface color definitions (re-bound by apply_theme_mode)."""
 
-        BG = "#111C2E"
-        CARD = "#111C2E"
-        INPUT = "#08101D"
+        BG: str = _DarkPalette.BG_CARD
+        CARD: str = _DarkPalette.BG_CARD
+        INPUT: str = _DarkPalette.BG_INPUT
 
-    class Primary:
-        """Primary color definitions."""
+    class Primary:  # type: ignore[no-redef]
+        """Primary color definitions (re-bound by apply_theme_mode)."""
 
-        MAIN = "#14B8A6"
+        MAIN: str = _DarkPalette.PRIMARY
 
-    class Text:
-        """Text color definitions."""
+    class Text:  # type: ignore[no-redef]
+        """Text color definitions (re-bound by apply_theme_mode)."""
 
-        PRIMARY = "#F1F5F9"
-        SECONDARY = "#CBD5E1"
+        PRIMARY: str = _DarkPalette.TEXT_PRIMARY
+        SECONDARY: str = _DarkPalette.TEXT_SECONDARY
 
-    class Divider:
-        """Divider color definitions."""
+    class Divider:  # type: ignore[no-redef]
+        """Divider color definitions (re-bound by apply_theme_mode)."""
 
-        COLOR = "#334155"
+        COLOR: str = _DarkPalette.DIVIDER
 
-    class Status:
-        """Status color definitions."""
+    class Status:  # type: ignore[no-redef]
+        """Status color definitions (re-bound by apply_theme_mode)."""
 
-        SUCCESS = "#22C55E"
-        ERROR = "#EF4444"
-        WARNING = "#F59E0B"
-        INFO = "#38BDF8"
+        SUCCESS: str = _DarkPalette.SUCCESS
+        ERROR: str = _DarkPalette.ERROR
+        WARNING: str = _DarkPalette.WARNING
+        INFO: str = _DarkPalette.INFO
 
-    @staticmethod
-    def get_surface_gradient() -> ft.LinearGradient:
+    @classmethod
+    def apply_theme_mode(cls, mode: str = "dark") -> None:
+        """Swap active palette to dark, light, or high-contrast."""
+        mode = (mode or "dark").strip().lower()
+        if mode in {"high contrast", "high_contrast", "high-contrast"}:
+            # High contrast is a special Flet theme; keep dark defaults here.
+            palette: Any = _DarkPalette
+            cls.is_dark = True
+        elif mode == "light":
+            palette = _LightPalette
+            cls.is_dark = False
+        else:
+            palette = _DarkPalette
+            cls.is_dark = True
+
+        cls.PRIMARY = palette.PRIMARY
+        cls.PRIMARY_DARK = palette.PRIMARY_DARK
+        cls.ACCENT = palette.ACCENT
+        cls.ACCENT_SECONDARY = palette.ACCENT_SECONDARY
+        cls.BG_DARK = palette.BG
+        cls.BG_CARD = palette.BG_CARD
+        cls.BG_HOVER = palette.BG_HOVER
+        cls.BG_INPUT = palette.BG_INPUT
+        cls.BG_SURFACE_VARIANT = palette.BG_SURFACE_VARIANT
+        cls.BG_LIGHT = palette.BG_NAV
+        cls.TEXT_PRIMARY = palette.TEXT_PRIMARY
+        cls.TEXT_SECONDARY = palette.TEXT_SECONDARY
+        cls.TEXT_MUTED = palette.TEXT_MUTED
+        cls.SUCCESS = palette.SUCCESS
+        cls.WARNING = palette.WARNING
+        cls.ERROR = palette.ERROR
+        cls.INFO = palette.INFO
+        cls.BORDER = palette.BORDER
+        cls.DIVIDER = palette.DIVIDER
+
+        cls.Surface.BG = palette.BG_CARD
+        cls.Surface.CARD = palette.BG_CARD
+        cls.Surface.INPUT = palette.BG_INPUT
+        cls.Primary.MAIN = palette.PRIMARY
+        cls.Text.PRIMARY = palette.TEXT_PRIMARY
+        cls.Text.SECONDARY = palette.TEXT_SECONDARY
+        cls.Divider.COLOR = palette.DIVIDER
+        cls.Status.SUCCESS = palette.SUCCESS
+        cls.Status.ERROR = palette.ERROR
+        cls.Status.WARNING = palette.WARNING
+        cls.Status.INFO = palette.INFO
+
+    @classmethod
+    def get_surface_gradient(cls) -> ft.LinearGradient:
         """Background gradient for primary content surfaces."""
+        if cls.is_dark:
+            return ft.LinearGradient(
+                begin=ft.alignment.top_left,
+                end=ft.alignment.bottom_right,
+                colors=[cls.BG_DARK, cls.BG_CARD],
+            )
+        # Flat light surface feels cleaner than a gradient
         return ft.LinearGradient(
             begin=ft.alignment.top_left,
             end=ft.alignment.bottom_right,
-            colors=["#0B1220", "#111C2E"],
+            colors=[cls.BG_DARK, cls.BG_DARK],
         )
 
-    @staticmethod
-    def get_sidebar_gradient() -> ft.LinearGradient:
+    @classmethod
+    def get_sidebar_gradient(cls) -> ft.LinearGradient:
         """Background gradient for navigation surfaces."""
+        if cls.is_dark:
+            return ft.LinearGradient(
+                begin=ft.alignment.top_center,
+                end=ft.alignment.bottom_center,
+                colors=[cls.BG_LIGHT, cls.BG_CARD],
+            )
         return ft.LinearGradient(
             begin=ft.alignment.top_center,
             end=ft.alignment.bottom_center,
-            colors=["#0E172A", "#111C2E"],
+            colors=[cls.BG_LIGHT, cls.BG_LIGHT],
         )
 
     @staticmethod
@@ -224,20 +344,19 @@ class Theme:
             data["suffix_icon"] = suffix_icon
         return data
 
-    @staticmethod
-    def get_card_decoration() -> dict[str, Any]:
-        """
-        Standardized Card Decoration.
-        """
+    @classmethod
+    def get_card_decoration(cls) -> dict[str, Any]:
+        """Standardized card decoration that adapts to the active palette."""
+        shadow_opacity = 0.18 if cls.is_dark else 0.06
         return {
-            "bgcolor": Theme.BG_CARD,
-            "border_radius": Theme.BORDER_RADIUS,
-            "padding": Theme.PADDING_MEDIUM,
+            "bgcolor": cls.BG_CARD,
+            "border_radius": cls.BORDER_RADIUS,
+            "padding": cls.PADDING_MEDIUM,
             "shadow": ft.BoxShadow(
-                blur_radius=12,
-                spread_radius=1,
-                color=ft.colors.with_opacity(0.15, ft.colors.BLACK),
+                blur_radius=14,
+                spread_radius=0,
+                color=ft.colors.with_opacity(shadow_opacity, ft.colors.BLACK),
                 offset=ft.Offset(0, 4),
             ),
-            "border": ft.border.all(1, Theme.BORDER),
+            "border": ft.border.all(1, cls.BORDER),
         }

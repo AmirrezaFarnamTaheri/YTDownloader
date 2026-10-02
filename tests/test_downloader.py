@@ -5,10 +5,10 @@ Consolidated unit tests for the downloader module.
 Covers video info fetching, download configuration, execution logic, and robustness/edge cases.
 """
 
-import unittest
-import tempfile
 import os
-from unittest.mock import ANY, MagicMock, patch
+import tempfile
+import unittest
+from unittest.mock import MagicMock, patch
 
 import yt_dlp
 
@@ -188,9 +188,7 @@ class TestDownloaderOptions(unittest.TestCase):
 
     def test_output_template_allows_safe_subdirectories(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            resolved = _resolve_output_template(
-                tmpdir, "channel/%(title)s.%(ext)s"
-            )
+            resolved = _resolve_output_template(tmpdir, "channel/%(title)s.%(ext)s")
             self.assertTrue(
                 resolved.endswith("channel/%(title)s.%(ext)s")
                 or resolved.endswith("channel\\%(title)s.%(ext)s")

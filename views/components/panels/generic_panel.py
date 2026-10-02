@@ -25,7 +25,7 @@ class GenericPanel(BasePanel):
         from localization_manager import LocalizationManager as LM
 
         self.format_dd = ft.Dropdown(
-            label=LM.get("video_format", "Format"),
+            label=LM.get("video_format", default="Format"),
             options=[
                 ft.dropdown.Option("best", LM.get("best_quality")),
                 ft.dropdown.Option("audio", LM.get("audio_only")),

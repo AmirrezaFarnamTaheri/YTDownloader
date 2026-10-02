@@ -34,6 +34,11 @@ class QueueManager:
     def __init__(self) -> None:
         # We explicitly type self._queue as list[QueueItem]
         self._queue: list[QueueItem] = []
+        # O(1) id -> item index. Values are the *same* dict objects that live
+        # in ``self._queue``; both structures must be mutated together under
+        # ``self._lock``. This keeps high-frequency progress updates (many per
+        # second per active download) from scanning the whole queue.
+        self._index: dict[str, QueueItem] = {}
         # Re-entrant lock for queue operations
         self._lock = threading.RLock()
 
@@ -46,6 +51,18 @@ class QueueManager:
 
         # Map item IDs to their active CancelTokens
         self._cancel_tokens: dict[str, CancelToken] = {}
+
+    def _find_by_id(self, item_id: str) -> QueueItem | None:
+        """Return the live queue item for ``item_id`` (lock must be held)."""
+        item = self._index.get(item_id)
+        if item is not None:
+            return item
+        # Self-heal: index may be stale if something mutated _queue directly.
+        for candidate in self._queue:
+            if candidate.get("id") == item_id:
+                self._index[item_id] = candidate
+                return candidate
+        return None
 
     @property
     def has_work_condition(self) -> threading.Condition:
@@ -61,9 +78,9 @@ class QueueManager:
     def get_item_by_id(self, item_id: str) -> QueueItem | None:
         """Get item by its unique ID."""
         with self._lock:
-            for item in self._queue:
-                if item.get("id") == item_id:
-                    return cast(QueueItem, item.copy())
+            item = self._find_by_id(item_id)
+            if item is not None:
+                return cast(QueueItem, item.copy())
         return None
 
     def get_item_by_index(self, index: int) -> QueueItem | None:
@@ -160,6 +177,7 @@ class QueueManager:
                 queue_item["id"],
             )
             self._queue.append(queue_item)
+            self._index[str(queue_item["id"])] = queue_item
 
             # Notify workers that work might be available
             # Must acquire the condition lock (which is self._lock)
@@ -175,24 +193,23 @@ class QueueManager:
         """
         updated = False
         with self._lock:
-            for item in self._queue:
-                if item.get("id") == item_id:
-                    logger.debug(
-                        "Updating status for item %s: %s -> %s",
-                        item_id,
-                        item.get("status"),
-                        status,
-                    )
-                    # We assume status is a valid Literal
-                    item["status"] = cast(Any, status)
-                    if updates:
-                        # pylint: disable=no-member
-                        item.update(cast(Any, updates))
-                    updated = True
-                    break
+            item = self._find_by_id(item_id)
+            if item is not None:
+                logger.debug(
+                    "Updating status for item %s: %s -> %s",
+                    item_id,
+                    item.get("status"),
+                    status,
+                )
+                # We assume status is a valid Literal
+                item["status"] = cast(Any, status)
+                if updates:
+                    # pylint: disable=no-member
+                    item.update(cast(Any, updates))
+                updated = True
 
-            if updated and status == "Queued":
-                self._has_work.notify_all()
+                if status == "Queued":
+                    self._has_work.notify_all()
 
         if updated:
             self._notify_listeners_safe()
@@ -202,27 +219,23 @@ class QueueManager:
         Remove an item from the queue and cancel it if running.
         Atomic operation.
         """
-        item_id = item.get("id")
+        raw_id = item.get("id")
+        item_id = str(raw_id) if raw_id else None
         removed = False
 
         with self._lock:
             # Find actual item object in queue (in case 'item' is a copy)
-            target = None
-            if item_id:
-                for q_item in self._queue:
-                    if q_item.get("id") == item_id:
-                        target = q_item
-                        break
+            target = self._find_by_id(item_id) if item_id else None
 
-            if target:
-                if item_id:
-                    logger.info("Removing item from queue: %s", item_id)
-                    # Cancel if running
-                    token = self._cancel_tokens.get(item_id)
-                    if token:
-                        token.cancel()
+            if target is not None and item_id is not None:
+                logger.info("Removing item from queue: %s", item_id)
+                # Cancel if running
+                token = self._cancel_tokens.get(item_id)
+                if token:
+                    token.cancel()
 
                 self._queue.remove(target)
+                self._index.pop(item_id, None)
                 removed = True
 
         # Notify outside lock to prevent deadlock if listener calls back into queue
@@ -335,23 +348,20 @@ class QueueManager:
                 token.cancel()
 
             # Update status only if in non-terminal state
-            for item in self._queue:
-                if item.get("id") == item_id:
-                    # Prevent overwriting terminal statuses like
-                    # 'Completed', 'Error', 'Cancelled'
-                    # If it's already 'Cancelled', no harm done.
-                    # 'Allocating', 'Downloading', 'Processing', 'Queued' are cancellable.
-                    if item.get("status") in [
-                        "Queued",
-                        "Allocating",
-                        "Downloading",
-                        "Processing",
-                    ]:
-                        logger.info(
-                            "Setting status to Cancelled for item ID: %s", item_id
-                        )
-                        item["status"] = "Cancelled"
-                    break
+            item = self._find_by_id(item_id)
+            if item is not None:
+                # Prevent overwriting terminal statuses like
+                # 'Completed', 'Error', 'Cancelled'
+                # If it's already 'Cancelled', no harm done.
+                # 'Allocating', 'Downloading', 'Processing', 'Queued' are cancellable.
+                if item.get("status") in [
+                    "Queued",
+                    "Allocating",
+                    "Downloading",
+                    "Processing",
+                ]:
+                    logger.info("Setting status to Cancelled for item ID: %s", item_id)
+                    item["status"] = "Cancelled"
 
         self._notify_listeners_safe()
 
@@ -362,35 +372,32 @@ class QueueManager:
 
         updated = False
         with self._lock:
-            for item in self._queue:
-                if item.get("id") != item_id:
-                    continue
+            item = self._find_by_id(item_id)
+            if item is None:
+                return False
 
-                if item.get("status") not in ("Error", "Cancelled"):
-                    logger.debug(
-                        "Retry ignored for item %s with status %s",
-                        item_id,
-                        item.get("status"),
-                    )
-                    return False
-
-                item.update(
-                    {
-                        "status": "Queued",
-                        "scheduled_time": None,
-                        "progress": 0,
-                        "speed": "",
-                        "eta": "",
-                        "size": "",
-                        "error": None,
-                    }
+            if item.get("status") not in ("Error", "Cancelled"):
+                logger.debug(
+                    "Retry ignored for item %s with status %s",
+                    item_id,
+                    item.get("status"),
                 )
-                updated = True
-                break
+                return False
 
-            if updated:
-                logger.info("Retrying item ID: %s", item_id)
-                self._has_work.notify_all()
+            item.update(
+                {
+                    "status": "Queued",
+                    "scheduled_time": None,
+                    "progress": 0,
+                    "speed": "",
+                    "eta": "",
+                    "size": "",
+                    "error": None,
+                }
+            )
+            updated = True
+            logger.info("Retrying item ID: %s", item_id)
+            self._has_work.notify_all()
 
         if updated:
             self._notify_listeners_safe()
@@ -514,6 +521,9 @@ class QueueManager:
             ]
             for item in items_to_remove:
                 self._queue.remove(item)
+                item_id = item.get("id")
+                if item_id:
+                    self._index.pop(str(item_id), None)
                 removed_count += 1
 
         if removed_count > 0:

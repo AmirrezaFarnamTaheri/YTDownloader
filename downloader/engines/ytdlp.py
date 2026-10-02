@@ -8,7 +8,8 @@ ensuring consistent behavior for cancellation and progress reporting.
 
 import logging
 import os
-from collections.abc import Callable, Iterable
+import threading
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import Any, cast
 
@@ -23,13 +24,16 @@ class YTDLPWrapper:
     Ensures consistent behavior for cancellation and progress reporting.
     """
 
-    _SUPPORT_CACHE: dict[str, bool] = {}
+    # Bounded LRU cache to prevent unbounded memory growth on large batches
+    _SUPPORT_CACHE: "dict[str, bool]" = {}
+    _SUPPORT_CACHE_MAX = 500
+    _SUPPORT_CACHE_LOCK = threading.Lock()
 
     def __init__(self, options: dict[str, Any]):
         self.options = options.copy()
 
     @staticmethod
-    def _existing_file_candidate(info: dict[str, Any], prepared: str) -> str:
+    def _existing_file_candidate(info: Mapping[str, Any], prepared: str) -> str:
         """Best-effort resolution of the final file after yt-dlp postprocessing."""
         candidates: list[str] = []
 
@@ -82,34 +86,49 @@ class YTDLPWrapper:
     def supports(url: str) -> bool:
         """
         Check if yt-dlp supports the URL by querying its extractors.
-        Uses caching to improve performance on repeated checks.
+        Uses a bounded LRU cache to improve performance on repeated checks.
 
-        Returns True if yt-dlp has an extractor for this URL,
-        False otherwise (allowing fallback to generic downloader).
+        Returns True if a non-generic yt-dlp extractor matches the URL,
+        False otherwise (allowing fallback to the generic HTTP downloader).
         """
         if not url:
             return False
 
-        # Check cache
-        if url in YTDLPWrapper._SUPPORT_CACHE:
-            return YTDLPWrapper._SUPPORT_CACHE[url]
+        cache = YTDLPWrapper._SUPPORT_CACHE
+        with YTDLPWrapper._SUPPORT_CACHE_LOCK:
+            if url in cache:
+                # Move to end for LRU ordering
+                cache[url] = cache.pop(url)
+                return cache[url]
 
+        supported = True  # safe default
         try:
-            # Use yt-dlp's extractor system to check URL support
-            # We iterate through extractors. This can be slow, so we cache the result.
-            for ie in yt_dlp.extractor.gen_extractors():
-                if ie.suitable(url):
-                    # Skip generic extractors as we want specific support
-                    if ie.IE_NAME in ("generic", "Generic"):
-                        continue
-                    YTDLPWrapper._SUPPORT_CACHE[url] = True
-                    return True
-
-            YTDLPWrapper._SUPPORT_CACHE[url] = False
-            return False
+            # Prefer yt-dlp's own (fast) matching API when available.
+            ies = yt_dlp.extractor.gen_extractors()
+            for ie in ies:
+                try:
+                    if ie.suitable(url):
+                        if ie.IE_NAME not in ("generic", "Generic"):
+                            supported = True
+                            break
+                        # generic matches but no specific extractor yet; keep searching
+                        supported = False
+                except Exception:  # pylint: disable=broad-exception-caught
+                    # Individual extractors may raise on odd URLs; ignore and continue
+                    continue
+            else:
+                # Loop completed without break => no specific extractor matched
+                # (if we found generic earlier supported stays False; else True)
+                pass
         except Exception:  # pylint: disable=broad-exception-caught
-            # On any error, assume yt-dlp might support it to be safe
-            return True
+            supported = True
+
+        with YTDLPWrapper._SUPPORT_CACHE_LOCK:
+            cache[url] = supported
+            # Evict oldest entries if over capacity
+            while len(cache) > YTDLPWrapper._SUPPORT_CACHE_MAX:
+                cache.pop(next(iter(cache)))
+        return supported
 
     def download(
         self,
@@ -195,11 +214,24 @@ class YTDLPWrapper:
                     entries_list = (
                         list(entries_iterable) if entries_raw is not None else []
                     )
+                    # yt-dlp inserts None for entries it could not download when
+                    # ignoreerrors is enabled; surface that instead of reporting
+                    # a false success count.
+                    failed = sum(1 for entry in entries_list if not entry)
+                    succeeded = len(entries_list) - failed
+                    if failed:
+                        logger.warning(
+                            "Playlist %s: %d of %d entries failed",
+                            url,
+                            failed,
+                            len(entries_list),
+                        )
                     return {
                         "filename": info.get("title", "Playlist"),
                         # Omit filepath for playlists to avoid misleading template string
                         "title": info.get("title", "Playlist"),
-                        "entries": len(entries_list),
+                        "entries": succeeded,
+                        "failed_entries": failed,
                         "type": "playlist",
                     }
 
@@ -207,7 +239,9 @@ class YTDLPWrapper:
                 prepared_filename = ydl.prepare_filename(info)
                 filename = self._existing_file_candidate(info, prepared_filename)
                 try:
-                    file_size = os.path.getsize(filename) if os.path.exists(filename) else None
+                    file_size = (
+                        os.path.getsize(filename) if os.path.exists(filename) else None
+                    )
                 except OSError:
                     file_size = None
 

@@ -40,7 +40,7 @@ assets_dir = "assets"
 profile = "black"
 line_length = 88
 known_first_party = ["downloader", "views"]
-skip = ["venv", "build", "dist", ".git"]
+skip = ["venv", ".venv", "build", "dist", ".git", ".mypy_cache", ".pytest_cache", ".ruff_cache", "htmlcov"]
 
 [tool.black]
 line-length = 88

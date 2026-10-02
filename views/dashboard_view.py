@@ -95,7 +95,7 @@ class DashboardView(BaseView):
 
         self.refresh_btn = ft.IconButton(
             ft.icons.REFRESH_ROUNDED,
-            tooltip=LM.get("refresh_dashboard", "Refresh"),
+            tooltip=LM.get("refresh_dashboard", default="Refresh"),
             on_click=lambda _: self.load(),
             icon_color=Theme.Text.SECONDARY,
         )
@@ -116,7 +116,7 @@ class DashboardView(BaseView):
                         content=ft.Column(
                             [
                                 ft.Text(
-                                    LM.get("system_health", "System Health"),
+                                    LM.get("system_health", default="System Health"),
                                     size=18,
                                     weight=ft.FontWeight.BOLD,
                                     color=Theme.Text.PRIMARY,
@@ -174,7 +174,7 @@ class DashboardView(BaseView):
                     ft.Row(
                         [
                             ft.Text(
-                                LM.get("recent_history", "Recent History"),
+                                LM.get("recent_history", default="Recent History"),
                                 size=20,
                                 weight=ft.FontWeight.BOLD,
                                 color=Theme.Text.PRIMARY,
@@ -232,14 +232,15 @@ class DashboardView(BaseView):
                 ft.Column(
                     [
                         ft.Text(
-                            LM.get("dashboard_welcome", "Welcome back!"),
+                            LM.get("dashboard_welcome", default="Welcome back!"),
                             size=28,
                             weight=ft.FontWeight.BOLD,
                             color=Theme.Text.PRIMARY,
                         ),
                         ft.Text(
                             LM.get(
-                                "dashboard_subtitle", "Ready to download something new?"
+                                "dashboard_subtitle",
+                                default="Ready to download something new?",
                             ),
                             size=16,
                             color=Theme.TEXT_SECONDARY,
@@ -250,7 +251,7 @@ class DashboardView(BaseView):
                 # Index 1 is Download View
                 quick_btn(
                     ft.icons.ADD_LINK,
-                    LM.get("quick_download", "New Download"),
+                    LM.get("quick_download", default="New Download"),
                     lambda _: self.on_navigate(1),
                     Theme.ACCENT,
                 ),
@@ -302,7 +303,7 @@ class DashboardView(BaseView):
         return ft.Column(
             [
                 ft.Text(
-                    LM.get("download_stats", "Download Statistics"),
+                    LM.get("download_stats", default="Download Statistics"),
                     size=20,
                     weight=ft.FontWeight.BOLD,
                     color=Theme.Text.PRIMARY,
@@ -310,25 +311,25 @@ class DashboardView(BaseView):
                 ft.Row(
                     [
                         stat_card(
-                            LM.get("active", "Active"),
+                            LM.get("active", default="Active"),
                             self.active_downloads_text,
                             ft.icons.DOWNLOADING,
                             Theme.Primary.MAIN,
                         ),
                         stat_card(
-                            LM.get("queued", "Queued"),
+                            LM.get("queued", default="Queued"),
                             self.queued_downloads_text,
                             ft.icons.QUEUE,
                             Theme.ACCENT,
                         ),
                         stat_card(
-                            LM.get("completed", "Completed"),
+                            LM.get("completed", default="Completed"),
                             self.completed_downloads_text,
                             ft.icons.CHECK_CIRCLE,
                             Theme.Status.SUCCESS,
                         ),
                         stat_card(
-                            LM.get("failed", "Failed"),
+                            LM.get("failed", default="Failed"),
                             self.failed_downloads_text,
                             ft.icons.ERROR_OUTLINE,
                             Theme.Status.ERROR,
@@ -340,7 +341,7 @@ class DashboardView(BaseView):
                 ft.Row(
                     [
                         ft.Text(
-                            LM.get("success_rate", "Success Rate"),
+                            LM.get("success_rate", default="Success Rate"),
                             size=12,
                             color=Theme.Text.SECONDARY,
                         ),
@@ -451,9 +452,14 @@ class DashboardView(BaseView):
             self.success_rate_text.value = "100%"
 
     def _refresh_storage(self):
-        """Updates storage usage pie chart."""
+        """Updates storage usage pie chart for the configured download volume."""
         try:
-            total, used, free = shutil.disk_usage(".")
+            from ui_utils import get_default_download_path
+
+            target = get_default_download_path(
+                __import__("app_state").state.config.get("download_path")
+            )
+            total, used, free = shutil.disk_usage(target)
             gb = 1024**3
 
             # Update Pie Chart
@@ -558,8 +564,11 @@ class DashboardView(BaseView):
         """Refresh runtime health chips (ffmpeg, sync, concurrency, cache)."""
         try:
             from app_state import state
+            from ui_utils import get_default_download_path
 
-            total, _, free = shutil.disk_usage(".")
+            total, _, free = shutil.disk_usage(
+                get_default_download_path(state.config.get("download_path"))
+            )
             free_pct = int((free / total) * 100) if total else 0
             sync_enabled = bool(state.config.get("auto_sync_enabled", False))
             sync_running = bool(
@@ -571,43 +580,43 @@ class DashboardView(BaseView):
 
             self.health_chips_row.controls = [
                 self._build_health_chip(
-                    LM.get("ffmpeg", "FFmpeg"),
+                    LM.get("ffmpeg", default="FFmpeg"),
                     (
-                        LM.get("ready", "Ready")
+                        LM.get("ready", default="Ready")
                         if ffmpeg_status
-                        else LM.get("missing", "Missing")
+                        else LM.get("missing", default="Missing")
                     ),
                     Theme.Status.SUCCESS if ffmpeg_status else Theme.Status.ERROR,
                 ),
                 self._build_health_chip(
-                    LM.get("sync", "Sync"),
+                    LM.get("sync", default="Sync"),
                     (
-                        LM.get("running", "Running")
+                        LM.get("running", default="Running")
                         if sync_running
-                        else LM.get("enabled", "Enabled")
-                        if sync_enabled
-                        else LM.get("disabled", "Disabled")
+                        else (
+                            LM.get("enabled", default="Enabled")
+                            if sync_enabled
+                            else LM.get("disabled", default="Disabled")
+                        )
                     ),
                     (
                         Theme.Status.SUCCESS
                         if sync_running
-                        else Theme.Status.INFO
-                        if sync_enabled
-                        else Theme.Text.SECONDARY
+                        else Theme.Status.INFO if sync_enabled else Theme.Text.SECONDARY
                     ),
                 ),
                 self._build_health_chip(
-                    LM.get("concurrency", "Concurrency"),
+                    LM.get("concurrency", default="Concurrency"),
                     concurrency,
                     Theme.ACCENT,
                 ),
                 self._build_health_chip(
-                    LM.get("metadata_cache", "Metadata Cache"),
+                    LM.get("metadata_cache", default="Metadata Cache"),
                     cache_size,
                     Theme.ACCENT_SECONDARY,
                 ),
                 self._build_health_chip(
-                    LM.get("disk_free", "Disk Free"),
+                    LM.get("disk_free", default="Disk Free"),
                     f"{free_pct}%",
                     Theme.Status.SUCCESS if free_pct >= 20 else Theme.Status.WARNING,
                 ),

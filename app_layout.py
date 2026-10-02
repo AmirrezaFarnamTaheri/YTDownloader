@@ -49,7 +49,7 @@ class AppLayout(ft.Row):
             ft.NavigationRailDestination(
                 icon=icon,
                 selected_icon=selected,
-                label=LM.get(key, default) if default else LM.get(key),
+                label=LM.get(key, default=default),
             )
             for icon, selected, key, default in nav_data
         ]
@@ -58,7 +58,7 @@ class AppLayout(ft.Row):
             ft.NavigationDestination(
                 icon=icon,
                 selected_icon=selected,
-                label=LM.get(key, default) if default else LM.get(key),
+                label=LM.get(key, default=default),
             )
             for icon, selected, key, default in nav_data
         ]

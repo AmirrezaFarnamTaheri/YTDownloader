@@ -135,12 +135,9 @@ class AppState:
             self.ffmpeg_available = is_ffmpeg_available()
             logger.info("FFmpeg available: %s", self.ffmpeg_available)
 
-            # 2. Database Init
-            try:
-                HistoryManager.init_db()
-                logger.info("History database initialized.")
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.error("Failed to initialize history database: %s", e)
+            # 2. History DB schema is created synchronously in HistoryManager.__init__();
+            #    nothing to do here but log it.
+            logger.info("History database ready.")
 
             # 3. Social Manager
             try:

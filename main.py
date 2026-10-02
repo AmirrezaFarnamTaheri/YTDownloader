@@ -58,18 +58,24 @@ def main(pg: ft.Page) -> None:
         # Ensure state.config is loaded by accessing state
         LM.load_language(state.config.get("language", "en"))
 
-        PAGE.title = LM.get("app_title", "StreamCatch - Ultimate Downloader")
+        PAGE.title = LM.get("app_title", default="StreamCatch - Ultimate Downloader")
 
         # 2. Load Theme Mode from Config
         theme_mode_str = str(state.config.get("theme_mode", "dark")).lower()
         if theme_mode_str == "light":
             PAGE.theme_mode = ft.ThemeMode.LIGHT
+            Theme.apply_theme_mode("light")
         elif theme_mode_str == "system":
             PAGE.theme_mode = ft.ThemeMode.SYSTEM
+            # Flet resolves "system" to OS preference; we default to dark here
+            # because we cannot probe the OS from pure Python reliably.
+            Theme.apply_theme_mode("dark")
         elif theme_mode_str in {"high contrast", "high_contrast", "high-contrast"}:
-            PAGE.theme_mode = ft.ThemeMode.SYSTEM
+            PAGE.theme_mode = ft.ThemeMode.DARK
+            Theme.apply_theme_mode("high_contrast")
         else:
             PAGE.theme_mode = ft.ThemeMode.DARK
+            Theme.apply_theme_mode("dark")
 
         PAGE.padding = 0
         PAGE.window_min_width = 1100
@@ -86,6 +92,12 @@ def main(pg: ft.Page) -> None:
         # 4. Keyboard Handling
         def on_keyboard(e: ft.KeyboardEvent) -> None:
             if not UI or not UI.queue_view:
+                return
+
+            # Queue shortcuts only apply while the queue view is on screen.
+            # Acting on a hidden view mutated invisible selection and repainted
+            # controls that are not attached to the page (Flet raises for that).
+            if UI.queue_view.page is None:
                 return
 
             # J / K Navigation
@@ -126,6 +138,8 @@ def main(pg: ft.Page) -> None:
             on_toggle_clipboard_callback=CONTROLLER.on_toggle_clipboard,
             on_play_callback=CONTROLLER.on_play_item,
             on_open_folder_callback=CONTROLLER.on_open_folder,
+            on_export_history_callback=CONTROLLER.on_export_history,
+            on_import_history_callback=CONTROLLER.on_import_history,
         )
 
         PAGE.add(main_view)
@@ -279,7 +293,13 @@ if __name__ == "__main__":
 
     if os.environ.get("FLET_WEB"):
         web_port = int(os.environ.get("FLET_SERVER_PORT", "8550"))
-        ft.app(target=main, view=ft.WEB_BROWSER, port=web_port)
+        # Bind to all interfaces by default: the web mode exists for container
+        # and remote use, where a 127.0.0.1 bind is unreachable through the
+        # published port. Override with FLET_SERVER_HOST=127.0.0.1 to keep it
+        # local-only.
+        web_host = os.environ.get("FLET_SERVER_HOST", "0.0.0.0")
+        logger.info("Starting web server on %s:%s", web_host, web_port)
+        ft.app(target=main, view=ft.WEB_BROWSER, host=web_host, port=web_port)
     else:
         try:
             ft.app(target=main)

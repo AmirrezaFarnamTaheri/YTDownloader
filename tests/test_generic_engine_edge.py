@@ -159,7 +159,9 @@ class TestGenericDownloaderEdge(unittest.TestCase):
         redirect_response.headers = {"Location": "http://127.0.0.1/private"}
 
         mock_head.return_value = redirect_response
-        mock_validate.side_effect = lambda url, resolve_host=False: "127.0.0.1" not in url
+        mock_validate.side_effect = (
+            lambda url, resolve_host=False: "127.0.0.1" not in url
+        )
 
         with self.assertRaises(ValueError):
             GenericDownloader._request_with_safe_redirects(
@@ -171,9 +173,7 @@ class TestGenericDownloaderEdge(unittest.TestCase):
 
     @patch("downloader.engines.generic.validate_url", return_value=True)
     @patch("downloader.engines.generic._SESSION.head")
-    def test_safe_redirects_resolves_relative_location(
-        self, mock_head, mock_validate
-    ):
+    def test_safe_redirects_resolves_relative_location(self, mock_head, mock_validate):
         redirect_response = MagicMock()
         redirect_response.status_code = 302
         redirect_response.headers = {"Location": "/next/file.mp4"}

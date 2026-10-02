@@ -25,7 +25,9 @@ def test_setup_logging_is_single_initialization_under_threads(monkeypatch):
     )
 
     try:
-        threads = [threading.Thread(target=logger_config.setup_logging) for _ in range(8)]
+        threads = [
+            threading.Thread(target=logger_config.setup_logging) for _ in range(8)
+        ]
         for thread in threads:
             thread.start()
         for thread in threads:

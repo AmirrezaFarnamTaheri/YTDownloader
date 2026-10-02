@@ -42,6 +42,9 @@ class UIManager:
         # Track current view index
         self.current_view_index = 0
 
+        # Remembered so views can be rebuilt (e.g. after a theme change)
+        self._view_callbacks: dict[str, object] = {}
+
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-positional-arguments
     def initialize_views(
@@ -58,10 +61,29 @@ class UIManager:
         on_toggle_clipboard_callback,
         on_play_callback,  # New
         on_open_folder_callback,  # New
+        on_export_history_callback=None,
+        on_import_history_callback=None,
     ):
         """Initialize all views with their dependencies."""
 
         logger.debug("Initializing views...")
+
+        # Persist callbacks so refresh_theme() can rebuild the view tree.
+        self._view_callbacks = {
+            "on_fetch_info": on_fetch_info_callback,
+            "on_add_to_queue": on_add_to_queue_callback,
+            "on_batch_import": on_batch_import_callback,
+            "on_schedule": on_schedule_callback,
+            "on_cancel_item": on_cancel_item_callback,
+            "on_remove_item": on_remove_item_callback,
+            "on_reorder_item": on_reorder_item_callback,
+            "on_retry_item": on_retry_item_callback,
+            "on_toggle_clipboard": on_toggle_clipboard_callback,
+            "on_play": on_play_callback,
+            "on_open_folder": on_open_folder_callback,
+            "on_export_history": on_export_history_callback,
+            "on_import_history": on_import_history_callback,
+        }
 
         def dashboard_paste_wrapper():
             # Logic to grab clipboard and pass to _on_dashboard_paste_url
@@ -101,9 +123,16 @@ class UIManager:
         )
         self.queue_view.on_retry = on_retry_item_callback
 
-        self.history_view = HistoryView()
+        self.history_view = HistoryView(
+            on_export=on_export_history_callback,
+            on_import=on_import_history_callback,
+        )
         self.rss_view = RSSView(state.config, on_add_to_queue_callback)
-        self.settings_view = SettingsView(state.config, on_toggle_clipboard_callback)
+        self.settings_view = SettingsView(
+            state.config,
+            on_toggle_clipboard_callback,
+            on_theme_change=self.refresh_theme,
+        )
 
         # Match the order in AppLayout.destinations:
         # 0: Dashboard, 1: Download, 2: Queue, 3: History, 4: RSS, 5: Settings
@@ -176,6 +205,44 @@ class UIManager:
             self.app_layout.set_navigation_index(index)
 
             self.page.update()
+
+    def refresh_theme(self):
+        """Rebuild every view so controls pick up the newly selected palette.
+
+        Flet controls capture colors at construction time, so an in-place
+        ``update()`` cannot restyle them. Recreating the views is the simplest
+        correct way to apply a runtime theme switch.
+        """
+        if not self.app_layout or not self._view_callbacks:
+            return
+
+        logger.info("Rebuilding views for theme change...")
+        callbacks = self._view_callbacks
+        current = self.current_view_index
+        try:
+            new_layout = self.initialize_views(
+                callbacks["on_fetch_info"],
+                callbacks["on_add_to_queue"],
+                callbacks["on_batch_import"],
+                callbacks["on_schedule"],
+                callbacks["on_cancel_item"],
+                callbacks["on_remove_item"],
+                callbacks["on_reorder_item"],
+                callbacks["on_retry_item"],
+                callbacks["on_toggle_clipboard"],
+                callbacks["on_play"],
+                callbacks["on_open_folder"],
+                callbacks.get("on_export_history"),
+                callbacks.get("on_import_history"),
+            )
+            if self.page and new_layout is not None:
+                # Swap the freshly built layout onto the page so the new
+                # palette actually takes effect for the whole tree.
+                self.page.controls = [new_layout]
+                self.navigate_to(current)
+                self.page.update()
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            logger.error("Theme refresh failed: %s", exc, exc_info=True)
 
     def update_queue_view(self):
         """Rebuild queue view if it exists."""

@@ -15,6 +15,7 @@ import flet as ft
 from downloader.types import DownloadStatus
 from localization_manager import LocalizationManager as LM
 from theme import Theme
+from ui_utils import safe_update
 
 logger = logging.getLogger(__name__)
 
@@ -135,10 +136,29 @@ class DownloadItemControl(ft.Container):
         self.item["control_ref"] = weakref.ref(self)
         self.update_actions()
         self._update_progress_internal(update_ui=False)
+        self._last_signature = self._render_signature()
+
+    def _render_signature(self) -> tuple:
+        """Fields whose change requires a repaint of this control."""
+        item = self.item
+        return (
+            item.get("status"),
+            round(float(item.get("progress") or 0.0), 4),
+            item.get("speed") or "",
+            item.get("eta") or "",
+            item.get("size") or "",
+            item.get("title") or "",
+            item.get("scheduled_time"),
+            item.get("error") or "",
+        )
 
     def update_state(self, new_item: dict[str, Any]):
         """
         Efficiently updates the control state with new item data.
+
+        The queue is refreshed on a timer, so most calls carry no visible
+        change; those are skipped entirely instead of pushing a redundant
+        update command to the client for every item.
         """
         self.item = new_item
         # Restore weakref if missing in the new copy
@@ -147,6 +167,10 @@ class DownloadItemControl(ft.Container):
 
             self.item["control_ref"] = weakref.ref(self)
 
+        signature = self._render_signature()
+        if signature == self._last_signature:
+            return
+        self._last_signature = signature
         self._update_progress_internal(update_ui=True)
 
     def _update_meta_badges(self):
@@ -184,6 +208,16 @@ class DownloadItemControl(ft.Container):
         if "twitter" in url or "x.com" in url:
             return ft.Icon(ft.icons.ALTERNATE_EMAIL, color=ft.colors.BLUE_400, size=32)
         return ft.Icon(ft.icons.LINK_ROUNDED, color=Theme.Primary.MAIN, size=32)
+
+    def _safe_update(self) -> None:
+        """Push the control to the client, but only when it is mounted.
+
+        ``Control.update()`` asserts that the control belongs to a page. The
+        queue view is rebuilt on a timer, and those rebuilds also happen while
+        another view is displayed (or before the queue has ever been shown), so
+        an unconditional update would raise and abort the whole refresh.
+        """
+        safe_update(self)
 
     def update_progress(self):
         """Update progress bar and text (External Call)."""
@@ -245,7 +279,7 @@ class DownloadItemControl(ft.Container):
 
         self.update_actions()
         if update_ui:
-            self.update()
+            self._safe_update()
 
     def update_actions(self):
         """Update available action buttons based on status."""

@@ -100,12 +100,45 @@ class TestHistoryViewCoverage(unittest.TestCase):
         # Should not crash
         view.open_folder_safe("/tmp/path")
 
-    def test_live_search_reloads_on_change(self):
+    def test_live_search_reloads_on_change_after_debounce(self):
         view = HistoryView()
+        # Keep the test fast but still exercise the debounce path
+        view._search_debounce_seconds = 0.01
         view.search_field.value = "needle"
         view.load = MagicMock()
 
         view._on_search_change(None)
 
+        # A debounce timer is armed instead of querying on every keystroke
+        timer = view._search_timer
+        self.assertIsNotNone(timer)
+        timer.join(timeout=5)
+
         self.assertEqual(view.current_search, "needle")
         view.load.assert_called_once_with(reset=True)
+
+    def test_live_search_coalesces_rapid_keystrokes(self):
+        view = HistoryView()
+        view._search_debounce_seconds = 0.05
+        view.load = MagicMock()
+
+        for text in ("n", "ne", "nee", "need"):
+            view.search_field.value = text
+            view._on_search_change(None)
+
+        view._search_timer.join(timeout=5)
+
+        self.assertEqual(view.current_search, "need")
+        self.assertEqual(view.load.call_count, 1)
+
+    def test_live_search_ignores_unchanged_query(self):
+        view = HistoryView()
+        view._search_debounce_seconds = 0.01
+        view.current_search = "same"
+        view.search_field.value = "  same  "
+        view.load = MagicMock()
+
+        view._on_search_change(None)
+        view._search_timer.join(timeout=5)
+
+        view.load.assert_not_called()

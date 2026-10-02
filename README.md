@@ -12,10 +12,13 @@ feeds, scheduling, cloud sync, localization, and native packaging.
 - Handles Telegram public media links and direct file URLs.
 - Supports search input through yt-dlp search targets.
 - Provides queue controls for start, cancel, retry, reorder, pause/resume, and
-  concurrent processing.
+  concurrent processing, with live progress while downloads run.
 - Offers download profiles, output templates, subtitles, sponsorblock,
   chapter-splitting options, and browser-cookie selection.
+- Imports link lists in bulk from `.txt` or `.csv` files.
 - Tracks history, recent activity, sync status, and RSS feed items.
+- Ships a dark theme, a light theme, and a high-contrast mode; switching applies
+  immediately without a restart.
 - Builds as a onefile desktop executable, with a Windows installer that installs
   only the compiled EXE.
 
@@ -69,17 +72,25 @@ python scripts/build_mobile.py --target apk
 
 ## Verify
 
+The commands below mirror the CI gate; all of them must pass before a change is
+handed off.
+
 ```bash
 python -m compileall .
+python -m black --check .
+python -m isort --check-only .
+python -m ruff check . --exclude tests
+python -m pylint $(git ls-files '*.py' | grep -v '^tests/')
+python -m mypy --config-file mypy.ini .
 pytest -q
 git diff --check
 python scripts/build_installer.py --dry-run --skip-installer
 python scripts/build_mobile.py --target apk --dry-run
-python -m ruff check .
-python -m mypy .
 ```
 
 Install developer tooling with `python -m pip install -r requirements-dev.txt`.
+Run `pytest --cov=. --cov-report=term-missing` for the coverage report; the
+configured floor is 60%.
 
 ## Documentation
 

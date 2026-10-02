@@ -4,6 +4,7 @@ import json
 import os
 import unittest
 import zipfile
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from sync_manager import SyncManager
@@ -99,15 +100,23 @@ class TestSyncManager(unittest.TestCase):
 
         resolved = manager._resolve_history_db_path()
 
-        self.assertEqual(resolved, os.path.expanduser("~/.streamcatch/history.db"))
+        # The fallback lives in the application data directory, which is
+        # relocatable (STREAMCATCH_DATA_DIR) rather than hard-coded to $HOME.
+        from app_paths import data_file
+
+        self.assertEqual(resolved, str(data_file("history.db")))
+        self.assertTrue(Path(resolved).is_absolute())
 
     def test_config_snapshot_strips_sensitive_values(self):
-        manager = SyncManager(self.mock_cloud, {
-            "theme": "dark",
-            "cookies": "secret-cookie",
-            "api_token": "secret-token",
-            "nested": {"password": "secret", "safe": "value"},
-        })
+        manager = SyncManager(
+            self.mock_cloud,
+            {
+                "theme": "dark",
+                "cookies": "secret-cookie",
+                "api_token": "secret-token",
+                "nested": {"password": "secret", "safe": "value"},
+            },
+        )
 
         snapshot = manager._get_config_snapshot()
 

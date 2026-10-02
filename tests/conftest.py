@@ -1,3 +1,18 @@
+"""Shared pytest configuration.
+
+Before any application module is imported, the per-user data directory is
+redirected into a temporary folder. Without this, a test that constructs the
+real ``HistoryManager`` or saves configuration writes to the developer's own
+``~/.streamcatch`` (history rows, config, and a multi-megabyte log file).
+"""
+
+import os
+import tempfile
+
+#: Session-scoped sandbox for application data (config, history, logs).
+_TEST_DATA_DIR = tempfile.mkdtemp(prefix="streamcatch-tests-")
+os.environ["STREAMCATCH_DATA_DIR"] = _TEST_DATA_DIR
+
 import logging
 import sys
 import xml.etree.ElementTree as ET

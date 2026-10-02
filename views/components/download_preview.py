@@ -10,7 +10,7 @@ import flet as ft
 
 from localization_manager import LocalizationManager as LM
 from theme import Theme
-from ui_utils import format_file_size
+from ui_utils import format_file_size, safe_update
 
 
 class DownloadPreviewCard(ft.Container):
@@ -154,7 +154,7 @@ class DownloadPreviewCard(ft.Container):
         """
         if not info:
             self.visible = False
-            self.update()
+            safe_update(self)
             return
 
         self.title_text.value = info.get("title", LM.get("unknown_title"))
@@ -177,7 +177,9 @@ class DownloadPreviewCard(ft.Container):
             or info.get("file_size")
         )
         self.size_text.value = format_file_size(file_size)
-        self.source_text.value = info.get("extractor_key") or info.get("extractor") or "yt-dlp"
+        self.source_text.value = (
+            info.get("extractor_key") or info.get("extractor") or "yt-dlp"
+        )
 
         self.visible = True
-        self.update()
+        safe_update(self)

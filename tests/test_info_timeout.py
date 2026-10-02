@@ -25,9 +25,7 @@ class FakeExecutor:
         return self.future
 
     def shutdown(self, wait=True, cancel_futures=False):
-        self.shutdown_calls.append(
-            {"wait": wait, "cancel_futures": cancel_futures}
-        )
+        self.shutdown_calls.append({"wait": wait, "cancel_futures": cancel_futures})
 
 
 def test_get_video_info_timeout_cancels_without_waiting(monkeypatch):
@@ -45,6 +43,4 @@ def test_get_video_info_timeout_cancels_without_waiting(monkeypatch):
 
     assert result is None
     assert fake_executor.future.cancelled is True
-    assert fake_executor.shutdown_calls == [
-        {"wait": False, "cancel_futures": True}
-    ]
+    assert fake_executor.shutdown_calls == [{"wait": False, "cancel_futures": True}]

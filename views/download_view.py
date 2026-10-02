@@ -175,15 +175,9 @@ class DownloadView(BaseView):
 
     def _on_paste_click(self, e):
         # pylint: disable=unused-argument
-        # Use controller callback if available or local logic
-        if self.on_paste_url:
-            # If controller provided a specific callback (e.g. toggles clipboard monitor or something else)
-            # But usually paste logic is local to input.
-            # If `on_paste_url` expects to handle the paste action:
-            # self.on_paste_url()
-            # But typical paste just pastes into field.
-            pass
-
+        # Paste is handled locally (clipboard → input → optional auto-fetch).
+        # ``on_paste_url`` is reserved for callers that want to observe the
+        # action; the Dashboard uses the same input through UIManager instead.
         try:
             import pyperclip
 
