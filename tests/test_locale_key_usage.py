@@ -12,6 +12,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED_DIRS = {".venv", "venv", "build", "dist", "htmlcov", "__pycache__"}
 
@@ -136,3 +138,86 @@ class TestLocalizationGetCallSites:
         finally:
             LocalizationManager._strings = saved_strings
             LocalizationManager._fallback_strings = saved_fallback
+
+
+class TestTranslationsAreComplete:
+    """Translations must be real, not copies of the English reference.
+
+    A key whose Spanish/Persian value is byte-identical to English is usually a
+    string somebody forgot to translate — that is how the download-profile
+    presets, the sync settings section, and several snackbars stayed English for
+    non-English users. Keys that legitimately match English are listed below with
+    a reason; anything else fails with a pointer to this list.
+    """
+
+    #: Keys allowed to match the English text, with the reason they do.
+    LANGUAGE_NEUTRAL_KEYS = {
+        # Brand and product names.
+        "browser_chrome": "brand name",
+        "browser_edge": "brand name",
+        "browser_firefox": "brand name",
+        "ffmpeg": "product name",
+        "sponsorblock": "product name",
+        # Numeric formats and literal examples, not prose.
+        "duration_placeholder": "numeric format",
+        "time_placeholder": "numeric format",
+        "url_placeholder": "example URL",
+        # Words that are genuinely the same in the target language.
+        "eta_label": "standard initialism, also used in Spanish",
+        "general_settings": "valid Spanish word",
+        "no": "valid Spanish word",
+        "profile_audio_mp3": "natural Spanish phrasing",
+        "proxy": "word used as-is in Spanish",
+        "status_error": "valid Spanish word",
+    }
+
+    LOCALES = ("es", "fa")
+
+    def _load(self, name):
+        import json
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parent.parent
+        with open(root / "locales" / f"{name}.json", encoding="utf-8") as handle:
+            return json.load(handle)
+
+    @pytest.mark.parametrize("locale", LOCALES)
+    def test_no_untranslated_values(self, locale):
+        english = self._load("en")
+        translated = self._load(locale)
+
+        untranslated = sorted(
+            key
+            for key, value in english.items()
+            if translated.get(key) == value and key not in self.LANGUAGE_NEUTRAL_KEYS
+        )
+
+        assert not untranslated, (
+            f"Untranslated strings in locales/{locale}.json:\n  "
+            + "\n  ".join(untranslated)
+            + "\nTranslate them, or add the key to "
+            "TestTranslationsAreComplete.LANGUAGE_NEUTRAL_KEYS with a reason "
+            "if it is a brand name, a numeric format, or a word that is the "
+            "same in that language."
+        )
+
+    @pytest.mark.parametrize("locale", LOCALES)
+    def test_allow_list_has_no_stale_entries(self, locale):
+        """Keep the allow-list honest: entries must still be identical."""
+        english = self._load("en")
+        translated = self._load(locale)
+
+        stale = sorted(
+            key
+            for key in self.LANGUAGE_NEUTRAL_KEYS
+            if key in english and translated.get(key) != english[key]
+        )
+        # fa translates several of these (brands, ETA, General, ...), which is
+        # fine — the entry is only stale if it matches in *no* locale.
+        if locale == "fa":
+            es = self._load("es")
+            stale = [key for key in stale if es.get(key) != english.get(key)]
+        assert not stale, (
+            f"These keys are no longer identical to English and can be removed "
+            f"from LANGUAGE_NEUTRAL_KEYS: {stale}"
+        )
