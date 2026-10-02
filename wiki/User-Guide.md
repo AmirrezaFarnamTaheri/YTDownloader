@@ -106,6 +106,9 @@ While the Queue view is open:
 - `J` / `K` — move the selection down / up;
 - `Delete` — remove the selected item from the queue.
 
+These keys are ignored while another view is displayed, so browsing the
+Dashboard or Settings cannot change queue selection by accident.
+
 ## Packaging Note
 
 The Windows release installer installs a single standalone EXE. FFmpeg remains a

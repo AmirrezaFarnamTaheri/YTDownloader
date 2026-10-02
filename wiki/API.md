@@ -59,6 +59,24 @@ construction time.
 O(1) status/progress update backed by an internal id index. Safe to call from
 worker threads at high frequency.
 
+### `localization_manager.LocalizationManager.get(key, *args, default=None) -> str`
+
+Returns the localized string for `key`. Extra positional arguments are format
+arguments (`LM.get("stats_queued", 3)`); when the key is missing everywhere the
+`default` keyword is returned, otherwise the key itself is surfaced so missing
+translations stay visible. Positional strings are *not* defaults — they are
+interpolated into the template, and `tests/test_locale_key_usage.py` rejects
+call sites that try it.
+
+### `ui_utils.safe_update(control: ft.Control) -> bool`
+
+Pushes a control to the client only when it is mounted (`control.page` is set)
+and returns whether an update was issued. Views are refreshed from background
+timers while the user may have navigated elsewhere, so every repaint that can
+race with navigation must go through this helper instead of `control.update()`,
+which raises `AssertionError: Control must be added to the page first` for
+detached controls.
+
 ## Queue APIs (`QueueManager`)
 
 ### Mutation
@@ -92,6 +110,8 @@ worker threads at high frequency.
 - `delete_entries(entry_ids: list[int]) -> bool`
 - `search_history(query: str, search_in: list[str] | None = None) -> dict`
 - `get_download_activity(days=7) -> list[dict]`
+- `get_stats() -> dict` — `{"total_downloads": int, "total_size_mb": float}`;
+  understands both raw byte counts and pre-formatted sizes such as `"12.50 MB"`
 - `export_to_json(filepath: str) -> None`
 - `export_to_csv(filepath: str) -> None`
 

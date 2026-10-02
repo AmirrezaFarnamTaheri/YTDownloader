@@ -35,7 +35,7 @@ python scripts/build_installer.py --dry-run --skip-installer
 python scripts/build_mobile.py --target apk --dry-run
 ```
 
-Current local result: all of the above pass. The suite is 416 tests with 75%
+Current local result: all of the above pass. The suite is 479 tests with 77%
 statement coverage against a configured floor of 60%; pylint reports 10.00/10 on
 non-test sources and mypy is clean.
 
