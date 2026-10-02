@@ -12,6 +12,8 @@ import tempfile
 import threading
 import zipfile
 
+from app_paths import data_file
+
 # from ui_utils import is_safe_path  # Unused import
 
 logger = logging.getLogger(__name__)
@@ -280,7 +282,7 @@ class SyncManager:
 
     def _resolve_history_db_path(self) -> str:
         """Return the resolved history database path."""
-        fallback = os.path.expanduser("~/.streamcatch/history.db")
+        fallback = str(data_file("history.db"))
 
         if self.history:
             if hasattr(self.history, "_resolve_db_file"):

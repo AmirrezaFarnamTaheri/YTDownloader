@@ -61,6 +61,8 @@ class UIManager:
         on_toggle_clipboard_callback,
         on_play_callback,  # New
         on_open_folder_callback,  # New
+        on_export_history_callback=None,
+        on_import_history_callback=None,
     ):
         """Initialize all views with their dependencies."""
 
@@ -79,6 +81,8 @@ class UIManager:
             "on_toggle_clipboard": on_toggle_clipboard_callback,
             "on_play": on_play_callback,
             "on_open_folder": on_open_folder_callback,
+            "on_export_history": on_export_history_callback,
+            "on_import_history": on_import_history_callback,
         }
 
         def dashboard_paste_wrapper():
@@ -119,7 +123,10 @@ class UIManager:
         )
         self.queue_view.on_retry = on_retry_item_callback
 
-        self.history_view = HistoryView()
+        self.history_view = HistoryView(
+            on_export=on_export_history_callback,
+            on_import=on_import_history_callback,
+        )
         self.rss_view = RSSView(state.config, on_add_to_queue_callback)
         self.settings_view = SettingsView(
             state.config,
@@ -225,6 +232,8 @@ class UIManager:
                 callbacks["on_toggle_clipboard"],
                 callbacks["on_play"],
                 callbacks["on_open_folder"],
+                callbacks.get("on_export_history"),
+                callbacks.get("on_import_history"),
             )
             if self.page and new_layout is not None:
                 # Swap the freshly built layout onto the page so the new

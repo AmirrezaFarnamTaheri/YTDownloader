@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 class HistoryView(BaseView):
     """View for displaying download history."""
 
-    def __init__(self):
+    def __init__(self, on_export=None, on_import=None):
+        """``on_export``/``on_import`` open the file dialog; when omitted (for
+        example in tests) the corresponding buttons are not shown."""
         super().__init__(LM.get("history"), ft.icons.HISTORY_ROUNDED)
 
         self.history_list = ft.ListView(expand=True, spacing=10, padding=10)
@@ -52,6 +54,22 @@ class HistoryView(BaseView):
             ),
         )
 
+        # Backup / restore actions (hidden when no handler is wired).
+        self.export_btn = ft.OutlinedButton(
+            LM.get("export_history"),
+            icon=ft.icons.UPLOAD_FILE_ROUNDED,
+            on_click=self._on_export_click,
+            visible=on_export is not None,
+        )
+        self.import_btn = ft.OutlinedButton(
+            LM.get("import_history"),
+            icon=ft.icons.FILE_DOWNLOAD_ROUNDED,
+            on_click=self._on_import_click,
+            visible=on_import is not None,
+        )
+        self._on_export = on_export
+        self._on_import = on_import
+
         # Cumulative totals (count + on-disk size) for the whole history
         self.summary_text = ft.Text("", size=12, color=Theme.Text.SECONDARY)
 
@@ -66,6 +84,8 @@ class HistoryView(BaseView):
         header = ft.Row(
             [
                 self.search_field,
+                self.export_btn,
+                self.import_btn,
                 self.clear_btn,
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -167,6 +187,21 @@ class HistoryView(BaseView):
             self.load_more_btn.visible = len(items) == self.limit
 
         self.update()
+
+    # pylint: disable=unused-argument
+    def _on_export_click(self, e):
+        if self._on_export is not None:
+            self._on_export()
+
+    # pylint: disable=unused-argument
+    def _on_import_click(self, e):
+        if self._on_import is not None:
+            self._on_import()
+
+    def show_snackbar(self, message: str) -> None:
+        """Surface a one-line result to the user (no-op when unmounted)."""
+        if self.page:
+            self.page.open(ft.SnackBar(content=ft.Text(message)))
 
     # pylint: disable=unused-argument
     def _on_search_submit(self, e):

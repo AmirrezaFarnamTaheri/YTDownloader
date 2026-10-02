@@ -236,5 +236,8 @@
   "download_error": "Falló la descarga",
   "error_fetch_info": "No se pudo obtener la información del vídeo",
   "proxy_url": "URL del proxy",
-  "history_summary": "{0} descargas | {1}"
+  "history_summary": "{0} descargas | {1}",
+  "history_export_failed": "No se pudo exportar el historial",
+  "history_import_failed": "No se pudo importar el historial",
+  "history_import_skipped": "ya presentes"
 }

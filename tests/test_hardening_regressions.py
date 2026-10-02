@@ -1173,3 +1173,374 @@ class TestQueueKeyboardSelectionSafety:
         view.select_item(0)
         assert view.list_view.controls[1].border is None
         assert view.list_view.controls[0].border is not None
+
+
+# ---------------------------------------------------------------------------
+# History export / import (backup and restore)
+# ---------------------------------------------------------------------------
+
+
+class TestHistoryImportExport:
+    @pytest.fixture
+    def manager(self, tmp_path, monkeypatch):
+        from history_manager import HistoryManager
+
+        db = tmp_path / "history.db"
+        monkeypatch.setattr(HistoryManager, "_test_db_file", db, raising=False)
+        return HistoryManager()
+
+    def _add(self, manager, url, size="1.00 MB"):
+        manager.add_entry(
+            {
+                "url": url,
+                "title": "Video",
+                "status": "Completed",
+                "filename": "v.mp4",
+                "filepath": "/tmp/v.mp4",
+                "file_size": size,
+            }
+        )
+
+    def test_round_trip_into_a_fresh_database(self, manager, tmp_path):
+        self._add(manager, "https://example.com/a.mp4", "12.50 MB")
+        self._add(manager, "https://example.com/b.mp4", 1048576)
+        backup = tmp_path / "backup.json"
+        manager.export_to_json(str(backup))
+
+        from history_manager import HistoryManager
+
+        HistoryManager._test_db_file = tmp_path / "restored.db"
+        restored = HistoryManager()
+
+        assert restored.import_from_json_file(str(backup)) == (2, 0)
+        assert restored.get_stats()["total_downloads"] == 2
+        assert restored.get_stats()["total_size_mb"] == pytest.approx(13.5, abs=0.01)
+
+    def test_import_is_idempotent(self, manager, tmp_path):
+        self._add(manager, "https://example.com/a.mp4")
+        backup = tmp_path / "backup.json"
+        manager.export_to_json(str(backup))
+
+        from history_manager import HistoryManager
+
+        HistoryManager._test_db_file = tmp_path / "restored.db"
+        restored = HistoryManager()
+        assert restored.import_from_json_file(str(backup)) == (1, 0)
+        assert restored.import_from_json_file(str(backup)) == (0, 1)
+        assert restored.get_stats()["total_downloads"] == 1
+
+    def test_original_timestamp_is_preserved(self, manager, tmp_path):
+        backup = tmp_path / "old.json"
+        backup.write_text(
+            '[{"url": "https://old/1", "title": "Old", "status": "Completed",'
+            ' "timestamp": "2019-03-04 05:06:07", "file_size": "3.00 MB"}]',
+            encoding="utf-8",
+        )
+
+        assert manager.import_from_json_file(str(backup)) == (1, 0)
+        assert str(manager.get_history()[0]["timestamp"]).startswith("2019-03-04")
+
+    def test_import_accepts_a_wrapped_payload(self, manager, tmp_path):
+        backup = tmp_path / "wrapped.json"
+        backup.write_text(
+            '{"history": [{"url": "https://x/1", "status": "Completed"}]}',
+            encoding="utf-8",
+        )
+
+        assert manager.import_from_json_file(str(backup)) == (1, 0)
+
+    def test_malformed_rows_are_skipped_without_aborting(self, manager):
+        imported, skipped = manager.import_entries(
+            [
+                {"nope": 1},
+                "not a dict",
+                None,
+                {"url": "https://ok/1", "status": "Completed"},
+            ]
+        )
+
+        assert (imported, skipped) == (1, 3)
+        assert manager.get_stats()["total_downloads"] == 1
+
+    def test_non_list_payload_is_rejected(self, manager):
+        assert manager.import_entries({"url": "https://x/1"}) == (0, 0)
+        assert manager.import_entries("nope") == (0, 0)
+
+    @pytest.mark.parametrize(
+        ("content", "message"),
+        [
+            ("{not json", "not valid JSON"),
+            ("[", "not valid JSON"),
+        ],
+    )
+    def test_invalid_json_raises_a_clear_error(
+        self, manager, tmp_path, content, message
+    ):
+        bad = tmp_path / "bad.json"
+        bad.write_text(content, encoding="utf-8")
+
+        with pytest.raises(ValueError, match=message):
+            manager.import_from_json_file(str(bad))
+
+    def test_missing_file_raises_value_error(self, manager, tmp_path):
+        with pytest.raises(ValueError):
+            manager.import_from_json_file(str(tmp_path / "missing.json"))
+
+    def test_oversized_file_is_rejected(self, manager, tmp_path):
+        from history_manager import HistoryManager
+
+        big = tmp_path / "big.json"
+        big.write_text("[]", encoding="utf-8")
+        with open(big, "a", encoding="utf-8") as handle:
+            handle.write(" " * (HistoryManager.MAX_IMPORT_BYTES + 1))
+
+        with pytest.raises(ValueError, match="larger than"):
+            manager.import_from_json_file(str(big))
+
+    def test_live_download_timestamp_is_left_to_the_database(self, manager):
+        """Normal downloads must keep using the database default."""
+        self._add(manager, "https://example.com/live.mp4")
+
+        row = manager.get_history()[0]
+        assert row["timestamp"]  # set by SQLite, not by the caller
+
+
+class TestHistoryViewBackupButtons:
+    def test_buttons_hidden_without_callbacks(self):
+        from views.history_view import HistoryView
+
+        view = HistoryView()
+
+        assert view.export_btn.visible is False
+        assert view.import_btn.visible is False
+
+    def test_buttons_visible_and_dispatch_when_wired(self):
+        from views.history_view import HistoryView
+
+        on_export = MagicMock()
+        on_import = MagicMock()
+        view = HistoryView(on_export=on_export, on_import=on_import)
+
+        assert view.export_btn.visible is True
+        assert view.import_btn.visible is True
+
+        view._on_export_click(None)
+        view._on_import_click(None)
+
+        on_export.assert_called_once()
+        on_import.assert_called_once()
+
+    def test_clicks_are_safe_without_callbacks(self):
+        from views.history_view import HistoryView
+
+        view = HistoryView()
+
+        view._on_export_click(None)  # must not raise
+        view._on_import_click(None)
+
+
+class TestHistoryBackupControllerFlow:
+    """The shared file picker must route results to the right flow."""
+
+    def _controller(self):
+        from unittest.mock import patch
+
+        from app_controller import AppController
+
+        page = MagicMock()
+        page.overlay = []
+        with patch("app_controller.AppController.start_background_loop"):
+            controller = AppController(page, MagicMock())
+        # The real picker is attached to the page overlay; the mock page does
+        # not do that for us, and FilePicker.update() asserts on the page.
+        controller.file_picker.page = MagicMock()
+        return controller
+
+    def test_export_writes_the_chosen_path(self, tmp_path, monkeypatch):
+        from app_state import state
+
+        controller = self._controller()
+        manager = MagicMock()
+        monkeypatch.setattr(state, "history_manager", manager)
+        target = str(tmp_path / "backup.json")
+
+        controller._finish_history_export(MagicMock(path=target))
+
+        manager.export_to_json.assert_called_once_with(target)
+        controller.page.open.assert_called()  # success snackbar
+
+    def test_export_refuses_an_unsafe_destination(self, monkeypatch):
+        from app_state import state
+
+        controller = self._controller()
+        manager = MagicMock()
+        monkeypatch.setattr(state, "history_manager", manager)
+
+        controller._finish_history_export(MagicMock(path="/etc/streamcatch.json"))
+
+        manager.export_to_json.assert_not_called()
+        controller.page.open.assert_called()  # failure snackbar
+
+    def test_export_reports_failure_without_raising(self, tmp_path, monkeypatch):
+        from app_state import state
+
+        controller = self._controller()
+        manager = MagicMock()
+        manager.export_to_json.side_effect = OSError("disk full")
+        monkeypatch.setattr(state, "history_manager", manager)
+
+        controller._finish_history_export(MagicMock(path=str(tmp_path / "x.json")))
+
+        controller.page.open.assert_called()
+
+    def test_import_refreshes_the_history_view(self, tmp_path, monkeypatch):
+        from app_state import state
+
+        controller = self._controller()
+        source = tmp_path / "backup.json"
+        source.write_text("[]", encoding="utf-8")
+        event = MagicMock()
+        event.files = [MagicMock(path=str(source))]
+        manager = MagicMock()
+        manager.import_from_json_file.return_value = (2, 0)
+        monkeypatch.setattr(state, "history_manager", manager)
+
+        controller._finish_history_import(event)
+
+        manager.import_from_json_file.assert_called_once_with(str(source))
+        controller.ui.history_view.load.assert_called_once()
+
+    def test_import_refuses_an_unsafe_source(self, monkeypatch):
+        from app_state import state
+
+        controller = self._controller()
+        manager = MagicMock()
+        monkeypatch.setattr(state, "history_manager", manager)
+        event = MagicMock()
+        event.files = [MagicMock(path="/etc/passwd")]
+
+        controller._finish_history_import(event)
+
+        manager.import_from_json_file.assert_not_called()
+
+    def test_cancelled_dialogs_are_ignored(self, monkeypatch):
+        from app_state import state
+
+        controller = self._controller()
+        manager = MagicMock()
+        monkeypatch.setattr(state, "history_manager", manager)
+
+        controller._finish_history_export(MagicMock(path=None))
+        controller._finish_history_import(MagicMock(files=[]))
+
+        manager.export_to_json.assert_not_called()
+        manager.import_from_json_file.assert_not_called()
+
+    def test_picker_action_routes_results(self):
+        controller = self._controller()
+        controller.file_picker.save_file = MagicMock()
+        controller.file_picker.pick_files = MagicMock()
+
+        controller.on_export_history()
+        assert controller._picker_action == "history_export"
+        controller.file_picker.save_file.assert_called_once()
+
+        controller.on_import_history()
+        assert controller._picker_action == "history_import"
+        controller.file_picker.pick_files.assert_called_once()
+
+        controller.on_batch_import()
+        assert controller._picker_action == "batch_import"
+
+    def test_picker_result_is_dispatched_by_action(self):
+        controller = self._controller()
+        controller.on_batch_file_result = MagicMock()
+        controller._finish_history_export = MagicMock()
+        controller._finish_history_import = MagicMock()
+
+        controller._picker_action = "history_export"
+        controller.on_file_picker_result(MagicMock())
+        controller._finish_history_export.assert_called_once()
+
+        controller._picker_action = "history_import"
+        controller.on_file_picker_result(MagicMock())
+        controller._finish_history_import.assert_called_once()
+
+        controller._picker_action = "batch_import"
+        controller.on_file_picker_result(MagicMock())
+        controller.on_batch_file_result.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Application data directory: relocatable, and sandboxed during tests
+# ---------------------------------------------------------------------------
+
+
+class TestAppDataDirectory:
+    def test_env_override_wins(self, monkeypatch, tmp_path):
+        from app_paths import DATA_DIR_ENV, data_dir, data_file
+
+        monkeypatch.setenv(DATA_DIR_ENV, str(tmp_path / "data"))
+
+        assert data_dir() == tmp_path / "data"
+        assert data_file("history.db") == tmp_path / "data" / "history.db"
+
+    def test_blank_override_falls_back_to_home(self, monkeypatch, tmp_path):
+        from app_paths import DATA_DIR_ENV, data_dir
+
+        monkeypatch.setenv(DATA_DIR_ENV, "   ")
+        monkeypatch.setattr("pathlib.Path.home", classmethod(lambda cls: tmp_path))
+
+        assert data_dir() == tmp_path / ".streamcatch"
+
+    def test_tilde_is_expanded(self, monkeypatch, tmp_path):
+        from app_paths import DATA_DIR_ENV, data_dir
+
+        # Tilde expansion consults $HOME (os.path.expanduser), not Path.home().
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv(DATA_DIR_ENV, "~/custom-streamcatch")
+
+        assert data_dir() == tmp_path / "custom-streamcatch"
+
+    def test_app_files_live_in_the_data_directory(self):
+        """Config, history, and logs must follow the same overridable folder.
+
+        The modules resolve their paths once, at import (application start), so
+        the expectation is the directory that was active when they loaded —
+        which for this session is the sandbox set by ``tests/conftest.py``.
+        """
+        from pathlib import Path
+
+        import config_manager
+        import history_manager
+        import logger_config
+        from app_paths import data_dir, data_file
+
+        assert Path(config_manager.CONFIG_FILE).parent == data_dir()
+        assert Path(history_manager.HistoryManager.DB_FILE).parent == data_dir()
+        assert data_file("app.log").parent == data_dir()
+
+        from app_paths import DEFAULT_DIR_NAME
+
+        assert DEFAULT_DIR_NAME == ".streamcatch"
+        assert logger_config is not None
+
+    def test_test_session_never_touches_the_user_profile(self):
+        """Guard: the suite must run against the sandboxed data directory.
+
+        ``tests/conftest.py`` redirects ``STREAMCATCH_DATA_DIR`` before any
+        application import; if that ever stops happening, a test run would
+        append rows to the developer's real history database again.
+        """
+        import os
+        import tempfile
+        from pathlib import Path
+
+        from app_paths import DATA_DIR_ENV, data_dir
+
+        override = os.environ.get(DATA_DIR_ENV, "")
+        assert override, f"{DATA_DIR_ENV} is not set for this test session"
+        assert str(data_dir()).startswith(
+            tempfile.gettempdir()
+        ), f"tests are writing to {data_dir()}"
+        assert data_dir() != Path.home() / ".streamcatch"

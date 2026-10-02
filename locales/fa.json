@@ -236,5 +236,8 @@
   "download_error": "دانلود ناموفق بود",
   "error_fetch_info": "دریافت اطلاعات ویدیو ممکن نشد",
   "proxy_url": "نشانی پروکسی",
-  "history_summary": "{0} دانلود | {1}"
+  "history_summary": "{0} دانلود | {1}",
+  "history_export_failed": "خروجی گرفتن از تاریخچه ممکن نشد",
+  "history_import_failed": "ورود تاریخچه ممکن نشد",
+  "history_import_skipped": "از قبل موجود"
 }

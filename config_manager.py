@@ -13,6 +13,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, cast
 
+from app_paths import data_file
+
 # Import keyring when available; allow runtime without it.
 try:
     import keyring
@@ -33,7 +35,7 @@ SERVICE_NAME = "streamcatch_app"
 
 # Configuration file path with fallback
 try:
-    CONFIG_FILE = Path.home() / ".streamcatch" / "config.json"
+    CONFIG_FILE = data_file("config.json")
 except Exception:  # pylint: disable=broad-exception-caught
     CONFIG_FILE = Path("config.json")
 

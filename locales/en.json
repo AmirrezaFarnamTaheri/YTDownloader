@@ -236,5 +236,8 @@
   "download_error": "Download failed",
   "error_fetch_info": "Could not fetch video info",
   "proxy_url": "Proxy URL",
-  "history_summary": "{0} downloads | {1}"
+  "history_summary": "{0} downloads | {1}",
+  "history_export_failed": "Could not export history",
+  "history_import_failed": "Could not import history",
+  "history_import_skipped": "already present"
 }

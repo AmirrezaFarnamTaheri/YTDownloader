@@ -27,7 +27,7 @@ Baseline (before changes): 320 tests, 1 pre-existing failure
 (`tests/test_youtube_panel.py::test_archive_profile_updates_controls`),
 75% statement coverage.
 
-Final state (T1): **484 tests pass**, **77% statement coverage**, `black`,
+Final state (T1): **512 tests pass**, **77% statement coverage**, `black`,
 `isort`, `ruff`, `mypy`, and `pylint` (10.00/10) clean, packaging dry-runs pass,
 and web mode serves `GET / → 200`.
 
@@ -465,16 +465,19 @@ and web mode serves `GET / → 200`.
 | RSS add/duplicate feedback | `views/rss_view.py` | `tests/test_rss_manager.py`, locale keys |
 | Batch import of `.csv`/`.txt` with a size cap | `batch_importer.py` | `TestBatchImporterCsv` |
 | Actionable tooltips and localized filters | `locales/{en,es,fa}.json` | `test_locale_key_usage.py` |
+| History backup and restore (Export/Import History buttons, idempotent, timestamps preserved) | `views/history_view.py`, `HistoryManager.import_entries`/`import_from_json_file`, `AppController.on_export_history` | `TestHistoryImportExport`, `TestHistoryBackupControllerFlow`, end-to-end run on a real page |
+| Spanish/Persian translations for 48 strings that were still English | `locales/{es,fa}.json` | `TestTranslationsAreComplete` |
+| Relocatable user-data directory (`STREAMCATCH_DATA_DIR`) | `app_paths.py` | `TestAppDataDirectory` |
 
 ## 3. Verification performed
 
 ```
-pytest -q                                  479 passed
-pytest -q --cov=. --cov-report=term-missing 77% statements (floor 60%)
+pytest -q                                  512 passed
+pytest -q --cov=. --cov-report=term-missing 78% statements (floor 60%)
 black --check .                            clean (104 files)
 isort --check-only .                       clean
 ruff check . --exclude tests               All checks passed
-mypy --config-file mypy.ini .              no issues in 33 source files
+mypy --config-file mypy.ini .              no issues in 34 source files
 pylint <non-test sources>                  10.00/10
 python scripts/build_installer.py --dry-run --skip-installer   resolved commands printed
 python scripts/build_mobile.py --target apk --dry-run          resolved commands printed
@@ -523,14 +526,15 @@ Deferred deliberately, with the reason:
    finds no reader outside `app_state.py`). Removing them changes an attribute
    surface other code may use; wiring them invents features. Left as a product
    decision, documented here.
-2. **18 unreferenced locale keys** — including `export_history`,
-   `import_history`, `export_settings`, `import_settings`,
-   `select_all`/`deselect_all`/`delete_selected`, and `language_name_*`
-   (verification: literal scan over non-test sources). They cost nothing and hint
-   at unfinished features: history export exists in `HistoryManager`
-   (`export_to_json`/`export_to_csv`) but has no UI entry point; settings
-   export/import and multi-select delete have no implementation at all. Adding
-   UI for them is a product decision, not a bug fix.
+2. **14 unreferenced locale keys** — `export_settings`, `import_settings`,
+   `settings_exported`, `settings_imported`,
+   `select_all`/`deselect_all`/`delete_selected`/`confirm_delete`, and
+   `language_name_*` (verification: literal scan over non-test sources; the four
+   history keys that were on this list are now used by the delivered
+   export/import feature). They cost nothing and hint at unfinished work:
+   settings export/import and multi-select delete have no implementation at all,
+   and the language names are hard-coded in the settings dropdown. Adding UI for
+   them is a product decision, not a bug fix.
 3. **Redundant `if tb:` inside `if stack:` in `global_crash_handler`** —
    `traceback.extract_tb(None)` yields an empty list, so the outer guard already
    implies `tb` is set. Harmless; left untouched to avoid churn in the crash path.
@@ -560,3 +564,60 @@ Deferred deliberately, with the reason:
   unchanged in contract (docs updated to match the code).
 - Desktop-first behaviour is preserved; the tool remains a Flet + yt-dlp desktop
   downloader, and no subsystem was deleted.
+### F-18 — Test runs wrote to the developer's real user data
+
+- **Description.** `ConfigManager.CONFIG_FILE` and `HistoryManager.DB_FILE` were
+  hard-coded under `$HOME/.streamcatch`. Any test that constructed a real
+  `HistoryManager` or saved configuration mutated the developer's actual
+  history database, configuration, and log file.
+- **Evidence anchor.** T1 — counted before/after a full suite run:
+  `history.db` **29 → 33 rows** per run, the 1.9 MB `app.log` grew on every run,
+  and `config.json` was rewritten (all three mtimes updated by the run).
+- **Root cause.** The data directory was a constant, so tests had no way to
+  redirect it; individual tests could only opt out one instance at a time.
+- **Impact.** Running tests contaminates real user state; a test calling
+  `clear_history()` would **delete the developer's history**, and a config test
+  could overwrite real settings. It also hid the `clear_history` risk from
+  review because the damage happens outside the test assertion.
+- **Category.** Incremental (correctness/test isolation). **Peer reference.**
+  `HistoryManager._test_db_file` already existed as a per-instance escape hatch,
+  which is exactly the fragile pattern that let this persist.
+- **Severity.** Medium-High. **Confidence.** High (measured, reproducible).
+  **Effort.** ~1.5 h. **ROI.** High.
+- **Recommendation.** One canonical `app_paths.data_dir()`/`data_file()` helper
+  driven by `STREAMCATCH_DATA_DIR`, used by config, history, the logger, and the
+  sync fallback; `tests/conftest.py` points it at a temporary folder before any
+  application import.
+- **Validation.** `TestAppDataDirectory` (env override, blank fallback, tilde
+  expansion, all three files inside the data dir) plus a session guard test that
+  fails if the suite is ever pointed at the real profile; before/after row counts
+  and file sizes unchanged across a full run.
+- **Residual risk.** Modules resolve their path at import, so the variable must
+  be set before startup; changing it at runtime does not move existing files
+  (documented in `app_paths` and `wiki/API.md`).
+
+### F-19 — Invented Flet icon name would fail at render time
+
+- **Description.** A new import button referenced
+  `ft.icons.DOWNLOAD_FILE_ROUNDED`, which does not exist in Flet 0.21.2 (the
+  correct name is `FILE_DOWNLOAD_ROUNDED`).
+- **Evidence anchor.** T1 — `AttributeError: module 'flet_core.icons' has no
+  attribute 'DOWNLOAD_FILE_ROUNDED'` from the real-Flet tests; a scan of all 74
+  distinct `ft.icons.*`/`ft.colors.*` references in the repository found this as
+  the only invalid name.
+- **Root cause.** Every mock-based test accepts any attribute
+  (`ft.icons.<anything>` returns a `MagicMock`), so invalid enum names pass
+  every mocked test and only fail in the running app.
+- **Impact.** The History view would raise while building its header, breaking
+  the whole screen — and the class of bug is invisible to the default test mode.
+- **Category.** Incremental. **Peer reference.** `tests/test_startup_smoke.py`
+  already runs against real Flet, which is why it caught this immediately.
+- **Severity.** Medium. **Confidence.** High. **Effort.** ~1 h. **ROI.** High.
+- **Recommendation.** Use `FILE_DOWNLOAD_ROUNDED`, and keep a permanent scan
+  that validates every literal `ft.icons.*`/`ft.colors.*` reference against the
+  installed Flet.
+- **Validation.** `tests/test_startup_smoke.py::test_icon_and_colour_names_exist_in_real_flet`
+  (fails on an unknown name, and on a scan that stops finding references).
+- **Residual risk.** The scan only covers literal attribute access; names built
+  dynamically (for example `getattr(ft.icons, name)`) are not checked.
+

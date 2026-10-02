@@ -8,6 +8,8 @@ import sys
 import threading
 from pathlib import Path
 
+from app_paths import data_file
+
 # Module-level flag and lock to prevent re-initialization race conditions
 # pylint: disable=invalid-name
 _logging_initialized = False
@@ -38,7 +40,7 @@ def setup_logging():
         root_logger.addHandler(console_handler)
 
         # Log to both local directory and user home. Use fallback if home is not writable.
-        home_log = Path.home() / ".streamcatch" / "app.log"
+        home_log = data_file("app.log")
         try:
             home_log.parent.mkdir(parents=True, exist_ok=True)
         except Exception:  # pylint: disable=broad-exception-caught

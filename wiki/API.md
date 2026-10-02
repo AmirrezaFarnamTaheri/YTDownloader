@@ -68,6 +68,15 @@ translations stay visible. Positional strings are *not* defaults — they are
 interpolated into the template, and `tests/test_locale_key_usage.py` rejects
 call sites that try it.
 
+### `app_paths.data_dir() -> Path` / `app_paths.data_file(name) -> Path`
+
+Resolve the per-user data directory (`~/.streamcatch` by default). Set
+`STREAMCATCH_DATA_DIR` to relocate it — this is what the test suite uses to run
+against a temporary folder instead of the developer's real configuration,
+history, and log. `ConfigManager.CONFIG_FILE`, `HistoryManager.DB_FILE`, and the
+logger resolve their path once at import, so set the variable before the
+application (or the test session) starts.
+
 ### `ui_utils.safe_update(control: ft.Control) -> bool`
 
 Pushes a control to the client only when it is mounted (`control.page` is set)
@@ -114,6 +123,14 @@ detached controls.
   understands both raw byte counts and pre-formatted sizes such as `"12.50 MB"`
 - `export_to_json(filepath: str) -> None`
 - `export_to_csv(filepath: str) -> None`
+- `import_entries(entries: Any) -> tuple[int, int]` — returns
+  `(imported, skipped)`; entries already present (matched by `url` +
+  `timestamp`) are skipped so re-importing a backup never duplicates history
+- `import_from_json_file(filepath: str) -> tuple[int, int]` — reads a file
+  written by `export_to_json`, enforces a 5 MB cap before reading, and raises
+  `ValueError` with an actionable message for missing, oversized, or non-JSON
+  files. `add_entry` accepts an optional `timestamp` so imported rows keep
+  their original download time.
 
 ## Sync and Cloud APIs
 

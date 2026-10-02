@@ -291,3 +291,40 @@ def test_queue_refresh_before_the_queue_is_ever_shown_is_silent(
         state.queue_manager.remove_item({"id": "smoke-refresh-item"})
         state.shutdown_flag.set()
         loop.close()
+
+
+def test_icon_and_colour_names_exist_in_real_flet():
+    """Catch invented icon/colour names, which the conftest mock cannot.
+
+    Tests that run against the mocked ``flet`` accept *any* attribute (any
+    ``ft.icons.<anything>`` lookup returns a MagicMock), so a typo or an icon
+    that only exists in another Flet version reaches the UI and fails at render
+    time.
+    """
+    import re
+    from pathlib import Path
+
+    import flet_core.colors as colors
+    import flet_core.icons as icons
+
+    root = Path(__file__).resolve().parent.parent
+    pattern = re.compile(r"\bft\.(icons|colors)\.([A-Z][A-Z0-9_]*)")
+    invalid = []
+    scanned = 0
+
+    for path in sorted(root.rglob("*.py")):
+        if any(part in {".venv", "build", "dist"} for part in path.parts):
+            continue
+        for number, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            for module, name in pattern.findall(line):
+                scanned += 1
+                target = icons if module == "icons" else colors
+                if not hasattr(target, name):
+                    invalid.append(
+                        f"{path.relative_to(root)}:{number} ft.{module}.{name}"
+                    )
+
+    assert scanned > 50, "the scan stopped finding icon references"
+    assert not invalid, "Unknown Flet icon/colour names:\n  " + "\n  ".join(invalid)

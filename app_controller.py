@@ -27,6 +27,7 @@ from tasks import fetch_info_task, process_queue
 from ui_manager import UIManager
 from ui_utils import (
     get_default_download_path,
+    is_safe_path,
     normalize_download_target,
     open_folder,
     play_file,
@@ -61,6 +62,9 @@ class AppController:
         self.scheduler = DownloadScheduler()
 
         # Initialize Pickers
+        # The picker is shared between batch import, history export and history
+        # import, so the pending action decides how a result is handled.
+        self._picker_action = "batch_import"
         self.file_picker = ft.FilePicker()
         self.time_picker = ft.TimePicker(
             confirm_text=LM.get("schedule_download"),
@@ -71,7 +75,7 @@ class AppController:
         self.page.overlay.append(self.time_picker)
 
         # Wire up pickers
-        self.file_picker.on_result = self.on_batch_file_result
+        self.file_picker.on_result = self.on_file_picker_result
         self.time_picker.on_change = self.on_time_picked
 
     def start_background_loop(self):
@@ -337,6 +341,76 @@ class AppController:
         if not open_folder(output_path, self.page):
             self.page.open(ft.SnackBar(content=ft.Text(LM.get("open_folder_failed"))))
 
+    def on_file_picker_result(self, e: ft.FilePickerResultEvent):
+        """Dispatch a picker result to the action that opened the dialog."""
+        if self._picker_action == "history_export":
+            self._finish_history_export(e)
+            return
+        if self._picker_action == "history_import":
+            self._finish_history_import(e)
+            return
+        self.on_batch_file_result(e)
+
+    def on_export_history(self):
+        """Ask for a destination file for the history backup."""
+        self._picker_action = "history_export"
+        self.file_picker.save_file(
+            dialog_title=LM.get("export_history"),
+            file_name="streamcatch-history.json",
+            allowed_extensions=["json"],
+        )
+
+    def on_import_history(self):
+        """Ask for a history backup to restore."""
+        self._picker_action = "history_import"
+        self.file_picker.pick_files(
+            dialog_title=LM.get("import_history"),
+            allow_multiple=False,
+            allowed_extensions=["json"],
+        )
+
+    def _finish_history_export(self, e: ft.FilePickerResultEvent):
+        target = getattr(e, "path", None)
+        if not target:
+            return
+        try:
+            if not is_safe_path(target):
+                raise ValueError("unsafe destination path")
+            state.history_manager.export_to_json(target)
+            logger.info("History exported to %s", target)
+            self._show_snackbar(LM.get("history_exported"))
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            logger.error("History export failed: %s", ex)
+            self._show_snackbar(LM.get("history_export_failed"))
+
+    def _finish_history_import(self, e: ft.FilePickerResultEvent):
+        if not e.files:
+            return
+        source = e.files[0].path
+        try:
+            if not is_safe_path(source):
+                raise ValueError("unsafe source path")
+            imported, skipped = state.history_manager.import_from_json_file(source)
+            logger.info("History import from %s: %s imported", source, imported)
+            self._show_snackbar(
+                LM.get("history_imported")
+                if not skipped
+                else f"{LM.get('history_imported')} ({skipped} {LM.get('history_import_skipped')})"
+            )
+            history_view = getattr(self.ui, "history_view", None)
+            if history_view is not None:
+                history_view.load()
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            logger.error("History import failed: %s", ex)
+            self._show_snackbar(LM.get("history_import_failed"))
+
+    def _show_snackbar(self, message: str) -> None:
+        """Open a snackbar on the page when one is available."""
+        try:
+            self.page.open(ft.SnackBar(content=ft.Text(message)))
+        except Exception as ex:  # pylint: disable=broad-exception-caught
+            logger.debug("Could not show snackbar: %s", ex)
+
     def on_batch_file_result(self, e: ft.FilePickerResultEvent):
         """Callback when a file is selected for batch import."""
         if not e.files:
@@ -361,6 +435,7 @@ class AppController:
 
     def on_batch_import(self):
         """Trigger batch import file picker."""
+        self._picker_action = "batch_import"
         self.file_picker.pick_files(
             allow_multiple=False, allowed_extensions=["txt", "csv"]
         )

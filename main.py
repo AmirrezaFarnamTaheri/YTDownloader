@@ -138,6 +138,8 @@ def main(pg: ft.Page) -> None:
             on_toggle_clipboard_callback=CONTROLLER.on_toggle_clipboard,
             on_play_callback=CONTROLLER.on_play_item,
             on_open_folder_callback=CONTROLLER.on_open_folder,
+            on_export_history_callback=CONTROLLER.on_export_history,
+            on_import_history_callback=CONTROLLER.on_import_history,
         )
 
         PAGE.add(main_view)

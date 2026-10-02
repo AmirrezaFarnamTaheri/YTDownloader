@@ -99,6 +99,16 @@ Changing the theme rebuilds the interface immediately — no restart required.
 The download volume shown on the Dashboard is the folder configured here, so
 storage figures and health chips always describe where files will land.
 
+## Backing Up History
+
+The History view has **Export History** and **Import History** buttons:
+
+- **Export History** writes the full history (up to 10,000 entries) to a JSON
+  file you choose.
+- **Import History** restores such a file. Entries already present are skipped,
+  so importing the same backup twice does not duplicate anything, and each
+  restored entry keeps its original download date.
+
 ## Keyboard Shortcuts
 
 While the Queue view is open:
